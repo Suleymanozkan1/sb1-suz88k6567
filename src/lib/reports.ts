@@ -1,0 +1,132 @@
+/** Rapor hesaplamaları — program bazlı, ay bazlı, tarih aralığı, alacak bakiyesi */
+import { MONTH_NAMES } from '../data/constants';
+import { remainingBalance, totalPaid } from './db';
+import type { OrganizationType, Reservation } from '../types';
+
+export interface RangeFilter {
+  from: string;
+  to: string;
+}
+
+export function withinRange(iso: string, range: RangeFilter): boolean {
+  if (range.from && iso < range.from) return false;
+  if (range.to && iso > range.to) return false;
+  return true;
+}
+
+export interface Totals {
+  count: number;
+  total: number;
+  collected: number;
+  remaining: number;
+  guests: number;
+}
+
+export function summarize(reservations: Reservation[]): Totals {
+  return reservations.reduce<Totals>(
+    (acc, r) => ({
+      count: acc.count + 1,
+      total: acc.total + r.totalAmount,
+      collected: acc.collected + totalPaid(r),
+      remaining: acc.remaining + remainingBalance(r),
+      guests: acc.guests + r.guestCount,
+    }),
+    { count: 0, total: 0, collected: 0, remaining: 0, guests: 0 },
+  );
+}
+
+export interface ProgramRow extends Totals {
+  organizationType: OrganizationType;
+}
+
+/** Program (organizasyon türü) bazlı rapor */
+export function programReport(reservations: Reservation[]): ProgramRow[] {
+  const map = new Map<OrganizationType, Reservation[]>();
+  reservations.forEach((r) => {
+    const list = map.get(r.organizationType) ?? [];
+    list.push(r);
+    map.set(r.organizationType, list);
+  });
+  return [...map.entries()]
+    .map(([organizationType, list]) => ({ organizationType, ...summarize(list) }))
+    .sort((a, b) => b.total - a.total);
+}
+
+export interface MonthRow extends Totals {
+  year: number;
+  month: number; // 0-11
+  label: string;
+}
+
+/** Ay bazlı rapor */
+export function monthReport(reservations: Reservation[]): MonthRow[] {
+  const map = new Map<string, Reservation[]>();
+  reservations.forEach((r) => {
+    const key = r.date.slice(0, 7); // yyyy-mm
+    const list = map.get(key) ?? [];
+    list.push(r);
+    map.set(key, list);
+  });
+  return [...map.entries()]
+    .map(([key, list]) => {
+      const [year, month] = key.split('-').map(Number);
+      return {
+        year,
+        month: month - 1,
+        label: `${MONTH_NAMES[month - 1]} ${year}`,
+        ...summarize(list),
+      };
+    })
+    .sort((a, b) => (a.year - b.year) || (a.month - b.month));
+}
+
+export interface BalanceRow {
+  reservation: Reservation;
+  paid: number;
+  remaining: number;
+}
+
+/** Alacak bakiyesi raporu — yalnızca borcu kalan kayıtlar */
+export function balanceReport(reservations: Reservation[]): BalanceRow[] {
+  return reservations
+    .filter((r) => r.status !== 'İptal')
+    .map((r) => ({ reservation: r, paid: totalPaid(r), remaining: remainingBalance(r) }))
+    .filter((row) => row.remaining > 0)
+    .sort((a, b) => b.remaining - a.remaining);
+}
+
+export interface SlotRow extends Totals {
+  slot: string;
+}
+
+/** Gündüz / Gece seans dağılımı */
+export function slotReport(reservations: Reservation[]): SlotRow[] {
+  const map = new Map<string, Reservation[]>();
+  reservations.forEach((r) => {
+    const list = map.get(r.slot) ?? [];
+    list.push(r);
+    map.set(r.slot, list);
+  });
+  return [...map.entries()].map(([slot, list]) => ({ slot, ...summarize(list) }));
+}
+
+/** CSV dışa aktarım (Excel uyumlu, noktalı virgül ayraçlı) */
+export function toCsv(headers: string[], rows: (string | number)[][]): string {
+  const escape = (v: string | number) => {
+    const s = String(v ?? '');
+    return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [headers.map(escape).join(';'), ...rows.map((r) => r.map(escape).join(';'))].join('\r\n');
+}
+
+export function downloadCsv(filename: string, csv: string): void {
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

@@ -6,41 +6,64 @@
   html {
     scroll-behavior: smooth;
   }
-
   body {
-    @apply bg-emerald-50 text-emerald-900;
+    @apply font-sans text-ink bg-white antialiased;
+    color: #444444;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading text-brand;
+  }
+  a {
+    @apply text-accent transition-colors;
+  }
+  a:hover {
+    @apply text-accent-dark;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2;
   }
 }
 
 @layer components {
-  .container {
-    @apply max-w-7xl mx-auto;
+  .container-dt {
+    @apply mx-auto w-full max-w-6xl px-4;
   }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent-dark;
+  }
+  .btn-outline {
+    @apply btn border-2 border-accent text-accent hover:bg-accent hover:text-white;
+  }
+  .btn-brand {
+    @apply btn bg-brand text-white hover:bg-brand-dark;
+  }
+  .btn-sm {
+    @apply rounded-md px-3 py-1.5 text-xs;
+  }
+  .section-title h2 {
+    @apply relative mb-5 inline-block pb-5 font-heading text-3xl font-bold uppercase tracking-wide text-brand;
+  }
+  .section-title h2::after {
+    content: '';
+    @apply absolute bottom-0 left-0 right-0 mx-auto block h-1 w-14 bg-accent;
+  }
+  .field-label {
+    @apply mb-1 block text-sm font-medium text-brand;
+  }
+  .field-input {
+    @apply w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink shadow-sm transition focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent;
+  }
+  .card {
+    @apply rounded-lg border border-line bg-white shadow-sm;
+  }
+}
 
-  .bamboo-card {
-    @apply bg-white/90 backdrop-blur-sm border border-emerald-100 shadow-lg;
-  }
-
-  @keyframes sway {
-    0%, 100% { transform: rotate(-2deg); }
-    50% { transform: rotate(2deg); }
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
-
-  .swaying {
-    animation: sway 6s ease-in-out infinite;
-    transform-origin: bottom;
-  }
-
-  .floating {
-    animation: float 4s ease-in-out infinite;
-  }
-
-  .bamboo-gradient {
-    background: linear-gradient(to bottom, #047857, #065f46);
-  }
+/* Yazdırma görünümü (sözleşme / rapor çıktısı) */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+  .print-area { box-shadow: none !important; border: 0 !important; }
 }
