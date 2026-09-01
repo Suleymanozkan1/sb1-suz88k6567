@@ -10,13 +10,9 @@
  */
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { isProviderConfigured } from './sms';
+import { clientIp, enforceRateLimit, JSON_HEADERS, json, tooManyRequests } from './_guard';
 
 const TTL_MS = 5 * 60 * 1000; // 5 dakika
-const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
-
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
-}
 
 function secret(): string {
   const value = process.env.OTP_SECRET;
@@ -59,9 +55,15 @@ export default async function handler(request: Request): Promise<Response> {
   const phone = normalizePhone(payload.phone ?? '');
   if (!phone) return json({ error: 'Geçerli bir cep telefonu numarası gerekli.' }, 400);
 
+  const ip = clientIp(request);
+
   try {
     /* ---- Kod üret ve gönder ---- */
     if (payload.action === 'issue') {
+      // Aynı numaraya kod yağdırılmasını engelle
+      const phoneLimit = await enforceRateLimit(phone, { bucket: 'otp-issue', limit: 5, windowSeconds: 900 });
+      if (!phoneLimit.allowed) return tooManyRequests(900);
+
       const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
       const expiresAt = Date.now() + TTL_MS;
       const token = sign(phone, code, expiresAt);
@@ -91,6 +93,11 @@ export default async function handler(request: Request): Promise<Response> {
 
     /* ---- Kodu doğrula ---- */
     if (payload.action === 'verify') {
+      // Kod deneme saldırısına karşı: 6 hane = 1.000.000 olasılık, ancak
+      // sınırsız deneme verilirse kırılabilir.
+      const tryLimit = await enforceRateLimit(`${phone}|${ip}`, { bucket: 'otp-verify', limit: 8, windowSeconds: 900 });
+      if (!tryLimit.allowed) return tooManyRequests(900);
+
       const { code = '', token = '', expiresAt = 0 } = payload;
       if (!/^\d{6}$/.test(code)) return json({ verified: false, error: 'Doğrulama kodu 6 haneli olmalıdır.' }, 400);
       if (Date.now() > expiresAt) {

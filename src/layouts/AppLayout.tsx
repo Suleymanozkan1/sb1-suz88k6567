@@ -5,7 +5,7 @@ import { useBusinesses } from '../lib/queries';
 import DemoNotice from '../components/DemoNotice';
 import {
   IconBuilding, IconCalendar, IconClose, IconGrid, IconList, IconLogout, IconMenu,
-  IconMessage, IconPalette, IconReport, IconSettings, IconUser, IconUsers, IconWallet,
+  IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
 
 const NAV = [
@@ -19,6 +19,7 @@ const NAV = [
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
   { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser },
   { to: '/panel/sms', label: 'SMS Kayıtları', icon: IconMessage },
+  { to: '/panel/denetim', label: 'Denetim Kaydı', icon: IconShield },
   { to: '/panel/ayarlar', label: 'Ayarlar', icon: IconSettings },
 ];
 

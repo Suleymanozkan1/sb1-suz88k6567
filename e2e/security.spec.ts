@@ -1,0 +1,93 @@
+import { expect, test, type Page } from '@playwright/test';
+
+/** Harici kaynaklar (yazı tipleri) test ortamında erişilemez; isteği asılı bırakmamak için engellenir. */
+async function blockExternalRequests(page: Page) {
+  await page.route('**/*', (route) => {
+    const url = route.request().url();
+    if (url.startsWith('http://127.0.0.1:4173') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return route.continue();
+    }
+    return route.abort();
+  });
+}
+
+/**
+ * Güvenlik davranışları.
+ *
+ * Bu testler statik önizleme sunucusunda çalışır; sunucu tarafı uç noktalar
+ * (/api/*) burada yoktur. Amaç, uç noktaların bulunmadığı bir dağıtımda
+ * uygulamanın güvenli ve kullanılabilir kalmasını doğrulamaktır.
+ */
+test.describe('İstemci tarafı güvenlik', () => {
+  test('panel rotaları oturumsuz erişime kapalı', async ({ page }) => {
+    await blockExternalRequests(page);
+    for (const path of [
+      '/panel', '/panel/rezervasyonlar', '/panel/kasa', '/panel/raporlar',
+      '/panel/kullanicilar', '/panel/denetim', '/panel/ayarlar',
+    ]) {
+      await page.goto(path);
+      await expect(page, `${path} korumasız`).toHaveURL(/\/uye-girisi$/);
+    }
+  });
+
+  test('giriş ve panel sayfaları arama motorlarına kapalı', async ({ page }) => {
+    await blockExternalRequests(page);
+    await page.goto('/uye-girisi');
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow');
+  });
+
+  test('robots.txt panel yollarını dışlar', async ({ page }) => {
+    const response = await page.goto('/robots.txt');
+    const body = await response!.text();
+    expect(body).toContain('Disallow: /panel');
+    expect(body).toContain('Disallow: /uye-girisi');
+  });
+
+  test('kod doğrulama telefonu maskeler ve ödeme bilgisi sızdırmaz', async ({ page }) => {
+    await blockExternalRequests(page);
+    // Demo verisindeki bir kodu panelden alıp herkese açık sayfada sorgula
+    await page.goto('/uye-girisi');
+    await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
+    await page.getByRole('button', { name: 'Giriş Yap' }).click();
+    await expect(page).toHaveURL(/\/panel$/);
+
+    await page.goto('/panel/rezervasyonlar');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
+    const code = (await page.locator('td.font-mono').first().innerText()).trim();
+
+    await page.goto('/kod-dogrulama');
+    await page.getByLabel('Rezervasyon Kodu').fill(code);
+    await page.getByRole('button', { name: 'Kodu Kontrol Et' }).click();
+    await expect(page.getByText('Rezervasyon kaydı doğrulandı.')).toBeVisible();
+
+    // Telefon maskeli olmalı, ödeme alanları hiç görünmemeli
+    await expect(page.getByText(/\*\*\*\*\*/)).toBeVisible();
+    await expect(page.getByText('Kalan Alacak')).toHaveCount(0);
+    await expect(page.getByText('Kaparo')).toHaveCount(0);
+    await expect(page.getByText('Ödenen')).toHaveCount(0);
+  });
+
+  test('sunucu sırları sayfa kaynağına sızmıyor', async ({ page }) => {
+    await blockExternalRequests(page);
+    // vercel.json başlıkları yalnızca Vercel'de uygulanır; burada sayfanın
+    // kendisinin çerçeveleme koruması için meta/CSP beklemiyoruz.
+    // Bunun yerine hassas verinin sayfa kaynağına gömülmediğini doğruluyoruz.
+    await page.goto('/');
+    const html = await page.content();
+    expect(html).not.toContain('service_role');
+    expect(html).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(html).not.toContain('NETGSM_PASS');
+    expect(html).not.toContain('OTP_SECRET');
+  });
+
+  test('derlenmiş paketlerde sunucu sırları bulunmuyor', async ({ request }) => {
+    const index = await (await request.get('/')).text();
+    const scripts = [...index.matchAll(/src="(\/assets\/[^"]+\.js)"/g)].map((m) => m[1]);
+    expect(scripts.length).toBeGreaterThan(0);
+
+    for (const src of scripts) {
+      const code = await (await request.get(src!)).text();
+      expect(code, `${src} sunucu sırrı içeriyor`).not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key/i);
+    }
+  });
+});

@@ -11,15 +11,11 @@
  *   NETGSM_HEADER  Onaylı marka başlığı (gönderici adı)
  */
 
+import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard';
+
 interface SendRequest {
   to: string;
   body: string;
-}
-
-const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
-
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
 }
 
 /** 10 haneli, 5 ile başlayan Türkiye cep numarası */
@@ -83,6 +79,14 @@ export default async function handler(request: Request): Promise<Response> {
   if (!to) return json({ error: 'Geçerli bir cep telefonu numarası giriniz.' }, 400);
   if (!body) return json({ error: 'Mesaj metni boş olamaz.' }, 400);
   if (body.length > 900) return json({ error: 'Mesaj metni çok uzun.' }, 400);
+
+  // Hız sınırı: hem gönderen IP hem alıcı numara bazında.
+  // Numara bazlı sınır, tek bir kişiye mesaj yağdırılmasını engeller.
+  const ipLimit = await enforceRateLimit(clientIp(request), { bucket: 'sms-ip', limit: 30, windowSeconds: 3600 });
+  if (!ipLimit.allowed) return tooManyRequests(3600);
+
+  const phoneLimit = await enforceRateLimit(to, { bucket: 'sms-phone', limit: 5, windowSeconds: 3600 });
+  if (!phoneLimit.allowed) return tooManyRequests(3600);
 
   if (!isProviderConfigured()) {
     // Sağlayıcı tanımlı değil: gönderim yapılmadığı açıkça bildirilir.

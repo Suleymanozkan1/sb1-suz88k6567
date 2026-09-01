@@ -151,6 +151,18 @@ export interface ContactMessage {
   createdAt: string;
 }
 
+export interface AuditEntry {
+  id: number;
+  actorEmail: string;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  tableName: string;
+  recordId?: string;
+  summary?: string;
+  /** Değişen alanlar: { alan: { eski, yeni } } */
+  changed?: Record<string, { eski: unknown; yeni: unknown }>;
+  createdAt: string;
+}
+
 export interface Testimonial {
   business: string;
   author: string;

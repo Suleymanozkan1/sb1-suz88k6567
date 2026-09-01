@@ -273,6 +273,14 @@ export const localRepo: Repository = {
     write(KEYS.sms, all);
   },
 
+  /**
+   * Demo modunda denetim kaydı yoktur: kayıt veritabanı tetikleyicileriyle
+   * yazılır ve tarayıcıda karşılığı bulunmaz. Ekran bunu açıkça bildirir.
+   */
+  async listAuditLog() {
+    return wait([]);
+  },
+
   async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>) {
     const all = read<ContactMessage[]>(KEYS.messages, []);
     all.push({ ...message, id: uid('msg'), createdAt: new Date().toISOString() });

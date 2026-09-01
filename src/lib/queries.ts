@@ -23,6 +23,7 @@ export const keys = {
   cashFlow: (businessId: string) => ['cashFlow', businessId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
+  audit: (ownerId: string) => ['audit', ownerId] as const,
 };
 
 /** Oturumdaki kullanıcının aktif işletmesi */
@@ -89,6 +90,15 @@ export function useSmsLog() {
     queryKey: keys.sms(businessId),
     queryFn: () => repo.listSms(businessId),
     enabled: Boolean(businessId),
+  });
+}
+
+export function useAuditLog(limit = 200) {
+  const { ownerId } = useAuth();
+  return useQuery({
+    queryKey: keys.audit(ownerId),
+    queryFn: () => repo.listAuditLog(limit),
+    enabled: Boolean(ownerId),
   });
 }
 

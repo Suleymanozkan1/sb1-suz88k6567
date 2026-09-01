@@ -6,7 +6,7 @@
  *  - `local`   : tarayıcı belleği (demo ve testler için)
  */
 import type {
-  Business, CashFlowEntry, ColorSetting, ContactMessage, Payment,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, Payment,
   Permission, Reservation, SmsLogEntry, User,
 } from '../../types';
 
@@ -99,6 +99,9 @@ export interface Repository {
 
   /* -- iletişim -------------------------------------------------------- */
   addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>): Promise<void>;
+
+  /* -- denetim kaydı ---------------------------------------------------- */
+  listAuditLog(limit: number): Promise<AuditEntry[]>;
 }
 
 /** Kullanıcıya gösterilebilir hata; teknik ayrıntı sızdırmaz. */

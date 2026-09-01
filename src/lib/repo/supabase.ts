@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants';
 import { RepoError, type PublicReservation, type Repository } from './types';
 import type {
-  Business, CashFlowEntry, ColorSetting, ContactMessage, Payment,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, Payment,
   Permission, Reservation, SmsLogEntry, User,
 } from '../../types';
 
@@ -154,6 +154,52 @@ function fail(message: string, error: unknown): never {
   throw new RepoError(message, error);
 }
 
+/**
+ * Korumalı giriş uç noktası.
+ * Uç nokta bu dağıtımda yoksa 'endpoint_missing' döner ve çağıran
+ * doğrudan Supabase'e düşer.
+ */
+async function signInViaServer(
+  email: string, password: string,
+): Promise<{ accessToken: string; refreshToken: string } | 'endpoint_missing'> {
+  let response: Response;
+  try {
+    response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password }),
+    });
+  } catch {
+    return 'endpoint_missing';
+  }
+
+  // Uç nokta tanımlı değilse sunucu SPA kabuğunu (HTML) döndürür.
+  if (!(response.headers.get('content-type') ?? '').includes('application/json')) {
+    return 'endpoint_missing';
+  }
+
+  const result = (await response.json()) as {
+    accessToken?: string; refreshToken?: string;
+    error?: string; locked?: boolean; remainingAttempts?: number | null;
+  };
+
+  if (response.status === 423) {
+    throw new RepoError(result.error ?? 'Hesabınız geçici olarak kilitlendi.');
+  }
+  if (response.status === 429) {
+    throw new RepoError(result.error ?? 'Çok fazla deneme yapıldı. Lütfen bekleyiniz.');
+  }
+  if (!response.ok || !result.accessToken || !result.refreshToken) {
+    const suffix =
+      typeof result.remainingAttempts === 'number' && result.remainingAttempts > 0
+        ? ` Kalan deneme hakkınız: ${result.remainingAttempts}.`
+        : '';
+    throw new RepoError((result.error ?? 'Giriş yapılamadı.') + suffix);
+  }
+
+  return { accessToken: result.accessToken, refreshToken: result.refreshToken };
+}
+
 async function currentProfile(): Promise<User | null> {
   const { data: auth } = await db().auth.getUser();
   if (!auth.user) return null;
@@ -174,16 +220,29 @@ export const supabaseRepo: Repository = {
   },
 
   async signIn(email, password) {
-    const { error } = await db().auth.signInWithPassword({ email: email.trim(), password });
-    if (error) {
-      if (error.message.includes('Invalid login')) {
-        throw new RepoError('E-posta veya şifreniz hatalı.');
+    // Giriş sunucu tarafındaki /api/login üzerinden yapılır; hesap kilidi ve
+    // hız sınırı yalnızca orada uygulanabilir. Uç nokta bulunmayan bir
+    // dağıtımda doğrudan Supabase'e düşülür (kilit korumasız çalışır).
+    const viaServer = await signInViaServer(email, password);
+    if (viaServer !== 'endpoint_missing') {
+      const { error } = await db().auth.setSession({
+        access_token: viaServer.accessToken,
+        refresh_token: viaServer.refreshToken,
+      });
+      if (error) throw new RepoError('Oturum başlatılamadı.', error);
+    } else {
+      const { error } = await db().auth.signInWithPassword({ email: email.trim(), password });
+      if (error) {
+        if (error.message.includes('Invalid login')) {
+          throw new RepoError('E-posta veya şifreniz hatalı.');
+        }
+        if (error.message.includes('Email not confirmed')) {
+          throw new RepoError('E-posta adresinizi doğrulamanız gerekiyor.');
+        }
+        throw new RepoError('Giriş yapılamadı. Lütfen tekrar deneyiniz.', error);
       }
-      if (error.message.includes('Email not confirmed')) {
-        throw new RepoError('E-posta adresinizi doğrulamanız gerekiyor.');
-      }
-      throw new RepoError('Giriş yapılamadı. Lütfen tekrar deneyiniz.', error);
     }
+
     const profile = await currentProfile();
     if (!profile) throw new RepoError('Hesabınıza ait profil bulunamadı.');
     return profile;
@@ -439,6 +498,22 @@ export const supabaseRepo: Repository = {
       business_id: entry.businessId, to: entry.to, body: entry.body, kind: entry.kind,
     });
     if (error) fail('SMS kaydı yazılamadı.', error);
+  },
+
+  async listAuditLog(limit) {
+    const { data, error } = await db().from('audit_log')
+      .select('*').order('created_at', { ascending: false }).limit(limit);
+    if (error) fail('Denetim kayıtları alınamadı.', error);
+    return (data ?? []).map((row: Row): AuditEntry => ({
+      id: Number(row.id),
+      actorEmail: (row.actor_email as string) ?? '—',
+      action: (row.action as AuditEntry['action']) ?? 'UPDATE',
+      tableName: (row.table_name as string) ?? '',
+      recordId: (row.record_id as string) ?? undefined,
+      summary: (row.summary as string) ?? undefined,
+      changed: (row.changed as AuditEntry['changed']) ?? undefined,
+      createdAt: (row.created_at as string) ?? '',
+    }));
   },
 
   async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>) {
