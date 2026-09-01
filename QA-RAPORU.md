@@ -11,12 +11,12 @@
 |---------|-------|
 | TypeScript tip kontrolü (`strict`) | ✅ 0 hata |
 | ESLint | ✅ 0 hata, 0 uyarı |
-| Birim + entegrasyon testleri (Vitest) | ✅ 120/120 |
-| Uçtan uca testler (Playwright/Chromium) | ✅ 42/42 |
+| Birim + entegrasyon testleri (Vitest) | ✅ 124/124 |
+| Uçtan uca testler (Playwright/Chromium) | ✅ 44/44 |
 | Üretim derlemesi | ✅ başarılı |
 | Tarayıcı konsol hataları | ✅ hiçbir sayfada yok |
 
-Toplam **162 otomatik test**. Audit sırasında bulunan **4 hata** düzeltilmiş ve her biri
+Toplam **168 otomatik test**. Audit sırasında bulunan **4 hata** düzeltilmiş ve her biri
 için gerileme testi (regression test) yazılmıştır.
 
 ---
@@ -98,14 +98,14 @@ Sınır durumları özellikle kapsandı: negatife düşmeyen bakiye, fazla tahsi
 iptal edilmiş kayıtların raporlardan dışlanması, yıl geçişli ay sıralaması,
 CSV içindeki ayraç ve tırnak karakterleri.
 
-### 3.2 Entegrasyon testleri — 60 test
+### 3.2 Entegrasyon testleri — 64 test
 
 | Dosya | Test | Kapsam |
 |-------|------|--------|
-| `integration.test.tsx` | 27 | Anasayfa bölümleri, video lightbox, SSS akordeonu, kod doğrulama (boş/geçersiz/geçerli), iletişim ve demo formları, üyelik formu doğrulamaları, giriş + SMS doğrulama, referans listesi filtreleri, 404 |
+| `integration.test.tsx` | 31 | Anasayfa bölümleri, video lightbox, SSS akordeonu, kod doğrulama (boş/geçersiz/geçerli), iletişim ve demo formları, üyelik formu doğrulamaları, giriş + SMS doğrulama, referans listesi filtreleri, salon detay sayfası ve teklif formu, 404 |
 | `panel.test.tsx` | 33 | Erişim kontrolü, özet ekranı, takvim gezinme, rezervasyon filtreleri, form doğrulamaları, otomatik SMS, çakışma uyarısı, tahsilat ekleme/limit, geçmiş kayıt kilidi, sözleşme, kasa, raporlar, renk ayarları, müşteriler, tavsiye kodu |
 
-### 3.3 Uçtan uca testler — 42 test (Chromium)
+### 3.3 Uçtan uca testler — 44 test (Chromium)
 
 - **21 herkese açık sayfa** ayrı ayrı açılır; HTTP 200, doğru `h1` ve **sıfır konsol hatası** doğrulanır.
 - Her sayfada tek bir `h1` bulunduğu doğrulanır.
@@ -116,6 +116,7 @@ CSV içindeki ayraç ve tırnak karakterleri.
 - **Tam iş akışı:** giriş → SMS doğrulama → rezervasyon oluşturma → kalan alacak
   hesabı → tahsilat ekleme → bakiye güncellemesi → otomatik SMS kaydı → listede
   arama → sözleşme çıktısı → koddan herkese açık doğrulama.
+- Referans listesinden salon detay sayfasına geçiş; bilinmeyen salon adresinde 404.
 - Yeni üyelik oluşturma, işletme değiştirme, çıkış yapma.
 
 ---
@@ -147,7 +148,7 @@ CSV içindeki ayraç ve tırnak karakterleri.
 | Open Graph ve Twitter Card etiketleri | ✅ |
 | Panel ve giriş sayfalarında `noindex, nofollow` | ✅ |
 | `robots.txt` (panel yolları hariç tutuldu) | ✅ |
-| `sitemap.xml` (23 herkese açık adres) | ✅ |
+| `sitemap.xml` (263 herkese açık adres, 240 salon detay sayfası dâhil) | ✅ |
 | Anlamsal HTML (`header`/`nav`/`main`/`article`/`footer`) | ✅ |
 | Sayfa yolu (breadcrumb) gezinmesi | ✅ |
 
@@ -157,7 +158,7 @@ CSV içindeki ayraç ve tırnak karakterleri.
 
 | Ölçüm | Değer |
 |-------|-------|
-| Ana paket (giriş yapmamış ziyaretçi) | 292 kB / **93 kB gzip** |
+| Ana paket (giriş yapmamış ziyaretçi) | 300 kB / **94 kB gzip** |
 | CSS | 33 kB / **6,4 kB gzip** |
 | Panel ekranları | 16 ayrı parça, her biri 0,3–10 kB |
 | Derleme süresi | ~2 sn |
@@ -194,5 +195,8 @@ Bunlar kusur değil, demo dağıtımının bilinçli sınırlarıdır:
    ödeme adımı süreyi doğrudan uzatır. Sağlayıcı entegrasyonu gerekir.
 4. **Referans listesi örnek veridir.** 240 işletme deterministik olarak üretilir;
    gerçek üye verisiyle değiştirilmelidir.
-5. **Marka varlıkları.** Logo, sosyal medya hesapları ve mağaza bağlantıları yer
+5. **Dağıtım.** Vercel için `vercel.json` hazırdır: SPA yönlendirmesi, varlık
+   önbellekleme ve güvenlik başlıkları tanımlıdır. Uygulama tamamen statiktir;
+   sunucu tarafı çalışma zamanı gerekmez.
+6. **Marka varlıkları.** Logo, sosyal medya hesapları ve mağaza bağlantıları yer
    tutucudur; yayına almadan önce kendi marka varlıklarınızla değiştirilmelidir.

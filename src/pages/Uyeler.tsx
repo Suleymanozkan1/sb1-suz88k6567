@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Seo from '../components/Seo';
 import { DIRECTORY, TOTAL_MEMBER_COUNT } from '../data/directory';
@@ -170,7 +171,11 @@ export default function Uyeler({ restrictCategories, title, intro, path, breadcr
 function MemberCard({ member }: { member: DirectoryMember }) {
   return (
     <article className="card flex h-full flex-col p-5">
-      <h2 className="font-heading text-base font-bold text-brand">{member.name}</h2>
+      <h2 className="font-heading text-base font-bold text-brand">
+        <Link to={`/salon/${member.slug}`} className="text-brand hover:text-accent">
+          {member.name}
+        </Link>
+      </h2>
       <p className="mt-1 flex items-center gap-1.5 text-sm text-brand-muted">
         <IconLocation size={15} className="text-accent" />
         {member.district} / {member.city}
@@ -185,6 +190,9 @@ function MemberCard({ member }: { member: DirectoryMember }) {
       <span className="mt-4 inline-block self-start rounded-full bg-surface px-3 py-1 text-xs text-brand-muted">
         {member.category}
       </span>
+      <Link to={`/salon/${member.slug}`} className="mt-3 self-start text-sm font-medium">
+        Detay bilgi için tıklayınız →
+      </Link>
     </article>
   );
 }

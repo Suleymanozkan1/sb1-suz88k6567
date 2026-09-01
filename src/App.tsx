@@ -11,6 +11,7 @@ import Haberler, { HaberDetay } from './pages/Haberler';
 import Ekranlar from './pages/Ekranlar';
 import Uyeler from './pages/Uyeler';
 import VenueCategory from './pages/VenueCategory';
+import SalonDetay from './pages/SalonDetay';
 import Iletisim from './pages/Iletisim';
 import Dusunceler from './pages/Dusunceler';
 import Sss from './pages/Sss';
@@ -70,6 +71,7 @@ export default function App() {
             <Route path="kina-salonlari" element={<VenueCategory />} />
             <Route path="dugun-otelleri" element={<VenueCategory />} />
             <Route path="kir-dugunu-mekanlari" element={<VenueCategory />} />
+            <Route path="salon/:slug" element={<SalonDetay />} />
 
             <Route path="gizlilik-politikasi" element={<LegalPage />} />
             <Route path="iade-proseduru" element={<LegalPage />} />

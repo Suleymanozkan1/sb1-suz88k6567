@@ -172,10 +172,14 @@ export interface NewsItem {
 
 export interface DirectoryMember {
   id: string;
+  /** /salon/<slug> adresinde kullanılan benzersiz anahtar */
+  slug: string;
   name: string;
   category: string;
   city: string;
   district: string;
   capacity?: number;
+  address?: string;
+  phone?: string;
   about: string;
 }

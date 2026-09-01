@@ -67,6 +67,24 @@ test.describe('Herkese açık sayfalar', () => {
     });
   }
 
+  test('referans listesinden salon detay sayfasına gidilir', async ({ page }) => {
+    await blockExternalRequests(page);
+    await page.goto('/uyeler');
+    const firstCard = page.getByRole('link', { name: 'Detay bilgi için tıklayınız →' }).first();
+    await firstCard.click();
+    await expect(page).toHaveURL(/\/salon\//);
+    await expect(page.getByRole('heading', { name: 'İşletme Bilgileri' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Fiyat Teklifi İste \/ İletişim \/ Rezervasyon/ }),
+    ).toBeVisible();
+  });
+
+  test('bilinmeyen salon adresi 404 gösterir', async ({ page }) => {
+    await blockExternalRequests(page);
+    await page.goto('/salon/olmayan-bir-salon');
+    await expect(page.getByRole('heading', { name: 'Aradığınız sayfa bulunamadı' })).toBeVisible();
+  });
+
   test('bilinmeyen adres 404 sayfası gösterir', async ({ page }) => {
     await page.goto('/boyle-bir-sayfa-yok');
     await expect(page.getByRole('heading', { name: 'Aradığınız sayfa bulunamadı' })).toBeVisible();

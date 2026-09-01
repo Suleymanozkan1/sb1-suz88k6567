@@ -14,6 +14,8 @@ import UyeOl from '../UyeOl';
 import UyeGirisi from '../UyeGirisi';
 import Uyeler from '../Uyeler';
 import NotFound from '../NotFound';
+import SalonDetay from '../SalonDetay';
+import { DIRECTORY } from '../../data/directory';
 import { clearAll } from '../../lib/storage';
 import { findUserByEmail, getMessages, makeReservationCode, seedIfEmpty, uid, upsertReservation } from '../../lib/db';
 
@@ -315,5 +317,46 @@ describe('404 sayfası', () => {
     renderAt('/olmayan-sayfa', <NotFound />);
     expect(screen.getByText('404')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Aradığınız sayfa bulunamadı' })).toBeInTheDocument();
+  });
+});
+
+describe('Salon detay sayfası', () => {
+  const member = DIRECTORY[0];
+
+  it('işletme bilgilerini gösterir', () => {
+    renderAt(`/salon/${member.slug}`, <SalonDetay />);
+    expect(screen.getByRole('heading', { level: 1, name: member.name })).toBeInTheDocument();
+    expect(screen.getByText(`${member.district} / ${member.city}`)).toBeInTheDocument();
+    expect(screen.getByText(member.about)).toBeInTheDocument();
+  });
+
+  it('bilinmeyen salon adresinde 404 gösterir', () => {
+    renderAt('/salon/olmayan-salon', <SalonDetay />);
+    expect(screen.getByText('404')).toBeInTheDocument();
+  });
+
+  it('teklif formunda zorunlu alanları doğrular', async () => {
+    const user = userEvent.setup();
+    renderAt(`/salon/${member.slug}`, <SalonDetay />);
+    await user.click(screen.getByRole('button', { name: 'Gönder' }));
+    expect(await screen.findByText('Adınızı soyadınızı giriniz.')).toBeInTheDocument();
+    expect(getMessages()).toHaveLength(0);
+  });
+
+  it('teklif talebini işletme bilgisiyle birlikte kaydeder', async () => {
+    const user = userEvent.setup();
+    renderAt(`/salon/${member.slug}`, <SalonDetay />);
+
+    await user.selectOptions(screen.getByLabelText('Mesaj Konusu'), 'Rezervasyon');
+    await user.type(screen.getByLabelText('Adınız Soyadınız'), 'Talep Eden');
+    await user.type(screen.getByLabelText('Email Adresiniz'), 'talep@example.com');
+    await user.type(screen.getByLabelText('Telefon'), '5321234567');
+    await user.type(screen.getByLabelText('Mesajınız'), 'Fiyat bilgisi rica ederim.');
+    await user.click(screen.getByRole('button', { name: 'Gönder' }));
+
+    await waitFor(() => expect(getMessages()).toHaveLength(1), { timeout: 3000 });
+    const saved = getMessages()[0];
+    expect(saved.message).toContain(member.name);
+    expect(saved.message).toContain('Konu: Rezervasyon');
   });
 });

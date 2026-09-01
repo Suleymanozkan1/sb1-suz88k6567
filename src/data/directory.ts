@@ -1,3 +1,4 @@
+import { slugify } from '../lib/format';
 import type { DirectoryMember } from '../types';
 
 /** Referanslarımız sayfasında gösterilen toplam işletme sayısı */
@@ -47,6 +48,11 @@ const CITY_DISTRICTS: [string, string[]][] = [
 
 const CATEGORY_POOL = Object.keys(NAME_SUFFIX);
 
+const STREETS = [
+  'Merkez Mah. Cumhuriyet Cad.', 'Yeni Mah. Atatürk Bulvarı', 'Fatih Mah. Gül Sok.',
+  'Bahçelievler Mah. İstasyon Cad.', 'Cumhuriyet Mah. Şehit Er Sok.', 'Yeşiltepe Mah. Sahil Yolu',
+];
+
 const ABOUT_TEMPLATES = [
   'Şehrin merkezinde, geniş otoparkı ve modern ses-ışık sistemleri ile hizmetinizde.',
   'Düğün, nişan, kına ve sünnet organizasyonlarınız için profesyonel ekip ve uygun fiyat.',
@@ -89,13 +95,18 @@ function buildDirectory(count: number): DirectoryMember[] {
     used.add(key);
 
     const hasCapacity = category !== 'Fotoğrafçılar' && category !== 'Organizasyon Firması';
+    // Aynı ada sahip iki işletme olabileceği için slug'a ilçe eklenir.
+    const slug = slugify(`${name} ${district}`);
     out.push({
       id: `m${out.length + 1}`,
+      slug,
       name,
       category,
       city,
       district,
       capacity: hasCapacity ? 100 + Math.floor(rnd() * 18) * 50 : undefined,
+      address: `${STREETS[Math.floor(rnd() * STREETS.length)]} No:${1 + Math.floor(rnd() * 120)}`,
+      phone: `5${3 + Math.floor(rnd() * 6)}${String(Math.floor(rnd() * 100000000)).padStart(8, '0')}`,
       about: ABOUT_TEMPLATES[Math.floor(rnd() * ABOUT_TEMPLATES.length)],
     });
   }
@@ -104,6 +115,10 @@ function buildDirectory(count: number): DirectoryMember[] {
 
 /** Referans listesinde gösterilen örnek işletmeler */
 export const DIRECTORY: DirectoryMember[] = buildDirectory(240);
+
+export function findMemberBySlug(slug: string): DirectoryMember | undefined {
+  return DIRECTORY.find((m) => m.slug === slug);
+}
 
 /** Footer'daki salon kategorisi sayfaları */
 export const VENUE_PAGES: {

@@ -45,6 +45,7 @@ Personel (kısıtlı yetki) hesabı: `personel@duguntakip.com` / `personel1234`
 | `/haberler`, `/haberler/:slug` | Haberler listesi ve detay sayfaları |
 | `/ekranlar` | Uygulama ekranlarının önizlemeleri |
 | `/uyeler` | Referanslarımız — kategori/il filtreleri, arama, sayfalama |
+| `/salon/:slug` | İşletme detay sayfası — bilgiler, fiyat teklifi/rezervasyon formu, aynı ildeki diğer işletmeler |
 | `/dugun-salonlari`, `/kina-salonlari`, `/dugun-otelleri`, `/kir-dugunu-mekanlari` | Kategoriye göre daraltılmış salon listeleri |
 | `/dusunceler` | Üye yorumları (aranabilir) |
 | `/sss` | Sık sorulan sorular (akordeon) |
@@ -97,12 +98,38 @@ API istemcisi alır ve uygulamanın geri kalanı değişmeden çalışır.
 Panel ekranları `React.lazy` ile ayrı paketlere bölünmüştür; giriş yapmamış
 ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 
-## Dağıtım
+## Vercel'e dağıtım
 
-`npm run build` çıktısı `dist/` klasöründedir ve statik olarak sunulabilir.
-Tek sayfa uygulaması olduğu için sunucunun bilinmeyen yolları `index.html`'e
-yönlendirmesi gerekir — hazır yapılandırmalar: `public/_redirects` (Netlify),
-`vercel.json` (Vercel), `public/.htaccess` (Apache).
+Depo Vercel'e bağlandığında `vercel.json` gerekli her şeyi tanımlar; ek ayar
+yapmanıza gerek yoktur.
+
+| Ayar | Değer |
+|------|-------|
+| Framework | Vite (otomatik algılanır) |
+| Install Command | `npm ci` |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+
+`vercel.json` ayrıca şunları yapar:
+
+- **SPA yönlendirmesi:** bilinmeyen yollar `index.html`'e yeniden yazılır, böylece
+  `/salon/...` gibi derin bağlantılar doğrudan açıldığında da çalışır. Statik
+  dosyalar (`robots.txt`, `sitemap.xml`, `assets/*`) dosya sistemi önce
+  denendiği için bu kuraldan etkilenmez.
+- **Önbellekleme:** karma (hash) içeren `assets/*` dosyaları bir yıl `immutable`,
+  `robots.txt` / `sitemap.xml` / `favicon.svg` bir saat önbelleklenir.
+- **Güvenlik başlıkları:** `X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`, `Permissions-Policy`.
+
+Yerel önizleme için:
+
+```bash
+npm run build && npm run preview
+```
+
+Not: Kalıcılık tarayıcıdaki `localStorage` üzerinde olduğu için dağıtım tamamen
+statiktir; sunucu tarafı çalışma zamanı, ortam değişkeni veya veritabanı
+gerekmez.
 
 ## Bilinen sınırlar
 
