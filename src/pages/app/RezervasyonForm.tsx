@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
-import { useBusinessData } from '../../hooks/useBusinessData';
+import { errorMessage } from '../../lib/authHelpers';
 import {
-  findSlotConflict, getReservation, logSms, makeReservationCode, upsertReservation,
-} from '../../lib/db';
+  useReservation, useReservations, useSaveReservation, useSendSms,
+} from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
+import { makeReservationCode } from '../../lib/ids';
 import { formatDate, todayIso } from '../../lib/format';
 import { ORGANIZATION_TYPES, ORG_TO_COLOR_KEY, SERVICE_OPTIONS } from '../../data/constants';
 import type { OrganizationType, Reservation, ReservationStatus, SessionSlot } from '../../types';
@@ -51,21 +53,19 @@ export default function RezervasyonForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, can } = useAuth();
-  const { businessId, reload } = useBusinessData();
-
-  const existing = useMemo(() => (id ? getReservation(id) : undefined), [id]);
+  const businessId = user?.activeBusinessId ?? '';
+  const existingQuery = useReservation(id);
+  const existing = existingQuery.data ?? undefined;
+  const { data: allReservations = [] } = useReservations();
+  const saveMutation = useSaveReservation();
+  const sendSmsMutation = useSendSms();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [conflictWarning, setConflictWarning] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [notFound, setNotFound] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
-    if (!id) return;
-    if (!existing) {
-      setNotFound(true);
-      return;
-    }
+    if (!id || !existing) return;
     setForm({
       customerName: existing.customerName,
       customerPhone: existing.customerPhone,
@@ -84,19 +84,18 @@ export default function RezervasyonForm() {
     });
   }, [id, existing]);
 
-  // Aynı tarih + seans için başka kayıt varsa uyar
+  // Aynı tarih + seans için başka kayıt varsa uyar (veritabanında da kısıt vardır)
   useEffect(() => {
-    if (!businessId || !form.date) {
-      setConflictWarning('');
-      return;
-    }
-    const conflict = findSlotConflict(businessId, form.date, form.slot, id);
+    if (!form.date) { setConflictWarning(''); return; }
+    const conflict = allReservations.find(
+      (r) => r.date === form.date && r.slot === form.slot && r.status !== 'İptal' && r.id !== id,
+    );
     setConflictWarning(
       conflict
         ? `${formatDate(form.date)} ${form.slot.toLocaleLowerCase('tr-TR')} seansında "${conflict.customerName}" adına kayıt bulunuyor.`
         : '',
     );
-  }, [businessId, form.date, form.slot, id]);
+  }, [allReservations, form.date, form.slot, id]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -137,18 +136,18 @@ export default function RezervasyonForm() {
     return Object.keys(e).length === 0;
   }
 
-  function onSubmit(ev: React.FormEvent) {
+  async function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
+    setSaveError('');
     if (!validate()) {
       document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
       return;
     }
-    setSaving(true);
 
     const now = new Date().toISOString();
     const phone = form.customerPhone.replace(/\D/g, '');
     const record: Reservation = {
-      id: existing?.id ?? `res_${Date.now().toString(36)}`,
+      id: existing?.id ?? crypto.randomUUID(),
       businessId: existing?.businessId ?? businessId,
       code: existing?.code ?? makeReservationCode(),
       customerName: form.customerName.trim(),
@@ -171,28 +170,30 @@ export default function RezervasyonForm() {
       updatedAt: now,
     };
 
-    const saved = upsertReservation(record);
+    try {
+      const saved = await saveMutation.mutateAsync(record);
 
-    // "Rezervasyon Kayıt ettiğinizde SMS OTOMATİK OLARAK GİDER"
-    if (!existing) {
-      logSms({
-        businessId: saved.businessId,
-        to: phone,
-        body: `Sayin ${saved.customerName}, ${formatDate(saved.date)} tarihli rezervasyonunuz kayit edilmistir. Kod: ${saved.code}`,
-        kind: 'Rezervasyon',
-      });
+      // "Rezervasyon Kayıt ettiğinizde SMS OTOMATİK OLARAK GİDER"
+      if (!existing) {
+        await sendSmsMutation.mutateAsync({
+          businessId: saved.businessId,
+          to: phone,
+          body: `Sayin ${saved.customerName}, ${formatDate(saved.date)} tarihli rezervasyonunuz kayit edilmistir. Kod: ${saved.code}`,
+          kind: 'Rezervasyon',
+        });
+      }
+      navigate(`/panel/rezervasyonlar/${saved.id}`, { replace: true });
+    } catch (e) {
+      setSaveError(errorMessage(e));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-
-    reload();
-    setSaving(false);
-    navigate(`/panel/rezervasyonlar/${saved.id}`, { replace: true });
   }
 
   if (!can('rezervasyon.duzenle')) {
     return <Alert kind="error">Bu işlem için yetkiniz bulunmuyor.</Alert>;
   }
 
-  if (notFound) {
+  if (id && existingQuery.isFetched && !existing) {
     return (
       <Alert kind="error">
         Rezervasyon kaydı bulunamadı. <Link to="/panel/rezervasyonlar">Listeye dönün</Link>.
@@ -204,8 +205,9 @@ export default function RezervasyonForm() {
   const balance = Math.max(0, (Number(form.totalAmount) || 0) - (Number(form.deposit) || 0));
 
   return (
-    <>
+    <QueryBoundary isLoading={Boolean(id) && existingQuery.isLoading} error={existingQuery.error}>
       <Seo title={`${existing ? 'Rezervasyon Düzenle' : 'Yeni Rezervasyon'} - Düğün Takip Panel`} noindex />
+      {saveError && <Alert kind="error" className="mb-5">{saveError}</Alert>}
 
       <div className="mb-6">
         <h1 className="font-heading text-2xl font-bold text-brand">
@@ -221,7 +223,7 @@ export default function RezervasyonForm() {
         </Alert>
       )}
 
-      <form onSubmit={onSubmit} noValidate className="card p-6">
+      <form onSubmit={(e) => { void onSubmit(e); }} noValidate className="card p-6">
         <fieldset className="mb-8">
           <legend className="mb-4 font-heading text-lg font-bold text-brand">Müşteri Bilgileri</legend>
           <div className="grid gap-4 md:grid-cols-2">
@@ -310,15 +312,15 @@ export default function RezervasyonForm() {
         </Field>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <button type="submit" className="btn-primary text-white hover:text-white" disabled={saving}>
-            {saving ? 'Kaydediliyor...' : 'Kaydet'}
+          <button type="submit" className="btn-primary text-white hover:text-white" disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
           <Link to={existing ? `/panel/rezervasyonlar/${existing.id}` : '/panel/rezervasyonlar'} className="btn-outline">
             Vazgeç
           </Link>
         </div>
       </form>
-    </>
+    </QueryBoundary>
   );
 }
 

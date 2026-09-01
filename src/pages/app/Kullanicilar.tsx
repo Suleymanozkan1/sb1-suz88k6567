@@ -3,7 +3,9 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
-import { deleteUser, getUsers, makeReferralCode, normalizeEmail, uid, upsertUser } from '../../lib/db';
+import { errorMessage } from '../../lib/authHelpers';
+import { useDeleteStaff, useSaveStaff, useStaff } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
 import { ALL_PERMISSIONS } from '../../types';
 import { formatPhone } from '../../lib/format';
 import { IconEdit, IconPlus, IconTrash, IconUser } from '../../components/Icons';
@@ -12,17 +14,16 @@ import type { Permission, User } from '../../types';
 const EMPTY = { fullName: '', email: '', mobile: '', password: '', permissions: ['rezervasyon.goruntule'] as Permission[] };
 
 export default function Kullanicilar() {
-  const { user, can } = useAuth();
-  const [version, setVersion] = useState(0);
+  const { user, can, isDemoMode } = useAuth();
+  const { data: staff = [], isLoading, error: loadError } = useStaff();
+  const saveMutation = useSaveStaff();
+  const deleteMutation = useDeleteStaff();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
   const [toDelete, setToDelete] = useState<User | null>(null);
 
-  // Depo React state'i olmadığından her render'da yeniden okunur; `version` yazma sonrası render tetikler.
-  void version;
-  const staff = getUsers().filter((u) => u.role === 'staff' && u.ownerId === user?.id);
 
   function openNew() {
     setEditing(null);
@@ -38,50 +39,38 @@ export default function Kullanicilar() {
     setShowForm(true);
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     if (!form.fullName.trim()) { setError('Ad soyad giriniz.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) { setError('Geçerli bir e-posta adresi giriniz.'); return; }
     if (!editing && form.password.length < 6) { setError('Şifre en az 6 karakter olmalıdır.'); return; }
-
-    const duplicate = getUsers().find(
-      (u) => normalizeEmail(u.email) === normalizeEmail(form.email) && u.id !== editing?.id,
-    );
-    if (duplicate) { setError('Bu e-posta adresi başka bir kullanıcıya ait.'); return; }
     if (!user) return;
 
-    upsertUser({
-      id: editing?.id ?? uid('user'),
-      companyName: user.companyName,
-      fullName: form.fullName.trim(),
-      email: form.email.trim(),
-      password: form.password || editing?.password || 'personel1234',
-      mobile: form.mobile.replace(/\D/g, ''),
-      role: 'staff',
-      ownerId: user.id,
-      permissions: form.permissions,
-      city: user.city,
-      district: user.district,
-      category: user.category,
-      capacity: user.capacity,
-      currency: user.currency,
-      referralCode: editing?.referralCode ?? makeReferralCode(form.fullName || 'PERS'),
-      trialEndsAt: user.trialEndsAt,
-      subscriptionEndsAt: user.subscriptionEndsAt,
-      createdAt: editing?.createdAt ?? new Date().toISOString(),
-      activeBusinessId: user.activeBusinessId,
-    });
-
-    setShowForm(false);
-    setVersion((v) => v + 1);
+    try {
+      await saveMutation.mutateAsync({
+        id: editing?.id,
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        password: form.password || undefined,
+        mobile: form.mobile.replace(/\D/g, ''),
+        permissions: form.permissions,
+      });
+      setShowForm(false);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
-  function remove() {
+  async function remove() {
     if (!toDelete) return;
-    deleteUser(toDelete.id);
+    const target = toDelete;
     setToDelete(null);
-    setVersion((v) => v + 1);
+    try {
+      await deleteMutation.mutateAsync(target.id);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
   function togglePermission(p: Permission, checked: boolean) {
@@ -96,7 +85,7 @@ export default function Kullanicilar() {
   }
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={loadError}>
       <Seo title="Kullanıcılar - Düğün Takip Panel" noindex />
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -110,8 +99,15 @@ export default function Kullanicilar() {
         belirleyebilirsiniz.
       </p>
 
+      {!isDemoMode && (
+        <Alert kind="info" className="mb-5">
+          Yeni personel hesabı Supabase yönetim panelinden (Authentication → Users) oluşturulur.
+          Hesap açıldıktan sonra yetkilerini buradan düzenleyebilirsiniz.
+        </Alert>
+      )}
+
       {showForm && (
-        <form onSubmit={submit} noValidate className="card mb-6 p-5">
+        <form onSubmit={(e) => { void submit(e); }} noValidate className="card mb-6 p-5">
           <h2 className="mb-4 font-heading text-lg font-bold text-brand">
             {editing ? 'Kullanıcıyı Düzenle' : 'Yeni Kullanıcı'}
           </h2>
@@ -209,9 +205,9 @@ export default function Kullanicilar() {
         title="Kullanıcıyı silmek istiyor musunuz?"
         description={toDelete ? `${toDelete.fullName} artık sisteme giriş yapamayacaktır.` : ''}
         confirmLabel="Evet, sil"
-        onConfirm={remove}
+        onConfirm={() => { void remove(); }}
         onCancel={() => setToDelete(null)}
       />
-    </>
+    </QueryBoundary>
   );
 }

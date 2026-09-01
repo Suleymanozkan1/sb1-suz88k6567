@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
-import { useBusinessData } from '../../hooks/useBusinessData';
 import { useAuth } from '../../context/AuthContext';
-import { deleteReservation, remainingBalance, totalPaid } from '../../lib/db';
+import { errorMessage } from '../../lib/authHelpers';
+import { useDeleteReservation, useReservationsWithBalances } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
+import Alert from '../../components/Alert';
 import { formatDate, formatMoney, formatPhone, normalizeTr } from '../../lib/format';
 import { downloadCsv, toCsv, withinRange } from '../../lib/reports';
 import { ORGANIZATION_TYPES } from '../../data/constants';
@@ -21,8 +23,10 @@ const STATUS_STYLES: Record<ReservationStatus, string> = {
 };
 
 export default function Rezervasyonlar() {
-  const { reservations, colors, reload } = useBusinessData();
+  const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
   const { can } = useAuth();
+  const deleteMutation = useDeleteReservation();
+  const [deleteError, setDeleteError] = useState('');
 
   const [query, setQuery] = useState('');
   const [org, setOrg] = useState('');
@@ -49,24 +53,24 @@ export default function Rezervasyonlar() {
         case 'amount-desc':
           return b.totalAmount - a.totalAmount;
         case 'remaining-desc':
-          return remainingBalance(b) - remainingBalance(a);
+          return balance.remaining(b) - balance.remaining(a);
         default:
           return b.date.localeCompare(a.date);
       }
     });
-  }, [reservations, query, org, status, from, to, sort]);
+  }, [reservations, query, org, status, from, to, sort, balance]);
 
   const totals = useMemo(
     () =>
       filtered.reduce(
         (acc, r) => ({
           total: acc.total + r.totalAmount,
-          paid: acc.paid + totalPaid(r),
-          remaining: acc.remaining + remainingBalance(r),
+          paid: acc.paid + balance.paid(r),
+          remaining: acc.remaining + balance.remaining(r),
         }),
         { total: 0, paid: 0, remaining: 0 },
       ),
-    [filtered],
+    [filtered, balance],
   );
 
   function exportCsv() {
@@ -74,17 +78,22 @@ export default function Rezervasyonlar() {
       ['Kod', 'Tarih', 'Seans', 'Müşteri', 'Telefon', 'Organizasyon', 'Davetli', 'Toplam', 'Ödenen', 'Kalan', 'Durum'],
       filtered.map((r) => [
         r.code, formatDate(r.date), r.slot, r.customerName, formatPhone(r.customerPhone),
-        r.organizationType, r.guestCount, r.totalAmount, totalPaid(r), remainingBalance(r), r.status,
+        r.organizationType, r.guestCount, r.totalAmount, balance.paid(r), balance.remaining(r), r.status,
       ]),
     );
     downloadCsv(`rezervasyonlar-${new Date().toISOString().slice(0, 10)}.csv`, csv);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return;
-    deleteReservation(pendingDelete.id);
-    setPendingDelete(null);
-    reload();
+    setDeleteError('');
+    try {
+      await deleteMutation.mutateAsync(pendingDelete.id);
+      setPendingDelete(null);
+    } catch (e) {
+      setDeleteError(errorMessage(e));
+      setPendingDelete(null);
+    }
   }
 
   const clearFilters = () => {
@@ -92,8 +101,9 @@ export default function Rezervasyonlar() {
   };
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={error}>
       <Seo title="Rezervasyonlar - Düğün Takip Panel" noindex />
+      {deleteError && <Alert kind="error" className="mb-5">{deleteError}</Alert>}
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Rezervasyonlar</h1>
@@ -198,7 +208,7 @@ export default function Rezervasyonlar() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right text-brand">{formatMoney(r.totalAmount, r.currency)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-brand">{formatMoney(remainingBalance(r), r.currency)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-brand">{formatMoney(balance.remaining(r), r.currency)}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs ${STATUS_STYLES[r.status]}`}>{r.status}</span>
                     </td>
@@ -233,10 +243,10 @@ export default function Rezervasyonlar() {
             : ''
         }
         confirmLabel="Evet, sil"
-        onConfirm={confirmDelete}
+        onConfirm={() => { void confirmDelete(); }}
         onCancel={() => setPendingDelete(null)}
       />
-    </>
+    </QueryBoundary>
   );
 }
 

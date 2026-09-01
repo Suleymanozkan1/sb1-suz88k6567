@@ -4,10 +4,13 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
+import { errorMessage } from '../../lib/authHelpers';
 import {
-  deletePayment, deleteReservation, getPayments, getReservation, logSms,
-  remainingBalance, totalPaid, uid, upsertPayment,
-} from '../../lib/db';
+  useAddPayment, useDeletePayment, useDeleteReservation, useSendSms,
+  useReservation, useReservationsWithBalances,
+} from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
+import { remainingBalance, totalPaid } from '../../lib/money';
 import { formatDate, formatDateLong, formatMoney, formatPhone, todayIso } from '../../lib/format';
 import { PAYMENT_METHODS } from '../../data/constants';
 import { IconEdit, IconMessage, IconPlus, IconPrint, IconTrash } from '../../components/Icons';
@@ -17,7 +20,13 @@ export default function RezervasyonDetay() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { can } = useAuth();
-  const [version, setVersion] = useState(0);
+  const reservationQuery = useReservation(id);
+  const { balance, isLoading: listLoading } = useReservationsWithBalances();
+  const addPaymentMutation = useAddPayment();
+  const deletePaymentMutation = useDeletePayment();
+  const deleteReservationMutation = useDeleteReservation();
+  const sendSmsMutation = useSendSms();
+  const [actionError, setActionError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
   const [smsSent, setSmsSent] = useState(false);
@@ -25,10 +34,14 @@ export default function RezervasyonDetay() {
   const [payForm, setPayForm] = useState({ date: todayIso(), amount: '', method: 'Nakit', note: '' });
   const [payError, setPayError] = useState('');
 
-  // Depo React state'i olmadığından her render'da yeniden okunur; `version` yazma sonrası render tetikler.
-  void version;
-  const reservation = id ? getReservation(id) : undefined;
-  const payments = id ? getPayments(id).sort((a, b) => b.date.localeCompare(a.date)) : [];
+  const reservation = reservationQuery.data ?? undefined;
+  const payments = id
+    ? [...balance.paymentsOf(id)].sort((a, b) => b.date.localeCompare(a.date))
+    : [];
+
+  if (reservationQuery.isLoading || listLoading) {
+    return <QueryBoundary isLoading error={null}>{null}</QueryBoundary>;
+  }
 
   if (!reservation) {
     return (
@@ -38,11 +51,11 @@ export default function RezervasyonDetay() {
     );
   }
 
-  const paid = totalPaid(reservation);
-  const remaining = remainingBalance(reservation);
+  const paid = totalPaid(reservation, payments);
+  const remaining = remainingBalance(reservation, payments);
   const isPast = reservation.date < todayIso();
 
-  function addPayment(e: React.FormEvent) {
+  async function addPayment(e: React.FormEvent) {
     e.preventDefault();
     setPayError('');
     const amount = Number(payForm.amount);
@@ -54,41 +67,60 @@ export default function RezervasyonDetay() {
       setPayError(`Tahsilat tutarı kalan alacaktan (${formatMoney(remaining, reservation!.currency)}) fazla olamaz.`);
       return;
     }
-    upsertPayment({
-      id: uid('pay'),
-      reservationId: reservation!.id,
-      date: payForm.date,
-      amount,
-      method: payForm.method as Payment['method'],
-      note: payForm.note.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    });
-    setPayForm({ date: todayIso(), amount: '', method: 'Nakit', note: '' });
-    setVersion((v) => v + 1);
+    try {
+      await addPaymentMutation.mutateAsync({
+        id: crypto.randomUUID(),
+        reservationId: reservation!.id,
+        date: payForm.date,
+        amount,
+        method: payForm.method as Payment['method'],
+        note: payForm.note.trim() || undefined,
+        createdAt: new Date().toISOString(),
+      });
+      setPayForm({ date: todayIso(), amount: '', method: 'Nakit', note: '' });
+    } catch (err) {
+      setPayError(errorMessage(err));
+    }
   }
 
-  function removePayment() {
+  async function removePayment() {
     if (!paymentToDelete) return;
-    deletePayment(paymentToDelete.id);
+    const target = paymentToDelete;
     setPaymentToDelete(null);
-    setVersion((v) => v + 1);
+    try {
+      await deletePaymentMutation.mutateAsync(target.id);
+    } catch (err) {
+      setActionError(errorMessage(err));
+    }
   }
 
-  function removeReservation() {
-    deleteReservation(reservation!.id);
+  async function removeReservation() {
     setConfirmDelete(false);
-    navigate('/panel/rezervasyonlar', { replace: true });
+    try {
+      await deleteReservationMutation.mutateAsync(reservation!.id);
+      navigate('/panel/rezervasyonlar', { replace: true });
+    } catch (err) {
+      setActionError(errorMessage(err));
+    }
   }
 
-  function sendSms() {
-    logSms({
+  async function sendReminder() {
+    const result = await sendSmsMutation.mutateAsync({
       businessId: reservation!.businessId,
       to: reservation!.customerPhone,
       body: `Sayin ${reservation!.customerName}, ${formatDate(reservation!.date)} tarihli rezervasyonunuz icin hatirlatma. Kalan bakiye: ${remaining.toLocaleString('tr-TR')} TL. Kod: ${reservation!.code}`,
       kind: 'Hatırlatma',
     });
-    setSmsSent(true);
-    window.setTimeout(() => setSmsSent(false), 4000);
+    if (result.sent) {
+      setSmsSent(true);
+      window.setTimeout(() => setSmsSent(false), 4000);
+    } else {
+      setActionError(
+        result.notConfigured
+          ? 'SMS sağlayıcısı tanımlı olmadığı için mesaj gönderilemedi; kayıt altına alındı.'
+          : result.error ?? 'SMS gönderilemedi.',
+      );
+    }
   }
 
   return (
@@ -106,7 +138,7 @@ export default function RezervasyonDetay() {
           <Link to={`/panel/rezervasyonlar/${reservation.id}/sozlesme`} className="btn-outline btn-sm">
             <IconPrint size={16} /> Sözleşme
           </Link>
-          <button type="button" onClick={sendSms} className="btn-outline btn-sm">
+          <button type="button" onClick={() => { void sendReminder(); }} className="btn-outline btn-sm">
             <IconMessage size={16} /> SMS Gönder
           </button>
           {can('rezervasyon.duzenle') && (
@@ -129,6 +161,7 @@ export default function RezervasyonDetay() {
       </div>
 
       {smsSent && <Alert kind="success" className="mb-5">SMS gönderildi ve kayıtlara işlendi.</Alert>}
+      {actionError && <Alert kind="error" className="mb-5">{actionError}</Alert>}
       {isPast && can('rezervasyon.sil') && (
         <Alert kind="info" className="mb-5">
           Geçmiş tarihli düğünü silemezsiniz. Silmek için kaydın tarihini bugünden ileri bir tarihe alıp kaydettikten
@@ -190,7 +223,7 @@ export default function RezervasyonDetay() {
         <h2 className="mb-4 font-heading text-lg font-bold text-brand">Tahsilatlar</h2>
 
         {can('kasa.duzenle') && remaining > 0 && (
-          <form onSubmit={addPayment} noValidate className="mb-5 grid gap-3 rounded-md bg-surface p-4 sm:grid-cols-2 lg:grid-cols-5">
+          <form onSubmit={(e) => { void addPayment(e); }} noValidate className="mb-5 grid gap-3 rounded-md bg-surface p-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <label htmlFor="pay-date" className="field-label">Tarih</label>
               <input id="pay-date" type="date" className="field-input" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
@@ -259,7 +292,7 @@ export default function RezervasyonDetay() {
         title="Rezervasyon kaydını silmek istiyor musunuz?"
         description="Bu işlem geri alınamaz. Kayıt ve ilgili tüm tahsilatlar silinecektir."
         confirmLabel="Evet, sil"
-        onConfirm={removeReservation}
+        onConfirm={() => { void removeReservation(); }}
         onCancel={() => setConfirmDelete(false)}
       />
       <ConfirmDialog
@@ -267,7 +300,7 @@ export default function RezervasyonDetay() {
         title="Tahsilat kaydını silmek istiyor musunuz?"
         description={paymentToDelete ? `${formatDate(paymentToDelete.date)} · ${formatMoney(paymentToDelete.amount, reservation.currency)}` : ''}
         confirmLabel="Evet, sil"
-        onConfirm={removePayment}
+        onConfirm={() => { void removePayment(); }}
         onCancel={() => setPaymentToDelete(null)}
       />
     </>

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../../context/AuthContext';
 import AppLayout from '../../layouts/AppLayout';
 import RequireAuth from '../../components/RequireAuth';
@@ -16,19 +17,29 @@ import Kasa from '../app/Kasa';
 import Raporlar from '../app/Raporlar';
 import RenkAyarlari from '../app/RenkAyarlari';
 import Musteriler from '../app/Musteriler';
-import TavsiyeEt from '../app/TavsiyeEt';
 import SmsKayitlari from '../app/SmsKayitlari';
 import UyeGirisi from '../UyeGirisi';
 
 import { clearAll, KEYS, write } from '../../lib/storage';
-import { getColorSettings, getReservations, getSmsLog, seedIfEmpty } from '../../lib/db';
+import { localRepo } from '../../lib/repo/local';
+import { seedIfEmpty } from '../../lib/seed';
 import { addDays, todayIso } from '../../lib/format';
+import type { Reservation } from '../../types';
+
+const BIZ = 'biz_demo';
+const getReservations = (id: string) => localRepo.listReservations(id);
+const getSmsLog = (id: string) => localRepo.listSms(id);
+const getColorSettings = (id: string) => localRepo.getColorSettings(id);
 
 /** Oturumu doğrudan açarak panel rotalarını render eder. */
 function renderPanel(path: string) {
   seedIfEmpty();
   write(KEYS.session, 'user_demo');
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   return render(
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
@@ -45,12 +56,12 @@ function renderPanel(path: string) {
             <Route path="raporlar" element={<Raporlar />} />
             <Route path="renk-ayarlari" element={<RenkAyarlari />} />
             <Route path="musteriler" element={<Musteriler />} />
-            <Route path="tavsiye-et" element={<TavsiyeEt />} />
             <Route path="sms" element={<SmsKayitlari />} />
           </Route>
         </Routes>
       </MemoryRouter>
-    </AuthProvider>,
+    </AuthProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -101,6 +112,8 @@ describe('Rezervasyon takvimi', () => {
   it('önceki/sonraki ay gezinmesi başlığı değiştirir', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/takvim');
+    // Veriler async yüklendiği için takvim görünene kadar bekle
+    await screen.findByRole('heading', { name: 'Rezervasyon Takvimi' });
     const heading = () => screen.getAllByRole('heading', { level: 2 })[0].textContent;
     const before = heading();
     await user.click(screen.getByRole('button', { name: 'Sonraki ay' }));
@@ -135,9 +148,12 @@ describe('Rezervasyon listesi', () => {
   it('organizasyon filtresi yalnızca o türü bırakır', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar');
-    await user.selectOptions(await screen.findByLabelText('Organizasyon'), 'Kına');
+    await screen.findByRole('table');
+    // 'Düğün' aktif işletmede bulunan bir tür (Kına diğer işletmede)
+    await user.selectOptions(screen.getByLabelText('Organizasyon'), 'Düğün');
     const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
-    rows.forEach((row) => expect(row.textContent).toMatch(/Kına/));
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => expect(row.textContent).toMatch(/Düğün/));
   });
 });
 
@@ -145,10 +161,10 @@ describe('Yeni rezervasyon formu', () => {
   it('zorunlu alanlar boşken kaydetmez', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
-    const before = getReservations().length;
+    const before = (await getReservations(BIZ)).length;
     await user.click(await screen.findByRole('button', { name: 'Kaydet' }));
     expect(await screen.findByText('Müşteri adını giriniz.')).toBeInTheDocument();
-    expect(getReservations()).toHaveLength(before);
+    expect(await getReservations(BIZ)).toHaveLength(before);
   });
 
   it('kaparo toplam tutardan büyük olamaz', async () => {
@@ -174,8 +190,8 @@ describe('Yeni rezervasyon formu', () => {
   it('geçerli kayıt oluşturur ve otomatik SMS gönderir', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
-    const before = getReservations().length;
-    const smsBefore = getSmsLog('biz_demo').length;
+    const before = (await getReservations(BIZ)).length;
+    const smsBefore = (await getSmsLog(BIZ)).length;
 
     await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Yeni Çift');
     await user.type(screen.getByLabelText(/^Telefon/), '5335554433');
@@ -186,19 +202,18 @@ describe('Yeni rezervasyon formu', () => {
     await user.type(screen.getByLabelText(/^Kaparo/), '30000');
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
-    await waitFor(() => expect(getReservations()).toHaveLength(before + 1));
-    const created = getReservations().find((r) => r.customerName === 'Yeni Çift');
+    await waitFor(async () => expect(await getReservations(BIZ)).toHaveLength(before + 1), { timeout: 4000 });
+    const created = (await getReservations(BIZ)).find((r: Reservation) => r.customerName === 'Yeni Çift');
     expect(created?.totalAmount).toBe(120000);
     expect(created?.code).toMatch(/^DT-\d{4}-\d{4}$/);
-    expect(getSmsLog('biz_demo').length).toBe(smsBefore + 1);
-    expect(getSmsLog('biz_demo')[0].kind).toBe('Rezervasyon');
+    const smsAfter = await getSmsLog(BIZ);
+    expect(smsAfter.length).toBe(smsBefore + 1);
+    expect(smsAfter[0].kind).toBe('Rezervasyon');
   });
 
   it('aynı tarih ve seansta çakışma uyarısı verir', async () => {
-    const existing = (() => {
-      seedIfEmpty();
-      return getReservations('biz_demo')[0];
-    })();
+    seedIfEmpty();
+    const existing = (await getReservations(BIZ))[0];
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
 
@@ -212,7 +227,8 @@ describe('Yeni rezervasyon formu', () => {
 describe('Rezervasyon detayı', () => {
   it('tahsilat ekler ve kalan bakiyeyi düşürür', async () => {
     seedIfEmpty();
-    const target = getReservations('biz_demo').find((r) => r.date >= todayIso() && r.totalAmount - r.deposit > 20000)!;
+    const target = (await getReservations(BIZ)).find(
+      (r: Reservation) => r.date >= todayIso() && r.totalAmount - r.deposit > 20000)!;
     const user = userEvent.setup();
     renderPanel(`/panel/rezervasyonlar/${target.id}`);
 
@@ -227,7 +243,8 @@ describe('Rezervasyon detayı', () => {
 
   it('kalan alacaktan fazla tahsilatı reddeder', async () => {
     seedIfEmpty();
-    const target = getReservations('biz_demo').find((r) => r.date >= todayIso() && r.totalAmount > r.deposit)!;
+    const target = (await getReservations(BIZ)).find(
+      (r: Reservation) => r.date >= todayIso() && r.totalAmount > r.deposit)!;
     const user = userEvent.setup();
     renderPanel(`/panel/rezervasyonlar/${target.id}`);
 
@@ -238,29 +255,33 @@ describe('Rezervasyon detayı', () => {
 
   it('geçmiş tarihli kayıtta silme düğmesi devre dışıdır', async () => {
     seedIfEmpty();
-    const past = getReservations('biz_demo').find((r) => r.date < todayIso())!;
+    const past = (await getReservations(BIZ)).find((r: Reservation) => r.date < todayIso())!;
     renderPanel(`/panel/rezervasyonlar/${past.id}`);
     expect(await screen.findByRole('button', { name: /Sil/ })).toBeDisabled();
     expect(screen.getByText(/Geçmiş tarihli düğünü silemezsiniz/)).toBeInTheDocument();
   });
 
-  it('SMS gönder düğmesi kayıt oluşturur', async () => {
+  it('SMS gönder düğmesi kaydı işler ve gönderilemediğinde yanlış bilgi vermez', async () => {
     seedIfEmpty();
-    const target = getReservations('biz_demo')[0];
-    const before = getSmsLog(target.businessId).length;
+    const target = (await getReservations(BIZ))[0];
+    const before = (await getSmsLog(target.businessId)).length;
     const user = userEvent.setup();
     renderPanel(`/panel/rezervasyonlar/${target.id}`);
 
     await user.click(await screen.findByRole('button', { name: /SMS Gönder/ }));
-    expect(await screen.findByText(/SMS gönderildi/)).toBeInTheDocument();
-    expect(getSmsLog(target.businessId).length).toBe(before + 1);
+
+    // Test ortamında SMS sağlayıcısı yok: mesaj kayda geçer, ancak
+    // kullanıcıya "gönderildi" denmez — durum açıkça bildirilir.
+    await waitFor(async () => expect((await getSmsLog(target.businessId)).length).toBe(before + 1), { timeout: 4000 });
+    expect(await screen.findByText(/gönderilemedi|ulaşılamadı/)).toBeInTheDocument();
+    expect(screen.queryByText(/SMS gönderildi/)).not.toBeInTheDocument();
   });
 });
 
 describe('Salon kiralama sözleşmesi', () => {
   it('sözleşme çıktısını taraflarla birlikte oluşturur', async () => {
     seedIfEmpty();
-    const target = getReservations('biz_demo')[0];
+    const target = (await getReservations(BIZ))[0];
     renderPanel(`/panel/rezervasyonlar/${target.id}/sozlesme`);
 
     expect(await screen.findByRole('heading', { name: 'SALON KİRALAMA SÖZLEŞMESİ' })).toBeInTheDocument();
@@ -344,7 +365,9 @@ describe('Renk ayarları', () => {
 
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
     expect(await screen.findByText('Renk ayarlarınız kaydedildi.')).toBeInTheDocument();
-    expect(getColorSettings('biz_demo').find((c) => c.key === 'dugun')?.color).toBe('#ff0000');
+    await waitFor(async () =>
+      expect((await getColorSettings(BIZ)).find((c) => c.key === 'dugun')?.color).toBe('#ff0000'),
+      { timeout: 4000 });
   });
 });
 
@@ -360,15 +383,6 @@ describe('Müşteriler', () => {
     renderPanel('/panel/musteriler');
     await user.type(await screen.findByLabelText('İsim veya telefon ile ara'), 'zzzzyok');
     expect(await screen.findByText('Müşteri kaydı bulunamadı.')).toBeInTheDocument();
-  });
-});
-
-describe('Tavsiye Et Kazan', () => {
-  it('tavsiye kodunu ve davet linkini gösterir', async () => {
-    renderPanel('/panel/tavsiye-et');
-    expect(await screen.findByRole('heading', { name: 'Tavsiye Et Kazan' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Kodunuz')).toHaveValue('GRAN482');
-    expect((screen.getByLabelText('Davet linkiniz') as HTMLInputElement).value).toContain('ref=GRAN482');
   });
 });
 

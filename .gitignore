@@ -7,3 +7,6 @@ coverage
 test-results
 playwright-report
 .vite
+.env
+.env.local
+.env.*.local

@@ -3,7 +3,9 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
-import { deleteBusiness, getBusinesses, getReservations, uid, upsertBusiness } from '../../lib/db';
+import { errorMessage } from '../../lib/authHelpers';
+import { useBusinesses, useDeleteBusiness, useSaveBusiness } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
 import { CATEGORIES, CITIES, CURRENCIES, DISTRICTS } from '../../data/constants';
 import { formatPhone } from '../../lib/format';
 import { IconBuilding, IconEdit, IconPlus, IconTrash } from '../../components/Icons';
@@ -15,18 +17,16 @@ const EMPTY = {
 };
 
 export default function Isletmeler() {
-  const { user, can, setActiveBusiness } = useAuth();
-  const [version, setVersion] = useState(0);
+  const { user, can, setActiveBusiness, ownerId } = useAuth();
+  const { data: businesses = [], isLoading, error: loadError } = useBusinesses();
+  const saveMutation = useSaveBusiness();
+  const deleteMutation = useDeleteBusiness();
   const [editing, setEditing] = useState<Business | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
   const [toDelete, setToDelete] = useState<Business | null>(null);
 
-  const ownerId = user?.role === 'staff' ? user.ownerId ?? '' : user?.id ?? '';
-  // Depo React state'i olmadığından her render'da yeniden okunur; `version` yazma sonrası render tetikler.
-  void version;
-  const businesses = getBusinesses(ownerId);
   const districts = DISTRICTS[form.city] ?? [];
 
   function openNew() {
@@ -46,7 +46,7 @@ export default function Isletmeler() {
     setShowForm(true);
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     if (!form.name.trim()) { setError('İşletme adını giriniz.'); return; }
@@ -56,8 +56,9 @@ export default function Isletmeler() {
       return;
     }
 
-    upsertBusiness({
-      id: editing?.id ?? uid('biz'),
+    try {
+      await saveMutation.mutateAsync({
+      id: editing?.id ?? crypto.randomUUID(),
       ownerId,
       name: form.name.trim(),
       category: form.category,
@@ -68,21 +69,27 @@ export default function Isletmeler() {
       currency: form.currency,
       address: form.address.trim() || undefined,
       about: form.about.trim() || undefined,
-      createdAt: editing?.createdAt ?? new Date().toISOString(),
-    });
-    setShowForm(false);
-    setVersion((v) => v + 1);
+        createdAt: editing?.createdAt,
+      });
+      setShowForm(false);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
-  function remove() {
+  async function remove() {
     if (!toDelete) return;
-    deleteBusiness(toDelete.id);
-    if (user?.activeBusinessId === toDelete.id) {
-      const rest = getBusinesses(ownerId);
-      if (rest[0]) setActiveBusiness(rest[0].id);
-    }
+    const target = toDelete;
     setToDelete(null);
-    setVersion((v) => v + 1);
+    try {
+      await deleteMutation.mutateAsync(target.id);
+      if (user?.activeBusinessId === target.id) {
+        const rest = businesses.filter((b) => b.id !== target.id);
+        if (rest[0]) await setActiveBusiness(rest[0].id);
+      }
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
   if (!can('ayarlar.duzenle')) {
@@ -90,7 +97,7 @@ export default function Isletmeler() {
   }
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={loadError}>
       <Seo title="Firmalarım - Düğün Takip Panel" noindex />
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -105,7 +112,7 @@ export default function Isletmeler() {
       </p>
 
       {showForm && (
-        <form onSubmit={submit} noValidate className="card mb-6 p-5">
+        <form onSubmit={(e) => { void submit(e); }} noValidate className="card mb-6 p-5">
           <h2 className="mb-4 font-heading text-lg font-bold text-brand">
             {editing ? 'İşletmeyi Düzenle' : 'Yeni İşletme'}
           </h2>
@@ -173,7 +180,6 @@ export default function Isletmeler() {
 
       <ul className="grid gap-4 md:grid-cols-2">
         {businesses.map((b) => {
-          const count = getReservations(b.id).length;
           const isActive = b.id === user?.activeBusinessId;
           return (
             <li key={b.id} className={`card p-5 ${isActive ? 'ring-2 ring-accent' : ''}`}>
@@ -191,11 +197,10 @@ export default function Isletmeler() {
                 {isActive && <span className="rounded-full bg-accent px-2.5 py-1 text-[10px] text-white">Aktif</span>}
               </div>
 
-              <p className="mt-3 text-sm text-brand-muted">{count} rezervasyon kaydı</p>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {!isActive && (
-                  <button type="button" className="btn-outline btn-sm" onClick={() => setActiveBusiness(b.id)}>
+                  <button type="button" className="btn-outline btn-sm" onClick={() => { void setActiveBusiness(b.id); }}>
                     Aktif yap
                   </button>
                 )}
@@ -222,9 +227,9 @@ export default function Isletmeler() {
         title="İşletmeyi silmek istiyor musunuz?"
         description={toDelete ? `${toDelete.name} işletmesi ve bu işletmeye ait tüm rezervasyon / kasa kayıtları silinecektir.` : ''}
         confirmLabel="Evet, sil"
-        onConfirm={remove}
+        onConfirm={() => { void remove(); }}
         onCancel={() => setToDelete(null)}
       />
-    </>
+    </QueryBoundary>
   );
 }

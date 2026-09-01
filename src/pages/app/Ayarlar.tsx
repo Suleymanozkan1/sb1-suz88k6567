@@ -3,13 +3,14 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
+import { errorMessage } from '../../lib/authHelpers';
 import { CATEGORIES, CITIES, CURRENCIES, DISTRICTS } from '../../data/constants';
 import { clearAll } from '../../lib/storage';
 import { formatDateLong } from '../../lib/format';
 import type { Currency } from '../../types';
 
 export default function Ayarlar() {
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateProfile, signOut, changePassword, isDemoMode } = useAuth();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [pwError, setPwError] = useState('');
@@ -35,7 +36,7 @@ export default function Ayarlar() {
 
   const districts = DISTRICTS[profile.city] ?? [];
 
-  function saveProfile(e: React.FormEvent) {
+  async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setSaved(false);
@@ -48,8 +49,9 @@ export default function Ayarlar() {
       return;
     }
 
-    updateUser({
-      companyName: profile.companyName.trim(),
+    try {
+      await updateProfile({
+        companyName: profile.companyName.trim(),
       fullName: profile.fullName.trim(),
       mobile: digits,
       city: profile.city,
@@ -58,29 +60,35 @@ export default function Ayarlar() {
       capacity: Number(profile.capacity) || 0,
       currency: profile.currency,
       facebook: profile.facebook.trim() || undefined,
-      instagram: profile.instagram.trim() || undefined,
-    });
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
+        instagram: profile.instagram.trim() || undefined,
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
-  function changePassword(e: React.FormEvent) {
+  async function submitPassword(e: React.FormEvent) {
     e.preventDefault();
     setPwError('');
     setPwSaved(false);
-    if (pw.current !== user!.password) { setPwError('Mevcut şifreniz hatalı.'); return; }
     if (pw.next.length < 6) { setPwError('Yeni şifre en az 6 karakter olmalıdır.'); return; }
     if (pw.next !== pw.repeat) { setPwError('Yeni şifreler birbiriyle uyuşmuyor.'); return; }
 
-    updateUser({ password: pw.next });
-    setPw({ current: '', next: '', repeat: '' });
-    setPwSaved(true);
-    window.setTimeout(() => setPwSaved(false), 3000);
+    try {
+      await changePassword(pw.current, pw.next);
+      setPw({ current: '', next: '', repeat: '' });
+      setPwSaved(true);
+      window.setTimeout(() => setPwSaved(false), 3000);
+    } catch (err) {
+      setPwError(errorMessage(err));
+    }
   }
 
-  function resetData() {
+  async function resetData() {
     clearAll();
-    logout();
+    await signOut();
     window.location.href = '/';
   }
 
@@ -96,7 +104,7 @@ export default function Ayarlar() {
           {saved && <Alert kind="success" className="mb-4">Bilgileriniz kaydedildi.</Alert>}
           {error && <Alert kind="error" className="mb-4">{error}</Alert>}
 
-          <form onSubmit={saveProfile} noValidate className="grid gap-4 md:grid-cols-2">
+          <form onSubmit={(e) => { void saveProfile(e); }} noValidate className="grid gap-4 md:grid-cols-2">
             <div>
               <label htmlFor="st-company" className="field-label">Üye Firma Adı</label>
               <input id="st-company" className="field-input" value={profile.companyName} onChange={(e) => setProfile((p) => ({ ...p, companyName: e.target.value }))} />
@@ -167,7 +175,7 @@ export default function Ayarlar() {
             {pwSaved && <Alert kind="success" className="mb-4">Şifreniz güncellendi.</Alert>}
             {pwError && <Alert kind="error" className="mb-4">{pwError}</Alert>}
 
-            <form onSubmit={changePassword} noValidate className="space-y-3">
+            <form onSubmit={(e) => { void submitPassword(e); }} noValidate className="space-y-3">
               <div>
                 <label htmlFor="pw-current" className="field-label">Mevcut Şifreniz</label>
                 <input id="pw-current" type="password" className="field-input" value={pw.current} onChange={(e) => setPw((p) => ({ ...p, current: e.target.value }))} autoComplete="current-password" />
@@ -185,23 +193,24 @@ export default function Ayarlar() {
           </section>
 
           <section className="card p-6">
-            <h2 className="mb-2 font-heading text-lg font-bold text-brand">Üyelik Durumu</h2>
+            <h2 className="mb-2 font-heading text-lg font-bold text-brand">Hesap</h2>
             <dl className="space-y-1.5 text-sm">
               <div className="flex justify-between gap-2">
-                <dt className="text-brand-muted">Üyelik başlangıcı</dt>
+                <dt className="text-brand-muted">Kayıt tarihi</dt>
                 <dd className="text-brand">{formatDateLong(user.createdAt.slice(0, 10))}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-brand-muted">Bitiş tarihi</dt>
-                <dd className="text-brand">{formatDateLong(user.subscriptionEndsAt)}</dd>
+                <dt className="text-brand-muted">Rol</dt>
+                <dd className="text-brand">{user.role === 'owner' ? 'Yönetici' : 'Personel'}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-brand-muted">Tavsiye kodunuz</dt>
-                <dd className="font-mono text-brand">{user.referralCode}</dd>
+                <dt className="text-brand-muted">Veri kaynağı</dt>
+                <dd className="text-brand">{isDemoMode ? 'Tarayıcı (demo)' : 'Veritabanı'}</dd>
               </div>
             </dl>
           </section>
 
+          {isDemoMode && (
           <section className="card border-[#f5c6c2] p-6">
             <h2 className="mb-2 font-heading text-lg font-bold text-[#b91c1c]">Demo verilerini sıfırla</h2>
             <p className="mb-4 text-sm leading-relaxed text-brand-muted">
@@ -215,6 +224,7 @@ export default function Ayarlar() {
               Verileri sıfırla
             </button>
           </section>
+          )}
         </div>
       </div>
 
@@ -223,7 +233,7 @@ export default function Ayarlar() {
         title="Tüm veriler silinsin mi?"
         description="Bu tarayıcıda saklanan üyelikler, rezervasyonlar ve kasa kayıtları kalıcı olarak silinecek, oturumunuz kapatılacaktır."
         confirmLabel="Evet, sıfırla"
-        onConfirm={resetData}
+        onConfirm={() => { void resetData(); }}
         onCancel={() => setConfirmReset(false)}
       />
     </>

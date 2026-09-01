@@ -8,8 +8,16 @@ yeniden inşa edilmiştir.
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+cp .env.example .env.local   # boş bırakılırsa demo modunda çalışır
+npm run dev                  # http://localhost:5173
 ```
+
+### Çalışma modları
+
+| Mod | Ne zaman | Davranış |
+|-----|----------|----------|
+| **Demo** | `VITE_SUPABASE_URL` boş | Veriler yalnızca tarayıcıda saklanır, arayüzde uyarı gösterilir |
+| **Gerçek** | Supabase değişkenleri tanımlı | Veriler Postgres'te, şifreler sunucuda hash'li |
 
 ### Demo hesabı
 
@@ -18,10 +26,9 @@ npm run dev          # http://localhost:5173
 | E-posta | `demo@duguntakip.com`  |
 | Şifre   | `demo1234`             |
 
-Giriş sırasında SMS doğrulaması istenir. Demo ortamında SMS gönderimi yapılamadığı
-için kod doğrulama ekranında gösterilir.
-
 Personel (kısıtlı yetki) hesabı: `personel@duguntakip.com` / `personel1234`
+
+Demo hesapları yalnızca demo modunda vardır.
 
 ## Komutlar
 
@@ -31,8 +38,8 @@ Personel (kısıtlı yetki) hesabı: `personel@duguntakip.com` / `personel1234`
 | `npm run build`     | Tip kontrolü + üretim derlemesi (`dist/`)        |
 | `npm run preview`   | Derlenmiş çıktıyı yerel olarak sunar             |
 | `npm run lint`      | ESLint                                           |
-| `npm test`          | Vitest birim + entegrasyon testleri (120 test)   |
-| `npm run e2e`       | Playwright uçtan uca testleri (42 test)          |
+| `npm test`          | Vitest birim + entegrasyon testleri (142 test)   |
+| `npm run e2e`       | Playwright uçtan uca testleri (44 test)          |
 
 ## Sayfa haritası
 
@@ -71,32 +78,80 @@ Personel (kısıtlı yetki) hesabı: `personel@duguntakip.com` / `personel1234`
 | `/panel/isletmeler` | Firmalarım / Adminler — çok işletmeli kullanım |
 | `/panel/kullanicilar` | Alt kullanıcılar ve yetkileri |
 | `/panel/sms` | Gönderilen SMS kayıtları |
-| `/panel/tavsiye-et` | Tavsiye Et Kazan (+1 ay) |
-| `/panel/abonelik` | Paketler ve süre uzatma |
 | `/panel/ayarlar` | Profil, şifre değiştirme, veri sıfırlama |
 
 ## Mimari
 
 ```
+api/            Sunucu tarafı fonksiyonlar (Vercel)
+  sms.ts        SMS gönderimi — sağlayıcı anahtarı yalnızca burada
+  otp.ts        Giriş SMS doğrulaması (HMAC imzalı, 5 dk geçerli)
+supabase/
+  migrations/   Veritabanı şeması ve RLS politikaları
+  tests/        RLS izolasyon testleri (yerel Postgres ile çalıştırılır)
 src/
-  components/   Paylaşılan arayüz bileşenleri (ikonlar, akordeon, karusel, uyarılar…)
-  context/      AuthContext — oturum, kayıt, SMS doğrulama, yetkiler
-  data/         Site içeriği, sabitler (iller, kategoriler, renkler), yasal metinler, referans listesi
-  hooks/        useBusinessData — aktif işletmenin verileri
+  components/   Paylaşılan arayüz bileşenleri
+  context/      AuthContext — oturum ve yetkiler
+  data/         Site içeriği, sabitler, yasal metinler, referans listesi
   layouts/      PublicLayout (site) ve AppLayout (panel)
-  lib/          storage (kalıcılık), db (repository), format, reports
+  lib/
+    repo/       Veri erişim sözleşmesi + Supabase ve yerel uygulamaları
+    queries.ts  TanStack Query kancaları
+    money.ts    Tahsilat / bakiye hesapları (saf)
+    reports.ts  Rapor hesapları (saf)
+    sms.ts      SMS istemcisi
   pages/        Herkese açık sayfalar
   pages/app/    Panel ekranları
 ```
 
 ### Veri katmanı
 
-Tüm okuma/yazma işlemleri `src/lib/db.ts` üzerinden geçer; arayüz katmanı
-`localStorage`'ı doğrudan bilmez. Gerçek bir dağıtımda bu modülün yerini bir HTTP
-API istemcisi alır ve uygulamanın geri kalanı değişmeden çalışır.
+Arayüz katmanı yalnızca `src/lib/repo` sözleşmesini tanır. İki uygulaması vardır:
+Supabase (gerçek Postgres) ve yerel (demo/test). Hangisinin kullanılacağına ortam
+değişkenleri karar verir; ekran kodu değişmez.
+
+Kiracı izolasyonu **veritabanı seviyesinde** satır bazlı güvenlik (RLS) ile
+sağlanır. Uygulama katmanında hata yapılsa dahi bir hesap başkasının verisine
+erişemez; bu `supabase/tests/01_rls_test.sql` ile doğrulanmıştır.
 
 Panel ekranları `React.lazy` ile ayrı paketlere bölünmüştür; giriş yapmamış
 ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
+
+## Veritabanı kurulumu
+
+1. [supabase.com](https://supabase.com) üzerinde proje açın (**bölge: Frankfurt** — KVKK açısından AB tercih edilir).
+2. SQL Editor'da `supabase/migrations/0001_init.sql` dosyasını çalıştırın.
+3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
+4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
+5. Authentication → Users bölümünden kendi hesabınızı oluşturun.
+6. İlk girişten sonra Firmalarım ekranından işletmenizi ekleyin.
+
+Personel hesapları da Supabase → Authentication → Users bölümünden açılır;
+yetkileri panelin **Kullanıcılar** ekranından düzenlenir.
+
+### RLS testlerini çalıştırma
+
+```bash
+psql -f supabase/tests/00_supabase_stub.sql -d <veritabani>
+psql -f supabase/migrations/0001_init.sql   -d <veritabani>
+psql -f supabase/tests/01_rls_test.sql      -d <veritabani>
+```
+
+## SMS
+
+Rezervasyon kaydedildiğinde müşteriye otomatik SMS gönderilir; hatırlatma SMS'i
+rezervasyon detayından elle gönderilebilir. Tüm gönderimler `api/sms.ts` üzerinden
+yapılır — sağlayıcı şifresi tarayıcıya hiçbir zaman inmez.
+
+`NETGSM_USER`, `NETGSM_PASS`, `NETGSM_HEADER` tanımlı değilse mesaj yalnızca kayıt
+altına alınır ve arayüzde **gönderilemediği açıkça belirtilir**; "gönderildi"
+denmez.
+
+`OTP_SECRET` tanımlıysa girişte ikinci adım olarak cep telefonuna 6 haneli kod
+gönderilir. Kod sunucuda üretilir ve yalnızca HMAC imzası istemciye döner.
+
+**Yapılması gerekenler:** Netgsm'den marka başlığı (gönderici adı) onayı alın ve
+İYS (İleti Yönetim Sistemi) yükümlülüklerinizi kontrol edin.
 
 ## Vercel'e dağıtım
 
@@ -107,6 +162,7 @@ yapmanıza gerek yoktur.
 |------|-------|
 | Framework | Vite (otomatik algılanır) |
 | Install Command | `npm ci` |
+| Ortam değişkenleri | `.env.example` dosyasındaki tüm anahtarlar |
 | Build Command | `npm run build` |
 | Output Directory | `dist` |
 
@@ -133,6 +189,7 @@ gerekmez.
 
 ## Bilinen sınırlar
 
-- Kalıcılık tarayıcıdaki `localStorage` üzerindedir; veriler cihazlar arasında paylaşılmaz.
-- SMS gönderimi ve ödeme tahsilatı taklit edilmiştir; gerçek sağlayıcı entegrasyonu gerekir.
-- Şifreler demo amacıyla düz metin saklanır; sunucu tarafında hash'lenmelidir.
+- Demo modunda kalıcılık tarayıcıdadır ve şifreler düz metin saklanır. Gerçek
+  kullanımda Supabase bağlantısı yapılandırılmalıdır.
+- Abonelik / ödeme tahsilatı yoktur; sistem tek şirket kullanımı için sadeleştirilmiştir.
+- Referans listesindeki işletmeler örnek veridir.

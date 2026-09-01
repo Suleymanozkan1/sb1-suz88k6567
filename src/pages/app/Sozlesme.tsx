@@ -2,15 +2,28 @@ import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
-import { getBusiness, getReservation, remainingBalance, totalPaid } from '../../lib/db';
+import { useBusinesses, useReservation, useReservationsWithBalances } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
+import { remainingBalance, totalPaid } from '../../lib/money';
 import { formatDateLong, formatMoney, formatPhone } from '../../lib/format';
 import { IconPrint } from '../../components/Icons';
 
 /** Salon Kiralama Sözleşmesi — yazdırılabilir çıktı */
 export default function Sozlesme() {
   const { id } = useParams();
-  const reservation = useMemo(() => (id ? getReservation(id) : undefined), [id]);
-  const business = useMemo(() => (reservation ? getBusiness(reservation.businessId) : undefined), [reservation]);
+  const reservationQuery = useReservation(id);
+  const { balance, isLoading: listLoading } = useReservationsWithBalances();
+  const { data: businesses = [] } = useBusinesses();
+
+  const reservation = reservationQuery.data ?? undefined;
+  const business = useMemo(
+    () => businesses.find((b) => b.id === reservation?.businessId),
+    [businesses, reservation],
+  );
+
+  if (reservationQuery.isLoading || listLoading) {
+    return <QueryBoundary isLoading error={null}>{null}</QueryBoundary>;
+  }
 
   if (!reservation) {
     return (
@@ -20,8 +33,9 @@ export default function Sozlesme() {
     );
   }
 
-  const paid = totalPaid(reservation);
-  const remaining = remainingBalance(reservation);
+  const payments = balance.paymentsOf(reservation.id);
+  const paid = totalPaid(reservation, payments);
+  const remaining = remainingBalance(reservation, payments);
 
   return (
     <>

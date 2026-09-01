@@ -103,11 +103,6 @@ export interface User {
   currency: Currency;
   facebook?: string;
   instagram?: string;
-  referredBy?: string;
-  referralCode: string;
-  heardFrom?: string;
-  trialEndsAt: string;
-  subscriptionEndsAt: string;
   createdAt: string;
   activeBusinessId: string;
 }

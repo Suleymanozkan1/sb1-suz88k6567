@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
-import { useBusinessData } from '../../hooks/useBusinessData';
+import { useReservationsWithBalances } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
 import { DAY_NAMES_SHORT, MONTH_NAMES } from '../../data/constants';
 import { formatMoney, toIso, todayIso } from '../../lib/format';
-import { remainingBalance } from '../../lib/db';
 import { IconChevronLeft, IconChevronRight, IconPlus } from '../../components/Icons';
 import type { Reservation } from '../../types';
 
 export default function Takvim() {
-  const { reservations, colors } = useBusinessData();
+  const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -47,7 +47,7 @@ export default function Takvim() {
   const selectedItems = selected ? byDate.get(selected) ?? [] : [];
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={error}>
       <Seo title="Rezervasyon Takvimi - Düğün Takip Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -168,7 +168,7 @@ export default function Takvim() {
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-brand-muted">
-                      Kalan: <strong className="text-brand">{formatMoney(remainingBalance(r), r.currency)}</strong>
+                      Kalan: <strong className="text-brand">{formatMoney(balance.remaining(r), r.currency)}</strong>
                     </p>
                   </li>
                 );
@@ -177,7 +177,7 @@ export default function Takvim() {
           )}
         </section>
       </div>
-    </>
+    </QueryBoundary>
   );
 }
 

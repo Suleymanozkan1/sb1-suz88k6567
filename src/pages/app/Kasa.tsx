@@ -3,8 +3,9 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
-import { useBusinessData } from '../../hooks/useBusinessData';
-import { deleteCashFlow, getCashFlow, uid, upsertCashFlow } from '../../lib/db';
+import { errorMessage } from '../../lib/authHelpers';
+import { useAddCashFlow, useCashFlow, useDeleteCashFlow } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, todayIso } from '../../lib/format';
 import { downloadCsv, toCsv, withinRange } from '../../lib/reports';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../data/constants';
@@ -15,8 +16,10 @@ import type { CashFlowEntry, CashFlowKind } from '../../types';
 
 export default function Kasa() {
   const { user, can } = useAuth();
-  const { businessId } = useBusinessData();
-  const [version, setVersion] = useState(0);
+  const businessId = user?.activeBusinessId ?? '';
+  const { data: cashData, isLoading, error: loadError } = useCashFlow();
+  const addMutation = useAddCashFlow();
+  const deleteMutation = useDeleteCashFlow();
   const [kindFilter, setKindFilter] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -32,9 +35,7 @@ export default function Kasa() {
   });
   const [error, setError] = useState('');
 
-  // Depo React state'i olmadığından her render'da yeniden okunur; `version` yazma sonrası render tetikler.
-  void version;
-  const entries = getCashFlow(businessId);
+  const entries = useMemo(() => cashData ?? [], [cashData]);
 
   const filtered = useMemo(
     () =>
@@ -59,7 +60,7 @@ export default function Kasa() {
 
   const categories = form.kind === 'Gelir' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     const amount = Number(form.amount);
@@ -71,25 +72,32 @@ export default function Kasa() {
       setError('Tarih seçiniz.');
       return;
     }
-    upsertCashFlow({
-      id: uid('cf'),
-      businessId,
-      kind: form.kind,
-      date: form.date,
-      category: form.category,
-      amount,
-      description: form.description.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    });
-    setForm({ kind: form.kind, date: todayIso(), category: categories[0], amount: '', description: '' });
-    setVersion((v) => v + 1);
+    try {
+      await addMutation.mutateAsync({
+        id: crypto.randomUUID(),
+        businessId,
+        kind: form.kind,
+        date: form.date,
+        category: form.category,
+        amount,
+        description: form.description.trim() || undefined,
+        createdAt: new Date().toISOString(),
+      });
+      setForm({ kind: form.kind, date: todayIso(), category: categories[0], amount: '', description: '' });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
-  function remove() {
+  async function remove() {
     if (!toDelete) return;
-    deleteCashFlow(toDelete.id);
+    const target = toDelete;
     setToDelete(null);
-    setVersion((v) => v + 1);
+    try {
+      await deleteMutation.mutateAsync(target.id);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
   function exportCsv() {
@@ -105,7 +113,7 @@ export default function Kasa() {
   }
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={loadError}>
       <Seo title="Gelir Gider Kayıtları - Düğün Takip Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -127,7 +135,7 @@ export default function Kasa() {
       </div>
 
       {can('kasa.duzenle') && (
-        <form onSubmit={submit} noValidate className="card mb-6 grid gap-3 p-4 md:grid-cols-2 lg:grid-cols-6">
+        <form onSubmit={(e) => { void submit(e); }} noValidate className="card mb-6 grid gap-3 p-4 md:grid-cols-2 lg:grid-cols-6">
           <div>
             <label htmlFor="cf-kind" className="field-label">Tür</label>
             <select
@@ -237,9 +245,9 @@ export default function Kasa() {
         title="Kaydı silmek istiyor musunuz?"
         description={toDelete ? `${formatDate(toDelete.date)} · ${toDelete.category} · ${formatMoney(toDelete.amount, currency)}` : ''}
         confirmLabel="Evet, sil"
-        onConfirm={remove}
+        onConfirm={() => { void remove(); }}
         onCancel={() => setToDelete(null)}
       />
-    </>
+    </QueryBoundary>
   );
 }

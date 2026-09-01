@@ -5,7 +5,8 @@ import Seo from '../components/Seo';
 import Alert from '../components/Alert';
 import NotFound from './NotFound';
 import { DIRECTORY, findMemberBySlug } from '../data/directory';
-import { addMessage } from '../lib/db';
+import { useAddMessage } from '../lib/queries';
+import { errorMessage } from '../lib/authHelpers';
 import { formatPhone } from '../lib/format';
 import { IconLocation, IconPhone, IconStar, IconUsers } from '../components/Icons';
 
@@ -30,8 +31,9 @@ export default function SalonDetay() {
     message: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const addMessage = useAddMessage();
 
   if (!member) return <NotFound />;
 
@@ -65,12 +67,12 @@ export default function SalonDetay() {
     return Object.keys(next).length === 0;
   }
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSendError('');
     if (!validate()) return;
-    setSending(true);
-    window.setTimeout(() => {
-      addMessage({
+    try {
+      await addMessage.mutateAsync({
         name: form.name,
         email: form.email,
         phone: form.phone,
@@ -85,10 +87,11 @@ export default function SalonDetay() {
           .join('\n'),
         kind: 'demo',
       });
-      setSending(false);
       setSent(true);
       setForm({ subject: SUBJECTS[0], eventDate: '', name: '', email: '', phone: '', message: '' });
-    }, 600);
+    } catch (err) {
+      setSendError(errorMessage(err));
+    }
   }
 
   return (
@@ -145,13 +148,14 @@ export default function SalonDetay() {
                 Formu doldurun, işletme sizinle en kısa sürede iletişime geçsin.
               </p>
 
+              {sendError && <Alert kind="error" className="mb-5">{sendError}</Alert>}
               {sent && (
                 <Alert kind="success" className="mb-5">
                   Talebiniz {member.name} işletmesine iletildi. En kısa sürede sizinle iletişime geçilecektir.
                 </Alert>
               )}
 
-              <form onSubmit={onSubmit} noValidate className="grid gap-4 md:grid-cols-2">
+              <form onSubmit={(e) => { void onSubmit(e); }} noValidate className="grid gap-4 md:grid-cols-2">
                 <Field id="sd-subject" label="Mesaj Konusu">
                   <select id="sd-subject" className="field-input" value={form.subject} onChange={set('subject')}>
                     {SUBJECTS.map((s) => (
@@ -175,8 +179,8 @@ export default function SalonDetay() {
                   <textarea id="sd-message" rows={5} className="field-input" value={form.message} onChange={set('message')} aria-invalid={Boolean(errors.message)} />
                 </Field>
                 <div className="md:col-span-2">
-                  <button type="submit" className="btn-primary text-white hover:text-white" disabled={sending}>
-                    {sending ? 'Gönderiliyor' : 'Gönder'}
+                  <button type="submit" className="btn-primary text-white hover:text-white" disabled={addMessage.isPending}>
+                    {addMessage.isPending ? 'Gönderiliyor' : 'Gönder'}
                   </button>
                 </div>
               </form>

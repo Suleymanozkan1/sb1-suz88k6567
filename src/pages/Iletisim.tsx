@@ -2,7 +2,8 @@ import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import Seo from '../components/Seo';
 import { CONTACT, SOCIAL } from '../data/content';
-import { addMessage } from '../lib/db';
+import { useAddMessage } from '../lib/queries';
+import { errorMessage } from '../lib/authHelpers';
 import { IconFacebook, IconInstagram, IconMail, IconMessage } from '../components/Icons';
 import Alert from '../components/Alert';
 
@@ -14,8 +15,9 @@ export default function Iletisim({ variant = 'iletisim' }: Props) {
   const isDemo = variant === 'demo';
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const addMessage = useAddMessage();
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -39,16 +41,17 @@ export default function Iletisim({ variant = 'iletisim' }: Props) {
     return Object.keys(next).length === 0;
   }
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSendError('');
     if (!validate()) return;
-    setSending(true);
-    window.setTimeout(() => {
-      addMessage({ ...form, kind: isDemo ? 'demo' : 'iletisim' });
-      setSending(false);
+    try {
+      await addMessage.mutateAsync({ ...form, kind: isDemo ? 'demo' : 'iletisim' });
       setSent(true);
       setForm({ name: '', email: '', phone: '', message: '' });
-    }, 600);
+    } catch (err) {
+      setSendError(errorMessage(err));
+    }
   }
 
   const title = isDemo ? 'Demo Talebi' : CONTACT.title;
@@ -105,11 +108,12 @@ export default function Iletisim({ variant = 'iletisim' }: Props) {
           </div>
 
           <div className="lg:col-span-2">
-            <form onSubmit={onSubmit} noValidate className="card p-6">
+            <form onSubmit={(e) => { void onSubmit(e); }} noValidate className="card p-6">
               <h2 className="mb-5 font-heading text-xl font-bold text-brand">
                 {isDemo ? 'Demo ve eğitim talebi formu' : 'Bize mesaj gönderin'}
               </h2>
 
+              {sendError && <Alert kind="error" className="mb-5">{sendError}</Alert>}
               {sent && (
                 <Alert kind="success" className="mb-5">
                   Mesajınız tarafımıza ulaştı. En kısa sürede sizinle iletişime geçeceğiz.
@@ -133,8 +137,8 @@ export default function Iletisim({ variant = 'iletisim' }: Props) {
                 <textarea id="ct-message" rows={6} className="field-input" value={form.message} onChange={set('message')} aria-invalid={Boolean(errors.message)} />
               </Field>
 
-              <button type="submit" className="btn-primary mt-6 text-white hover:text-white" disabled={sending}>
-                {sending ? CONTACT.submitting : isDemo ? 'Talepte bulun' : CONTACT.submit}
+              <button type="submit" className="btn-primary mt-6 text-white hover:text-white" disabled={addMessage.isPending}>
+                {addMessage.isPending ? CONTACT.submitting : isDemo ? 'Talepte bulun' : CONTACT.submit}
               </button>
             </form>
           </div>

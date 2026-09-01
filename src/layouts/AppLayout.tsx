@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getBusinesses } from '../lib/db';
-import { formatDate } from '../lib/format';
+import { useBusinesses } from '../lib/queries';
+import DemoNotice from '../components/DemoNotice';
 import {
-  IconBuilding, IconCalendar, IconClose, IconGift, IconGrid, IconList, IconLogout, IconMenu,
+  IconBuilding, IconCalendar, IconClose, IconGrid, IconList, IconLogout, IconMenu,
   IconMessage, IconPalette, IconReport, IconSettings, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
-import Alert from '../components/Alert';
 
 const NAV = [
   { to: '/panel', label: 'Özet', icon: IconGrid, end: true },
@@ -20,13 +19,12 @@ const NAV = [
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
   { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser },
   { to: '/panel/sms', label: 'SMS Kayıtları', icon: IconMessage },
-  { to: '/panel/tavsiye-et', label: 'Tavsiye Et Kazan', icon: IconGift },
-  { to: '/panel/abonelik', label: 'Aboneliğim', icon: IconWallet },
   { to: '/panel/ayarlar', label: 'Ayarlar', icon: IconSettings },
 ];
 
 export default function AppLayout() {
-  const { user, logout, daysRemaining, setActiveBusiness } = useAuth();
+  const { user, signOut, setActiveBusiness } = useAuth();
+  const { data: businesses = [] } = useBusinesses();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -37,7 +35,6 @@ export default function AppLayout() {
 
   if (!user) return null;
 
-  const businesses = getBusinesses(user.role === 'staff' ? user.ownerId : user.id);
   const active = businesses.find((b) => b.id === user.activeBusinessId) ?? businesses[0];
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -72,7 +69,7 @@ export default function AppLayout() {
               id="active-business"
               className="w-full rounded-md border border-white/20 bg-brand-dark px-2 py-2 text-sm text-white"
               value={active?.id ?? ''}
-              onChange={(e) => setActiveBusiness(e.target.value)}
+              onChange={(e) => { void setActiveBusiness(e.target.value); }}
             >
               {businesses.map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
@@ -96,7 +93,7 @@ export default function AppLayout() {
 
         <button
           type="button"
-          onClick={logout}
+          onClick={() => { void signOut(); }}
           className="mt-6 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm text-white/80 transition hover:bg-white/10 hover:text-white"
         >
           <IconLogout size={18} />
@@ -119,27 +116,10 @@ export default function AppLayout() {
               {user.fullName} · {user.role === 'owner' ? 'Yönetici' : 'Personel'}
             </p>
           </div>
-          <Link to="/panel/abonelik" className="hidden text-xs text-brand-muted hover:text-accent sm:block">
-            Bitiş: {formatDate(user.subscriptionEndsAt)}
-          </Link>
         </header>
 
         <main className="min-w-0 flex-1 p-4 md:p-6">
-          {daysRemaining <= 7 && (
-            <Alert kind={daysRemaining < 0 ? 'error' : 'warning'} className="mb-5">
-              {daysRemaining < 0 ? (
-                <>
-                  Kullanım süreniz doldu. Kayıtlarınız saklanmaktadır.{' '}
-                  <Link to="/panel/abonelik">Aboneliğinizi yenileyin</Link>.
-                </>
-              ) : (
-                <>
-                  Kullanım sürenizin bitmesine <strong>{daysRemaining} gün</strong> kaldı.{' '}
-                  <Link to="/panel/abonelik">Aboneliğinizi uzatın</Link>.
-                </>
-              )}
-            </Alert>
-          )}
+          <DemoNotice className="mb-5" />
           <Outlet />
         </main>
       </div>

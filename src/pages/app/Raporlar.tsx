@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
-import { useBusinessData } from '../../hooks/useBusinessData';
+import { useReservationsWithBalances } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
 import { balanceReport, downloadCsv, monthReport, programReport, slotReport, summarize, toCsv, withinRange } from '../../lib/reports';
 import { formatDate, formatMoney, formatNumber, formatPhone } from '../../lib/format';
 import { IconDownload, IconPrint } from '../../components/Icons';
@@ -19,7 +20,7 @@ const TABS: { key: Tab; label: string }[] = [
 
 export default function Raporlar() {
   const { user, can } = useAuth();
-  const { reservations, colors } = useBusinessData();
+  const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
   const [tab, setTab] = useState<Tab>('program');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -30,11 +31,11 @@ export default function Raporlar() {
     [reservations, from, to],
   );
 
-  const totals = useMemo(() => summarize(scoped), [scoped]);
-  const programs = useMemo(() => programReport(scoped), [scoped]);
-  const months = useMemo(() => monthReport(scoped), [scoped]);
-  const balances = useMemo(() => balanceReport(scoped), [scoped]);
-  const slots = useMemo(() => slotReport(scoped), [scoped]);
+  const totals = useMemo(() => summarize(scoped, balance), [scoped, balance]);
+  const programs = useMemo(() => programReport(scoped, balance), [scoped, balance]);
+  const months = useMemo(() => monthReport(scoped, balance), [scoped, balance]);
+  const balances = useMemo(() => balanceReport(scoped, balance), [scoped, balance]);
+  const slots = useMemo(() => slotReport(scoped, balance), [scoped, balance]);
 
   if (!can('rapor.goruntule')) {
     return <Alert kind="error">Raporları görüntüleme yetkiniz bulunmuyor.</Alert>;
@@ -73,7 +74,7 @@ export default function Raporlar() {
   const maxMonth = Math.max(1, ...months.map((m) => m.count));
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={error}>
       <Seo title="Raporlar - Düğün Takip Panel" noindex />
 
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -230,7 +231,7 @@ export default function Raporlar() {
           />
         )}
       </section>
-    </>
+    </QueryBoundary>
   );
 }
 

@@ -11,18 +11,14 @@ async function blockExternalRequests(page: Page) {
   });
 }
 
-/** Demo hesabıyla giriş yapar; SMS kodu demo ortamında ekranda gösterilir. */
+/** Demo hesabıyla giriş yapar (veritabanı bağlı değilken demo modu devreye girer). */
 async function login(page: Page) {
   await blockExternalRequests(page);
   await page.goto('/uye-girisi');
   await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
-  await expect(page.getByRole('heading', { name: /SMS Doğrulama/ })).toBeVisible();
-
-  const codeText = await page.locator('strong.font-mono').first().innerText();
-  await page.getByLabel('Sms Kodu').fill(codeText.trim());
-  await page.getByRole('button', { name: 'Doğrula ve Giriş Yap' }).click();
   await expect(page).toHaveURL(/\/panel$/);
+  await expect(page.getByRole('heading', { name: /Hoş geldiniz/ })).toBeVisible();
 }
 
 test.describe('Üye paneli', () => {
@@ -32,9 +28,11 @@ test.describe('Üye paneli', () => {
     await expect(page).toHaveURL(/\/uye-girisi$/);
   });
 
-  test('SMS doğrulaması ile giriş yapılır', async ({ page }) => {
+  test('e-posta ve şifre ile giriş yapılır', async ({ page }) => {
     await login(page);
     await expect(page.getByRole('heading', { name: /Hoş geldiniz/ })).toBeVisible();
+    // Veritabanı bağlı olmadığında kullanıcı açıkça uyarılmalı
+    await expect(page.getByText(/Demo modu/)).toBeVisible();
   });
 
   test('tüm panel ekranları hatasız açılır', async ({ page }) => {
@@ -53,8 +51,6 @@ test.describe('Üye paneli', () => {
       ['/panel/isletmeler', 'Firmalarım / Adminler'],
       ['/panel/kullanicilar', 'Kullanıcılar'],
       ['/panel/sms', 'SMS Kayıtları'],
-      ['/panel/tavsiye-et', 'Tavsiye Et Kazan'],
-      ['/panel/abonelik', 'Aboneliğim'],
       ['/panel/ayarlar', 'Ayarlar'],
     ];
 
@@ -104,6 +100,7 @@ test.describe('Üye paneli', () => {
 
     // Rezervasyon listesinde görünür
     await page.goto('/panel/rezervasyonlar');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.getByLabel('İsim / telefon / kod').fill('E2E Test');
     await expect(page.getByRole('link', { name: 'E2E Test Çifti', exact: true })).toBeVisible();
 
@@ -118,12 +115,16 @@ test.describe('Üye paneli', () => {
   test('rezervasyon kodu herkese açık doğrulama sayfasında sorgulanabilir', async ({ page }) => {
     await login(page);
     await page.goto('/panel/rezervasyonlar');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
     const code = await page.locator('td.font-mono').first().innerText();
 
     await page.goto('/kod-dogrulama');
     await page.getByLabel('Rezervasyon Kodu').fill(code.trim());
     await page.getByRole('button', { name: 'Kodu Kontrol Et' }).click();
     await expect(page.getByText('Rezervasyon kaydı doğrulandı.')).toBeVisible();
+    // Gizlilik: telefon maskeli, ödeme bilgisi hiç gösterilmiyor
+    await expect(page.getByText(/\*\*\*\*\*/)).toBeVisible();
+    await expect(page.getByText('Kalan Alacak')).toHaveCount(0);
   });
 
   test('raporlar arasında sekme geçişi çalışır', async ({ page }) => {

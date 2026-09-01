@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import PublicLayout from './layouts/PublicLayout';
 import AppLayout from './layouts/AppLayout';
@@ -33,8 +34,6 @@ const RenkAyarlari = lazy(() => import('./pages/app/RenkAyarlari'));
 const Musteriler = lazy(() => import('./pages/app/Musteriler'));
 const Isletmeler = lazy(() => import('./pages/app/Isletmeler'));
 const Kullanicilar = lazy(() => import('./pages/app/Kullanicilar'));
-const TavsiyeEt = lazy(() => import('./pages/app/TavsiyeEt'));
-const Abonelik = lazy(() => import('./pages/app/Abonelik'));
 const SmsKayitlari = lazy(() => import('./pages/app/SmsKayitlari'));
 const Ayarlar = lazy(() => import('./pages/app/Ayarlar'));
 
@@ -47,10 +46,21 @@ function PanelLoading() {
   );
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route element={<PublicLayout />}>
             <Route index element={<Home />} />
@@ -105,14 +115,13 @@ export default function App() {
             <Route path="musteriler" element={<Musteriler />} />
             <Route path="isletmeler" element={<Isletmeler />} />
             <Route path="kullanicilar" element={<Kullanicilar />} />
-            <Route path="tavsiye-et" element={<TavsiyeEt />} />
-            <Route path="abonelik" element={<Abonelik />} />
             <Route path="sms" element={<SmsKayitlari />} />
             <Route path="ayarlar" element={<Ayarlar />} />
             <Route path="*" element={<Navigate to="/panel" replace />} />
           </Route>
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

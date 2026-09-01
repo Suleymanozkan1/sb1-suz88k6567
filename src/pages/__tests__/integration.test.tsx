@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ReactElement } from 'react';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../../context/AuthContext';
 import PublicLayout from '../../layouts/PublicLayout';
 import Home from '../Home';
@@ -16,11 +17,22 @@ import Uyeler from '../Uyeler';
 import NotFound from '../NotFound';
 import SalonDetay from '../SalonDetay';
 import { DIRECTORY } from '../../data/directory';
-import { clearAll } from '../../lib/storage';
-import { findUserByEmail, getMessages, makeReservationCode, seedIfEmpty, uid, upsertReservation } from '../../lib/db';
+import { clearAll, KEYS, read } from '../../lib/storage';
+import { localRepo } from '../../lib/repo/local';
+import { seedIfEmpty } from '../../lib/seed';
+import { makeReservationCode, normalizeEmail, uid } from '../../lib/ids';
+import type { ContactMessage, User } from '../../types';
+
+const getMessages = () => read<ContactMessage[]>(KEYS.messages, []);
+const findUserByEmail = (email: string) =>
+  read<User[]>(KEYS.users, []).find((u) => normalizeEmail(u.email) === normalizeEmail(email));
 
 function renderAt(path: string, element: ReactElement, extra?: { path: string; element: ReactElement }[]) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   return render(
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
@@ -31,7 +43,8 @@ function renderAt(path: string, element: ReactElement, extra?: { path: string; e
           </Route>
         </Routes>
       </MemoryRouter>
-    </AuthProvider>,
+    </AuthProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -116,7 +129,7 @@ describe('Kod Doğrulama', () => {
   it('geçerli kodda rezervasyon bilgilerini gösterir', async () => {
     seedIfEmpty();
     const code = makeReservationCode();
-    upsertReservation({
+    await localRepo.saveReservation({
       id: uid('res'), businessId: 'biz_demo', code, customerName: 'Test Çift',
       customerPhone: '5321112233', date: '2026-09-12', slot: 'Gece', organizationType: 'Düğün',
       guestCount: 250, totalAmount: 100000, deposit: 40000, currency: 'TL',
@@ -130,7 +143,9 @@ describe('Kod Doğrulama', () => {
 
     expect(await screen.findByText('Rezervasyon kaydı doğrulandı.', {}, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByText('Test Çift')).toBeInTheDocument();
-    expect(screen.getByText('60.000,00 ₺')).toBeInTheDocument(); // kalan alacak
+    expect(screen.getByText('100.000,00 ₺')).toBeInTheDocument(); // toplam tutar
+    expect(screen.getByText('532*****33')).toBeInTheDocument();   // maskeli telefon
+    expect(screen.queryByText(/Kalan Alacak/)).not.toBeInTheDocument();
   });
 });
 
@@ -231,7 +246,7 @@ describe('Üye Ol', () => {
     await waitFor(() => expect(findUserByEmail('yeni@example.com')).toBeDefined(), { timeout: 3000 });
     const created = findUserByEmail('yeni@example.com')!;
     expect(created.companyName).toBe('Test Düğün Salonu');
-    expect(created.referralCode).toMatch(/^TEST\d{3}$/);
+    expect(created.role).toBe('owner');
   });
 
   it('aynı e-posta ile ikinci kez üye olunamaz', async () => {
@@ -264,7 +279,7 @@ describe('Üye Girişi', () => {
     await user.type(screen.getByLabelText('Email Adresiniz'), 'demo@duguntakip.com');
     await user.type(screen.getByLabelText('Şifreniz'), 'yanlis');
     await user.click(screen.getByRole('button', { name: 'Giriş Yap' }));
-    expect(await screen.findByText('Şifreniz hatalı. Lütfen tekrar deneyiniz.', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText('E-posta veya şifreniz hatalı.', {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
   it('kayıtlı olmayan e-postada uyarı gösterir', async () => {
@@ -276,17 +291,13 @@ describe('Üye Girişi', () => {
     expect(await screen.findByText(/kayıtlı üyelik bulunamadı/, {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
-  it('doğru bilgilerde SMS doğrulama adımına geçer ve hatalı kodu reddeder', async () => {
+  it('doğru bilgilerde panele yönlendirir', async () => {
     seedIfEmpty();
     const user = userEvent.setup();
-    renderAt('/uye-girisi', <UyeGirisi />);
+    renderAt('/uye-girisi', <UyeGirisi />, [{ path: '/panel', element: <p>Panel açıldı</p> }]);
     await user.click(screen.getByRole('button', { name: 'Demo bilgilerini doldur' }));
     await user.click(screen.getByRole('button', { name: 'Giriş Yap' }));
-
-    expect(await screen.findByRole('heading', { name: /SMS Doğrulama/ }, { timeout: 3000 })).toBeInTheDocument();
-    await user.type(screen.getByLabelText('Sms Kodu'), '000000');
-    await user.click(screen.getByRole('button', { name: 'Doğrula ve Giriş Yap' }));
-    expect(await screen.findByText('Doğrulama kodu hatalı.', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText('Panel açıldı', {}, { timeout: 3000 })).toBeInTheDocument();
   });
 });
 

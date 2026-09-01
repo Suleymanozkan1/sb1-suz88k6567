@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
-import { useBusinessData } from '../../hooks/useBusinessData';
 import { useAuth } from '../../context/AuthContext';
-import { remainingBalance, totalPaid } from '../../lib/db';
+import { useReservationsWithBalances } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, formatPhone, normalizeTr } from '../../lib/format';
 import { downloadCsv, toCsv } from '../../lib/reports';
 import { IconDownload, IconSearch } from '../../components/Icons';
@@ -20,7 +20,7 @@ interface CustomerRow {
 }
 
 export default function Musteriler() {
-  const { reservations } = useBusinessData();
+  const { reservations, balance, isLoading, error } = useReservationsWithBalances();
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const currency = user?.currency ?? 'TL';
@@ -43,14 +43,14 @@ export default function Musteriler() {
         };
         row.count += 1;
         row.total += r.totalAmount;
-        row.paid += totalPaid(r);
-        row.remaining += remainingBalance(r);
+        row.paid += balance.paid(r);
+        row.remaining += balance.remaining(r);
         if (r.date > row.lastDate) row.lastDate = r.date;
         if (!row.email && r.customerEmail) row.email = r.customerEmail;
         map.set(key, row);
       });
     return [...map.values()].sort((a, b) => b.lastDate.localeCompare(a.lastDate));
-  }, [reservations]);
+  }, [reservations, balance]);
 
   const filtered = useMemo(() => {
     const q = normalizeTr(query);
@@ -67,7 +67,7 @@ export default function Musteriler() {
   }
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={error}>
       <Seo title="Müşteriler - Düğün Takip Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -124,6 +124,6 @@ export default function Musteriler() {
         Müşteri kayıtları rezervasyonlardan otomatik oluşturulur.{' '}
         <Link to="/panel/rezervasyonlar/yeni">Yeni rezervasyon ekleyin</Link>.
       </p>
-    </>
+    </QueryBoundary>
   );
 }

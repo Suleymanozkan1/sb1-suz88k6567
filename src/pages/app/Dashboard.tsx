@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import StatCard from '../../components/StatCard';
-import { useBusinessData } from '../../hooks/useBusinessData';
 import { useAuth } from '../../context/AuthContext';
-import { getCashFlow, remainingBalance } from '../../lib/db';
+import { useCashFlow, useReservationsWithBalances } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, formatNumber, todayIso } from '../../lib/format';
 import { lastMonthsReport, programReport, summarize } from '../../lib/reports';
 import { IconCalendar, IconPlus, IconUsers, IconWallet } from '../../components/Icons';
@@ -12,7 +12,8 @@ import { MONTH_NAMES } from '../../data/constants';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { reservations, colors, businessId } = useBusinessData();
+  const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
+  const cashQuery = useCashFlow();
   const today = todayIso();
   const currency = user?.currency ?? 'TL';
 
@@ -25,22 +26,22 @@ export default function Dashboard() {
   const thisMonthPrefix = today.slice(0, 7);
   const thisMonth = useMemo(() => active.filter((r) => r.date.startsWith(thisMonthPrefix)), [active, thisMonthPrefix]);
 
-  const totals = useMemo(() => summarize(active), [active]);
-  const monthTotals = useMemo(() => summarize(thisMonth), [thisMonth]);
+  const totals = useMemo(() => summarize(active, balance), [active, balance]);
+  const monthTotals = useMemo(() => summarize(thisMonth, balance), [thisMonth, balance]);
 
-  const cash = useMemo(() => getCashFlow(businessId), [businessId]);
+  const cash = useMemo(() => cashQuery.data ?? [], [cashQuery.data]);
   const cashBalance = useMemo(
     () => cash.reduce((sum, c) => sum + (c.kind === 'Gelir' ? c.amount : -c.amount), 0),
     [cash],
   );
 
-  const byProgram = useMemo(() => programReport(active).slice(0, 5), [active]);
+  const byProgram = useMemo(() => programReport(active, balance).slice(0, 5), [active, balance]);
   // Bugünden geriye 6 takvim ayı; kaydı olmayan aylar 0 olarak gösterilir.
-  const byMonth = useMemo(() => lastMonthsReport(active, 6, today), [active, today]);
+  const byMonth = useMemo(() => lastMonthsReport(active, 6, today, balance), [active, today, balance]);
   const maxMonth = Math.max(1, ...byMonth.map((m) => m.count));
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={error}>
       <Seo title="Özet - Düğün Takip Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -104,7 +105,7 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td className="py-2.5 text-right font-medium text-brand">
-                          {formatMoney(remainingBalance(r), r.currency)}
+                          {formatMoney(balance.remaining(r), r.currency)}
                         </td>
                       </tr>
                     );
@@ -184,7 +185,7 @@ export default function Dashboard() {
           />
         </div>
       </section>
-    </>
+    </QueryBoundary>
   );
 }
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import Seo from '../../components/Seo';
-import { useBusinessData } from '../../hooks/useBusinessData';
-import { getSmsLog } from '../../lib/db';
+import { useSmsLog } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
 import { formatPhone, normalizeTr } from '../../lib/format';
 import { IconSearch } from '../../components/Icons';
 
@@ -13,11 +13,11 @@ const KIND_STYLES: Record<string, string> = {
 };
 
 export default function SmsKayitlari() {
-  const { businessId } = useBusinessData();
+  const { data, isLoading, error } = useSmsLog();
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState('');
 
-  const logs = useMemo(() => getSmsLog(businessId), [businessId]);
+  const logs = useMemo(() => data ?? [], [data]);
 
   const filtered = useMemo(() => {
     const q = normalizeTr(query);
@@ -29,7 +29,7 @@ export default function SmsKayitlari() {
   }, [logs, query, kind]);
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={error}>
       <Seo title="SMS Kayıtları - Düğün Takip Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">SMS Kayıtları</h1>
@@ -87,6 +87,6 @@ export default function SmsKayitlari() {
           </table>
         )}
       </div>
-    </>
+    </QueryBoundary>
   );
 }

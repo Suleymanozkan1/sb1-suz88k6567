@@ -1,28 +1,38 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
-import { useBusinessData } from '../../hooks/useBusinessData';
-import { saveColorSettings } from '../../lib/db';
+import { useColorSettings, useSaveColorSettings } from '../../lib/queries';
+import { QueryBoundary } from '../../components/QueryState';
+import { errorMessage } from '../../lib/authHelpers';
 import { DEFAULT_COLOR_SETTINGS } from '../../data/constants';
 import type { ColorSetting } from '../../types';
 
 export default function RenkAyarlari() {
   const { can } = useAuth();
-  const { businessId, colors, reload } = useBusinessData();
-  const [draft, setDraft] = useState<ColorSetting[]>(colors);
+  const { data: colors, isLoading, error } = useColorSettings();
+  const saveMutation = useSaveColorSettings();
+  const [draft, setDraft] = useState<ColorSetting[]>([]);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  // Sunucudan gelen ayarlar yüklendiğinde taslağı eşitle
+  useEffect(() => { if (colors) setDraft(colors); }, [colors]);
 
   function update(key: string, color: string) {
     setDraft((d) => d.map((c) => (c.key === key ? { ...c, color } : c)));
     setSaved(false);
   }
 
-  function save() {
-    saveColorSettings(businessId, draft);
-    reload();
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
+  async function save() {
+    setSaveError('');
+    try {
+      await saveMutation.mutateAsync(draft);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      setSaveError(errorMessage(e));
+    }
   }
 
   function reset() {
@@ -35,7 +45,7 @@ export default function RenkAyarlari() {
   }
 
   return (
-    <>
+    <QueryBoundary isLoading={isLoading} error={error}>
       <Seo title="Rezervasyon Renk Ayarları - Düğün Takip Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">Rezervasyon Renk Ayarları</h1>
@@ -44,6 +54,7 @@ export default function RenkAyarlari() {
       </p>
 
       {saved && <Alert kind="success" className="mb-5">Renk ayarlarınız kaydedildi.</Alert>}
+      {saveError && <Alert kind="error" className="mb-5">{saveError}</Alert>}
 
       <div className="card p-5">
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -66,7 +77,9 @@ export default function RenkAyarlari() {
         </ul>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <button type="button" onClick={save} className="btn-primary text-white hover:text-white">Kaydet</button>
+          <button type="button" onClick={() => { void save(); }} className="btn-primary text-white hover:text-white" disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
           <button type="button" onClick={reset} className="btn-outline">Varsayılana dön</button>
         </div>
       </div>
@@ -82,6 +95,6 @@ export default function RenkAyarlari() {
           ))}
         </div>
       </section>
-    </>
+    </QueryBoundary>
   );
 }

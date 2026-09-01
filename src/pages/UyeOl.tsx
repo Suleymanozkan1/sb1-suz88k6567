@@ -5,6 +5,7 @@ import Seo from '../components/Seo';
 import Alert from '../components/Alert';
 import { CATEGORIES, CITIES, CURRENCIES, DISTRICTS, HEARD_FROM, TRIAL_DAYS } from '../data/constants';
 import { useAuth } from '../context/AuthContext';
+import { errorMessage } from '../lib/authHelpers';
 import type { Currency } from '../types';
 
 interface FormState {
@@ -60,7 +61,7 @@ const INITIAL: FormState = {
 export default function UyeOl() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { register, user } = useAuth();
+  const { signUp, user, signupEnabled } = useAuth();
 
   const [form, setForm] = useState<FormState>({ ...INITIAL, referredBy: params.get('ref') ?? '' });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -110,7 +111,7 @@ export default function UyeOl() {
     return Object.keys(e).length === 0;
   }
 
-  function onSubmit(ev: React.FormEvent) {
+  async function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
     setServerError('');
     if (!validate()) {
@@ -118,35 +119,51 @@ export default function UyeOl() {
       return;
     }
     setSubmitting(true);
-    window.setTimeout(() => {
-      const result = register({
+    try {
+      await signUp({
         companyName: form.companyName.trim(),
         fullName: form.fullName.trim(),
         mobile: form.mobile.replace(/\D/g, ''),
         capacity: Number(form.capacity) || 0,
         facebook: form.facebook.trim() || undefined,
         instagram: form.instagram.trim() || undefined,
-        referredBy: form.referredBy.trim() || undefined,
         email: form.email.trim(),
         password: form.password,
         currency: form.currency,
         category: form.category,
         city: form.city,
         district: form.district || form.city,
-        heardFrom: form.heardFrom || undefined,
         phone: form.phone.replace(/\D/g, '') || undefined,
         address: [form.neighbourhood, form.street, form.avenue, form.buildingNo ? `No:${form.buildingNo}` : '']
           .filter(Boolean)
           .join(' ')
           .trim(),
       });
-      setSubmitting(false);
-      if (!result.ok) {
-        setServerError(result.error ?? 'Üyelik oluşturulamadı.');
-        return;
-      }
       navigate('/panel', { replace: true });
-    }, 500);
+    } catch (err) {
+      setServerError(errorMessage(err));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!signupEnabled) {
+    return (
+      <>
+        <Seo title="Üye Ol - Düğün Takip" path="/uye-ol" noindex />
+        <PageHeader title="Üye Ol" breadcrumbs={[{ label: 'Üye Ol' }]} />
+        <section className="py-14">
+          <div className="container-dt max-w-2xl">
+            <Alert kind="info">
+              Yeni üyelik kaydı şu anda kapalıdır. Hesabınız varsa{' '}
+              <Link to="/uye-girisi">üye girişi yapabilirsiniz</Link>. Hesap açtırmak için{' '}
+              <Link to="/iletisim">bizimle iletişime geçin</Link>.
+            </Alert>
+          </div>
+        </section>
+      </>
+    );
   }
 
   if (user) {
@@ -181,7 +198,7 @@ export default function UyeOl() {
         <div className="container-dt max-w-4xl">
           {serverError && <Alert kind="error" className="mb-6">{serverError}</Alert>}
 
-          <form onSubmit={onSubmit} noValidate className="card p-6 md:p-8">
+          <form onSubmit={(e) => { void onSubmit(e); }} noValidate className="card p-6 md:p-8">
             <fieldset className="mb-8">
               <legend className="mb-4 font-heading text-lg font-bold text-brand">İşletme Bilgileri</legend>
               <div className="grid gap-4 md:grid-cols-2">

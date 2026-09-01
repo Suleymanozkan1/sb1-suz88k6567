@@ -2,17 +2,18 @@ import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import Seo from '../components/Seo';
 import Alert from '../components/Alert';
-import { findReservationByCode, getBusiness, remainingBalance, totalPaid } from '../lib/db';
-import { formatDateLong, formatMoney, formatPhone } from '../lib/format';
-import type { Reservation } from '../types';
+import { repo } from '../lib/repo';
+import { errorMessage } from '../lib/authHelpers';
+import type { PublicReservation } from '../lib/repo';
+import { formatDateLong, formatMoney } from '../lib/format';
 
 export default function KodDogrulama() {
   const [code, setCode] = useState('');
   const [checking, setChecking] = useState(false);
-  const [result, setResult] = useState<Reservation | null>(null);
+  const [result, setResult] = useState<PublicReservation | null>(null);
   const [error, setError] = useState('');
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setResult(null);
@@ -23,18 +24,19 @@ export default function KodDogrulama() {
     }
 
     setChecking(true);
-    window.setTimeout(() => {
-      const found = findReservationByCode(code);
+    try {
+      const found = await repo.verifyCode(code);
       if (!found) {
         setError('Girdiğiniz koda ait bir rezervasyon kaydı bulunamadı. Lütfen kodu kontrol ediniz.');
       } else {
         setResult(found);
       }
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
       setChecking(false);
-    }, 500);
+    }
   }
-
-  const business = result ? getBusiness(result.businessId) : undefined;
 
   return (
     <>
@@ -51,7 +53,7 @@ export default function KodDogrulama() {
 
       <section className="py-12">
         <div className="container-dt max-w-2xl">
-          <form onSubmit={onSubmit} noValidate className="card p-6">
+          <form onSubmit={(e) => { void onSubmit(e); }} noValidate className="card p-6">
             <label htmlFor="rez-kod" className="field-label">Rezervasyon Kodu</label>
             <input
               id="rez-kod"
@@ -78,18 +80,19 @@ export default function KodDogrulama() {
               <Alert kind="success" className="mb-4">
                 Rezervasyon kaydı doğrulandı.
               </Alert>
+              <p className="mb-3 text-xs text-brand-muted">
+                Gizlilik gereği telefon numarası kısmen gizlenmiş, ödeme bilgileri gösterilmemiştir.
+              </p>
               <dl className="card divide-y divide-line">
                 <Row label="Rezervasyon Kodu" value={result.code} />
-                <Row label="İşletme" value={business?.name ?? '—'} />
+                <Row label="İşletme" value={result.businessName || '—'} />
                 <Row label="Müşteri" value={result.customerName} />
-                <Row label="Telefon" value={formatPhone(result.customerPhone)} />
+                <Row label="Telefon" value={result.customerPhone} />
                 <Row label="Tarih" value={`${formatDateLong(result.date)} · ${result.slot}`} />
                 <Row label="Organizasyon" value={result.organizationType} />
                 <Row label="Davetli Sayısı" value={String(result.guestCount)} />
                 <Row label="Durum" value={result.status} />
-                <Row label="Toplam Tutar" value={formatMoney(result.totalAmount, result.currency)} />
-                <Row label="Ödenen" value={formatMoney(totalPaid(result), result.currency)} />
-                <Row label="Kalan Alacak" value={formatMoney(remainingBalance(result), result.currency)} />
+                <Row label="Toplam Tutar" value={formatMoney(result.totalAmount)} />
               </dl>
             </div>
           )}
