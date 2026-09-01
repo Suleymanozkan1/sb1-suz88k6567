@@ -195,6 +195,16 @@ export interface ContactMessage {
   createdAt: string;
 }
 
+export interface SystemHealth {
+  kuyrukBekleyen: number;
+  kuyrukBasarisiz: number;
+  kuyrukEngellenen: number;
+  kuyrukEnEskiDakika: number;
+  iysAktarilmamis: number;
+  basarisizGiris24s: number;
+  sonYedek: { zaman: string; durum: string; yasSaat: number; yasDakika: number } | null;
+}
+
 export interface AuditEntry {
   id: number;
   actorEmail: string;

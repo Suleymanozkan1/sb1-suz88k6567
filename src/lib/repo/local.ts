@@ -362,6 +362,43 @@ export const localRepo: Repository = {
     write(KEYS.consents, consents().filter((c) => c.id !== id));
   },
 
+  /** Demo modunda kuyruk ve izin verileri tarayıcıdan okunur; yedek alınmaz. */
+  async getSystemHealth() {
+    const pending = queue().filter((q) => q.status === 'bekliyor' || q.status === 'gonderiliyor');
+    const oldest = pending.reduce<number>((max, q) => {
+      const minutes = Math.floor((Date.now() - new Date(q.createdAt).getTime()) / 60000);
+      return Math.max(max, minutes);
+    }, 0);
+
+    return wait({
+      kuyrukBekleyen: pending.length,
+      kuyrukBasarisiz: queue().filter((q) => q.status === 'basarisiz').length,
+      kuyrukEngellenen: queue().filter((q) => q.status === 'iptal').length,
+      kuyrukEnEskiDakika: oldest,
+      iysAktarilmamis: consents().filter((c) => !c.iysSyncedAt).length,
+      basarisizGiris24s: 0,
+      sonYedek: null,
+    });
+  },
+
+  /** Demo modunda dışa aktarım tarayıcıdaki kayıtlardan üretilir. */
+  async exportData(ownerId) {
+    const owned = businesses().filter((b) => b.ownerId === ownerId).map((b) => b.id);
+    const reservationsOfOwner = reservations().filter((r) => owned.includes(r.businessId));
+    const reservationIds = reservationsOfOwner.map((r) => r.id);
+
+    return wait({
+      surum: 1,
+      olusturma: new Date().toISOString(),
+      owner_id: ownerId,
+      isletmeler: businesses().filter((b) => b.ownerId === ownerId),
+      rezervasyonlar: reservationsOfOwner,
+      tahsilatlar: payments().filter((p) => reservationIds.includes(p.reservationId)),
+      kasa: cash().filter((c) => owned.includes(c.businessId)),
+      sms_izinleri: consents().filter((c) => owned.includes(c.businessId)),
+    });
+  },
+
   async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>) {
     const all = read<ContactMessage[]>(KEYS.messages, []);
     all.push({ ...message, id: uid('msg'), createdAt: new Date().toISOString() });

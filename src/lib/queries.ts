@@ -27,6 +27,7 @@ export const keys = {
   audit: (ownerId: string) => ['audit', ownerId] as const,
   consents: (businessId: string) => ['consents', businessId] as const,
   smsQueue: (businessId: string) => ['smsQueue', businessId] as const,
+  health: (ownerId: string) => ['health', ownerId] as const,
 };
 
 /** Oturumdaki kullanıcının aktif işletmesi */
@@ -112,6 +113,22 @@ export function useSmsQueue(limit = 100) {
     queryFn: () => repo.listSmsQueue(businessId, limit),
     enabled: Boolean(businessId),
   });
+}
+
+export function useSystemHealth() {
+  const { ownerId } = useAuth();
+  return useQuery({
+    queryKey: keys.health(ownerId),
+    queryFn: () => repo.getSystemHealth(ownerId),
+    enabled: Boolean(ownerId),
+    // Durum bilgisi tazeliğini korumalı
+    refetchInterval: 60_000,
+  });
+}
+
+export function useExportData() {
+  const { ownerId } = useAuth();
+  return useMutation({ mutationFn: () => repo.exportData(ownerId) });
 }
 
 export function useAuditLog(limit = 200) {

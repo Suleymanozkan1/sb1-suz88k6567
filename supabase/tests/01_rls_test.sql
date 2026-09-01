@@ -31,14 +31,15 @@ values
   ('aaaaaaaa-0000-0000-0000-000000000001','DT-A-0001','A Müşterisi','5321110000','2026-10-10','Gece','Düğün',200,100000,20000),
   ('bbbbbbbb-0000-0000-0000-000000000001','DT-B-0001','B Müşterisi','5332220000','2026-10-11','Gece','Düğün',300,150000,30000);
 
--- RLS'yi uygulamak için yetkisiz role geç
-create role tester nologin;
-grant usage on schema public to tester;
-grant all on all tables in schema public to tester;
-grant execute on all functions in schema public to tester;
+-- Supabase'de oturum açan kullanıcılar "authenticated" rolündedir;
+-- politikalar bu role bağlı olduğu için test de bu rolle çalışır.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on
+  public.businesses, public.reservations, public.payments, public.cash_flow,
+  public.profiles, public.color_settings, public.sms_log to authenticated;
 
 \echo '=== 1) A yöneticisi: yalnızca kendi rezervasyonunu görmeli ==='
-set role tester;
+set role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 select count(*) as "A_gordugu_rezervasyon", string_agg(code, ',') as kodlar from public.reservations;
 
@@ -71,6 +72,7 @@ select count(*) as "B_gordugu_profil", string_agg(email, ',') as epostalar from 
 
 \echo '=== 7) Kod dogrulama herkese acik ve telefon maskeli olmali ==='
 reset role;
+grant usage on schema public to anon;
 set role anon;
 select set_config('request.jwt.claim.sub', '', false);
 select code, customer_name, customer_phone as maskeli_telefon, business_name

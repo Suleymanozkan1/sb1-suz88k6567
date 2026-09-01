@@ -1,1 +1,1 @@
-{"root":["./vite.config.ts","./playwright.config.ts","./api/_db.ts","./api/_guard.ts","./api/iys.ts","./api/login.ts","./api/otp.ts","./api/sms-queue.ts","./api/sms.ts"],"version":"5.9.3"}
+{"root":["./vite.config.ts","./playwright.config.ts","./api/_db.ts","./api/_guard.ts","./api/backup.ts","./api/health.ts","./api/iys.ts","./api/login.ts","./api/otp.ts","./api/sms-queue.ts","./api/sms.ts"],"version":"5.9.3"}

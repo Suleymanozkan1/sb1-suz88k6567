@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBusinesses } from '../lib/queries';
 import DemoNotice from '../components/DemoNotice';
 import {
-  IconBuilding, IconCalendar, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu,
+  IconAlert, IconBuilding, IconCalendar, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu,
   IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
 
@@ -21,6 +21,7 @@ const NAV = [
   { to: '/panel/sms', label: 'SMS Kayıtları', icon: IconMessage },
   { to: '/panel/izinler', label: 'İYS İzinleri', icon: IconCheck },
   { to: '/panel/denetim', label: 'Denetim Kaydı', icon: IconShield },
+  { to: '/panel/sistem', label: 'Sistem Durumu', icon: IconAlert },
   { to: '/panel/ayarlar', label: 'Ayarlar', icon: IconSettings },
 ];
 

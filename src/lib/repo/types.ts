@@ -8,7 +8,7 @@
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage,
   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
-  SmsLogEntry, SmsQueueEntry, User,
+  SmsLogEntry, SmsQueueEntry, SystemHealth, User,
 } from '../../types';
 
 export interface SignUpInput {
@@ -129,6 +129,11 @@ export interface Repository {
 
   /* -- denetim kaydı ---------------------------------------------------- */
   listAuditLog(limit: number): Promise<AuditEntry[]>;
+
+  /* -- izleme ve yedekleme ---------------------------------------------- */
+  getSystemHealth(ownerId: string): Promise<SystemHealth | null>;
+  /** Kullanıcının tüm verisini tek belge olarak döndürür (elle yedek) */
+  exportData(ownerId: string): Promise<unknown>;
 }
 
 /** Kullanıcıya gösterilebilir hata; teknik ayrıntı sızdırmaz. */

@@ -60,6 +60,51 @@ export async function patchRows(path: string, body: unknown): Promise<void> {
   if (!response.ok) throw new Error(`Güncelleme başarısız (${response.status})`);
 }
 
+/** REST üzerinden kayıt ekler ve eklenen satırı döndürür (service_role). */
+export async function insertRow<T>(table: string, body: unknown): Promise<T> {
+  if (!isDbConfigured()) throw new Error('Veritabanı yapılandırması eksik.');
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      apikey: SERVICE_KEY!,
+      authorization: `Bearer ${SERVICE_KEY}`,
+      prefer: 'return=representation',
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new Error(`Kayıt eklenemedi (${response.status})`);
+  const rows = (await response.json()) as T[];
+  return rows[0]!;
+}
+
+/** Yedek dosyasını Supabase Storage'a yükler. */
+export async function uploadToStorage(
+  bucket: string, path: string, content: string,
+): Promise<void> {
+  if (!isDbConfigured()) throw new Error('Veritabanı yapılandırması eksik.');
+
+  const response = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        apikey: SERVICE_KEY!,
+        authorization: `Bearer ${SERVICE_KEY}`,
+        'x-upsert': 'true',
+      },
+      body: content,
+      signal: AbortSignal.timeout(60_000),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Depolamaya yazılamadı (${response.status}): ${await response.text()}`);
+  }
+}
+
 /**
  * Zamanlanmış görevlerin yetkilendirmesi.
  * Vercel Cron isteklerinde `authorization: Bearer <CRON_SECRET>` başlığı bulunur.

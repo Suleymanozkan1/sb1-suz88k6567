@@ -38,8 +38,8 @@ Demo hesapları yalnızca demo modunda vardır.
 | `npm run build`     | Tip kontrolü + üretim derlemesi (`dist/`)        |
 | `npm run preview`   | Derlenmiş çıktıyı yerel olarak sunar             |
 | `npm run lint`      | ESLint                                           |
-| `npm test`          | Vitest birim + entegrasyon testleri (157 test)   |
-| `npm run e2e`       | Playwright uçtan uca testleri (52 test)          |
+| `npm test`          | Vitest birim + entegrasyon testleri (169 test)   |
+| `npm run e2e`       | Playwright uçtan uca testleri (53 test)          |
 
 ## Sayfa haritası
 
@@ -80,6 +80,7 @@ Demo hesapları yalnızca demo modunda vardır.
 | `/panel/sms` | Gönderilen SMS kayıtları |
 | `/panel/izinler` | İYS izin yönetimi — ticari ileti onay/ret kayıtları |
 | `/panel/denetim` | Denetim kaydı — kim, neyi, ne zaman değiştirdi |
+| `/panel/sistem` | Sistem durumu — yedek, kuyruk ve İYS sağlığı; elle yedek indirme |
 | `/panel/ayarlar` | Profil, şifre değiştirme, veri sıfırlama |
 
 ## Mimari
@@ -91,6 +92,8 @@ api/            Sunucu tarafı fonksiyonlar (Vercel)
   login.ts      Korumalı giriş — hesap kilidi ve hız sınırı
   sms-queue.ts  Kuyruk işleyici (cron, üstel geri çekilme)
   iys.ts        İYS onay aktarımı ve ret çekimi (cron)
+  backup.ts     Günlük yedek — Storage'a JSON anlık görüntü (cron)
+  health.ts     Sağlık kontrolü — uptime izleme için
 supabase/
   migrations/   Veritabanı şeması ve RLS politikaları
   tests/        RLS izolasyon testleri (yerel Postgres ile çalıştırılır)
@@ -126,7 +129,7 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 
 1. [supabase.com](https://supabase.com) üzerinde proje açın (**bölge: Frankfurt** — KVKK açısından AB tercih edilir).
 2. SQL Editor'da migration dosyalarını **sırayla** çalıştırın:
-   `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql`
+   `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` → `0004_backup_health.sql`
 3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
 4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
 5. Authentication → Users bölümünden kendi hesabınızı oluşturun.
@@ -145,7 +148,12 @@ psql -d <veritabani> -f supabase/migrations/0003_iys_queue.sql
 psql -d <veritabani> -f supabase/tests/01_rls_test.sql        # 8 izolasyon senaryosu
 psql -d <veritabani> -f supabase/tests/02_security_test.sql   # 15 güvenlik senaryosu
 psql -d <veritabani> -f supabase/tests/03_iys_test.sql        # 16 İYS ve kuyruk senaryosu
+psql -d <veritabani> -f supabase/tests/04_backup_restore_test.sql  # 13 yedek/geri yükleme senaryosu
 ```
+
+Toplam **52 senaryo**. `04_backup_restore_test.sql` yedeği temiz bir şemaya
+gerçekten geri yükler ve satır sayıları, parasal değerler, Türkçe karakterler
+ile ilişkisel bütünlüğün korunduğunu kanıtlar.
 
 ## Güvenlik
 
@@ -156,6 +164,7 @@ psql -d <veritabani> -f supabase/tests/03_iys_test.sql        # 16 İYS ve kuyru
 | **Hız sınırı** | `api/_guard.ts` | Giriş 20/5dk (IP), SMS 30/saat (IP) ve 5/saat (numara), kod isteme 5/15dk, kod deneme 8/15dk |
 | **Denetim kaydı** | Postgres tetikleyicileri | Tüm ekleme/değişiklik/silme işlemleri, değişen alanlarla birlikte; kayıtlar değiştirilemez |
 | **İYS kuralı** | `enqueue_sms` fonksiyonu | Ticari ileti onaysız gönderilemez; kuyruğa doğrudan yazma istemciye kapalı |
+| **Yedek erişimi** | Postgres RLS | Yedek yalnızca kendi kapsamını içerir; başka hesabın verisi dışa aktarılamaz |
 | **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `service_role` anahtarı yalnızca sunucuda; `VITE_` öneki taşımaz |
 | **Hata izleme** | `src/lib/monitoring.ts` | İsteğe bağlı Sentry; gönderilen olaylarda e-posta ve telefon maskelenir |
 | **Güvenlik başlıkları** | `vercel.json` | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
@@ -253,6 +262,7 @@ Zamanlanmış görevler `vercel.json` içindeki `crons` bölümünde tanımlıd�
 |-------|--------|
 | `/api/sms-queue` — kuyruk işleme | 5 dakikada bir |
 | `/api/iys` — İYS senkronizasyonu | Her gece 03:00 |
+| `/api/backup` — günlük yedek | Her gece 02:30 |
 | Build Command | `npm run build` |
 | Output Directory | `dist` |
 
@@ -276,6 +286,27 @@ npm run build && npm run preview
 Not: Kalıcılık tarayıcıdaki `localStorage` üzerinde olduğu için dağıtım tamamen
 statiktir; sunucu tarafı çalışma zamanı, ortam değişkeni veya veritabanı
 gerekmez.
+
+## Yedekleme ve izleme
+
+Üç bağımsız yedek katmanı vardır: Supabase'in kendi otomatik yedeği, her gece
+02:30'da Storage'a yazılan JSON anlık görüntüsü ve panelden istediğiniz zaman
+indirebileceğiniz elle yedek.
+
+`GET /api/health` uç noktası uptime izleme servisleri içindir; sorun varsa
+**HTTP 503** döner. Kontrol edilenler: kuyrukta bekleyen en eski mesaj (30 dk),
+kalıcı gönderilemeyen mesaj, son yedek yaşı (48 saat), SMS sağlayıcı
+yapılandırması ve veritabanı erişimi. Uç nokta kişisel veri döndürmez.
+
+Aynı kontroller panelde **Sistem Durumu** ekranında Türkçe açıklamalarla ve
+"ne yapmalı" ipuçlarıyla gösterilir.
+
+**Ayrıntılı prosedürler:**
+- [`docs/YEDEKLEME-VE-GERI-YUKLEME.md`](docs/YEDEKLEME-VE-GERI-YUKLEME.md) — kurulum, geri yükleme adımları, tatbikat takvimi
+- [`docs/IZLEME.md`](docs/IZLEME.md) — uptime izleme kurulumu, alarm yanıt rehberi
+
+> Yedeğinizi yılda en az iki kez gerçekten geri yükleyerek test edin.
+> Test edilmemiş yedek, yedek değildir.
 
 ## Bilinen sınırlar
 

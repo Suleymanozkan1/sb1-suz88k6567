@@ -4,7 +4,8 @@ import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants'
 import { RepoError, type PublicReservation, type Repository } from './types';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult,
-  Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry, User,
+  Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry,
+  SystemHealth, User,
 } from '../../types';
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -585,6 +586,37 @@ export const supabaseRepo: Repository = {
       changed: (row.changed as AuditEntry['changed']) ?? undefined,
       createdAt: (row.created_at as string) ?? '',
     }));
+  },
+
+  async getSystemHealth(ownerId) {
+    const { data, error } = await db().rpc('system_health', { p_owner_id: ownerId });
+    if (error) fail('Sistem durumu alınamadı.', error);
+    const row = data as Record<string, unknown> | null;
+    if (!row) return null;
+
+    const backup = row.son_yedek as Record<string, unknown> | null;
+    return {
+      kuyrukBekleyen: Number(row.kuyruk_bekleyen ?? 0),
+      kuyrukBasarisiz: Number(row.kuyruk_basarisiz ?? 0),
+      kuyrukEngellenen: Number(row.kuyruk_engellenen ?? 0),
+      kuyrukEnEskiDakika: Number(row.kuyruk_en_eski_dakika ?? 0),
+      iysAktarilmamis: Number(row.iys_aktarilmamis ?? 0),
+      basarisizGiris24s: Number(row.basarisiz_giris_24s ?? 0),
+      sonYedek: backup
+        ? {
+            zaman: String(backup.zaman ?? ''),
+            durum: String(backup.durum ?? ''),
+            yasSaat: Number(backup.yas_saat ?? 0),
+            yasDakika: Number(backup.yas_dakika ?? 0),
+          }
+        : null,
+    } satisfies SystemHealth;
+  },
+
+  async exportData(ownerId) {
+    const { data, error } = await db().rpc('export_owner_data', { p_owner_id: ownerId });
+    if (error) fail('Veriler dışa aktarılamadı.', error);
+    return data;
   },
 
   async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>) {

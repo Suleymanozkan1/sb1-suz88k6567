@@ -23,7 +23,7 @@ test.describe('İstemci tarafı güvenlik', () => {
     await blockExternalRequests(page);
     for (const path of [
       '/panel', '/panel/rezervasyonlar', '/panel/kasa', '/panel/raporlar',
-      '/panel/kullanicilar', '/panel/denetim', '/panel/izinler', '/panel/ayarlar',
+      '/panel/kullanicilar', '/panel/denetim', '/panel/izinler', '/panel/sistem', '/panel/ayarlar',
     ]) {
       await page.goto(path);
       await expect(page, `${path} korumasız`).toHaveURL(/\/uye-girisi$/);
@@ -99,6 +99,22 @@ test.describe('İstemci tarafı güvenlik', () => {
     await page.getByRole('tab', { name: /Kuyruk/ }).click();
     // Kuyruk görünümü açılmalı (kayıt olsun olmasın)
     await expect(page.getByRole('tab', { name: /Kuyruk/ })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('yedek indirme kendi verisini üretir', async ({ page }) => {
+    await blockExternalRequests(page);
+    await page.goto('/uye-girisi');
+    await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
+    await page.getByRole('button', { name: 'Giriş Yap' }).click();
+    await expect(page).toHaveURL(/\/panel$/);
+
+    await page.goto('/panel/sistem');
+    await expect(page.getByRole('heading', { name: 'Sistem Durumu' })).toBeVisible();
+
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: /Yedeği indir/ }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toMatch(/^duguntakip-yedek-\d{4}-\d{2}-\d{2}\.json$/);
   });
 
   test('sunucu sırları sayfa kaynağına sızmıyor', async ({ page }) => {
