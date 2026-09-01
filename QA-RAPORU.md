@@ -11,13 +11,15 @@
 |---------|-------|
 | TypeScript tip kontrolü (`strict`) | ✅ 0 hata |
 | ESLint | ✅ 0 hata, 0 uyarı |
-| Birim + entegrasyon testleri (Vitest) | ✅ 124/124 |
+| Birim + entegrasyon testleri (Vitest) | ✅ 129/129 |
 | Uçtan uca testler (Playwright/Chromium) | ✅ 44/44 |
 | Üretim derlemesi | ✅ başarılı |
 | Tarayıcı konsol hataları | ✅ hiçbir sayfada yok |
 
-Toplam **168 otomatik test**. Audit sırasında bulunan **4 hata** düzeltilmiş ve her biri
-için gerileme testi (regression test) yazılmıştır.
+Toplam **173 otomatik test**. Audit sırasında bulunan **6 hata** düzeltilmiş ve her biri
+için gerileme testi (regression test) yazılmıştır. Otomatik testlere ek olarak
+uygulama derlenip tarayıcıda çalıştırılmış, tüm ekranlar ve tam iş akışı elle
+doğrulanmıştır (bkz. bölüm 2.5–2.6 ve 9).
 
 ---
 
@@ -84,15 +86,47 @@ arka arkaya iki mesaj üreten işlemlerde damgalar eşit olduğunda sıralama
 
 ---
 
+### 2.5 Özet ekranında tutarlar okunamıyordu — *orta*
+
+İstatistik kartlarındaki değerler `truncate` ile kısaltılıyordu. Altı haneli
+tutarlar kart genişliğine sığmadığı için `962.500,...` şeklinde kesiliyor ve
+kullanıcı kalan alacak ile kasa bakiyesini **okuyamıyordu**.
+
+**Düzeltme:** Para değerleri artık kesilmiyor; sarmalanıyor ve dar ekranlarda bir
+punto küçülüyor.
+
+**Tespit:** Tarayıcıda elle doğrulama (otomatik testler DOM metnini okuduğu için
+yalnızca görsel olan bu kusuru yakalayamamıştı).
+
+---
+
+### 2.6 "Son 6 ay" grafiği gelecekteki ayları gösteriyordu — *orta*
+
+Grafik, kaydı bulunan ayları kronolojik sıralayıp son altısını alıyordu. Gelecek
+tarihli rezervasyonlar da listeye girdiği için 1 Eylül 2026'da grafik
+**Nisan 2027 – Ekim 2027** aralığını "Son 6 ay" başlığıyla gösteriyordu. Ayrıca
+kaydı olmayan aylar tamamen atlandığından zaman ekseni kesintili oluyordu
+(Temmuz 2027 hiç görünmüyordu).
+
+**Düzeltme:** Yeni `lastMonthsReport()` yardımcısı, bugünden geriye doğru
+kesintisiz takvim ayları üretir; kaydı olmayan aylar 0 olarak gösterilir ve
+gelecek tarihli kayıtlar seriye girmez.
+
+**Test:** `reports.test.ts` → "lastMonthsReport" başlığı altında 5 test
+(kesintisiz seri, gelecek kayıtların dışlanması, boş ayların sıfırlanması, yıl
+sınırı, ay içi toplama)
+
+---
+
 ## 3. Test kapsamı
 
-### 3.1 Birim testleri — 60 test
+### 3.1 Birim testleri — 65 test
 
 | Dosya | Test | Kapsam |
 |-------|------|--------|
 | `format.test.ts` | 20 | Para/tarih/telefon biçimlendirme, Türkçe metin normalleştirme, slug, gün aritmetiği (ay ve yıl sınırları dâhil) |
 | `db.test.ts` | 26 | Tohumlama, rezervasyon CRUD, seans çakışması, kaparo/tahsilat/bakiye hesapları, renk ayarları, SMS günlüğü, kod üreticileri |
-| `reports.test.ts` | 14 | Tarih aralığı filtresi, toplamlar, program/ay/bakiye/seans raporları, CSV kaçışlama |
+| `reports.test.ts` | 19 | Tarih aralığı filtresi, toplamlar, program/ay/bakiye/seans raporları, CSV kaçışlama |
 
 Sınır durumları özellikle kapsandı: negatife düşmeyen bakiye, fazla tahsilat,
 iptal edilmiş kayıtların raporlardan dışlanması, yıl geçişli ay sıralaması,
@@ -183,7 +217,27 @@ engellenerek doğrulandı).
 
 ---
 
-## 8. Kalan sınırlar
+## 8. Elle doğrulama
+
+Otomatik testlere ek olarak uygulama derlenip tarayıcıda çalıştırıldı ve şu akış
+baştan sona elle yürütüldü:
+
+1. Anasayfa, referans listesi ve salon detay sayfası görüntülendi.
+2. Demo hesabıyla giriş yapıldı; SMS doğrulama kodu girildi.
+3. Yeni rezervasyon oluşturuldu: 250.000 ₺ toplam, 60.000 ₺ kaparo, 420 davetli,
+   iki hizmet seçili.
+4. 40.000 ₺ tahsilat eklendi.
+5. **Beklenen:** toplam tahsilat 100.000 ₺, kalan alacak 150.000 ₺ —
+   **gözlenen:** birebir aynı.
+6. Salon kiralama sözleşmesi çıktısı, raporlar, kasa ve SMS kayıtları görüntülendi.
+7. Oluşan rezervasyon kodu (`DT-2026-7875`) herkese açık kod doğrulama sayfasında
+   sorgulandı ve doğrulandı.
+8. Mobil genişlikte (390 px) menü açıldı.
+
+Bu tur boyunca hiçbir sayfada konsol hatası oluşmadı. Sektör dağılımı çubuklarının
+görünür olduğunda %0'dan hedef değere animasyonla dolduğu ayrıca doğrulandı.
+
+## 9. Kalan sınırlar
 
 Bunlar kusur değil, demo dağıtımının bilinçli sınırlarıdır:
 

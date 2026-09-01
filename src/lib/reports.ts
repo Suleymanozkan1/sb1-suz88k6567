@@ -95,6 +95,41 @@ export function balanceReport(reservations: Reservation[]): BalanceRow[] {
     .sort((a, b) => b.remaining - a.remaining);
 }
 
+/**
+ * Verilen tarihten geriye doğru `count` takvim ayı için kesintisiz seri üretir.
+ * `monthReport` yalnızca kaydı olan ayları döndürdüğü için grafikte hem boş aylar
+ * atlanıyor hem de gelecek tarihli kayıtlar "son aylar" gibi görünüyordu.
+ */
+export function lastMonthsReport(
+  reservations: Reservation[],
+  count: number,
+  referenceIso: string,
+): MonthRow[] {
+  const [refYear, refMonth] = referenceIso.split('-').map(Number);
+  const buckets = new Map<string, Reservation[]>();
+  reservations.forEach((r) => {
+    const key = r.date.slice(0, 7);
+    const list = buckets.get(key) ?? [];
+    list.push(r);
+    buckets.set(key, list);
+  });
+
+  const rows: MonthRow[] = [];
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const d = new Date(refYear, refMonth - 1 - i, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+    rows.push({
+      year,
+      month,
+      label: `${MONTH_NAMES[month]} ${year}`,
+      ...summarize(buckets.get(key) ?? []),
+    });
+  }
+  return rows;
+}
+
 export interface SlotRow extends Totals {
   slot: string;
 }

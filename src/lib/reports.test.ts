@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  balanceReport, monthReport, programReport, slotReport, summarize, toCsv, withinRange,
+  balanceReport, lastMonthsReport, monthReport, programReport, slotReport, summarize, toCsv, withinRange,
 } from './reports';
 import { uid, upsertPayment, upsertReservation } from './db';
 import { clearAll } from './storage';
@@ -143,5 +143,54 @@ describe('toCsv', () => {
   it('ayraç, tırnak ve satır sonu içeren hücreleri kaçışlar', () => {
     expect(toCsv(['x'], [['a;b']])).toBe('x\r\n"a;b"');
     expect(toCsv(['x'], [['de"mo']])).toBe('x\r\n"de""mo"');
+  });
+});
+
+describe('lastMonthsReport', () => {
+  it('bugünden geriye kesintisiz takvim ayları üretir', () => {
+    const rows = lastMonthsReport([], 6, '2026-09-01');
+    expect(rows.map((r) => r.label)).toEqual([
+      'Nisan 2026', 'Mayıs 2026', 'Haziran 2026', 'Temmuz 2026', 'Ağustos 2026', 'Eylül 2026',
+    ]);
+  });
+
+  it('gelecek tarihli kayıtları seriye dahil etmez', () => {
+    const rows = lastMonthsReport(
+      [upsertReservation(make({ date: '2027-04-10' }))],
+      6,
+      '2026-09-01',
+    );
+    expect(rows.every((r) => r.count === 0)).toBe(true);
+    expect(rows.some((r) => r.label.includes('2027'))).toBe(false);
+  });
+
+  it('kaydı olmayan ayları atlamaz, sıfır olarak gösterir', () => {
+    const rows = lastMonthsReport(
+      [upsertReservation(make({ date: '2026-07-15' }))],
+      3,
+      '2026-09-01',
+    );
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r) => [r.label, r.count])).toEqual([
+      ['Temmuz 2026', 1], ['Ağustos 2026', 0], ['Eylül 2026', 0],
+    ]);
+  });
+
+  it('yıl sınırını geriye doğru doğru geçer', () => {
+    const rows = lastMonthsReport([], 3, '2027-01-15');
+    expect(rows.map((r) => r.label)).toEqual(['Kasım 2026', 'Aralık 2026', 'Ocak 2027']);
+  });
+
+  it('ay içindeki tutarları toplar', () => {
+    const rows = lastMonthsReport(
+      [
+        upsertReservation(make({ date: '2026-09-05', totalAmount: 100000, deposit: 0 })),
+        upsertReservation(make({ date: '2026-09-20', totalAmount: 50000, deposit: 0 })),
+      ],
+      1,
+      '2026-09-01',
+    );
+    expect(rows[0].count).toBe(2);
+    expect(rows[0].total).toBe(150000);
   });
 });

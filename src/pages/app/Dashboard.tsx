@@ -6,7 +6,7 @@ import { useBusinessData } from '../../hooks/useBusinessData';
 import { useAuth } from '../../context/AuthContext';
 import { getCashFlow, remainingBalance } from '../../lib/db';
 import { formatDate, formatMoney, formatNumber, todayIso } from '../../lib/format';
-import { monthReport, programReport, summarize } from '../../lib/reports';
+import { lastMonthsReport, programReport, summarize } from '../../lib/reports';
 import { IconCalendar, IconPlus, IconUsers, IconWallet } from '../../components/Icons';
 import { MONTH_NAMES } from '../../data/constants';
 
@@ -35,7 +35,8 @@ export default function Dashboard() {
   );
 
   const byProgram = useMemo(() => programReport(active).slice(0, 5), [active]);
-  const byMonth = useMemo(() => monthReport(active).slice(-6), [active]);
+  // Bugünden geriye 6 takvim ayı; kaydı olmayan aylar 0 olarak gösterilir.
+  const byMonth = useMemo(() => lastMonthsReport(active, 6, today), [active, today]);
   const maxMonth = Math.max(1, ...byMonth.map((m) => m.count));
 
   return (
