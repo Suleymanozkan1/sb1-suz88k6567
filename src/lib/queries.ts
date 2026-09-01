@@ -11,7 +11,8 @@ import type { StaffInput } from './repo';
 import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
-  Business, CashFlowEntry, ColorSetting, ContactMessage, Payment, Reservation,
+  Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage, MessageCategory,
+  Payment, Reservation, SmsLogEntry,
 } from '../types';
 
 export const keys = {
@@ -24,6 +25,8 @@ export const keys = {
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
   audit: (ownerId: string) => ['audit', ownerId] as const,
+  consents: (businessId: string) => ['consents', businessId] as const,
+  smsQueue: (businessId: string) => ['smsQueue', businessId] as const,
 };
 
 /** Oturumdaki kullanıcının aktif işletmesi */
@@ -93,6 +96,24 @@ export function useSmsLog() {
   });
 }
 
+export function useConsents() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.consents(businessId),
+    queryFn: () => repo.listConsents(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSmsQueue(limit = 100) {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.smsQueue(businessId),
+    queryFn: () => repo.listSmsQueue(businessId, limit),
+    enabled: Boolean(businessId),
+  });
+}
+
 export function useAuditLog(limit = 200) {
   const { ownerId } = useAuth();
   return useQuery({
@@ -145,6 +166,9 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.businesses(ownerId) });
     qc.invalidateQueries({ queryKey: keys.staff(ownerId) });
     qc.invalidateQueries({ queryKey: ['reservation'] });
+    qc.invalidateQueries({ queryKey: keys.consents(businessId) });
+    qc.invalidateQueries({ queryKey: keys.smsQueue(businessId) });
+    qc.invalidateQueries({ queryKey: keys.audit(ownerId) });
   };
 }
 
@@ -240,20 +264,61 @@ export function useDeleteStaff() {
 }
 
 /**
- * Müşteriye SMS gönderir ve kaydı işler.
+ * Müşteriye SMS gönderir.
  *
- * Gönderim sunucu tarafındaki /api/sms üzerinden yapılır. Sağlayıcı tanımlı
- * değilse mesaj yine kayıt altına alınır, ancak "gönderilemedi" bilgisi
- * çağırana döner — kullanıcıya yanlış bilgi verilmez.
+ * Mesaj önce kuyruğa alınır; kuyruk, İYS kurallarını uygular (ticari iletide
+ * onay yoksa gönderilmez) ve başarısızlıkta yeniden dener. Kuyruk kabul
+ * ederse anında gönderim de denenir; sağlayıcı erişilemezse mesaj kuyrukta
+ * kalır ve zamanlanmış işleyici tarafından tekrar denenir.
  */
 export function useSendSms() {
   const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+
   return useMutation({
-    mutationFn: async (entry: Parameters<typeof repo.logSms>[0]) => {
+    mutationFn: async (entry: {
+      to: string;
+      body: string;
+      kind: SmsLogEntry['kind'];
+      category: MessageCategory;
+      reservationId?: string;
+    }) => {
+      const queued = await repo.enqueueSms({
+        businessId,
+        phone: entry.to,
+        body: entry.body,
+        kind: entry.kind,
+        category: entry.category,
+        reservationId: entry.reservationId,
+      });
+
+      if (!queued.queued) {
+        return { sent: false, blocked: true, error: queued.reason } as const;
+      }
+
+      // Kayıt her hâlükârda tutulur; gönderim sonucu ayrı raporlanır.
+      await repo.logSms({ businessId, to: entry.to, body: entry.body, kind: entry.kind });
       const result = await sendSms(entry.to, entry.body);
-      await repo.logSms(entry);
-      return result;
+      return { ...result, blocked: false } as const;
     },
+    onSuccess: invalidate,
+  });
+}
+
+export function useSaveConsent() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (input: { phone: string; status: ConsentStatus; source: string; note?: string }) =>
+      repo.saveConsent({ businessId, ...input }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteConsent() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteConsent(id),
     onSuccess: invalidate,
   });
 }

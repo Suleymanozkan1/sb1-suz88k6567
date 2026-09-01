@@ -61,6 +61,8 @@ export const KEYS = {
   cashflow: 'cashflow',
   colors: 'colors',
   sms: 'sms',
+  consents: 'consents',
+  queue: 'queue',
   messages: 'messages',
   session: 'session',
   seeded: 'seeded',

@@ -37,6 +37,7 @@ const Kullanicilar = lazy(() => import('./pages/app/Kullanicilar'));
 const SmsKayitlari = lazy(() => import('./pages/app/SmsKayitlari'));
 const Ayarlar = lazy(() => import('./pages/app/Ayarlar'));
 const DenetimKaydi = lazy(() => import('./pages/app/DenetimKaydi'));
+const IzinYonetimi = lazy(() => import('./pages/app/IzinYonetimi'));
 
 function PanelLoading() {
   return (
@@ -117,6 +118,7 @@ export default function App() {
             <Route path="isletmeler" element={<Isletmeler />} />
             <Route path="kullanicilar" element={<Kullanicilar />} />
             <Route path="sms" element={<SmsKayitlari />} />
+            <Route path="izinler" element={<IzinYonetimi />} />
             <Route path="denetim" element={<DenetimKaydi />} />
             <Route path="ayarlar" element={<Ayarlar />} />
             <Route path="*" element={<Navigate to="/panel" replace />} />

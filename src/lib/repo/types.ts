@@ -6,8 +6,9 @@
  *  - `local`   : tarayıcı belleği (demo ve testler için)
  */
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, Payment,
-  Permission, Reservation, SmsLogEntry, User,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage,
+  EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
+  SmsLogEntry, SmsQueueEntry, User,
 } from '../../types';
 
 export interface SignUpInput {
@@ -96,6 +97,32 @@ export interface Repository {
   /* -- SMS ------------------------------------------------------------ */
   listSms(businessId: string): Promise<SmsLogEntry[]>;
   logSms(entry: Omit<SmsLogEntry, 'id' | 'sentAt'>): Promise<void>;
+
+  /**
+   * Mesajı gönderim kuyruğuna alır.
+   * Ticari iletide İYS onayı yoksa kuyruğa girmez ve gerekçe döner.
+   */
+  enqueueSms(input: {
+    businessId: string;
+    phone: string;
+    body: string;
+    kind: SmsLogEntry['kind'];
+    category: MessageCategory;
+    reservationId?: string;
+  }): Promise<EnqueueResult>;
+
+  listSmsQueue(businessId: string, limit: number): Promise<SmsQueueEntry[]>;
+
+  /* -- İYS izinleri ----------------------------------------------------- */
+  listConsents(businessId: string): Promise<SmsConsent[]>;
+  saveConsent(input: {
+    businessId: string;
+    phone: string;
+    status: ConsentStatus;
+    source: string;
+    note?: string;
+  }): Promise<void>;
+  deleteConsent(id: string): Promise<void>;
 
   /* -- iletişim -------------------------------------------------------- */
   addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>): Promise<void>;

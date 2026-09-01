@@ -231,3 +231,100 @@ describe('kimlik yardımcıları', () => {
     expect(new Set(Array.from({ length: 200 }, () => uid('x'))).size).toBe(200);
   });
 });
+
+describe('İYS kuralları — kuyruğa alma', () => {
+  const BIZ2 = 'biz_iys';
+
+  it('işlem bildirimi onay olmadan da kuyruğa girer (muaf)', async () => {
+    const result = await localRepo.enqueueSms({
+      businessId: BIZ2, phone: '5321234567',
+      body: 'Rezervasyonunuz kayit edildi.', kind: 'Rezervasyon', category: 'islem',
+    });
+    expect(result.queued).toBe(true);
+  });
+
+  it('ticari ileti onay olmadan kuyruğa girmez', async () => {
+    const result = await localRepo.enqueueSms({
+      businessId: BIZ2, phone: '5321234567',
+      body: 'Kampanya!', kind: 'Bilgilendirme', category: 'ticari',
+    });
+    expect(result.queued).toBe(false);
+    expect(result.reason).toMatch(/İYS onayı bulunmuyor/);
+  });
+
+  it('engellenen ticari ileti denetlenebilir kayıt bırakır', async () => {
+    await localRepo.enqueueSms({
+      businessId: BIZ2, phone: '5321234567',
+      body: 'Kampanya!', kind: 'Bilgilendirme', category: 'ticari',
+    });
+    const queue = await localRepo.listSmsQueue(BIZ2, 50);
+    const blocked = queue.find((q) => q.category === 'ticari');
+    expect(blocked?.status).toBe('iptal');
+    expect(blocked?.lastError).toBeTruthy();
+  });
+
+  it('onay verilince ticari ileti kuyruğa girer', async () => {
+    await localRepo.saveConsent({
+      businessId: BIZ2, phone: '5321234567', status: 'ONAY', source: 'HS_FIZIKSEL_ORTAM',
+    });
+    const result = await localRepo.enqueueSms({
+      businessId: BIZ2, phone: '5321234567',
+      body: 'Kampanya!', kind: 'Bilgilendirme', category: 'ticari',
+    });
+    expect(result.queued).toBe(true);
+  });
+
+  it('ret verilince ticari ileti tekrar engellenir', async () => {
+    await localRepo.saveConsent({
+      businessId: BIZ2, phone: '5321234567', status: 'RET', source: 'HS_FIZIKSEL_ORTAM',
+    });
+    const result = await localRepo.enqueueSms({
+      businessId: BIZ2, phone: '5321234567',
+      body: 'Kampanya!', kind: 'Bilgilendirme', category: 'ticari',
+    });
+    expect(result.queued).toBe(false);
+    expect(result.reason).toMatch(/reddetmiş/);
+  });
+
+  it('ret verse bile işlem bildirimi gönderilmeye devam eder (muaf)', async () => {
+    await localRepo.saveConsent({
+      businessId: BIZ2, phone: '5321234567', status: 'RET', source: 'HS_FIZIKSEL_ORTAM',
+    });
+    const result = await localRepo.enqueueSms({
+      businessId: BIZ2, phone: '5321234567',
+      body: 'Rezervasyon hatirlatma', kind: 'Hatırlatma', category: 'islem',
+    });
+    expect(result.queued).toBe(true);
+  });
+
+  it('numarayı normalize eder (0 ve +90 önekleri)', async () => {
+    await localRepo.enqueueSms({
+      businessId: BIZ2, phone: '+90 532 123 45 68',
+      body: 'Test', kind: 'Rezervasyon', category: 'islem',
+    });
+    const queue = await localRepo.listSmsQueue(BIZ2, 50);
+    expect(queue[0].phone).toBe('5321234568');
+  });
+
+  it('geçersiz numarayı reddeder', async () => {
+    const result = await localRepo.enqueueSms({
+      businessId: BIZ2, phone: '12345', body: 'Test', kind: 'Rezervasyon', category: 'islem',
+    });
+    expect(result.queued).toBe(false);
+    expect(result.reason).toMatch(/Geçersiz/);
+  });
+
+  it('izin kaydını günceller, çoğaltmaz', async () => {
+    await localRepo.saveConsent({ businessId: BIZ2, phone: '5330001122', status: 'ONAY', source: 'HS_WEB' });
+    await localRepo.saveConsent({ businessId: BIZ2, phone: '5330001122', status: 'RET', source: 'HS_WEB' });
+    const list = await localRepo.listConsents(BIZ2);
+    const matching = list.filter((c) => c.phone === '5330001122');
+    expect(matching).toHaveLength(1);
+    expect(matching[0].status).toBe('RET');
+  });
+
+  it('izinler işletmeye göre ayrışır', async () => {
+    await localRepo.saveConsent({ businessId: 'biz_a', phone: '5340001122', status: 'ONAY', source: 'HS_WEB' });
+    expect(await localRepo.listConsents('biz_b')).toHaveLength(0);
+  });
+});

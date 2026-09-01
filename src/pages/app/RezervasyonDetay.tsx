@@ -106,19 +106,23 @@ export default function RezervasyonDetay() {
 
   async function sendReminder() {
     const result = await sendSmsMutation.mutateAsync({
-      businessId: reservation!.businessId,
       to: reservation!.customerPhone,
       body: `Sayin ${reservation!.customerName}, ${formatDate(reservation!.date)} tarihli rezervasyonunuz icin hatirlatma. Kalan bakiye: ${remaining.toLocaleString('tr-TR')} TL. Kod: ${reservation!.code}`,
       kind: 'Hatırlatma',
+      // Randevu hatırlatma işlem bildirimidir: İYS onayı gerekmez.
+      category: 'islem',
+      reservationId: reservation!.id,
     });
     if (result.sent) {
       setSmsSent(true);
       window.setTimeout(() => setSmsSent(false), 4000);
+    } else if (result.blocked) {
+      setActionError(result.error ?? 'Mesaj gönderilemedi.');
     } else {
       setActionError(
         result.notConfigured
-          ? 'SMS sağlayıcısı tanımlı olmadığı için mesaj gönderilemedi; kayıt altına alındı.'
-          : result.error ?? 'SMS gönderilemedi.',
+          ? 'SMS sağlayıcısı tanımlı olmadığı için mesaj şu an gönderilemedi; kuyrukta bekliyor ve otomatik olarak yeniden denenecek.'
+          : result.error ?? 'Mesaj kuyruğa alındı, gönderim yeniden denenecek.',
       );
     }
   }

@@ -132,6 +132,50 @@ export interface ColorSetting {
   color: string;
 }
 
+/**
+ * Mesaj sınıflandırması — İYS yükümlülüğünü belirler.
+ *   islem : rezervasyon onayı, hatırlatma, doğrulama kodu, ödeme bildirimi
+ *           -> İYS onayı GEREKMEZ (muaf)
+ *   ticari: kampanya, indirim, tanıtım
+ *           -> İYS onayı ŞARTTIR
+ */
+export type MessageCategory = 'islem' | 'ticari';
+
+export type ConsentStatus = 'ONAY' | 'RET';
+
+export interface SmsConsent {
+  id: string;
+  businessId: string;
+  phone: string;
+  status: ConsentStatus;
+  source: string;
+  consentDate: string;
+  iysSyncedAt?: string;
+  iysError?: string;
+  note?: string;
+}
+
+export type QueueStatus = 'bekliyor' | 'gonderiliyor' | 'gonderildi' | 'basarisiz' | 'iptal';
+
+export interface SmsQueueEntry {
+  id: string;
+  phone: string;
+  body: string;
+  kind: SmsLogEntry['kind'];
+  category: MessageCategory;
+  status: QueueStatus;
+  attempts: number;
+  nextAttemptAt: string;
+  lastError?: string;
+  createdAt: string;
+  sentAt?: string;
+}
+
+export interface EnqueueResult {
+  queued: boolean;
+  reason?: string;
+}
+
 export interface SmsLogEntry {
   id: string;
   businessId: string;

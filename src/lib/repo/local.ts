@@ -10,8 +10,8 @@ import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS, seedIfEmpty } from '../seed'
 import { normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import type {
-  Business, CashFlowEntry, ColorSetting, ContactMessage, Payment,
-  Reservation, SmsLogEntry, User,
+  Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, Payment,
+  Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry, User,
 } from '../../types';
 
 const wait = <T,>(value: T): Promise<T> => Promise.resolve(value);
@@ -22,6 +22,14 @@ function businesses(): Business[] { return read<Business[]>(KEYS.businesses, [])
 function reservations(): Reservation[] { return read<Reservation[]>(KEYS.reservations, []); }
 function payments(): Payment[] { return read<Payment[]>(KEYS.payments, []); }
 function cash(): CashFlowEntry[] { return read<CashFlowEntry[]>(KEYS.cashflow, []); }
+function consents(): SmsConsent[] { return read<SmsConsent[]>(KEYS.consents, []); }
+function queue(): SmsQueueEntry[] { return read<SmsQueueEntry[]>(KEYS.queue, []); }
+
+/** 5321234567 biçimine indirger */
+function normalizePhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
+  return /^5\d{9}$/.test(digits) ? digits : null;
+}
 
 function requireUser(id: string): User {
   const found = users().find((u) => u.id === id);
@@ -32,6 +40,20 @@ function requireUser(id: string): User {
 /** Kullanıcının veri sahibi kapsamı: personel ise bağlı olduğu yönetici */
 function scopeOf(user: User): string {
   return user.role === 'staff' ? user.ownerId ?? user.id : user.id;
+}
+
+/** Kuyruk kaydını yazar (demo modunda gönderim yapılmaz) */
+function pushQueue(
+  input: { businessId: string; body: string; kind: SmsLogEntry['kind']; category: SmsQueueEntry['category'] },
+  phone: string,
+  status: SmsQueueEntry['status'],
+  lastError?: string,
+): void {
+  const now = new Date().toISOString();
+  write(KEYS.queue, [...queue(), {
+    id: uid('q'), phone, body: input.body, kind: input.kind, category: input.category,
+    status, attempts: 0, nextAttemptAt: now, lastError, createdAt: now,
+  }]);
 }
 
 export const localRepo: Repository = {
@@ -279,6 +301,65 @@ export const localRepo: Repository = {
    */
   async listAuditLog() {
     return wait([]);
+  },
+
+  /**
+   * Veritabanındaki enqueue_sms fonksiyonu ile aynı kuralları uygular:
+   * işlem bildirimleri muaftır, ticari ileti İYS onayı ister.
+   */
+  async enqueueSms(input) {
+    const phone = normalizePhone(input.phone);
+    if (!phone) return wait<EnqueueResult>({ queued: false, reason: 'Geçersiz cep telefonu numarası.' });
+
+    const record = consents().find((c) => c.businessId === input.businessId && c.phone === phone);
+
+    if (input.category === 'ticari') {
+      if (record?.status === 'RET') {
+        pushQueue(input, phone, 'iptal', 'Alıcı ticari ileti almayı reddetmiş (İYS: RET).');
+        return wait<EnqueueResult>({ queued: false, reason: 'Alıcı ticari ileti almayı reddetmiş.' });
+      }
+      if (record?.status !== 'ONAY') {
+        pushQueue(input, phone, 'iptal', 'İYS onayı bulunmuyor.');
+        return wait<EnqueueResult>({ queued: false, reason: 'Bu numara için İYS onayı bulunmuyor.' });
+      }
+    }
+
+    pushQueue(input, phone, 'bekliyor');
+    return wait<EnqueueResult>({ queued: true });
+  },
+
+  async listSmsQueue(businessId, limit) {
+    void businessId;
+    return wait(queue().slice(-limit).reverse());
+  },
+
+  async listConsents(businessId) {
+    return wait(consents()
+      .filter((c) => c.businessId === businessId)
+      .sort((a, b) => b.consentDate.localeCompare(a.consentDate)));
+  },
+
+  async saveConsent(input) {
+    const phone = normalizePhone(input.phone);
+    if (!phone) throw new RepoError('Geçersiz cep telefonu numarası.');
+
+    const list = consents();
+    const idx = list.findIndex((c) => c.businessId === input.businessId && c.phone === phone);
+    const record: SmsConsent = {
+      id: idx >= 0 ? list[idx].id : uid('cns'),
+      businessId: input.businessId,
+      phone,
+      status: input.status,
+      source: input.source,
+      consentDate: new Date().toISOString(),
+      note: input.note,
+    };
+    if (idx >= 0) list[idx] = record; else list.push(record);
+    write(KEYS.consents, list);
+  },
+
+  async deleteConsent(id) {
+    write(KEYS.consents, consents().filter((c) => c.id !== id));
   },
 
   async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>) {

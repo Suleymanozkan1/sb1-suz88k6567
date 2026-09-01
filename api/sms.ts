@@ -28,8 +28,15 @@ export function isProviderConfigured(): boolean {
   return Boolean(process.env.NETGSM_USER && process.env.NETGSM_PASS && process.env.NETGSM_HEADER);
 }
 
-/** Netgsm HTTP API üzerinden tek mesaj gönderir. */
-async function sendViaProvider(to: string, body: string): Promise<{ ok: boolean; error?: string }> {
+export interface ProviderResult {
+  ok: boolean;
+  /** Sağlayıcının verdiği iş numarası (takip için saklanır) */
+  reference?: string;
+  error?: string;
+}
+
+/** Netgsm HTTP API üzerinden tek mesaj gönderir. Kuyruk işleyicisi de bunu kullanır. */
+export async function sendOne(to: string, body: string): Promise<ProviderResult> {
   const params = new URLSearchParams({
     usercode: process.env.NETGSM_USER!,
     password: process.env.NETGSM_PASS!,
@@ -46,8 +53,8 @@ async function sendViaProvider(to: string, body: string): Promise<{ ok: boolean;
   const text = (await response.text()).trim();
 
   // Netgsm başarıda "00 <jobid>" veya "01 <jobid>" döner; diğerleri hata kodudur.
-  const code = text.split(/\s+/)[0];
-  if (code === '00' || code === '01' || code === '02') return { ok: true };
+  const [code, reference] = text.split(/\s+/);
+  if (code === '00' || code === '01' || code === '02') return { ok: true, reference };
 
   const errors: Record<string, string> = {
     '20': 'Mesaj metni çok uzun veya karakter sorunu var.',
@@ -94,7 +101,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   try {
-    const result = await sendViaProvider(to, body);
+    const result = await sendOne(to, body);
     if (!result.ok) return json({ sent: false, error: result.error }, 502);
     return json({ sent: true });
   } catch {

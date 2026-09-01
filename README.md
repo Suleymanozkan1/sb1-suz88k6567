@@ -38,8 +38,8 @@ Demo hesapları yalnızca demo modunda vardır.
 | `npm run build`     | Tip kontrolü + üretim derlemesi (`dist/`)        |
 | `npm run preview`   | Derlenmiş çıktıyı yerel olarak sunar             |
 | `npm run lint`      | ESLint                                           |
-| `npm test`          | Vitest birim + entegrasyon testleri (147 test)   |
-| `npm run e2e`       | Playwright uçtan uca testleri (50 test)          |
+| `npm test`          | Vitest birim + entegrasyon testleri (157 test)   |
+| `npm run e2e`       | Playwright uçtan uca testleri (52 test)          |
 
 ## Sayfa haritası
 
@@ -78,6 +78,7 @@ Demo hesapları yalnızca demo modunda vardır.
 | `/panel/isletmeler` | Firmalarım / Adminler — çok işletmeli kullanım |
 | `/panel/kullanicilar` | Alt kullanıcılar ve yetkileri |
 | `/panel/sms` | Gönderilen SMS kayıtları |
+| `/panel/izinler` | İYS izin yönetimi — ticari ileti onay/ret kayıtları |
 | `/panel/denetim` | Denetim kaydı — kim, neyi, ne zaman değiştirdi |
 | `/panel/ayarlar` | Profil, şifre değiştirme, veri sıfırlama |
 
@@ -87,6 +88,9 @@ Demo hesapları yalnızca demo modunda vardır.
 api/            Sunucu tarafı fonksiyonlar (Vercel)
   sms.ts        SMS gönderimi — sağlayıcı anahtarı yalnızca burada
   otp.ts        Giriş SMS doğrulaması (HMAC imzalı, 5 dk geçerli)
+  login.ts      Korumalı giriş — hesap kilidi ve hız sınırı
+  sms-queue.ts  Kuyruk işleyici (cron, üstel geri çekilme)
+  iys.ts        İYS onay aktarımı ve ret çekimi (cron)
 supabase/
   migrations/   Veritabanı şeması ve RLS politikaları
   tests/        RLS izolasyon testleri (yerel Postgres ile çalıştırılır)
@@ -122,7 +126,7 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 
 1. [supabase.com](https://supabase.com) üzerinde proje açın (**bölge: Frankfurt** — KVKK açısından AB tercih edilir).
 2. SQL Editor'da migration dosyalarını **sırayla** çalıştırın:
-   `supabase/migrations/0001_init.sql`, ardından `supabase/migrations/0002_security.sql`.
+   `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql`
 3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
 4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
 5. Authentication → Users bölümünden kendi hesabınızı oluşturun.
@@ -137,8 +141,10 @@ yetkileri panelin **Kullanıcılar** ekranından düzenlenir.
 psql -d <veritabani> -f supabase/tests/00_supabase_stub.sql   # yalnızca yerel: auth şeması taklidi
 psql -d <veritabani> -f supabase/migrations/0001_init.sql
 psql -d <veritabani> -f supabase/migrations/0002_security.sql
+psql -d <veritabani> -f supabase/migrations/0003_iys_queue.sql
 psql -d <veritabani> -f supabase/tests/01_rls_test.sql        # 8 izolasyon senaryosu
 psql -d <veritabani> -f supabase/tests/02_security_test.sql   # 15 güvenlik senaryosu
+psql -d <veritabani> -f supabase/tests/03_iys_test.sql        # 16 İYS ve kuyruk senaryosu
 ```
 
 ## Güvenlik
@@ -149,6 +155,7 @@ psql -d <veritabani> -f supabase/tests/02_security_test.sql   # 15 güvenlik sen
 | **Giriş kilidi** | `api/login.ts` + veritabanı | 15 dakika içinde 5 başarısız denemede hesap 15 dakika kilitlenir |
 | **Hız sınırı** | `api/_guard.ts` | Giriş 20/5dk (IP), SMS 30/saat (IP) ve 5/saat (numara), kod isteme 5/15dk, kod deneme 8/15dk |
 | **Denetim kaydı** | Postgres tetikleyicileri | Tüm ekleme/değişiklik/silme işlemleri, değişen alanlarla birlikte; kayıtlar değiştirilemez |
+| **İYS kuralı** | `enqueue_sms` fonksiyonu | Ticari ileti onaysız gönderilemez; kuyruğa doğrudan yazma istemciye kapalı |
 | **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `service_role` anahtarı yalnızca sunucuda; `VITE_` öneki taşımaz |
 | **Hata izleme** | `src/lib/monitoring.ts` | İsteğe bağlı Sentry; gönderilen olaylarda e-posta ve telefon maskelenir |
 | **Güvenlik başlıkları** | `vercel.json` | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
@@ -161,21 +168,68 @@ kalır (uygulama çalışmaya devam eder, ancak kilit uygulanmaz).
 > sunucu ortam değişkeni olarak tanımlayın; asla `VITE_` öneki kullanmayın ve
 > istemci koduna aktarmayın.
 
-## SMS
+## SMS ve İYS uyumu
 
-Rezervasyon kaydedildiğinde müşteriye otomatik SMS gönderilir; hatırlatma SMS'i
-rezervasyon detayından elle gönderilebilir. Tüm gönderimler `api/sms.ts` üzerinden
-yapılır — sağlayıcı şifresi tarayıcıya hiçbir zaman inmez.
+### Mesaj sınıflandırması
 
-`NETGSM_USER`, `NETGSM_PASS`, `NETGSM_HEADER` tanımlı değilse mesaj yalnızca kayıt
-altına alınır ve arayüzde **gönderilemediği açıkça belirtilir**; "gönderildi"
-denmez.
+Türkiye'de ticari elektronik ileti göndermek için İYS onayı zorunludur; işlem
+bildirimleri bu kapsamın dışındadır. Sistem her mesajı sınıflandırır ve kuralı
+**veritabanı seviyesinde** uygular:
+
+| Sınıf | Örnekler | İYS onayı |
+|-------|----------|-----------|
+| **İşlem bildirimi** (`islem`) | Rezervasyon onayı, randevu hatırlatma, doğrulama kodu, ödeme bildirimi | **Gerekmez** (muaf) |
+| **Ticari ileti** (`ticari`) | Kampanya, indirim, tanıtım | **Şart** |
+
+Onayı olmayan bir numaraya ticari ileti gönderilemez; deneme sessizce
+atılmaz, kuyruğa `iptal` durumuyla gerekçesiyle yazılır ve denetlenebilir kalır.
+Ret kaydı bulunan numaraya ticari ileti **anında engellenir**, ancak işlem
+bildirimleri etkilenmez.
+
+> Bu sınıflandırma mevzuatın genel uygulamasına dayanır. Kendi mesaj
+> metinlerinizin sınıfını hukuk danışmanınızla teyit ediniz.
+
+### Gönderim kuyruğu
+
+Mesajlar doğrudan gönderilmez; önce kuyruğa alınır. Böylece sağlayıcı kesintisi
+mesaj kaybına yol açmaz.
+
+- Başarısızlıkta üstel geri çekilme ile yeniden denenir: **1dk → 5dk → 15dk → 1sa → 4sa**
+- 5 denemeden sonra kalıcı başarısız işaretlenir
+- Takılı kalan kayıtlar 15 dakika sonra otomatik kurtarılır
+- İşletme başına günlük 500 mesaj tavanı (hatalı döngülerin faturayı şişirmesini önler)
+- Kuyruk durumu panelde **SMS Kayıtları → Kuyruk** sekmesinde görülür
+
+Kuyruk `api/sms-queue.ts` tarafından **5 dakikada bir** işlenir (Vercel Cron).
+
+### İYS senkronizasyonu
+
+`api/iys.ts` her gece 03:00'te çalışır:
+
+- **Aktarım:** sistemde alınan yeni onaylar İYS'ye gönderilir
+  (mevzuat: yeni onaylar **3 iş günü** içinde aktarılmalıdır)
+- **Çekim:** İYS'de verilen ret kayıtları sisteme işlenir
+  (mevzuat: ret en geç **3 iş günü** içinde uygulanmalıdır)
+
+İYS bilgileri tanımlı değilse senkronizasyon çalışmaz; ticari ileti gönderimi
+yerel onay kayıtlarına göre yine de engellenir. Panelde henüz aktarılmamış kayıt
+sayısı uyarı olarak gösterilir.
+
+> Bazı firmalar İYS'ye doğrudan değil, SMS sağlayıcıları (ör. Netgsm) üzerinden
+> bağlanır. O durumda `IYS_*` değişkenlerini boş bırakıp onay aktarımını sağlayıcı
+> panelinden yapabilirsiniz.
+
+### Sağlayıcı
+
+Tüm gönderimler `api/sms.ts` üzerinden yapılır — sağlayıcı şifresi tarayıcıya
+hiçbir zaman inmez. `NETGSM_*` tanımlı değilse mesaj kuyrukta bekler ve arayüzde
+**gönderilemediği açıkça belirtilir**; "gönderildi" denmez.
 
 `OTP_SECRET` tanımlıysa girişte ikinci adım olarak cep telefonuna 6 haneli kod
 gönderilir. Kod sunucuda üretilir ve yalnızca HMAC imzası istemciye döner.
 
-**Yapılması gerekenler:** Netgsm'den marka başlığı (gönderici adı) onayı alın ve
-İYS (İleti Yönetim Sistemi) yükümlülüklerinizi kontrol edin.
+**Yapılması gerekenler:** Netgsm'den marka başlığı (gönderici adı) onayı alın;
+ticari ileti gönderecekseniz İYS üyeliği ve entegrasyon bilgilerinizi temin edin.
 
 ## Vercel'e dağıtım
 
@@ -189,7 +243,16 @@ yapmanıza gerek yoktur.
 | Ortam değişkenleri | `.env.example` dosyasındaki tüm anahtarlar |
 
 Sunucu tarafı fonksiyonlar (`api/`) Vercel tarafından otomatik yayınlanır.
-Alt çizgi ile başlayan dosyalar (`api/_guard.ts`) uç nokta olarak yayınlanmaz.
+Alt çizgi ile başlayan dosyalar (`api/_guard.ts`, `api/_db.ts`) uç nokta olarak
+yayınlanmaz.
+
+Zamanlanmış görevler `vercel.json` içindeki `crons` bölümünde tanımlıdır ve
+`CRON_SECRET` ile yetkilendirilir:
+
+| Görev | Sıklık |
+|-------|--------|
+| `/api/sms-queue` — kuyruk işleme | 5 dakikada bir |
+| `/api/iys` — İYS senkronizasyonu | Her gece 03:00 |
 | Build Command | `npm run build` |
 | Output Directory | `dist` |
 

@@ -23,7 +23,7 @@ test.describe('İstemci tarafı güvenlik', () => {
     await blockExternalRequests(page);
     for (const path of [
       '/panel', '/panel/rezervasyonlar', '/panel/kasa', '/panel/raporlar',
-      '/panel/kullanicilar', '/panel/denetim', '/panel/ayarlar',
+      '/panel/kullanicilar', '/panel/denetim', '/panel/izinler', '/panel/ayarlar',
     ]) {
       await page.goto(path);
       await expect(page, `${path} korumasız`).toHaveURL(/\/uye-girisi$/);
@@ -67,6 +67,40 @@ test.describe('İstemci tarafı güvenlik', () => {
     await expect(page.getByText('Ödenen')).toHaveCount(0);
   });
 
+  test('ticari ileti İYS onayı olmadan gönderilemez', async ({ page }) => {
+    await blockExternalRequests(page);
+    await page.goto('/uye-girisi');
+    await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
+    await page.getByRole('button', { name: 'Giriş Yap' }).click();
+    await expect(page).toHaveURL(/\/panel$/);
+
+    // İzin ekranı, muafiyet kuralını açıkça anlatmalı
+    await page.goto('/panel/izinler');
+    await expect(page.getByRole('heading', { name: 'İYS İzin Yönetimi' })).toBeVisible();
+    await expect(page.getByText(/işlem bildirimleri/i)).toBeVisible();
+    await expect(page.getByText(/3 iş günü/).first()).toBeVisible();
+
+    // Ret kaydı ekle
+    await page.getByLabel('Cep Telefonu').fill('5329998877');
+    await page.getByLabel('Durum').selectOption('RET');
+    await page.getByRole('button', { name: /Kaydet/ }).click();
+    await expect(page.getByText('İzin kaydı kaydedildi.')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'RET' })).toBeVisible();
+  });
+
+  test('SMS kuyruğu görünümü açılır', async ({ page }) => {
+    await blockExternalRequests(page);
+    await page.goto('/uye-girisi');
+    await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
+    await page.getByRole('button', { name: 'Giriş Yap' }).click();
+    await expect(page).toHaveURL(/\/panel$/);
+
+    await page.goto('/panel/sms');
+    await page.getByRole('tab', { name: /Kuyruk/ }).click();
+    // Kuyruk görünümü açılmalı (kayıt olsun olmasın)
+    await expect(page.getByRole('tab', { name: /Kuyruk/ })).toHaveAttribute('aria-selected', 'true');
+  });
+
   test('sunucu sırları sayfa kaynağına sızmıyor', async ({ page }) => {
     await blockExternalRequests(page);
     // vercel.json başlıkları yalnızca Vercel'de uygulanır; burada sayfanın
@@ -87,7 +121,8 @@ test.describe('İstemci tarafı güvenlik', () => {
 
     for (const src of scripts) {
       const code = await (await request.get(src!)).text();
-      expect(code, `${src} sunucu sırrı içeriyor`).not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key/i);
+      expect(code, `${src} sunucu sırrı içeriyor`)
+        .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET/i);
     }
   });
 });

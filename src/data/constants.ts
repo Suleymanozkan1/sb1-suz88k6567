@@ -167,3 +167,25 @@ export const TRIAL_DAYS = 7;
 
 /** Tavsiye Et Kazan: her ücretli üye için kazanılan ek süre (gün) */
 export const REFERRAL_BONUS_DAYS = 30;
+
+/** İYS onay kaynağı kodları */
+export const CONSENT_SOURCES: { value: string; label: string }[] = [
+  { value: 'HS_FIZIKSEL_ORTAM', label: 'Fiziksel ortam (sözleşme, form)' },
+  { value: 'HS_ISLAK_IMZA', label: 'Islak imzalı onay' },
+  { value: 'HS_WEB', label: 'Web sitesi' },
+  { value: 'HS_MOBIL', label: 'Mobil uygulama' },
+  { value: 'HS_CAGRI_MERKEZI', label: 'Çağrı merkezi' },
+  { value: 'HS_SMS', label: 'SMS ile onay' },
+  { value: 'HS_EPOSTA', label: 'E-posta ile onay' },
+];
+
+/**
+ * Sistemin gönderdiği hazır mesajların İYS sınıflandırması.
+ * Rezervasyon onayı, hatırlatma ve doğrulama kodu işlem bildirimidir (muaf).
+ */
+export const MESSAGE_CATEGORY_BY_KIND: Record<string, 'islem' | 'ticari'> = {
+  'Rezervasyon': 'islem',
+  'Hatırlatma': 'islem',
+  'Doğrulama': 'islem',
+  'Bilgilendirme': 'ticari',
+};

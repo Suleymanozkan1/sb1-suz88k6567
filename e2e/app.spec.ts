@@ -51,6 +51,8 @@ test.describe('Üye paneli', () => {
       ['/panel/isletmeler', 'Firmalarım / Adminler'],
       ['/panel/kullanicilar', 'Kullanıcılar'],
       ['/panel/sms', 'SMS Kayıtları'],
+      ['/panel/izinler', 'İYS İzin Yönetimi'],
+      ['/panel/denetim', 'Denetim Kaydı'],
       ['/panel/ayarlar', 'Ayarlar'],
     ];
 

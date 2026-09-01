@@ -176,10 +176,12 @@ export default function RezervasyonForm() {
       // "Rezervasyon Kayıt ettiğinizde SMS OTOMATİK OLARAK GİDER"
       if (!existing) {
         await sendSmsMutation.mutateAsync({
-          businessId: saved.businessId,
           to: phone,
           body: `Sayin ${saved.customerName}, ${formatDate(saved.date)} tarihli rezervasyonunuz kayit edilmistir. Kod: ${saved.code}`,
           kind: 'Rezervasyon',
+          // Rezervasyon onayı işlem bildirimidir: İYS onayı gerekmez.
+          category: 'islem',
+          reservationId: saved.id,
         });
       }
       navigate(`/panel/rezervasyonlar/${saved.id}`, { replace: true });

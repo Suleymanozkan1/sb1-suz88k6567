@@ -3,8 +3,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants';
 import { RepoError, type PublicReservation, type Repository } from './types';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, Payment,
-  Permission, Reservation, SmsLogEntry, User,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult,
+  Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry, User,
 } from '../../types';
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -498,6 +498,77 @@ export const supabaseRepo: Repository = {
       business_id: entry.businessId, to: entry.to, body: entry.body, kind: entry.kind,
     });
     if (error) fail('SMS kaydı yazılamadı.', error);
+  },
+
+  async enqueueSms(input) {
+    const { data, error } = await db().rpc('enqueue_sms', {
+      p_business_id: input.businessId,
+      p_phone: input.phone,
+      p_body: input.body,
+      p_kind: input.kind,
+      p_category: input.category,
+      p_reservation_id: input.reservationId ?? null,
+    });
+    if (error) fail('Mesaj kuyruğa alınamadı.', error);
+    const row = (Array.isArray(data) ? data[0] : data) as { queued?: boolean; reason?: string } | null;
+    return { queued: Boolean(row?.queued), reason: row?.reason ?? undefined } satisfies EnqueueResult;
+  },
+
+  async listSmsQueue(businessId, limit) {
+    const { data, error } = await db().from('sms_queue')
+      .select('*').eq('business_id', businessId)
+      .order('created_at', { ascending: false }).limit(limit);
+    if (error) fail('Kuyruk okunamadı.', error);
+    return (data ?? []).map((row: Row): SmsQueueEntry => ({
+      id: String(row.id),
+      phone: (row.phone as string) ?? '',
+      body: (row.body as string) ?? '',
+      kind: (row.kind as SmsQueueEntry['kind']) ?? 'Bilgilendirme',
+      category: (row.category as SmsQueueEntry['category']) ?? 'islem',
+      status: (row.status as SmsQueueEntry['status']) ?? 'bekliyor',
+      attempts: Number(row.attempts ?? 0),
+      nextAttemptAt: (row.next_attempt_at as string) ?? '',
+      lastError: (row.last_error as string) ?? undefined,
+      createdAt: (row.created_at as string) ?? '',
+      sentAt: (row.sent_at as string) ?? undefined,
+    }));
+  },
+
+  async listConsents(businessId) {
+    const { data, error } = await db().from('sms_consents')
+      .select('*').eq('business_id', businessId).order('consent_date', { ascending: false });
+    if (error) fail('İzin kayıtları alınamadı.', error);
+    return (data ?? []).map((row: Row): SmsConsent => ({
+      id: String(row.id),
+      businessId: String(row.business_id),
+      phone: (row.phone as string) ?? '',
+      status: (row.status as SmsConsent['status']) ?? 'ONAY',
+      source: (row.source as string) ?? '',
+      consentDate: (row.consent_date as string) ?? '',
+      iysSyncedAt: (row.iys_synced_at as string) ?? undefined,
+      iysError: (row.iys_error as string) ?? undefined,
+      note: (row.note as string) ?? undefined,
+    }));
+  },
+
+  async saveConsent(input) {
+    const { error } = await db().from('sms_consents').upsert({
+      business_id: input.businessId,
+      phone: input.phone,
+      status: input.status,
+      source: input.source,
+      note: input.note || null,
+      consent_date: new Date().toISOString(),
+      // Durum değiştiği için İYS'ye yeniden aktarılmalı
+      iys_synced_at: null,
+      iys_error: null,
+    }, { onConflict: 'business_id,phone' });
+    if (error) fail('İzin kaydedilemedi.', error);
+  },
+
+  async deleteConsent(id) {
+    const { error } = await db().from('sms_consents').delete().eq('id', id);
+    if (error) fail('İzin kaydı silinemedi.', error);
   },
 
   async listAuditLog(limit) {
