@@ -8,8 +8,10 @@
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage,
   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
+  Invoice, InvoiceKind, BuyerKind,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
 } from '../../types';
+import type { InvoiceLineInput } from '../invoice';
 
 export interface SignUpInput {
   email: string;
@@ -129,6 +131,28 @@ export interface Repository {
 
   /* -- denetim kaydı ---------------------------------------------------- */
   listAuditLog(limit: number): Promise<AuditEntry[]>;
+
+  /* -- faturalar --------------------------------------------------------- */
+  listInvoices(businessId: string): Promise<Invoice[]>;
+  getInvoice(id: string): Promise<Invoice | null>;
+  createInvoice(input: {
+    businessId: string;
+    reservationId?: string;
+    kind: InvoiceKind;
+    serviceDate?: string;
+    buyerKind: BuyerKind;
+    buyerName: string;
+    buyerTaxId?: string;
+    buyerTaxOffice?: string;
+    buyerAddress?: string;
+    buyerEmail?: string;
+    buyerPhone?: string;
+    note?: string;
+    lines: InvoiceLineInput[];
+  }): Promise<Invoice>;
+  /** Taslak faturayı entegratöre gönderir */
+  sendInvoice(id: string): Promise<{ sent: boolean; reason?: string }>;
+  cancelInvoice(id: string, reason: string): Promise<void>;
 
   /* -- izleme ve yedekleme ---------------------------------------------- */
   getSystemHealth(ownerId: string): Promise<SystemHealth | null>;

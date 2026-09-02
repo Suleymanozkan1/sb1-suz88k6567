@@ -23,7 +23,8 @@ test.describe('İstemci tarafı güvenlik', () => {
     await blockExternalRequests(page);
     for (const path of [
       '/panel', '/panel/rezervasyonlar', '/panel/kasa', '/panel/raporlar',
-      '/panel/kullanicilar', '/panel/denetim', '/panel/izinler', '/panel/sistem', '/panel/ayarlar',
+      '/panel/kullanicilar', '/panel/denetim', '/panel/izinler', '/panel/sistem',
+      '/panel/faturalar', '/panel/ayarlar',
     ]) {
       await page.goto(path);
       await expect(page, `${path} korumasız`).toHaveURL(/\/uye-girisi$/);
@@ -117,6 +118,26 @@ test.describe('İstemci tarafı güvenlik', () => {
     expect(file.suggestedFilename()).toMatch(/^duguntakip-yedek-\d{4}-\d{2}-\d{2}\.json$/);
   });
 
+  test('fatura tutarları arayüzde doğru hesaplanır', async ({ page }) => {
+    await blockExternalRequests(page);
+    await page.goto('/uye-girisi');
+    await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
+    await page.getByRole('button', { name: 'Giriş Yap' }).click();
+    await expect(page).toHaveURL(/\/panel$/);
+
+    await page.goto('/panel/faturalar');
+    await page.getByRole('button', { name: /Yeni Fatura/ }).click();
+
+    await page.getByLabel('Ad Soyad').fill('Test Müşteri');
+    await page.getByLabel('Açıklama').fill('Salon kiralama');
+    await page.getByLabel('Birim Fiyat').fill('100000');
+    await page.getByLabel('KDV %').selectOption('20');
+
+    // 100.000 matrah + %20 KDV = 120.000 toplam
+    await expect(page.getByText('Genel Toplam')).toBeVisible();
+    await expect(page.getByText('120.000,00 ₺').first()).toBeVisible();
+  });
+
   test('sunucu sırları sayfa kaynağına sızmıyor', async ({ page }) => {
     await blockExternalRequests(page);
     // vercel.json başlıkları yalnızca Vercel'de uygulanır; burada sayfanın
@@ -138,7 +159,7 @@ test.describe('İstemci tarafı güvenlik', () => {
     for (const src of scripts) {
       const code = await (await request.get(src!)).text();
       expect(code, `${src} sunucu sırrı içeriyor`)
-        .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET/i);
+        .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET|EINVOICE_API_KEY/i);
     }
   });
 });

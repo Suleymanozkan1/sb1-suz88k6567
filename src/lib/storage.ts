@@ -63,6 +63,7 @@ export const KEYS = {
   sms: 'sms',
   consents: 'consents',
   queue: 'queue',
+  invoices: 'invoices',
   messages: 'messages',
   session: 'session',
   seeded: 'seeded',

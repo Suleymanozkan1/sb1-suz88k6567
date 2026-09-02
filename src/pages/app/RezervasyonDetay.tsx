@@ -13,7 +13,7 @@ import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
 import { formatDate, formatDateLong, formatMoney, formatPhone, todayIso } from '../../lib/format';
 import { PAYMENT_METHODS } from '../../data/constants';
-import { IconEdit, IconMessage, IconPlus, IconPrint, IconTrash } from '../../components/Icons';
+import { IconEdit, IconMessage, IconPlus, IconPrint, IconReport, IconTrash } from '../../components/Icons';
 import type { Payment } from '../../types';
 
 export default function RezervasyonDetay() {
@@ -142,6 +142,11 @@ export default function RezervasyonDetay() {
           <Link to={`/panel/rezervasyonlar/${reservation.id}/sozlesme`} className="btn-outline btn-sm">
             <IconPrint size={16} /> Sözleşme
           </Link>
+          {can('kasa.duzenle') && (
+            <Link to={`/panel/faturalar?rezervasyon=${reservation.id}`} className="btn-outline btn-sm">
+              <IconReport size={16} /> Fatura Kes
+            </Link>
+          )}
           <button type="button" onClick={() => { void sendReminder(); }} className="btn-outline btn-sm">
             <IconMessage size={16} /> SMS Gönder
           </button>

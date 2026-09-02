@@ -5,7 +5,7 @@ import { useBusinesses } from '../lib/queries';
 import DemoNotice from '../components/DemoNotice';
 import {
   IconAlert, IconBuilding, IconCalendar, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu,
-  IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
+  IconChart, IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
 
 const NAV = [
@@ -14,7 +14,8 @@ const NAV = [
   { to: '/panel/rezervasyonlar', label: 'Rezervasyonlar', icon: IconList },
   { to: '/panel/musteriler', label: 'Müşteriler', icon: IconUsers },
   { to: '/panel/kasa', label: 'Gelir / Gider', icon: IconWallet },
-  { to: '/panel/raporlar', label: 'Raporlar', icon: IconReport },
+  { to: '/panel/faturalar', label: 'Faturalar', icon: IconReport },
+  { to: '/panel/raporlar', label: 'Raporlar', icon: IconChart },
   { to: '/panel/renk-ayarlari', label: 'Renk Ayarları', icon: IconPalette },
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
   { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser },

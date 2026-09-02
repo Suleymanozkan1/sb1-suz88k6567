@@ -195,6 +195,53 @@ export interface ContactMessage {
   createdAt: string;
 }
 
+export type InvoiceKind = 'e-Arsiv' | 'e-Fatura';
+export type InvoiceStatus =
+  | 'taslak' | 'gonderiliyor' | 'gonderildi' | 'onaylandi' | 'reddedildi' | 'iptal';
+export type BuyerKind = 'bireysel' | 'kurumsal';
+
+export interface InvoiceLine {
+  lineNo: number;
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPriceKurus: number;
+  discountRate: number;
+  vatRate: number;
+  baseKurus: number;
+  vatKurus: number;
+  totalKurus: number;
+}
+
+export interface Invoice {
+  id: string;
+  businessId: string;
+  reservationId?: string;
+  invoiceNumber: string;
+  kind: InvoiceKind;
+  status: InvoiceStatus;
+  issueDate: string;
+  serviceDate?: string;
+  buyerKind: BuyerKind;
+  buyerName: string;
+  buyerTaxId?: string;
+  buyerTaxOffice?: string;
+  buyerAddress?: string;
+  buyerEmail?: string;
+  buyerPhone?: string;
+  grossKurus: number;
+  discountKurus: number;
+  baseKurus: number;
+  vatKurus: number;
+  totalKurus: number;
+  providerError?: string;
+  sentAt?: string;
+  cancelReason?: string;
+  note?: string;
+  createdAt: string;
+  lines?: InvoiceLine[];
+}
+
 export interface SystemHealth {
   kuyrukBekleyen: number;
   kuyrukBasarisiz: number;

@@ -38,8 +38,8 @@ Demo hesapları yalnızca demo modunda vardır.
 | `npm run build`     | Tip kontrolü + üretim derlemesi (`dist/`)        |
 | `npm run preview`   | Derlenmiş çıktıyı yerel olarak sunar             |
 | `npm run lint`      | ESLint                                           |
-| `npm test`          | Vitest birim + entegrasyon testleri (169 test)   |
-| `npm run e2e`       | Playwright uçtan uca testleri (53 test)          |
+| `npm test`          | Vitest birim + entegrasyon testleri (206 test)   |
+| `npm run e2e`       | Playwright uçtan uca testleri (54 test)          |
 
 ## Sayfa haritası
 
@@ -73,6 +73,7 @@ Demo hesapları yalnızca demo modunda vardır.
 | `/panel/rezervasyonlar/:id/sozlesme` | Yazdırılabilir salon kiralama sözleşmesi |
 | `/panel/musteriler` | Rezervasyonlardan türetilen müşteri listesi |
 | `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi |
+| `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
 | `/panel/raporlar` | Program bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
 | `/panel/renk-ayarlari` | Organizasyon türü başına takvim rengi |
 | `/panel/isletmeler` | Firmalarım / Adminler — çok işletmeli kullanım |
@@ -94,6 +95,7 @@ api/            Sunucu tarafı fonksiyonlar (Vercel)
   iys.ts        İYS onay aktarımı ve ret çekimi (cron)
   backup.ts     Günlük yedek — Storage'a JSON anlık görüntü (cron)
   health.ts     Sağlık kontrolü — uptime izleme için
+  invoice.ts    e-Arşiv / e-Fatura entegratör gönderimi (cron)
 supabase/
   migrations/   Veritabanı şeması ve RLS politikaları
   tests/        RLS izolasyon testleri (yerel Postgres ile çalıştırılır)
@@ -106,6 +108,7 @@ src/
     repo/       Veri erişim sözleşmesi + Supabase ve yerel uygulamaları
     queries.ts  TanStack Query kancaları
     money.ts    Tahsilat / bakiye hesapları (saf)
+    invoice.ts  Fatura tutar hesapları — kuruş tabanlı tamsayı aritmetiği (saf)
     reports.ts  Rapor hesapları (saf)
     sms.ts      SMS istemcisi
   pages/        Herkese açık sayfalar
@@ -129,7 +132,8 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 
 1. [supabase.com](https://supabase.com) üzerinde proje açın (**bölge: Frankfurt** — KVKK açısından AB tercih edilir).
 2. SQL Editor'da migration dosyalarını **sırayla** çalıştırın:
-   `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` → `0004_backup_health.sql`
+   `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` →
+   `0004_backup_health.sql` → `0005_invoices.sql`
 3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
 4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
 5. Authentication → Users bölümünden kendi hesabınızı oluşturun.
@@ -149,9 +153,10 @@ psql -d <veritabani> -f supabase/tests/01_rls_test.sql        # 8 izolasyon sena
 psql -d <veritabani> -f supabase/tests/02_security_test.sql   # 15 güvenlik senaryosu
 psql -d <veritabani> -f supabase/tests/03_iys_test.sql        # 16 İYS ve kuyruk senaryosu
 psql -d <veritabani> -f supabase/tests/04_backup_restore_test.sql  # 13 yedek/geri yükleme senaryosu
+psql -d <veritabani> -f supabase/tests/05_invoice_test.sql         # 15 fatura senaryosu
 ```
 
-Toplam **52 senaryo**. `04_backup_restore_test.sql` yedeği temiz bir şemaya
+Toplam **67 senaryo**. `04_backup_restore_test.sql` yedeği temiz bir şemaya
 gerçekten geri yükler ve satır sayıları, parasal değerler, Türkçe karakterler
 ile ilişkisel bütünlüğün korunduğunu kanıtlar.
 
@@ -164,6 +169,7 @@ ile ilişkisel bütünlüğün korunduğunu kanıtlar.
 | **Hız sınırı** | `api/_guard.ts` | Giriş 20/5dk (IP), SMS 30/saat (IP) ve 5/saat (numara), kod isteme 5/15dk, kod deneme 8/15dk |
 | **Denetim kaydı** | Postgres tetikleyicileri | Tüm ekleme/değişiklik/silme işlemleri, değişen alanlarla birlikte; kayıtlar değiştirilemez |
 | **İYS kuralı** | `enqueue_sms` fonksiyonu | Ticari ileti onaysız gönderilemez; kuyruğa doğrudan yazma istemciye kapalı |
+| **Belge bütünlüğü** | Postgres tetikleyicileri | Gönderilmiş fatura değiştirilemez, silinemez; seri sayacı geri alınamaz |
 | **Yedek erişimi** | Postgres RLS | Yedek yalnızca kendi kapsamını içerir; başka hesabın verisi dışa aktarılamaz |
 | **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `service_role` anahtarı yalnızca sunucuda; `VITE_` öneki taşımaz |
 | **Hata izleme** | `src/lib/monitoring.ts` | İsteğe bağlı Sentry; gönderilen olaylarda e-posta ve telefon maskelenir |
@@ -262,6 +268,7 @@ Zamanlanmış görevler `vercel.json` içindeki `crons` bölümünde tanımlıd�
 |-------|--------|
 | `/api/sms-queue` — kuyruk işleme | 5 dakikada bir |
 | `/api/iys` — İYS senkronizasyonu | Her gece 03:00 |
+| `/api/invoice` — bekleyen faturaları gönder | 15 dakikada bir |
 | `/api/backup` — günlük yedek | Her gece 02:30 |
 | Build Command | `npm run build` |
 | Output Directory | `dist` |
@@ -286,6 +293,52 @@ npm run build && npm run preview
 Not: Kalıcılık tarayıcıdaki `localStorage` üzerinde olduğu için dağıtım tamamen
 statiktir; sunucu tarafı çalışma zamanı, ortam değişkeni veya veritabanı
 gerekmez.
+
+## e-Arşiv / e-Fatura
+
+Vergi mükellefi olmayan müşterilere **e-Arşiv Fatura**, e-Fatura mükellefi
+kurumlara **e-Fatura** düzenlenir. Alıcı türü seçildiğinde belge türü otomatik
+belirlenir.
+
+### Tutar hesabı
+
+Tüm aritmetik **kuruş cinsinden tamsayı** ile yapılır. Ondalıklı sayılarla
+çalışmak (`0.1 + 0.2 !== 0.3`) fatura toplamlarında kuruş sapmasına yol açar;
+vergi belgesinde bu kabul edilemez.
+
+Yuvarlama kuralı: her satır kendi içinde yuvarlanır, sonra toplanır. Toplam
+üzerinden yuvarlama yapılmaz — aksi hâlde satır toplamları ile fatura toplamı
+tutmaz. KDV dökümü oran bazında gruplanır ve dökümün toplamı fatura KDV'sine
+birebir eşittir.
+
+### Belge güvenliği
+
+Fatura bir vergi belgesidir; veritabanı bunu zorlar:
+
+- **Gönderilmiş fatura değiştirilemez** — tutar, alıcı ve tarih kilitlidir; yalnızca iptal edilebilir
+- **Gönderilmiş faturanın satırları değiştirilemez**
+- **Fatura silinemez** — iptal kaydı olarak saklanır
+- Fatura numarası boşluksuz ve sıralıdır; seri sayacı elle değiştirilemez
+- Numara biçimi: 3 karakter ön ek + 4 haneli yıl + 9 haneli sıra (`DGT2026000000001`)
+- Toplam tutarlar kendi içinde tutarlı olmak zorundadır (`matrah + KDV = toplam`)
+- Kurumsal alıcıda vergi kimlik numarası zorunludur
+
+T.C. kimlik ve vergi kimlik numaraları algoritmik olarak doğrulanır.
+
+### Entegratör
+
+GİB'e doğrudan bağlanmak UBL-TR XML üretimi ve mali mühür gerektirir; pratikte
+özel entegratör kullanılır (NES, Paraşüt, Uyumsoft, Logo, EDM…). Gönderim
+gövdesi `api/invoice.ts` içindeki `buildPayload` fonksiyonunda üretilir;
+entegratör değiştiğinde yalnızca burası düzenlenir.
+
+`EINVOICE_*` tanımlı değilse fatura yalnızca sistemde oluşturulur, **taslak
+kalır ve "gönderildi" denmez.**
+
+> **Uyarı:** Zorunluluk hadleri, KDV oranları ve belge türü kuralları
+> değişebilir. Kendi mükellefiyet durumunuzu ve hangi KDV oranını
+> uygulayacağınızı **mali müşavirinizle teyit ediniz.** Fatura düzenleme süresi
+> (VUK) hizmet tarihinden itibaren 7 gündür; arayüz kalan süreyi gösterir.
 
 ## Yedekleme ve izleme
 
@@ -313,4 +366,5 @@ Aynı kontroller panelde **Sistem Durumu** ekranında Türkçe açıklamalarla v
 - Demo modunda kalıcılık tarayıcıdadır ve şifreler düz metin saklanır. Gerçek
   kullanımda Supabase bağlantısı yapılandırılmalıdır.
 - Abonelik / ödeme tahsilatı yoktur; sistem tek şirket kullanımı için sadeleştirilmiştir.
+- e-Fatura entegratörünün alan adları `api/invoice.ts` içinde uyarlanmalıdır; gerçek bir entegratör hesabıyla test edilmemiştir.
 - Referans listesindeki işletmeler örnek veridir.

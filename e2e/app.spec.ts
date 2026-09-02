@@ -54,6 +54,7 @@ test.describe('Üye paneli', () => {
       ['/panel/izinler', 'İYS İzin Yönetimi'],
       ['/panel/denetim', 'Denetim Kaydı'],
       ['/panel/sistem', 'Sistem Durumu'],
+      ['/panel/faturalar', 'Faturalar'],
       ['/panel/ayarlar', 'Ayarlar'],
     ];
 

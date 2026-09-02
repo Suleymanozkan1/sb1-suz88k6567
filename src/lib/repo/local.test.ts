@@ -328,3 +328,77 @@ describe('İYS kuralları — kuyruğa alma', () => {
     expect(await localRepo.listConsents('biz_b')).toHaveLength(0);
   });
 });
+
+describe('faturalar', () => {
+  const BIZ3 = 'biz_fatura';
+
+  it('fatura oluşturur ve tutarları hesaplar', async () => {
+    const invoice = await localRepo.createInvoice({
+      businessId: BIZ3, kind: 'e-Arsiv', buyerKind: 'bireysel', buyerName: 'Ahmet Yılmaz',
+      lines: [
+        { description: 'Salon kiralama', quantity: 1, unit: 'Adet', unitPrice: 100000, vatRate: 20 },
+        { description: 'Yemek', quantity: 250, unit: 'Kişi', unitPrice: 400, vatRate: 10 },
+      ],
+    });
+
+    expect(invoice.baseKurus).toBe(20_000_000);
+    expect(invoice.vatKurus).toBe(3_000_000);
+    expect(invoice.totalKurus).toBe(23_000_000);
+    expect(invoice.baseKurus + invoice.vatKurus).toBe(invoice.totalKurus);
+    expect(invoice.status).toBe('taslak');
+  });
+
+  it('fatura numarası 16 haneli ve sıralı üretir', async () => {
+    const first = await localRepo.createInvoice({
+      businessId: BIZ3, kind: 'e-Arsiv', buyerKind: 'bireysel', buyerName: 'Bir',
+      lines: [{ description: 'X', quantity: 1, unit: 'Adet', unitPrice: 100, vatRate: 20 }],
+    });
+    const second = await localRepo.createInvoice({
+      businessId: BIZ3, kind: 'e-Arsiv', buyerKind: 'bireysel', buyerName: 'İki',
+      lines: [{ description: 'X', quantity: 1, unit: 'Adet', unitPrice: 100, vatRate: 20 }],
+    });
+
+    expect(first.invoiceNumber).toHaveLength(16);
+    expect(Number(second.invoiceNumber.slice(-9))).toBe(Number(first.invoiceNumber.slice(-9)) + 1);
+  });
+
+  it('satırları sıra numarasıyla saklar', async () => {
+    const invoice = await localRepo.createInvoice({
+      businessId: BIZ3, kind: 'e-Arsiv', buyerKind: 'bireysel', buyerName: 'Üç',
+      lines: [
+        { description: 'A', quantity: 1, unit: 'Adet', unitPrice: 100, vatRate: 20 },
+        { description: 'B', quantity: 2, unit: 'Adet', unitPrice: 50, vatRate: 10 },
+      ],
+    });
+    expect(invoice.lines).toHaveLength(2);
+    expect(invoice.lines![0].lineNo).toBe(1);
+    expect(invoice.lines![1].lineNo).toBe(2);
+  });
+
+  it('faturaları işletmeye göre ayırır', async () => {
+    await localRepo.createInvoice({
+      businessId: 'biz_x', kind: 'e-Arsiv', buyerKind: 'bireysel', buyerName: 'X',
+      lines: [{ description: 'X', quantity: 1, unit: 'Adet', unitPrice: 100, vatRate: 20 }],
+    });
+    expect(await localRepo.listInvoices('biz_y')).toHaveLength(0);
+  });
+
+  it('iptal edilen fatura silinmez, durumu değişir', async () => {
+    const invoice = await localRepo.createInvoice({
+      businessId: BIZ3, kind: 'e-Arsiv', buyerKind: 'bireysel', buyerName: 'İptal',
+      lines: [{ description: 'X', quantity: 1, unit: 'Adet', unitPrice: 100, vatRate: 20 }],
+    });
+    await localRepo.cancelInvoice(invoice.id, 'Müşteri talebi');
+
+    const after = await localRepo.getInvoice(invoice.id);
+    expect(after).not.toBeNull();
+    expect(after!.status).toBe('iptal');
+    expect(after!.cancelReason).toBe('Müşteri talebi');
+  });
+
+  it('demo modunda entegratöre gönderim yapmaz ve bunu bildirir', async () => {
+    const result = await localRepo.sendInvoice('herhangi');
+    expect(result.sent).toBe(false);
+    expect(result.reason).toMatch(/entegratör/i);
+  });
+});

@@ -59,12 +59,16 @@
       "schedule": "*/5 * * * *"
     },
     {
-      "path": "/api/iys",
-      "schedule": "0 3 * * *"
+      "path": "/api/invoice",
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/backup",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/iys",
+      "schedule": "0 3 * * *"
     }
   ]
 }

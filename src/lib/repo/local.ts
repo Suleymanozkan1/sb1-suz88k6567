@@ -10,9 +10,10 @@ import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS, seedIfEmpty } from '../seed'
 import { normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import type {
-  Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, Payment,
-  Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry, User,
+  Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, Invoice,
+  Payment, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry, User,
 } from '../../types';
+import { computeInvoice, formatInvoiceNumber } from '../invoice';
 
 const wait = <T,>(value: T): Promise<T> => Promise.resolve(value);
 
@@ -24,6 +25,7 @@ function payments(): Payment[] { return read<Payment[]>(KEYS.payments, []); }
 function cash(): CashFlowEntry[] { return read<CashFlowEntry[]>(KEYS.cashflow, []); }
 function consents(): SmsConsent[] { return read<SmsConsent[]>(KEYS.consents, []); }
 function queue(): SmsQueueEntry[] { return read<SmsQueueEntry[]>(KEYS.queue, []); }
+function invoices(): Invoice[] { return read<Invoice[]>(KEYS.invoices, []); }
 
 /** 5321234567 biçimine indirger */
 function normalizePhone(raw: string): string | null {
@@ -360,6 +362,76 @@ export const localRepo: Repository = {
 
   async deleteConsent(id) {
     write(KEYS.consents, consents().filter((c) => c.id !== id));
+  },
+
+  async listInvoices(businessId) {
+    return wait(invoices()
+      .filter((i) => i.businessId === businessId)
+      .sort((a, b) => b.issueDate.localeCompare(a.issueDate)));
+  },
+
+  async getInvoice(id) {
+    return wait(invoices().find((i) => i.id === id) ?? null);
+  },
+
+  async createInvoice(input) {
+    const totals = computeInvoice(input.lines);
+    const list = invoices();
+    const year = new Date().getFullYear();
+    // Sıra numarası aynı seri içinde kesintisiz ilerlemeli
+    const sequence = list.filter((i) => i.businessId === input.businessId).length + 1;
+
+    const record: Invoice = {
+      id: uid('inv'),
+      businessId: input.businessId,
+      reservationId: input.reservationId,
+      invoiceNumber: formatInvoiceNumber('DGT', year, sequence),
+      kind: input.kind,
+      status: 'taslak',
+      issueDate: new Date().toISOString().slice(0, 10),
+      serviceDate: input.serviceDate,
+      buyerKind: input.buyerKind,
+      buyerName: input.buyerName,
+      buyerTaxId: input.buyerTaxId,
+      buyerTaxOffice: input.buyerTaxOffice,
+      buyerAddress: input.buyerAddress,
+      buyerEmail: input.buyerEmail,
+      buyerPhone: input.buyerPhone,
+      grossKurus: totals.grossKurus,
+      discountKurus: totals.discountKurus,
+      baseKurus: totals.baseKurus,
+      vatKurus: totals.vatKurus,
+      totalKurus: totals.totalKurus,
+      note: input.note,
+      createdAt: new Date().toISOString(),
+      lines: input.lines.map((line, index) => ({
+        lineNo: index + 1,
+        description: line.description,
+        quantity: line.quantity,
+        unit: line.unit,
+        unitPriceKurus: Math.round(line.unitPrice * 100),
+        discountRate: line.discountRate ?? 0,
+        vatRate: line.vatRate,
+        baseKurus: totals.lines[index].baseKurus,
+        vatKurus: totals.lines[index].vatKurus,
+        totalKurus: totals.lines[index].totalKurus,
+      })),
+    };
+
+    write(KEYS.invoices, [...list, record]);
+    return wait(record);
+  },
+
+  async sendInvoice() {
+    return wait({
+      sent: false,
+      reason: 'Demo modunda fatura gönderilmez; e-Fatura entegratörü gereklidir.',
+    });
+  },
+
+  async cancelInvoice(id, reason) {
+    write(KEYS.invoices, invoices().map((i) =>
+      i.id === id ? { ...i, status: 'iptal' as const, cancelReason: reason } : i));
   },
 
   /** Demo modunda kuyruk ve izin verileri tarayıcıdan okunur; yedek alınmaz. */

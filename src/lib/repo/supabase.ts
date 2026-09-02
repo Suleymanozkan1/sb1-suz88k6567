@@ -5,8 +5,9 @@ import { RepoError, type PublicReservation, type Repository } from './types';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult,
   Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry,
-  SystemHealth, User,
+  Invoice, InvoiceLine, SystemHealth, User,
 } from '../../types';
+import { computeInvoice } from '../invoice';
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -105,6 +106,51 @@ function fromReservation(r: Reservation) {
     guest_count: r.guestCount, total_amount: r.totalAmount, deposit: r.deposit,
     currency: r.currency, status: r.status, color_key: r.colorKey,
     note: r.note || null, address: r.address || null, services: r.services,
+  };
+}
+
+function toInvoice(row: Row): Invoice {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    reservationId: (row.reservation_id as string) ?? undefined,
+    invoiceNumber: (row.invoice_number as string) ?? '',
+    kind: (row.kind as Invoice['kind']) ?? 'e-Arsiv',
+    status: (row.status as Invoice['status']) ?? 'taslak',
+    issueDate: (row.issue_date as string) ?? '',
+    serviceDate: (row.service_date as string) ?? undefined,
+    buyerKind: (row.buyer_kind as Invoice['buyerKind']) ?? 'bireysel',
+    buyerName: (row.buyer_name as string) ?? '',
+    buyerTaxId: (row.buyer_tax_id as string) ?? undefined,
+    buyerTaxOffice: (row.buyer_tax_office as string) ?? undefined,
+    buyerAddress: (row.buyer_address as string) ?? undefined,
+    buyerEmail: (row.buyer_email as string) ?? undefined,
+    buyerPhone: (row.buyer_phone as string) ?? undefined,
+    grossKurus: Number(row.gross_kurus ?? 0),
+    discountKurus: Number(row.discount_kurus ?? 0),
+    baseKurus: Number(row.base_kurus ?? 0),
+    vatKurus: Number(row.vat_kurus ?? 0),
+    totalKurus: Number(row.total_kurus ?? 0),
+    providerError: (row.provider_error as string) ?? undefined,
+    sentAt: (row.sent_at as string) ?? undefined,
+    cancelReason: (row.cancel_reason as string) ?? undefined,
+    note: (row.note as string) ?? undefined,
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toInvoiceLine(row: Row): InvoiceLine {
+  return {
+    lineNo: Number(row.line_no ?? 0),
+    description: (row.description as string) ?? '',
+    quantity: Number(row.quantity ?? 0),
+    unit: (row.unit as string) ?? 'Adet',
+    unitPriceKurus: Number(row.unit_price_kurus ?? 0),
+    discountRate: Number(row.discount_rate ?? 0),
+    vatRate: Number(row.vat_rate ?? 0),
+    baseKurus: Number(row.base_kurus ?? 0),
+    vatKurus: Number(row.vat_kurus ?? 0),
+    totalKurus: Number(row.total_kurus ?? 0),
   };
 }
 
@@ -586,6 +632,106 @@ export const supabaseRepo: Repository = {
       changed: (row.changed as AuditEntry['changed']) ?? undefined,
       createdAt: (row.created_at as string) ?? '',
     }));
+  },
+
+  async listInvoices(businessId) {
+    const { data, error } = await db().from('invoices')
+      .select('*').eq('business_id', businessId).order('issue_date', { ascending: false });
+    if (error) fail('Faturalar alınamadı.', error);
+    return (data ?? []).map(toInvoice);
+  },
+
+  async getInvoice(id) {
+    const { data, error } = await db().from('invoices')
+      .select('*, invoice_lines(*)').eq('id', id).maybeSingle();
+    if (error) fail('Fatura alınamadı.', error);
+    if (!data) return null;
+    const invoice = toInvoice(data);
+    const rows = (data.invoice_lines as Row[] | undefined) ?? [];
+    invoice.lines = rows.map(toInvoiceLine).sort((a, b) => a.lineNo - b.lineNo);
+    return invoice;
+  },
+
+  async createInvoice(input) {
+    // Tutarlar tek yerde hesaplanır; veritabanı kısıtları da aynı sonucu doğrular
+    const totals = computeInvoice(input.lines);
+
+    const { data: numberData, error: numberError } = await db()
+      .rpc('next_invoice_number', { p_business_id: input.businessId, p_prefix: 'DGT' });
+    if (numberError) fail('Fatura numarası alınamadı.', numberError);
+
+    const { data: created, error: insertError } = await db().from('invoices').insert({
+      business_id: input.businessId,
+      reservation_id: input.reservationId ?? null,
+      invoice_number: numberData as string,
+      kind: input.kind,
+      service_date: input.serviceDate ?? null,
+      buyer_kind: input.buyerKind,
+      buyer_name: input.buyerName,
+      buyer_tax_id: input.buyerTaxId || null,
+      buyer_tax_office: input.buyerTaxOffice || null,
+      buyer_address: input.buyerAddress || null,
+      buyer_email: input.buyerEmail || null,
+      buyer_phone: input.buyerPhone || null,
+      note: input.note || null,
+      gross_kurus: totals.grossKurus,
+      discount_kurus: totals.discountKurus,
+      base_kurus: totals.baseKurus,
+      vat_kurus: totals.vatKurus,
+      total_kurus: totals.totalKurus,
+    }).select().single();
+    if (insertError) fail('Fatura oluşturulamadı.', insertError);
+
+    const invoiceId = String(created.id);
+    const { error: lineError } = await db().from('invoice_lines').insert(
+      input.lines.map((line, index) => ({
+        invoice_id: invoiceId,
+        line_no: index + 1,
+        description: line.description,
+        quantity: line.quantity,
+        unit: line.unit,
+        unit_price_kurus: Math.round(line.unitPrice * 100),
+        discount_rate: line.discountRate ?? 0,
+        vat_rate: line.vatRate,
+        gross_kurus: totals.lines[index].grossKurus,
+        discount_kurus: totals.lines[index].discountKurus,
+        base_kurus: totals.lines[index].baseKurus,
+        vat_kurus: totals.lines[index].vatKurus,
+        total_kurus: totals.lines[index].totalKurus,
+      })),
+    );
+    if (lineError) fail('Fatura satırları kaydedilemedi.', lineError);
+
+    return toInvoice(created);
+  },
+
+  async sendInvoice(id) {
+    let response: Response;
+    try {
+      response = await fetch('/api/invoice', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+    } catch {
+      return { sent: false, reason: 'Fatura servisine ulaşılamadı.' };
+    }
+    if (!(response.headers.get('content-type') ?? '').includes('application/json')) {
+      return { sent: false, reason: 'Fatura gönderim servisi bu kurulumda yapılandırılmamış.' };
+    }
+    const result = (await response.json()) as { sent?: number; reason?: string; error?: string };
+    if (result.reason === 'einvoice_not_configured') {
+      return { sent: false, reason: 'e-Fatura entegratörü tanımlı değil; fatura taslak olarak kaydedildi.' };
+    }
+    if (!result.sent) return { sent: false, reason: result.error ?? 'Fatura gönderilemedi.' };
+    return { sent: true };
+  },
+
+  async cancelInvoice(id, reason) {
+    const { error } = await db().from('invoices').update({
+      status: 'iptal', cancelled_at: new Date().toISOString(), cancel_reason: reason,
+    }).eq('id', id);
+    if (error) fail('Fatura iptal edilemedi.', error);
   },
 
   async getSystemHealth(ownerId) {

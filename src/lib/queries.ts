@@ -28,6 +28,8 @@ export const keys = {
   consents: (businessId: string) => ['consents', businessId] as const,
   smsQueue: (businessId: string) => ['smsQueue', businessId] as const,
   health: (ownerId: string) => ['health', ownerId] as const,
+  invoices: (businessId: string) => ['invoices', businessId] as const,
+  invoice: (id: string) => ['invoice', id] as const,
 };
 
 /** Oturumdaki kullanıcının aktif işletmesi */
@@ -115,6 +117,49 @@ export function useSmsQueue(limit = 100) {
   });
 }
 
+export function useInvoices() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.invoices(businessId),
+    queryFn: () => repo.listInvoices(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useInvoice(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.invoice(id ?? ''),
+    queryFn: () => repo.getInvoice(id!),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateInvoice() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (input: Omit<Parameters<typeof repo.createInvoice>[0], 'businessId'>) =>
+      repo.createInvoice({ businessId, ...input }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSendInvoice() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.sendInvoice(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCancelInvoice() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => repo.cancelInvoice(id, reason),
+    onSuccess: invalidate,
+  });
+}
+
 export function useSystemHealth() {
   const { ownerId } = useAuth();
   return useQuery({
@@ -186,6 +231,8 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.consents(businessId) });
     qc.invalidateQueries({ queryKey: keys.smsQueue(businessId) });
     qc.invalidateQueries({ queryKey: keys.audit(ownerId) });
+    qc.invalidateQueries({ queryKey: keys.invoices(businessId) });
+    qc.invalidateQueries({ queryKey: ['invoice'] });
   };
 }
 
