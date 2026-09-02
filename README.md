@@ -75,6 +75,9 @@ Demo hesapları yalnızca demo modunda vardır.
 | `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi |
 | `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
 | `/panel/raporlar` | Program bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
+| `/panel/salonlar` | Salon tanımları — bir işletmede birden çok salon |
+| `/panel/menuler` | Menü ve paket tanımları — kişi başı veya sabit fiyat |
+| `/panel/rezervasyonlar/:id/makbuz` | Yazdırılabilir tahsilat makbuzu |
 | `/panel/renk-ayarlari` | Organizasyon türü başına takvim rengi |
 | `/panel/isletmeler` | Firmalarım / Adminler — çok işletmeli kullanım |
 | `/panel/kullanicilar` | Alt kullanıcılar ve yetkileri *(yalnızca yönetici)* |
@@ -134,7 +137,8 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 1. [supabase.com](https://supabase.com) üzerinde proje açın (**bölge: Frankfurt** — KVKK açısından AB tercih edilir).
 2. SQL Editor'da migration dosyalarını **sırayla** çalıştırın:
    `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` →
-   `0004_backup_health.sql` → `0005_invoices.sql` → `0006_talepler.sql`
+   `0004_backup_health.sql` → `0005_invoices.sql` → `0006_talepler.sql` →
+   `0007_salon_menu_masa.sql`
 3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
 4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
 5. Authentication → Users bölümünden kendi hesabınızı oluşturun.
@@ -186,7 +190,7 @@ veritabanında art arda çalıştırılırsa ikinci paket birincil anahtar çak�
 durur.
 
 ```bash
-for t in supabase/tests/0[1-6]_*.sql; do
+for t in supabase/tests/0[1-7]_*.sql; do
   db="qa_$(basename "$t" .sql)"
   psql -c "drop database if exists $db" postgres
   psql -c "create database $db" postgres
@@ -210,8 +214,9 @@ done
 | `04_backup_restore_test.sql` | 13 | Yedek alma ve geri yükleme |
 | `05_invoice_test.sql` | 15 | Fatura değişmezliği ve seri numarası |
 | `06_talepler_test.sql` | 11 | Talep kutusu yetkileri |
+| `07_salon_menu_masa_test.sql` | 13 | Salon, menü ve masa düzeni kuralları |
 
-Toplam **78 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
+Toplam **91 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
 `BASARISIZ:` ile başlayan bir hata görürseniz test gerçekten düşmüştür.
 
 `04_backup_restore_test.sql` yedeği temiz bir şemaya gerçekten geri yükler ve
@@ -235,6 +240,8 @@ korunduğunu kanıtlar.
 | **İYS kuralı** | `enqueue_sms` fonksiyonu | Ticari ileti onaysız gönderilemez; kuyruğa doğrudan yazma istemciye kapalı |
 | **Belge bütünlüğü** | Postgres tetikleyicileri | Gönderilmiş fatura değiştirilemez, silinemez; seri sayacı geri alınamaz |
 | **Talep gizliliği** | `is_owner()` + RLS | Siteden gelen talepleri yalnızca yönetici okur; içerik değiştirilemez, kayıt silinemez |
+| **Salon çakışması** | Postgres benzersiz dizin | Aynı salona aynı gün ve seansta ikinci rezervasyon açılamaz; farklı salonlara açılabilir |
+| **Kapsam bütünlüğü** | `check_reservation_scope()` | Başka işletmenin salonu veya menüsü bir rezervasyona bağlanamaz |
 | **Yedek erişimi** | Postgres RLS | Yedek yalnızca kendi kapsamını içerir; başka hesabın verisi dışa aktarılamaz |
 | **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `service_role` anahtarı yalnızca sunucuda; `VITE_` öneki taşımaz |
 | **Hata izleme** | `src/lib/monitoring.ts` | İsteğe bağlı Sentry; gönderilen olaylarda e-posta ve telefon maskelenir |
@@ -361,6 +368,29 @@ Not: Kalıcılık tarayıcıdaki `localStorage` üzerinde olduğu için dağıt�
 statiktir; sunucu tarafı çalışma zamanı, ortam değişkeni veya veritabanı
 gerekmez.
 
+## Salonlar, menüler ve masa düzeni
+
+**Salonlar.** Bir işletmede birden çok salon tanımlanır (Kristal Salon, Bahçe…).
+Çakışma kuralı **salon bazındadır**: aynı gün ve seansta farklı salonlara
+rezervasyon açılabilir, aynı salona açılamaz. Kural veritabanındaki benzersiz
+dizinle zorlanır.
+
+Yeni bir işletme oluşturulduğunda veritabanı ona kendiliğinden bir "Ana Salon"
+açar; salonsuz bir işletmede rezervasyon oluşturulamayacağı için bu şarttır.
+Rezervasyonda salon belirtilmezse ve işletmenin tek salonu varsa o seçilir;
+birden çok salon varsa hangisine yazılacağı belirsiz olduğu için kayıt
+reddedilir — tahmin edilmez.
+
+**Menüler ve paketler.** Menü kişi başı ya da sabit tutarlı tanımlanır. Fiyat
+kuruş cinsinden tamsayı olarak saklanır. Rezervasyona menü seçildiğinde toplam
+tutar önerilir (kişi başı menüde `fiyat × davetli`), kullanıcı elle
+değiştirebilir — öneri dayatma değildir.
+
+**Masa oturma düzeni.** Rezervasyon başına masa planı tutulur. "Davetliye göre
+plan öner" düğmesi, masa başına koltuk sayısından planı üretir ve toplam koltuk
+her zaman davetli sayısına yeter. Plan davetliyi karşılamıyorsa eksik koltuk
+sayısı uyarı olarak gösterilir.
+
 ## e-Arşiv / e-Fatura
 
 Vergi mükellefi olmayan müşterilere **e-Arşiv Fatura**, e-Fatura mükellefi
@@ -462,6 +492,6 @@ Aynı kontroller panelde **Sistem Durumu** ekranında Türkçe açıklamalarla v
 
 - Demo modunda kalıcılık tarayıcıdadır ve şifreler düz metin saklanır. Gerçek
   kullanımda Supabase bağlantısı yapılandırılmalıdır.
-- Abonelik / ödeme tahsilatı yoktur; sistem tek şirket kullanımı için sadeleştirilmiştir.
+- Abonelik, plan ve ücretlendirme sistemi **yoktur**. `VITE_ALLOW_SIGNUP=true` iken salonlar siteden kendileri üye olabilir ve paneli doğrudan kullanmaya başlar; ödeme adımı bulunmaz.
 - e-Fatura bağlantısı Paraşüt için yazılmıştır (`api/_parasut.ts`); gövde üretimi ve hata çözümlemesi birim testleriyle doğrulanmış, ancak **gerçek bir Paraşüt hesabıyla test edilmemiştir**. İlk gönderimde alan adı uyuşmazlığı çıkabilir; hata metni Faturalar ekranında görünür.
 - Referans listesindeki işletmeler örnek veridir.

@@ -217,7 +217,14 @@ describe('Yeni rezervasyon formu', () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
 
-    await user.clear(await screen.findByLabelText(/^Tarih/));
+    // Çakışma kuralı salon bazındadır: aynı salon seçilmeden uyarı çıkmamalı.
+    const hallSelect = await screen.findByLabelText(/^Salon/);
+    // Salon listesi eşzamansız yüklenir; seçenek gelmeden seçim yapılamaz.
+    await waitFor(() => {
+      expect(hallSelect.querySelector(`option[value="${existing.hallId}"]`)).toBeTruthy();
+    });
+    await user.selectOptions(hallSelect, existing.hallId);
+    await user.clear(screen.getByLabelText(/^Tarih/));
     await user.type(screen.getByLabelText(/^Tarih/), existing.date);
     await user.selectOptions(screen.getByLabelText(/^Seans/), existing.slot);
     expect(await screen.findByText(new RegExp(existing.customerName.slice(0, 8)))).toBeInTheDocument();

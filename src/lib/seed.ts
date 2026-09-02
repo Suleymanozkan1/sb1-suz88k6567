@@ -7,7 +7,7 @@
 import { KEYS, read, write } from './storage';
 import { addDays, toIso, todayIso } from './format';
 import { DEFAULT_COLOR_SETTINGS, ORG_TO_COLOR_KEY, OWNER_PERMISSIONS } from '../data/constants';
-import type { Business, CashFlowEntry, Payment, Reservation, User } from '../types';
+import type { Business, CashFlowEntry, Hall, Menu, Payment, Reservation, User } from '../types';
 
 export { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS };
 
@@ -98,6 +98,39 @@ export function seedIfEmpty(): void {
     },
   ] satisfies Business[]);
 
+  // Salonlar: her işletmenin en az bir salonu olmalı (0007 ile aynı kural)
+  const demoHalls: Hall[] = [
+    { id: 'hall_demo1', businessId, name: 'Kristal Salon', capacity: 500,
+      note: 'Ana salon, sahne ve balkon dahil.', isActive: true, createdAt: now },
+    { id: 'hall_demo2', businessId, name: 'Zümrüt Salon', capacity: 250,
+      note: 'Nişan ve kına için orta ölçekli salon.', isActive: true, createdAt: now },
+    { id: 'hall_demo3', businessId: 'biz_demo2', name: 'Bahçe', capacity: 350,
+      note: 'Havuz başı açık alan.', isActive: true, createdAt: now },
+  ];
+  write(KEYS.halls, [
+    ...read<Hall[]>(KEYS.halls, []).filter((h) => !demoHalls.some((d) => d.id === h.id)),
+    ...demoHalls,
+  ]);
+
+  const demoMenus: Menu[] = [
+    { id: 'menu_demo1', businessId, name: 'Açık Büfe Ziyafet', pricing: 'kisi_basi',
+      priceKurus: 45_000, description: 'Çorba, 3 ara sıcak, 2 ana yemek, tatlı, limitsiz meşrubat.',
+      isActive: true, createdAt: now },
+    { id: 'menu_demo2', businessId, name: 'Kokteyl İkramı', pricing: 'kisi_basi',
+      priceKurus: 22_000, description: 'Ayakta servis, kanepe ve tatlı çeşitleri.',
+      isActive: true, createdAt: now },
+    { id: 'menu_demo3', businessId, name: 'Salon Kirası (yemeksiz)', pricing: 'sabit',
+      priceKurus: 12_000_000, description: 'Yalnızca salon ve ses sistemi.',
+      isActive: true, createdAt: now },
+    { id: 'menu_demo4', businessId: 'biz_demo2', name: 'Kır Düğünü Paketi', pricing: 'kisi_basi',
+      priceKurus: 38_000, description: 'Açık alan, barbekü ve limitsiz içecek.',
+      isActive: true, createdAt: now },
+  ];
+  write(KEYS.menus, [
+    ...read<Menu[]>(KEYS.menus, []).filter((m) => !demoMenus.some((d) => d.id === m.id)),
+    ...demoMenus,
+  ]);
+
   const list: Reservation[] = [];
   const paid: Payment[] = [];
   const base = new Date();
@@ -116,6 +149,8 @@ export function seedIfEmpty(): void {
     list.push({
       id: `res_seed_${i}`,
       businessId: i % 5 === 4 ? 'biz_demo2' : businessId,
+      hallId: i % 5 === 4 ? 'hall_demo3' : i % 3 === 1 ? 'hall_demo2' : 'hall_demo1',
+      menuId: i % 5 === 4 ? 'menu_demo4' : i % 4 === 3 ? 'menu_demo3' : 'menu_demo1',
       code: `DT-${d.getFullYear()}-${1000 + i * 37}`,
       customerName: name, customerPhone: phone, customerEmail: '',
       date, slot: i % 3 === 0 ? 'Gündüz' : 'Gece',

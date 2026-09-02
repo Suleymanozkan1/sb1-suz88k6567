@@ -16,6 +16,8 @@ const NAV = [
   { to: '/panel/kasa', label: 'Gelir / Gider', icon: IconWallet },
   { to: '/panel/faturalar', label: 'Faturalar', icon: IconReport },
   { to: '/panel/raporlar', label: 'Raporlar', icon: IconChart },
+  { to: '/panel/salonlar', label: 'Salonlar', icon: IconBuilding },
+  { to: '/panel/menuler', label: 'Menüler', icon: IconList },
   { to: '/panel/renk-ayarlari', label: 'Renk Ayarları', icon: IconPalette },
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
   { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser, ownerOnly: true },

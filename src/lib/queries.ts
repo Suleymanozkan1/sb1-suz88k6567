@@ -31,6 +31,9 @@ export const keys = {
   invoices: (businessId: string) => ['invoices', businessId] as const,
   invoice: (id: string) => ['invoice', id] as const,
   messages: () => ['messages'] as const,
+  halls: (businessId: string) => ['halls', businessId] as const,
+  menus: (businessId: string) => ['menus', businessId] as const,
+  seating: (reservationId: string) => ['seating', reservationId] as const,
 };
 
 /** Oturumdaki kullanıcının aktif işletmesi */
@@ -115,6 +118,77 @@ export function useSmsQueue(limit = 100) {
     queryKey: keys.smsQueue(businessId),
     queryFn: () => repo.listSmsQueue(businessId, limit),
     enabled: Boolean(businessId),
+  });
+}
+
+export function useHalls() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.halls(businessId),
+    queryFn: () => repo.listHalls(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveHall() {
+  const client = useQueryClient();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (hall: Parameters<typeof repo.saveHall>[0]) => repo.saveHall(hall),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.halls(businessId) }),
+  });
+}
+
+export function useDeleteHall() {
+  const client = useQueryClient();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteHall(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.halls(businessId) }),
+  });
+}
+
+export function useMenus() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.menus(businessId),
+    queryFn: () => repo.listMenus(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveMenu() {
+  const client = useQueryClient();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (menu: Parameters<typeof repo.saveMenu>[0]) => repo.saveMenu(menu),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.menus(businessId) }),
+  });
+}
+
+export function useDeleteMenu() {
+  const client = useQueryClient();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteMenu(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.menus(businessId) }),
+  });
+}
+
+export function useSeating(reservationId: string | undefined) {
+  return useQuery({
+    queryKey: keys.seating(reservationId ?? ''),
+    queryFn: () => repo.listSeating(reservationId!),
+    enabled: Boolean(reservationId),
+  });
+}
+
+export function useSaveSeating(reservationId: string | undefined) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (tables: Parameters<typeof repo.saveSeating>[1]) =>
+      repo.saveSeating(reservationId!, tables),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.seating(reservationId ?? '') }),
   });
 }
 

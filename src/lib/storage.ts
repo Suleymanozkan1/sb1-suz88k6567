@@ -65,6 +65,9 @@ export const KEYS = {
   queue: 'queue',
   invoices: 'invoices',
   messages: 'messages',
+  halls: 'halls',
+  menus: 'menus',
+  seating: 'seating',
   session: 'session',
   seeded: 'seeded',
 } as const;

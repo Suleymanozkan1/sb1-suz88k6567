@@ -4,12 +4,13 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
+import { kurusToLira, menuTotalKurus } from '../../lib/seating';
 import {
-  useReservation, useReservations, useSaveReservation, useSendSms,
+  useHalls, useMenus, useReservation, useReservations, useSaveReservation, useSendSms,
 } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { makeReservationCode } from '../../lib/ids';
-import { formatDate, todayIso } from '../../lib/format';
+import { formatDate, formatMoney, todayIso } from '../../lib/format';
 import { ORGANIZATION_TYPES, ORG_TO_COLOR_KEY, SERVICE_OPTIONS } from '../../data/constants';
 import type { OrganizationType, Reservation, ReservationStatus, SessionSlot } from '../../types';
 
@@ -20,6 +21,8 @@ interface FormState {
   customerPhone: string;
   customerEmail: string;
   secondPersonName: string;
+  hallId: string;
+  menuId: string;
   date: string;
   slot: SessionSlot;
   organizationType: OrganizationType;
@@ -37,6 +40,8 @@ const EMPTY: FormState = {
   customerPhone: '',
   customerEmail: '',
   secondPersonName: '',
+  hallId: '',
+  menuId: '',
   date: todayIso(),
   slot: 'Gece',
   organizationType: 'Düğün',
@@ -57,6 +62,8 @@ export default function RezervasyonForm() {
   const existingQuery = useReservation(id);
   const existing = existingQuery.data ?? undefined;
   const { data: allReservations = [] } = useReservations();
+  const { data: halls = [] } = useHalls();
+  const { data: menus = [] } = useMenus();
   const saveMutation = useSaveReservation();
   const sendSmsMutation = useSendSms();
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -71,6 +78,8 @@ export default function RezervasyonForm() {
       customerPhone: existing.customerPhone,
       customerEmail: existing.customerEmail ?? '',
       secondPersonName: existing.secondPersonName ?? '',
+      hallId: existing.hallId,
+      menuId: existing.menuId ?? '',
       date: existing.date,
       slot: existing.slot,
       organizationType: existing.organizationType,
@@ -84,18 +93,32 @@ export default function RezervasyonForm() {
     });
   }, [id, existing]);
 
+  // Yeni kayıtta ilk aktif salon seçili gelir; salon seçilmeden kayıt açılamaz.
+  useEffect(() => {
+    if (id || form.hallId) return;
+    const first = halls.find((h) => h.isActive) ?? halls[0];
+    if (first) setForm((f) => ({ ...f, hallId: first.id }));
+  }, [id, form.hallId, halls]);
+
+  // Menü ve davetli sayısı değişince tutarı öneririz; kullanıcı elle değiştirebilir.
+  const selectedMenu = menus.find((m) => m.id === form.menuId);
+  const suggestedTotal = selectedMenu
+    ? kurusToLira(menuTotalKurus(selectedMenu, Number(form.guestCount) || 0))
+    : null;
+
   // Aynı tarih + seans için başka kayıt varsa uyar (veritabanında da kısıt vardır)
   useEffect(() => {
     if (!form.date) { setConflictWarning(''); return; }
     const conflict = allReservations.find(
-      (r) => r.date === form.date && r.slot === form.slot && r.status !== 'İptal' && r.id !== id,
+      (r) => r.hallId === form.hallId && r.date === form.date && r.slot === form.slot
+             && r.status !== 'İptal' && r.id !== id,
     );
     setConflictWarning(
       conflict
         ? `${formatDate(form.date)} ${form.slot.toLocaleLowerCase('tr-TR')} seansında "${conflict.customerName}" adına kayıt bulunuyor.`
         : '',
     );
-  }, [allReservations, form.date, form.slot, id]);
+  }, [allReservations, form.hallId, form.date, form.slot, id]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -121,6 +144,7 @@ export default function RezervasyonForm() {
     if (!form.date) e.date = 'Organizasyon tarihini seçiniz.';
 
     const guests = Number(form.guestCount);
+    if (!form.hallId) e.hallId = 'Salon seçiniz.';
     if (!form.guestCount) e.guestCount = 'Davetli sayısını giriniz.';
     else if (!Number.isFinite(guests) || guests <= 0) e.guestCount = 'Davetli sayısı sıfırdan büyük olmalıdır.';
 
@@ -155,6 +179,8 @@ export default function RezervasyonForm() {
       customerEmail: form.customerEmail.trim() || undefined,
       secondPersonName: form.secondPersonName.trim() || undefined,
       date: form.date,
+      hallId: form.hallId,
+      menuId: form.menuId || undefined,
       slot: form.slot,
       organizationType: form.organizationType,
       guestCount: Number(form.guestCount),
@@ -250,6 +276,17 @@ export default function RezervasyonForm() {
         <fieldset className="mb-8">
           <legend className="mb-4 font-heading text-lg font-bold text-brand">Organizasyon Bilgileri</legend>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Field id="hallId" label="Salon" required error={errors.hallId}>
+              <select id="hallId" className="field-input" value={form.hallId}
+                onChange={(e) => update('hallId', e.target.value)} aria-invalid={Boolean(errors.hallId)}>
+                <option value="">Salon seçiniz</option>
+                {halls.filter((h) => h.isActive || h.id === form.hallId).map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name}{h.capacity > 0 ? ` (${h.capacity} kişi)` : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <Field id="date" label="Tarih" required error={errors.date}>
               <input id="date" type="date" className="field-input" value={form.date} onChange={(e) => update('date', e.target.value)} aria-invalid={Boolean(errors.date)} />
             </Field>
@@ -292,9 +329,38 @@ export default function RezervasyonForm() {
         <fieldset className="mb-8">
           <legend className="mb-4 font-heading text-lg font-bold text-brand">Ödeme Bilgileri</legend>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Field id="menuId" label="Menü / Paket" className="md:col-span-2">
+              <select id="menuId" className="field-input" value={form.menuId}
+                onChange={(e) => update('menuId', e.target.value)}>
+                <option value="">Menü seçilmedi</option>
+                {menus.filter((m) => m.isActive || m.id === form.menuId).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} — {formatMoney(kurusToLira(m.priceKurus), 'TL')}
+                    {m.pricing === 'kisi_basi' ? ' / kişi' : ' sabit'}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <Field id="totalAmount" label="Toplam Tutar" required error={errors.totalAmount}>
               <input id="totalAmount" inputMode="decimal" className="field-input" value={form.totalAmount} onChange={(e) => update('totalAmount', e.target.value)} aria-invalid={Boolean(errors.totalAmount)} />
             </Field>
+            {suggestedTotal !== null && suggestedTotal > 0
+              && Number(form.totalAmount) !== suggestedTotal && (
+              <div className="md:col-span-2 lg:col-span-4 -mt-2">
+                <button
+                  type="button"
+                  onClick={() => update('totalAmount', String(suggestedTotal))}
+                  className="btn-outline btn-sm"
+                >
+                  Menüye göre {formatMoney(suggestedTotal, 'TL')} uygula
+                </button>
+                <span className="ml-2 text-xs text-brand-muted">
+                  {selectedMenu?.pricing === 'kisi_basi'
+                    ? `${formatMoney(kurusToLira(selectedMenu.priceKurus), 'TL')} × ${Number(form.guestCount) || 0} kişi`
+                    : 'Sabit paket fiyatı'}
+                </span>
+              </div>
+            )}
             <Field id="deposit" label="Kaparo" error={errors.deposit}>
               <input id="deposit" inputMode="decimal" className="field-input" value={form.deposit} onChange={(e) => update('deposit', e.target.value)} aria-invalid={Boolean(errors.deposit)} />
             </Field>

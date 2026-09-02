@@ -11,7 +11,8 @@ import { normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import type {
   Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, Invoice,
-  MessageStatus, Payment, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry, User,
+  Hall, Menu, MessageStatus, Payment, Reservation, SeatingTable, SmsConsent, SmsLogEntry,
+  SmsQueueEntry, User,
 } from '../../types';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
 
@@ -39,6 +40,10 @@ function currentUser(): User | null {
   if (!id) return null;
   return users().find((u) => u.id === id) ?? null;
 }
+
+const halls = () => read<Hall[]>(KEYS.halls, []);
+const menus = () => read<Menu[]>(KEYS.menus, []);
+const seating = () => read<SeatingTable[]>(KEYS.seating, []);
 
 function requireUser(id: string): User {
   const found = users().find((u) => u.id === id);
@@ -217,16 +222,27 @@ export const localRepo: Repository = {
   },
 
   async saveReservation(reservation) {
-    // Veritabanındaki benzersizlik kısıtının karşılığı
+    // Veritabanındaki benzersizlik kısıtının karşılığı: çakışma SALON bazındadır
     const conflict = reservations().find(
-      (r) => r.businessId === reservation.businessId && r.date === reservation.date &&
+      (r) => r.hallId === reservation.hallId && r.date === reservation.date &&
              r.slot === reservation.slot && r.status !== 'İptal' && r.id !== reservation.id,
     );
     if (conflict && reservation.status !== 'İptal') {
-      throw new RepoError('Bu tarih ve seans için zaten bir rezervasyon kaydı var.');
+      throw new RepoError('Bu salonda seçilen tarih ve seans için zaten bir rezervasyon var.');
     }
     if (reservation.deposit > reservation.totalAmount) {
       throw new RepoError('Kaparo, toplam tutardan büyük olamaz.');
+    }
+    // Salon ve menü, rezervasyonun işletmesine ait olmalı (0007 tetikleyicisi)
+    const hall = halls().find((h) => h.id === reservation.hallId);
+    if (!hall || hall.businessId !== reservation.businessId) {
+      throw new RepoError('Salon bu işletmeye ait değil.');
+    }
+    if (reservation.menuId) {
+      const menu = menus().find((m) => m.id === reservation.menuId);
+      if (!menu || menu.businessId !== reservation.businessId) {
+        throw new RepoError('Menü bu işletmeye ait değil.');
+      }
     }
 
     const list = reservations();
@@ -488,6 +504,84 @@ export const localRepo: Repository = {
       createdAt: new Date().toISOString(),
     });
     write(KEYS.messages, all);
+  },
+
+  async listHalls(businessId) {
+    return wait(halls().filter((h) => h.businessId === businessId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr')));
+  },
+
+  async saveHall(hall) {
+    const list = halls();
+    const duplicate = list.some(
+      (h) => h.businessId === hall.businessId && h.id !== hall.id &&
+             h.name.trim().toLocaleLowerCase('tr') === hall.name.trim().toLocaleLowerCase('tr'),
+    );
+    if (duplicate) throw new RepoError('Bu isimde bir salon zaten var.');
+
+    const next: Hall = { ...hall, createdAt: hall.createdAt ?? new Date().toISOString() };
+    const idx = list.findIndex((h) => h.id === next.id);
+    if (idx >= 0) list[idx] = next; else list.push(next);
+    write(KEYS.halls, list);
+    return wait(next);
+  },
+
+  async deleteHall(id) {
+    // Rezervasyonu olan salon silinmez; veritabanındaki on delete restrict karşılığı
+    if (reservations().some((r) => r.hallId === id)) {
+      throw new RepoError('Bu salona bağlı rezervasyonlar var; salonu silmek yerine pasife alın.');
+    }
+    write(KEYS.halls, halls().filter((h) => h.id !== id));
+    return wait(undefined);
+  },
+
+  async listMenus(businessId) {
+    return wait(menus().filter((m) => m.businessId === businessId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr')));
+  },
+
+  async saveMenu(menu) {
+    const list = menus();
+    const duplicate = list.some(
+      (m) => m.businessId === menu.businessId && m.id !== menu.id &&
+             m.name.trim().toLocaleLowerCase('tr') === menu.name.trim().toLocaleLowerCase('tr'),
+    );
+    if (duplicate) throw new RepoError('Bu isimde bir menü zaten var.');
+    if (menu.priceKurus < 0) throw new RepoError('Menü fiyatı negatif olamaz.');
+
+    const next: Menu = { ...menu, createdAt: menu.createdAt ?? new Date().toISOString() };
+    const idx = list.findIndex((m) => m.id === next.id);
+    if (idx >= 0) list[idx] = next; else list.push(next);
+    write(KEYS.menus, list);
+    return wait(next);
+  },
+
+  async deleteMenu(id) {
+    write(KEYS.menus, menus().filter((m) => m.id !== id));
+    // Menüsü silinen rezervasyonlar bağlantısız kalır (on delete set null karşılığı)
+    write(KEYS.reservations, reservations().map(
+      (r) => (r.menuId === id ? { ...r, menuId: undefined } : r),
+    ));
+    return wait(undefined);
+  },
+
+  async listSeating(reservationId) {
+    return wait(seating().filter((t) => t.reservationId === reservationId)
+      .sort((a, b) => a.tableNo - b.tableNo));
+  },
+
+  async saveSeating(reservationId, tables) {
+    const numbers = tables.map((t) => t.tableNo);
+    if (new Set(numbers).size !== numbers.length) {
+      throw new RepoError('Aynı masa numarası birden çok kez kullanılamaz.');
+    }
+    if (tables.some((t) => t.seats < 1 || t.seats > 50)) {
+      throw new RepoError('Masa başına koltuk sayısı 1 ile 50 arasında olmalıdır.');
+    }
+    const others = seating().filter((t) => t.reservationId !== reservationId);
+    const next = tables.map((t) => ({ ...t, id: uid('seat'), reservationId }));
+    write(KEYS.seating, [...others, ...next]);
+    return wait(undefined);
   },
 
   async listMessages() {
