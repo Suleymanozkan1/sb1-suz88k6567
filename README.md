@@ -313,6 +313,8 @@ ticari ileti gönderecekseniz İYS üyeliği ve entegrasyon bilgilerinizi temin 
 
 ## Vercel'e dağıtım
 
+Adım adım kurulum için: [docs/DAGITIM-KONTROL-LISTESI.md](docs/DAGITIM-KONTROL-LISTESI.md)
+
 Depo Vercel'e bağlandığında `vercel.json` gerekli her şeyi tanımlar; ek ayar
 yapmanıza gerek yoktur.
 
@@ -390,15 +392,45 @@ Fatura bir vergi belgesidir; veritabanı bunu zorlar:
 
 T.C. kimlik ve vergi kimlik numaraları algoritmik olarak doğrulanır.
 
-### Entegratör
+### Entegratör: Paraşüt
 
 GİB'e doğrudan bağlanmak UBL-TR XML üretimi ve mali mühür gerektirir; pratikte
-özel entegratör kullanılır (NES, Paraşüt, Uyumsoft, Logo, EDM…). Gönderim
-gövdesi `api/invoice.ts` içindeki `buildPayload` fonksiyonunda üretilir;
-entegratör değiştiğinde yalnızca burası düzenlenir.
+özel entegratör kullanılır. Bu kurulum **Paraşüt** için yazılmıştır.
 
-`EINVOICE_*` tanımlı değilse fatura yalnızca sistemde oluşturulur, **taslak
-kalır ve "gönderildi" denmez.**
+Entegratöre özgü her şey `api/_parasut.ts` içindedir; `api/invoice.ts` yalnızca
+akışı yönetir (bekleyen taslakları al, iki kez gönderme, sonucu yaz). Başka bir
+entegratöre geçilirse aynı `sendInvoice(invoice, lines) => providerRef`
+sözleşmesini karşılayan yeni bir modül yazmak yeterlidir.
+
+**Paraşüt'te gönderim tek adım değildir**, üç adımlıdır:
+
+1. Alıcı, vergi numarası veya e-postasıyla `contacts` içinde aranır; yoksa oluşturulur
+2. `sales_invoices` ile satış faturası yazılır
+3. Alıcının GİB posta kutusu varsa `e_invoices`, yoksa `e_archives` ile gönderilir
+
+Üçüncü adım eşzamansızdır: Paraşüt bir `trackable_jobs` kaydı döndürür, sonuç
+alınana kadar iki saniye aralıkla yoklanır (azami 30 saniye).
+
+Kimlik doğrulama OAuth2 *password* akışıdır. Jeton iki saat geçerlidir, modül
+düzeyinde önbelleğe alınır ve süresi dolmadan `refresh_token` ile tazelenir —
+her fatura için yeniden oturum açılmaz.
+
+**Fatura numarasını biz veririz.** Veritabanındaki 16 haneli numara
+(`DGT2026000000042`) seri ve sıraya bölünüp (`invoice_series: "DGT"`,
+`invoice_id: 42`) Paraşüt'e geçilir; aksi hâlde Paraşüt kendi sayacını kullanır
+ve iki sistemdeki numaralar ayrışır. Paraşüt Türk lirasını `TRL` koduyla
+adlandırır (ISO `TRY` değil).
+
+`PARASUT_*` değişkenlerinin beşi birden tanımlı değilse fatura yalnızca
+sistemde oluşturulur, **taslak kalır ve "gönderildi" denmez.** Gönderim
+başarısız olursa fatura taslağa geri döner ve hata metni `provider_error`
+alanına yazılır; numara veritabanında ayrılmış kalır ve değişmez.
+
+> **Gerçek hesapla test edilmedi.** Uç nokta yolları ve JSON:API zarfı topluluk
+> SDK'larından doğrulanmıştır; `e_archives` niteliklerinin bir bölümü
+> (`internet_sale`, `exclusion_reason`) hesabınızın ayarlarına göre değişebilir.
+> İlk gerçek gönderimde alan adı uyuşmazlığı çıkarsa hata metni
+> `provider_error` alanında görünür ve Faturalar ekranında okunabilir.
 
 > **Uyarı:** Zorunluluk hadleri, KDV oranları ve belge türü kuralları
 > değişebilir. Kendi mükellefiyet durumunuzu ve hangi KDV oranını
@@ -431,5 +463,5 @@ Aynı kontroller panelde **Sistem Durumu** ekranında Türkçe açıklamalarla v
 - Demo modunda kalıcılık tarayıcıdadır ve şifreler düz metin saklanır. Gerçek
   kullanımda Supabase bağlantısı yapılandırılmalıdır.
 - Abonelik / ödeme tahsilatı yoktur; sistem tek şirket kullanımı için sadeleştirilmiştir.
-- e-Fatura entegratörünün alan adları `api/invoice.ts` içinde uyarlanmalıdır; gerçek bir entegratör hesabıyla test edilmemiştir.
+- e-Fatura bağlantısı Paraşüt için yazılmıştır (`api/_parasut.ts`); gövde üretimi ve hata çözümlemesi birim testleriyle doğrulanmış, ancak **gerçek bir Paraşüt hesabıyla test edilmemiştir**. İlk gönderimde alan adı uyuşmazlığı çıkabilir; hata metni Faturalar ekranında görünür.
 - Referans listesindeki işletmeler örnek veridir.

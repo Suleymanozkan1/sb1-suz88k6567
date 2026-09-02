@@ -159,7 +159,7 @@ test.describe('İstemci tarafı güvenlik', () => {
     for (const src of scripts) {
       const code = await (await request.get(src!)).text();
       expect(code, `${src} sunucu sırrı içeriyor`)
-        .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET|EINVOICE_API_KEY/i);
+        .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET|PARASUT_CLIENT_SECRET|PARASUT_PASSWORD/i);
     }
   });
 });

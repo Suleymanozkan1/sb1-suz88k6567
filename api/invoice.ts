@@ -1,130 +1,27 @@
 /**
- * e-Arşiv / e-Fatura entegratör bağlantısı.
+ * e-Arşiv / e-Fatura gönderim döngüsü.
  *
- * GİB'e doğrudan bağlanmak UBL-TR XML üretimi ve mali mühür gerektirir;
- * pratikte özel entegratör (NES, Paraşüt, Uyumsoft, Logo, EDM…) üzerinden
- * REST API kullanılır. Entegratörler farklı alan adları kullandığı için
- * gönderim gövdesi tek bir yerde — `buildPayload` — üretilir; entegratör
- * değiştiğinde yalnızca burası düzenlenir.
- *
- * Gerekli ortam değişkenleri:
- *   EINVOICE_BASE_URL   Entegratörün API adresi
- *   EINVOICE_API_KEY    API anahtarı / jeton
- *   EINVOICE_SENDER_VKN Gönderen firmanın vergi kimlik numarası
- *
- * Tanımlı değilse fatura yalnızca sistemde oluşturulur, gönderilmez ve
- * durumu "taslak" kalır — "gönderildi" denmez.
+ * Bu dosya yalnızca akışı yönetir: bekleyen taslakları alır, iki kez
+ * gönderilmelerini engeller, sonucu veritabanına yazar. Entegratöre özgü
+ * her şey `_parasut.ts` içindedir; başka bir entegratöre geçilirse yalnızca
+ * o modülün yerine aynı `sendInvoice` sözleşmesini karşılayan bir modül
+ * konur.
  */
 import { isAuthorizedCron, isDbConfigured, patchRows, selectRows } from './_db';
 import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard';
+import {
+  isConfigured as isEInvoiceConfigured, sendInvoice,
+  type InvoiceRow, type LineRow,
+} from './_parasut';
 
-const BASE = process.env.EINVOICE_BASE_URL;
-const API_KEY = process.env.EINVOICE_API_KEY;
-const SENDER_VKN = process.env.EINVOICE_SENDER_VKN;
+export { isEInvoiceConfigured };
 
-export function isEInvoiceConfigured(): boolean {
-  return Boolean(BASE && API_KEY && SENDER_VKN);
-}
+/** Bir turda işlenecek azami fatura; cron 15 dakikada bir çalışır. */
+const BATCH = 25;
 
-interface InvoiceRow {
-  id: string;
-  invoice_number: string;
-  uuid_ettn: string;
-  kind: string;
-  issue_date: string;
-  buyer_kind: string;
-  buyer_name: string;
-  buyer_tax_id: string | null;
-  buyer_tax_office: string | null;
-  buyer_address: string | null;
-  buyer_city: string | null;
-  buyer_district: string | null;
-  buyer_email: string | null;
-  base_kurus: number;
-  vat_kurus: number;
-  total_kurus: number;
-  note: string | null;
-}
-
-interface LineRow {
-  line_no: number;
-  description: string;
-  quantity: number;
-  unit: string;
-  unit_price_kurus: number;
-  discount_rate: number;
-  vat_rate: number;
-  base_kurus: number;
-  vat_kurus: number;
-  total_kurus: number;
-}
-
-/** Kuruşu entegratörün beklediği ondalıklı metne çevirir */
-function money(kurus: number): string {
-  return (kurus / 100).toFixed(2);
-}
-
-/**
- * Entegratöre gönderilecek gövde.
- * Alan adları entegratörünüzün dokümanına göre uyarlanmalıdır.
- */
-function buildPayload(invoice: InvoiceRow, lines: LineRow[]) {
-  return {
-    senderTaxNumber: SENDER_VKN,
-    documentType: invoice.kind === 'e-Fatura' ? 'EFATURA' : 'EARSIV',
-    invoiceNumber: invoice.invoice_number,
-    uuid: invoice.uuid_ettn,
-    issueDate: invoice.issue_date,
-    currency: 'TRY',
-    // Alıcı e-Fatura mükellefi değilse e-Arşiv düzenlenir
-    buyer: {
-      type: invoice.buyer_kind === 'kurumsal' ? 'TUZELKISI' : 'GERCEKKISI',
-      name: invoice.buyer_name,
-      taxNumber: invoice.buyer_tax_id ?? undefined,
-      taxOffice: invoice.buyer_tax_office ?? undefined,
-      address: invoice.buyer_address ?? undefined,
-      city: invoice.buyer_city ?? undefined,
-      district: invoice.buyer_district ?? undefined,
-      email: invoice.buyer_email ?? undefined,
-    },
-    lines: lines
-      .sort((a, b) => a.line_no - b.line_no)
-      .map((line) => ({
-        lineNumber: line.line_no,
-        name: line.description,
-        quantity: Number(line.quantity),
-        unitCode: line.unit,
-        unitPrice: money(line.unit_price_kurus),
-        discountRate: Number(line.discount_rate),
-        vatRate: line.vat_rate,
-        vatAmount: money(line.vat_kurus),
-        lineTotal: money(line.base_kurus),
-      })),
-    totals: {
-      taxableAmount: money(invoice.base_kurus),
-      vatAmount: money(invoice.vat_kurus),
-      payableAmount: money(invoice.total_kurus),
-    },
-    note: invoice.note ?? undefined,
-  };
-}
-
-async function callProvider(path: string, body: unknown): Promise<Response> {
-  return fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${API_KEY}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-}
-
-/** Taslak faturaları entegratöre gönderir. */
 async function sendPending(): Promise<{ sent: number; failed: number }> {
   const pending = await selectRows<InvoiceRow>(
-    'invoices?status=eq.taslak&select=*&limit=25',
+    `invoices?status=eq.taslak&select=*&limit=${BATCH}`,
   );
 
   let sent = 0;
@@ -132,12 +29,10 @@ async function sendPending(): Promise<{ sent: number; failed: number }> {
 
   for (const invoice of pending) {
     try {
-      // Aynı faturanın iki kez gönderilmesini engelle
+      // Durumu koşullu güncelleriz: eşzamanlı ikinci bir tur aynı faturayı almaz.
       await patchRows(`invoices?id=eq.${invoice.id}&status=eq.taslak`, { status: 'gonderiliyor' });
 
-      const lines = await selectRows<LineRow>(
-        `invoice_lines?invoice_id=eq.${invoice.id}&select=*`,
-      );
+      const lines = await selectRows<LineRow>(`invoice_lines?invoice_id=eq.${invoice.id}&select=*`);
       if (lines.length === 0) {
         await patchRows(`invoices?id=eq.${invoice.id}`, {
           status: 'taslak', provider_error: 'Faturada satır bulunmuyor.',
@@ -146,34 +41,21 @@ async function sendPending(): Promise<{ sent: number; failed: number }> {
         continue;
       }
 
-      const response = await callProvider('/invoices', buildPayload(invoice, lines));
-      const text = await response.text();
+      const reference = await sendInvoice(invoice, lines);
 
-      if (response.ok) {
-        let reference: string | undefined;
-        try {
-          reference = (JSON.parse(text) as { id?: string; uuid?: string }).id
-            ?? (JSON.parse(text) as { uuid?: string }).uuid;
-        } catch { /* referans okunamadıysa sorun değil */ }
-
-        await patchRows(`invoices?id=eq.${invoice.id}`, {
-          status: 'gonderildi',
-          sent_at: new Date().toISOString(),
-          provider_ref: reference ?? null,
-          provider_error: null,
-        });
-        sent += 1;
-      } else {
-        // Başarısızlıkta taslağa geri alınır; kullanıcı düzeltip tekrar gönderebilir
-        await patchRows(`invoices?id=eq.${invoice.id}`, {
-          status: 'taslak',
-          provider_error: `Entegratör reddetti (${response.status}): ${text.slice(0, 300)}`,
-        });
-        failed += 1;
-      }
-    } catch (error) {
       await patchRows(`invoices?id=eq.${invoice.id}`, {
-        status: 'taslak', provider_error: String(error).slice(0, 300),
+        status: 'gonderildi',
+        sent_at: new Date().toISOString(),
+        provider_ref: reference,
+        provider_error: null,
+      });
+      sent += 1;
+    } catch (error) {
+      // Başarısızlıkta taslağa geri alınır; kullanıcı düzeltip tekrar gönderir.
+      // Fatura numarası veritabanında zaten ayrılmıştır ve değişmez.
+      await patchRows(`invoices?id=eq.${invoice.id}`, {
+        status: 'taslak',
+        provider_error: (error instanceof Error ? error.message : String(error)).slice(0, 300),
       }).catch(() => undefined);
       failed += 1;
     }
