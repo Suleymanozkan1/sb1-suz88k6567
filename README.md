@@ -134,7 +134,7 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 1. [supabase.com](https://supabase.com) üzerinde proje açın (**bölge: Frankfurt** — KVKK açısından AB tercih edilir).
 2. SQL Editor'da migration dosyalarını **sırayla** çalıştırın:
    `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` →
-   `0004_backup_health.sql` → `0005_invoices.sql`
+   `0004_backup_health.sql` → `0005_invoices.sql` → `0006_talepler.sql`
 3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
 4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
 5. Authentication → Users bölümünden kendi hesabınızı oluşturun.
@@ -142,6 +142,41 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 
 Personel hesapları da Supabase → Authentication → Users bölümünden açılır;
 yetkileri panelin **Kullanıcılar** ekranından düzenlenir.
+
+### Kurulu bir projeye yeni göç uygulama
+
+Göçler yeniden çalıştırılabilir (`if not exists`, `drop … if exists`,
+`create or replace`); yanlışlıkla iki kez çalıştırmak veri kaybettirmez.
+
+Supabase Dashboard → **SQL Editor** → **New query** → ilgili dosyanın içeriğini
+yapıştırıp **Run**. Yerel `psql` ile de yapılabilir:
+
+```bash
+psql "$DATABASE_URL" -f supabase/migrations/0006_talepler.sql
+```
+
+Uygulandıktan sonra aşağıdaki sorgu ilk altı sütunda `t` döndürmelidir:
+
+```sql
+select
+  (select count(*) = 4 from information_schema.columns
+     where table_name = 'contact_messages'
+       and column_name in ('status','note','handled_by','handled_at'))          as kolonlar_eklendi,
+  (to_regprocedure('public.is_owner()') is not null)                            as is_owner_var,
+  (select exists (select 1 from pg_trigger
+     where tgname = 'contact_messages_stamp' and not tgisinternal))             as damga_tetikleyicisi,
+  (select exists (select 1 from pg_policies
+     where tablename = 'contact_messages' and policyname = 'contact_messages_select'
+       and qual like '%is_owner%'))                                             as okuma_yoneticiye_kapali,
+  (select exists (select 1 from pg_policies
+     where tablename = 'contact_messages' and policyname = 'contact_messages_update')) as guncelleme_politikasi,
+  (select not has_table_privilege('authenticated', 'public.contact_messages', 'DELETE')) as silme_kapali,
+  (select count(*) from public.contact_messages)                                as talep_sayisi;
+```
+
+`0006` mevcut talepleri korur ve hepsini `status = 'yeni'` yapar. Göçten önce
+gönderilmiş salon teklif formları `kind = 'demo'` olarak kalır; yalnızca yeni
+gönderimler `teklif` olarak sınıflandırılır.
 
 ### RLS testlerini çalıştırma
 
