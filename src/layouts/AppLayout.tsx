@@ -1,0 +1,135 @@
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useBusinesses } from '../lib/queries';
+import DemoNotice from '../components/DemoNotice';
+import {
+  IconAlert, IconBuilding, IconCalendar, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu,
+  IconChart, IconMail, IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
+} from '../components/Icons';
+
+const NAV = [
+  { to: '/panel', label: 'Özet', icon: IconGrid, end: true },
+  { to: '/panel/takvim', label: 'Rezervasyon Takvimi', icon: IconCalendar },
+  { to: '/panel/rezervasyonlar', label: 'Rezervasyonlar', icon: IconList },
+  { to: '/panel/musteriler', label: 'Müşteriler', icon: IconUsers },
+  { to: '/panel/kasa', label: 'Gelir / Gider', icon: IconWallet },
+  { to: '/panel/faturalar', label: 'Faturalar', icon: IconReport },
+  { to: '/panel/raporlar', label: 'Raporlar', icon: IconChart },
+  { to: '/panel/renk-ayarlari', label: 'Renk Ayarları', icon: IconPalette },
+  { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
+  { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser, ownerOnly: true },
+  { to: '/panel/talepler', label: 'Talepler', icon: IconMail, ownerOnly: true },
+  { to: '/panel/sms', label: 'SMS Kayıtları', icon: IconMessage },
+  { to: '/panel/izinler', label: 'İYS İzinleri', icon: IconCheck },
+  { to: '/panel/denetim', label: 'Denetim Kaydı', icon: IconShield },
+  { to: '/panel/sistem', label: 'Sistem Durumu', icon: IconAlert },
+  { to: '/panel/ayarlar', label: 'Ayarlar', icon: IconSettings },
+];
+
+export default function AppLayout() {
+  const { user, signOut, setActiveBusiness } = useAuth();
+  const { data: businesses = [] } = useBusinesses();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+    window.scrollTo({ top: 0 });
+  }, [location.pathname]);
+
+  if (!user) return null;
+
+  const active = businesses.find((b) => b.id === user.activeBusinessId) ?? businesses[0];
+  // Yalnızca yöneticiye açık ekranlar personelde bağlantı olarak gösterilmez.
+  const visibleNav = NAV.filter((item) => !item.ownerOnly || user.role === 'owner');
+
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition ${
+      isActive ? 'bg-accent text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'
+    }`;
+
+  return (
+    <div className="flex min-h-screen bg-surface">
+      {/* Kenar çubuğu */}
+      <aside
+        className={`no-print fixed inset-y-0 left-0 z-50 w-64 shrink-0 overflow-y-auto bg-brand p-4 transition-transform lg:static lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        aria-label="Panel menüsü"
+      >
+        <div className="mb-6 flex items-center justify-between">
+          <Link to="/" className="font-display text-xl font-bold text-white hover:text-white">
+            Düğün<span className="text-accent">Takip</span>
+          </Link>
+          <button type="button" className="text-white lg:hidden" onClick={() => setSidebarOpen(false)} aria-label="Menüyü kapat">
+            <IconClose size={22} />
+          </button>
+        </div>
+
+        {businesses.length > 1 && (
+          <div className="mb-4">
+            <label htmlFor="active-business" className="mb-1 block text-xs text-white/60">
+              Aktif işletme
+            </label>
+            <select
+              id="active-business"
+              className="w-full rounded-md border border-white/20 bg-brand-dark px-2 py-2 text-sm text-white"
+              value={active?.id ?? ''}
+              onChange={(e) => { void setActiveBusiness(e.target.value); }}
+            >
+              {businesses.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <nav>
+          <ul className="space-y-1">
+            {visibleNav.map((item) => (
+              <li key={item.to}>
+                <NavLink to={item.to} end={item.end} className={linkClass}>
+                  <item.icon size={18} />
+                  {item.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <button
+          type="button"
+          onClick={() => { void signOut(); }}
+          className="mt-6 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm text-white/80 transition hover:bg-white/10 hover:text-white"
+        >
+          <IconLogout size={18} />
+          Çıkış Yap
+        </button>
+      </aside>
+
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="no-print sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-white px-4 py-3">
+          <button type="button" className="text-brand lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Menüyü aç">
+            <IconMenu size={24} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-heading text-sm font-bold text-brand">{active?.name ?? user.companyName}</p>
+            <p className="truncate text-xs text-brand-muted">
+              {user.fullName} · {user.role === 'owner' ? 'Yönetici' : 'Personel'}
+            </p>
+          </div>
+        </header>
+
+        <main className="min-w-0 flex-1 p-4 md:p-6">
+          <DemoNotice className="mb-5" />
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}
