@@ -77,7 +77,8 @@ Demo hesapları yalnızca demo modunda vardır.
 | `/panel/raporlar` | Program bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
 | `/panel/renk-ayarlari` | Organizasyon türü başına takvim rengi |
 | `/panel/isletmeler` | Firmalarım / Adminler — çok işletmeli kullanım |
-| `/panel/kullanicilar` | Alt kullanıcılar ve yetkileri |
+| `/panel/kullanicilar` | Alt kullanıcılar ve yetkileri *(yalnızca yönetici)* |
+| `/panel/talepler` | Talep kutusu — siteden gelen iletişim, demo ve salon teklifi formları *(yalnızca yönetici)* |
 | `/panel/sms` | Gönderilen SMS kayıtları |
 | `/panel/izinler` | İYS izin yönetimi — ticari ileti onay/ret kayıtları |
 | `/panel/denetim` | Denetim kaydı — kim, neyi, ne zaman değiştirdi |
@@ -144,21 +145,49 @@ yetkileri panelin **Kullanıcılar** ekranından düzenlenir.
 
 ### RLS testlerini çalıştırma
 
+Her test dosyası kendi kimliklerini (`auth.users`) ve örnek verisini sıfırdan
+kurar, bu yüzden **her paket temiz bir veritabanında** çalıştırılmalıdır; aynı
+veritabanında art arda çalıştırılırsa ikinci paket birincil anahtar çakışmasıyla
+durur.
+
 ```bash
-psql -d <veritabani> -f supabase/tests/00_supabase_stub.sql   # yalnızca yerel: auth şeması taklidi
-psql -d <veritabani> -f supabase/migrations/0001_init.sql
-psql -d <veritabani> -f supabase/migrations/0002_security.sql
-psql -d <veritabani> -f supabase/migrations/0003_iys_queue.sql
-psql -d <veritabani> -f supabase/tests/01_rls_test.sql        # 8 izolasyon senaryosu
-psql -d <veritabani> -f supabase/tests/02_security_test.sql   # 15 güvenlik senaryosu
-psql -d <veritabani> -f supabase/tests/03_iys_test.sql        # 16 İYS ve kuyruk senaryosu
-psql -d <veritabani> -f supabase/tests/04_backup_restore_test.sql  # 13 yedek/geri yükleme senaryosu
-psql -d <veritabani> -f supabase/tests/05_invoice_test.sql         # 15 fatura senaryosu
+for t in supabase/tests/0[1-6]_*.sql; do
+  db="qa_$(basename "$t" .sql)"
+  psql -c "drop database if exists $db" postgres
+  psql -c "create database $db" postgres
+
+  # Şema: yerel auth taklidi + tüm göçler
+  psql -v ON_ERROR_STOP=1 -d "$db" -f supabase/tests/00_supabase_stub.sql
+  for m in supabase/migrations/000*.sql; do
+    psql -v ON_ERROR_STOP=1 -d "$db" -f "$m"
+  done
+
+  echo "===== $t"
+  psql -v ON_ERROR_STOP=1 -d "$db" -f "$t"
+done
 ```
 
-Toplam **67 senaryo**. `04_backup_restore_test.sql` yedeği temiz bir şemaya
-gerçekten geri yükler ve satır sayıları, parasal değerler, Türkçe karakterler
-ile ilişkisel bütünlüğün korunduğunu kanıtlar.
+| Paket | Senaryo | Kapsam |
+| --- | --- | --- |
+| `01_rls_test.sql` | 8 | Kiracı izolasyonu |
+| `02_security_test.sql` | 15 | Hız sınırı, giriş kilidi, denetim kaydı |
+| `03_iys_test.sql` | 16 | İYS onayı ve SMS kuyruğu |
+| `04_backup_restore_test.sql` | 13 | Yedek alma ve geri yükleme |
+| `05_invoice_test.sql` | 15 | Fatura değişmezliği ve seri numarası |
+| `06_talepler_test.sql` | 11 | Talep kutusu yetkileri |
+
+Toplam **78 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
+`BASARISIZ:` ile başlayan bir hata görürseniz test gerçekten düşmüştür.
+
+`04_backup_restore_test.sql` yedeği temiz bir şemaya gerçekten geri yükler ve
+satır sayıları, parasal değerler, Türkçe karakterler ile ilişkisel bütünlüğün
+korunduğunu kanıtlar.
+
+> Göçler, `public` şemadaki tablo izinleri için Supabase'in varsayılan
+> yetkilendirmesine dayanır (`anon` / `authenticated` rollerine otomatik verilen
+> izinler). Düz bir Postgres'te bu izinler bulunmadığı için test paketleri
+> gereken `grant` ifadelerini kendileri verir; şemayı Supabase dışında bir
+> sunucuya kuracaksanız bu izinleri açıkça tanımlamanız gerekir.
 
 ## Güvenlik
 
@@ -170,6 +199,7 @@ ile ilişkisel bütünlüğün korunduğunu kanıtlar.
 | **Denetim kaydı** | Postgres tetikleyicileri | Tüm ekleme/değişiklik/silme işlemleri, değişen alanlarla birlikte; kayıtlar değiştirilemez |
 | **İYS kuralı** | `enqueue_sms` fonksiyonu | Ticari ileti onaysız gönderilemez; kuyruğa doğrudan yazma istemciye kapalı |
 | **Belge bütünlüğü** | Postgres tetikleyicileri | Gönderilmiş fatura değiştirilemez, silinemez; seri sayacı geri alınamaz |
+| **Talep gizliliği** | `is_owner()` + RLS | Siteden gelen talepleri yalnızca yönetici okur; içerik değiştirilemez, kayıt silinemez |
 | **Yedek erişimi** | Postgres RLS | Yedek yalnızca kendi kapsamını içerir; başka hesabın verisi dışa aktarılamaz |
 | **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `service_role` anahtarı yalnızca sunucuda; `VITE_` öneki taşımaz |
 | **Hata izleme** | `src/lib/monitoring.ts` | İsteğe bağlı Sentry; gönderilen olaylarda e-posta ve telefon maskelenir |

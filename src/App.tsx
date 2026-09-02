@@ -29,6 +29,7 @@ const RezervasyonForm = lazy(() => import('./pages/app/RezervasyonForm'));
 const RezervasyonDetay = lazy(() => import('./pages/app/RezervasyonDetay'));
 const Sozlesme = lazy(() => import('./pages/app/Sozlesme'));
 const Kasa = lazy(() => import('./pages/app/Kasa'));
+const Talepler = lazy(() => import('./pages/app/Talepler'));
 const Raporlar = lazy(() => import('./pages/app/Raporlar'));
 const RenkAyarlari = lazy(() => import('./pages/app/RenkAyarlari'));
 const Musteriler = lazy(() => import('./pages/app/Musteriler'));
@@ -120,6 +121,7 @@ export default function App() {
             <Route path="musteriler" element={<Musteriler />} />
             <Route path="isletmeler" element={<Isletmeler />} />
             <Route path="kullanicilar" element={<Kullanicilar />} />
+            <Route path="talepler" element={<Talepler />} />
             <Route path="sms" element={<SmsKayitlari />} />
             <Route path="izinler" element={<IzinYonetimi />} />
             <Route path="denetim" element={<DenetimKaydi />} />

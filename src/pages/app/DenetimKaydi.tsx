@@ -4,7 +4,7 @@ import Alert from '../../components/Alert';
 import { QueryBoundary } from '../../components/QueryState';
 import { useAuditLog } from '../../lib/queries';
 import { useAuth } from '../../context/AuthContext';
-import { normalizeTr } from '../../lib/format';
+import { formatDateTime, normalizeTr } from '../../lib/format';
 import { IconSearch } from '../../components/Icons';
 import type { AuditEntry } from '../../types';
 
@@ -135,7 +135,7 @@ export default function DenetimKaydi() {
                 return (
                   <tr key={entry.id} className="border-b border-line/60 align-top last:border-0">
                     <td className="whitespace-nowrap px-4 py-3 text-brand-muted">
-                      {new Date(entry.createdAt).toLocaleString('tr-TR')}
+                      {formatDateTime(entry.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-brand">{entry.actorEmail}</td>
                     <td className="px-4 py-3">

@@ -8,7 +8,7 @@
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage,
   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
-  Invoice, InvoiceKind, BuyerKind,
+  Invoice, InvoiceKind, BuyerKind, MessageStatus,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
@@ -127,7 +127,10 @@ export interface Repository {
   deleteConsent(id: string): Promise<void>;
 
   /* -- iletişim -------------------------------------------------------- */
-  addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>): Promise<void>;
+  addMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'status' | 'note' | 'handledAt'>): Promise<void>;
+  /** Talep kutusu — yalnızca yönetici okuyabilir (RLS). */
+  listMessages(): Promise<ContactMessage[]>;
+  setMessageStatus(id: string, status: MessageStatus, note: string): Promise<void>;
 
   /* -- denetim kaydı ---------------------------------------------------- */
   listAuditLog(limit: number): Promise<AuditEntry[]>;

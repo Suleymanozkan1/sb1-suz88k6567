@@ -59,7 +59,10 @@ export default async function handler(request: Request): Promise<Response> {
     }
   } catch (error) {
     return json(
-      { status: 'arizali', sorunlar: ['Veritabanına ulaşılamıyor.'], detay: detailed ? String(error) : undefined },
+      {
+        status: 'arizali',
+        ...(detailed ? { sorunlar: ['Veritabanına ulaşılamıyor.'], detay: String(error) } : {}),
+      },
       503,
     );
   }
@@ -80,11 +83,13 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const healthy = sorunlar.length === 0;
+  // Sorun metinleri hangi alt sistemin bozuk olduğunu (yedek yok, SMS
+  // gönderilemiyor, kuyruk tıkalı) açık eder; yetkisiz çağrıya yalnızca
+  // ayakta/değil bilgisi verilir.
   return json(
     {
       status: healthy ? 'saglikli' : 'uyari',
-      sorunlar,
-      ...(detailed ? { ozet: toplam } : {}),
+      ...(detailed ? { sorunlar, ozet: toplam } : {}),
       zaman: new Date().toISOString(),
     },
     healthy ? 200 : 503,

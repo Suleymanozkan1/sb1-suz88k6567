@@ -1,11 +1,108 @@
 # Düğün Takip — Audit ve QA Raporu
 
-**Tarih:** 30 Ağustos 2026
-**Kapsam:** Tanıtım sitesinin tüm sayfaları + üye panelinin tüm ekranları
+**Son güncelleme:** 2 Eylül 2026 (ikinci tam denetim)
+**Kapsam:** Tanıtım sitesinin tüm sayfaları + üye panelinin tüm ekranları +
+veritabanı kuralları, API uç noktaları ve yetkilendirme
 
 ---
 
-## 1. Özet
+## 0. İkinci tam denetim (2 Eylül 2026)
+
+Sistemin tamamı sıfırdan yeniden denetlendi: göçler boş bir Postgres 16
+veritabanına uygulandı, tüm test paketleri çalıştırıldı, panelin her ekranı
+gerçek tarayıcıda açılıp iş akışları elle sürüldü ve derlenen paketlerde sır
+araması yapıldı.
+
+| Kontrol | Sonuç |
+|---------|-------|
+| TypeScript tip kontrolü (`strict`) | ✅ 0 hata |
+| ESLint | ✅ 0 hata, 0 uyarı |
+| Birim + entegrasyon testleri (Vitest) | ✅ 212/212 |
+| Uçtan uca testler (Playwright/Chromium) | ✅ 61/61 |
+| Veritabanı kuralları (psql, 6 paket) | ✅ 78/78 |
+| Göçlerin boş veritabanına uygulanması | ✅ 6/6 temiz |
+| Üretim derlemesi | ✅ başarılı |
+| Derlenmiş paketlerde sunucu sırrı | ✅ bulunmadı |
+
+Toplam **351 otomatik senaryo**.
+
+### 0.1 Bu denetimde bulunan ve düzeltilen sorunlar
+
+**A. Siteden gelen talepler hiçbir yerden okunamıyordu — *yüksek***
+
+İletişim formu, demo talebi ve salon teklif formu `contact_messages` tablosuna
+yazıyordu; ancak veri erişim sözleşmesinde okuma yöntemi, panelde de bir ekran
+yoktu. Gelen her müşteri talebi fiilen kayboluyordu.
+
+*Düzeltme:* `listMessages` / `setMessageStatus` yöntemleri, **Talepler** ekranı
+ve `0006_talepler.sql` göçü eklendi. Talepler durum (yeni / işlemde /
+kapatıldı), not ve işleyen damgasıyla yönetilir.
+
+**B. Talepleri her oturum açan kullanıcı okuyabiliyordu — *yüksek***
+
+`0001`deki politika `contact_messages` için `to authenticated using (true)`
+idi: yalnızca rezervasyon görüntüleme yetkisi olan bir personel bile, siteye
+gelen tüm taleplerin adını, e-postasını ve telefonunu okuyabiliyordu.
+
+*Düzeltme:* Okuma ve güncelleme `public.is_owner()` ile yönetici hesabına
+kapatıldı; silme yetkisi tamamen kaldırıldı. `06_talepler_test.sql` bu kuralı
+personel kimliğiyle doğrular.
+
+**C. `/api/health` yetkisiz çağrıya işletim ayrıntısı veriyordu — *orta***
+
+Uç nokta, kimlik doğrulaması olmadan "Henüz başarılı bir yedek alınmamış",
+"SMS sağlayıcısı yapılandırılmamış", "N mesaj kalıcı olarak gönderilemedi"
+gibi metinleri döndürüyordu; bu, hangi alt sistemin bozuk olduğunu dışarıya
+açık ediyordu.
+
+*Düzeltme:* Sorun metinleri ve özet yalnızca `CRON_SECRET` ile çağrıldığında
+döner; yetkisiz çağrı sadece `status` alanını görür.
+
+**D. Aynı milisaniyedeki talepler kararsız sıralanıyordu — *düşük***
+
+`localeCompare` eşit zaman damgalarında 0 döndüğü için sıralama girdi sırasına
+kalıyordu. SMS kayıtlarında daha önce düzeltilen hatanın aynısı.
+
+*Düzeltme:* Ekleme sırasını eşitlik bozucu olarak kullanan kararlı sıralama.
+
+**E. README'deki veritabanı testi yönergesi çalışmıyordu — *düşük***
+
+Komutlar tüm paketleri aynı veritabanında art arda çalıştırıyordu; her paket
+kendi kimliklerini kurduğu için ikinci paket birincil anahtar çakışmasıyla
+duruyordu.
+
+*Düzeltme:* Her paketi kendi veritabanında kuran döngü ve senaryo tablosu.
+
+### 0.2 Düzeltilmeyen, bilinçli olarak not edilen konu
+
+Göçler, `public` şemadaki tablo izinleri için **Supabase'in varsayılan
+yetkilendirmesine** dayanır. Düz bir Postgres'te `anon` ve `authenticated`
+rollerinin hiçbir tabloda izni olmadığı için şema tek başına çalışmaz; test
+paketleri gereken `grant` ifadelerini kendileri verir. Supabase üzerinde sorun
+çıkarmaz, ancak şema başka bir sunucuya taşınacaksa izinlerin açıkça
+tanımlanması gerekir. `0006` bu yaklaşımı dokunduğu tablo için uygular.
+
+### 0.3 Tarayıcıda elle doğrulanan akışlar
+
+Panelin 17 ekranı gerçek tarayıcıda açıldı; hiçbirinde uygulama hatası,
+`undefined`, `NaN` veya `[object Object]` görülmedi. Sürülen akışlar:
+
+- Rezervasyon oluşturma → zorunlu alan doğrulaması ("Davetli sayısını giriniz.")
+  kaydı doğru şekilde engelliyor
+- 300.000 ₺ toplam + 50.000 ₺ kaparo → kalan alacak kendiliğinden 250.000 ₺
+- 80.000 ₺ tahsilat → toplam tahsilat 130.000 ₺, kalan 170.000 ₺
+- Sözleşme sayfası müşteri bilgisini taşıyor
+- Aynı tarih ve seansa ikinci rezervasyon engelleniyor
+- Kasa kaydı listeye ve bakiyeye yansıyor
+- Siteden gönderilen iletişim formu → yönetici talep kutusunda görünüyor →
+  not düşülüp durumu değiştirilebiliyor → sayaçlar güncelleniyor
+- Çıkış sonrası panel adresleri giriş sayfasına yönlendiriyor
+
+---
+
+## 1. İlk denetim (30 Ağustos 2026)
+
+### 1.1 Özet
 
 | Kontrol | Sonuç |
 |---------|-------|

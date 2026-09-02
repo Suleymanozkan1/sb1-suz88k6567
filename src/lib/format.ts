@@ -35,6 +35,17 @@ export function formatDateLong(iso: string): string {
   return `${d} ${MONTH_NAMES[m - 1]} ${y}`;
 }
 
+/** ISO zaman damgası -> 30.08.2026 14:05; boş/geçersiz değerde tire döner. */
+export function formatDateTime(iso: string | undefined): string {
+  if (!iso) return '—';
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleString('tr-TR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
 export function todayIso(): string {
   return toIso(new Date());
 }

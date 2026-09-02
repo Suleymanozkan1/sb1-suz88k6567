@@ -85,7 +85,7 @@ export default function SalonDetay() {
         ]
           .filter(Boolean)
           .join('\n'),
-        kind: 'demo',
+        kind: 'teklif',
       });
       setSent(true);
       setForm({ subject: SUBJECTS[0], eventDate: '', name: '', email: '', phone: '', message: '' });

@@ -11,7 +11,7 @@ import { normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import type {
   Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, Invoice,
-  Payment, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry, User,
+  MessageStatus, Payment, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry, User,
 } from '../../types';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
 
@@ -31,6 +31,13 @@ function invoices(): Invoice[] { return read<Invoice[]>(KEYS.invoices, []); }
 function normalizePhone(raw: string): string | null {
   const digits = raw.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
   return /^5\d{9}$/.test(digits) ? digits : null;
+}
+
+/** Oturumdaki kullanıcı; oturum yoksa null. */
+function currentUser(): User | null {
+  const id = read<string | null>(KEYS.session, null);
+  if (!id) return null;
+  return users().find((u) => u.id === id) ?? null;
 }
 
 function requireUser(id: string): User {
@@ -471,10 +478,42 @@ export const localRepo: Repository = {
     });
   },
 
-  async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>) {
+  async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'status' | 'note' | 'handledAt'>) {
     const all = read<ContactMessage[]>(KEYS.messages, []);
-    all.push({ ...message, id: uid('msg'), createdAt: new Date().toISOString() });
+    all.push({
+      ...message,
+      id: uid('msg'),
+      status: 'yeni',
+      note: '',
+      createdAt: new Date().toISOString(),
+    });
     write(KEYS.messages, all);
+  },
+
+  async listMessages() {
+    // Supabase'deki RLS ile aynı kural: talepleri yalnızca yönetici görür.
+    const me = currentUser();
+    if (!me || me.role !== 'owner') return wait<ContactMessage[]>([]);
+    const all = read<ContactMessage[]>(KEYS.messages, []);
+    // Zaman damgası eşitse ekleme sırası belirleyici olsun diye kararlı sıralama
+    return wait(all
+      .map((entry, index) => ({ entry, index }))
+      .sort((a, b) => b.entry.createdAt.localeCompare(a.entry.createdAt) || b.index - a.index)
+      .map((x) => x.entry));
+  },
+
+  async setMessageStatus(id: string, status: MessageStatus, note: string) {
+    const me = currentUser();
+    if (!me || me.role !== 'owner') throw new RepoError('Bu işlem için yetkiniz bulunmuyor.');
+    const all = read<ContactMessage[]>(KEYS.messages, []);
+    const target = all.find((m) => m.id === id);
+    if (!target) throw new RepoError('Talep bulunamadı.');
+    target.status = status;
+    target.note = note;
+    // 'yeni'ye dönünce damga silinir; veritabanı tetikleyicisiyle aynı kural.
+    target.handledAt = status === 'yeni' ? undefined : new Date().toISOString();
+    write(KEYS.messages, all);
+    return wait(undefined);
   },
 };
 

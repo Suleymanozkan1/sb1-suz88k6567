@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants';
 import { RepoError, type PublicReservation, type Repository } from './types';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, MessageStatus,
   Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
 } from '../../types';
@@ -188,6 +188,21 @@ function toSms(row: Row): SmsLogEntry {
     body: (row.body as string) ?? '',
     kind: (row.kind as SmsLogEntry['kind']) ?? 'Bilgilendirme',
     sentAt: (row.sent_at as string) ?? '',
+  };
+}
+
+function toMessage(row: Row): ContactMessage {
+  return {
+    id: String(row.id),
+    name: (row.name as string) ?? '',
+    email: (row.email as string) ?? '',
+    phone: (row.phone as string) ?? '',
+    message: (row.message as string) ?? '',
+    kind: (row.kind as ContactMessage['kind']) ?? 'iletisim',
+    status: (row.status as ContactMessage['status']) ?? 'yeni',
+    note: (row.note as string) ?? '',
+    handledAt: (row.handled_at as string) ?? undefined,
+    createdAt: (row.created_at as string) ?? '',
   };
 }
 
@@ -765,11 +780,30 @@ export const supabaseRepo: Repository = {
     return data;
   },
 
-  async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt'>) {
+  async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'status' | 'note' | 'handledAt'>) {
     const { error } = await db().from('contact_messages').insert({
       name: message.name, email: message.email, phone: message.phone,
       message: message.message, kind: message.kind,
     });
     if (error) fail('Mesajınız gönderilemedi.', error);
+  },
+
+  async listMessages() {
+    // RLS, okumayı yönetici hesabına kapatır; personelde boş liste döner.
+    const { data, error } = await db()
+      .from('contact_messages')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) fail('Talepler okunamadı.', error);
+    return (data ?? []).map(toMessage);
+  },
+
+  async setMessageStatus(id: string, status: MessageStatus, note: string) {
+    // handled_at / handled_by damgasını veritabanı tetikleyicisi yazar.
+    const { error } = await db()
+      .from('contact_messages')
+      .update({ status, note })
+      .eq('id', id);
+    if (error) fail('Talep durumu güncellenemedi.', error);
   },
 };

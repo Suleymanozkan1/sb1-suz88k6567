@@ -5,7 +5,7 @@ import { useBusinesses } from '../lib/queries';
 import DemoNotice from '../components/DemoNotice';
 import {
   IconAlert, IconBuilding, IconCalendar, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu,
-  IconChart, IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
+  IconChart, IconMail, IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
 
 const NAV = [
@@ -18,7 +18,8 @@ const NAV = [
   { to: '/panel/raporlar', label: 'Raporlar', icon: IconChart },
   { to: '/panel/renk-ayarlari', label: 'Renk Ayarları', icon: IconPalette },
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
-  { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser },
+  { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser, ownerOnly: true },
+  { to: '/panel/talepler', label: 'Talepler', icon: IconMail, ownerOnly: true },
   { to: '/panel/sms', label: 'SMS Kayıtları', icon: IconMessage },
   { to: '/panel/izinler', label: 'İYS İzinleri', icon: IconCheck },
   { to: '/panel/denetim', label: 'Denetim Kaydı', icon: IconShield },
@@ -40,6 +41,8 @@ export default function AppLayout() {
   if (!user) return null;
 
   const active = businesses.find((b) => b.id === user.activeBusinessId) ?? businesses[0];
+  // Yalnızca yöneticiye açık ekranlar personelde bağlantı olarak gösterilmez.
+  const visibleNav = NAV.filter((item) => !item.ownerOnly || user.role === 'owner');
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition ${
@@ -84,7 +87,7 @@ export default function AppLayout() {
 
         <nav>
           <ul className="space-y-1">
-            {NAV.map((item) => (
+            {visibleNav.map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} end={item.end} className={linkClass}>
                   <item.icon size={18} />
