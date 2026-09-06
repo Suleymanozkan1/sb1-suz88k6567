@@ -614,3 +614,122 @@ describe('masa düzeni', () => {
     expect((await localRepo.listSeating(r2.id))[0].seats).toBe(8);
   });
 });
+
+describe('ödeme planı', () => {
+  async function rezervasyon(total = 100000) {
+    seedIfEmpty();
+    return localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'P1',
+      date: '2027-10-10', totalAmount: total, deposit: 0,
+    }));
+  }
+
+  it('plan kaydedilir ve vadeye göre sıralı okunur', async () => {
+    const r = await rezervasyon();
+    await localRepo.saveInstallments(r.id, [
+      { seq: 2, dueDate: '2027-05-01', amount: 40000, note: '' },
+      { seq: 1, dueDate: '2027-02-01', amount: 30000, note: '' },
+    ]);
+    expect((await localRepo.listInstallments(r.id)).map((i) => i.seq)).toEqual([1, 2]);
+  });
+
+  it('taksit toplamı rezervasyon tutarını aşamaz', async () => {
+    const r = await rezervasyon(50000);
+    await expect(localRepo.saveInstallments(r.id, [
+      { seq: 1, dueDate: '2027-02-01', amount: 30000, note: '' },
+      { seq: 2, dueDate: '2027-03-01', amount: 30000, note: '' },
+    ])).rejects.toThrow(/aşamaz/);
+  });
+
+  it('tam tutara eşit plan kabul edilir', async () => {
+    const r = await rezervasyon(50000);
+    await expect(localRepo.saveInstallments(r.id, [
+      { seq: 1, dueDate: '2027-02-01', amount: 25000, note: '' },
+      { seq: 2, dueDate: '2027-03-01', amount: 25000, note: '' },
+    ])).resolves.toBeUndefined();
+  });
+
+  it('mükerrer taksit sırası reddedilir', async () => {
+    const r = await rezervasyon();
+    await expect(localRepo.saveInstallments(r.id, [
+      { seq: 1, dueDate: '2027-02-01', amount: 1000, note: '' },
+      { seq: 1, dueDate: '2027-03-01', amount: 1000, note: '' },
+    ])).rejects.toThrow(/aynı taksit sırası/i);
+  });
+
+  it('sıfır tutarlı taksit reddedilir', async () => {
+    const r = await rezervasyon();
+    await expect(localRepo.saveInstallments(r.id, [
+      { seq: 1, dueDate: '2027-02-01', amount: 0, note: '' },
+    ])).rejects.toThrow(/sıfırdan büyük/);
+  });
+});
+
+describe('iş emri', () => {
+  it('satırlar saate göre okunur ve boş başlık reddedilir', async () => {
+    seedIfEmpty();
+    const r = await localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'T1', date: '2027-10-11',
+    }));
+    await localRepo.saveTasks(r.id, [
+      { atTime: '21:00', title: 'Pasta', responsible: '', done: false },
+      { atTime: '17:00', title: 'Kurulum', responsible: 'Servis', done: true },
+    ]);
+    expect((await localRepo.listTasks(r.id)).map((t) => t.title)).toEqual(['Kurulum', 'Pasta']);
+    await expect(localRepo.saveTasks(r.id, [{ atTime: '18:00', title: '  ', responsible: '', done: false }]))
+      .rejects.toThrow(/başlığı boş/);
+  });
+});
+
+describe('tedarikçiler', () => {
+  it('aynı isimde ikinci tedarikçi eklenemez', async () => {
+    seedIfEmpty();
+    await expect(localRepo.saveVendor({
+      id: 'vendor_yeni', businessId: 'biz_demo', name: 'Yıldız Orkestra',
+      category: 'Orkestra / Müzik', phone: '', note: '', isActive: true,
+    })).rejects.toThrow(/zaten var/);
+  });
+
+  it('başka işletmenin tedarikçisi atanamaz', async () => {
+    seedIfEmpty();
+    const r = await localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V1', date: '2027-10-12',
+    }));
+    await expect(localRepo.saveReservationVendors(r.id, [
+      { vendorId: 'vendor_demo4', cost: 1000, note: '' },
+    ])).rejects.toThrow(/bu işletmeye ait değil/);
+  });
+
+  it('aynı tedarikçi iki kez atanamaz', async () => {
+    seedIfEmpty();
+    const r = await localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V2', date: '2027-10-13',
+    }));
+    await expect(localRepo.saveReservationVendors(r.id, [
+      { vendorId: 'vendor_demo1', cost: 1000, note: '' },
+      { vendorId: 'vendor_demo1', cost: 2000, note: '' },
+    ])).rejects.toThrow(/birden çok kez/);
+  });
+
+  it('atanmış tedarikçi silinemez', async () => {
+    seedIfEmpty();
+    const r = await localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V3', date: '2027-10-14',
+    }));
+    await localRepo.saveReservationVendors(r.id, [{ vendorId: 'vendor_demo2', cost: 5000, note: '' }]);
+    await expect(localRepo.deleteVendor('vendor_demo2')).rejects.toThrow(/pasife alın/);
+  });
+
+  it('atama kaydedilir ve maliyeti korunur', async () => {
+    seedIfEmpty();
+    const r = await localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V4', date: '2027-10-15',
+    }));
+    await localRepo.saveReservationVendors(r.id, [
+      { vendorId: 'vendor_demo1', arriveAt: '18:30', cost: 15000, note: 'Ses dahil' },
+    ]);
+    const atamalar = await localRepo.listReservationVendors(r.id);
+    expect(atamalar).toHaveLength(1);
+    expect(atamalar[0]).toMatchObject({ cost: 15000, arriveAt: '18:30' });
+  });
+});

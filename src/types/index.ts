@@ -95,6 +95,52 @@ export interface SeatingTable {
   label: string;
 }
 
+/** Vade tarihli taksit. Tutar, payments ile aynı birimde (TL) tutulur. */
+export interface Installment {
+  id: string;
+  reservationId: string;
+  seq: number;
+  dueDate: string;
+  amount: number;
+  note: string;
+}
+
+/** Etkinlik günü iş emri satırı. */
+export interface EventTask {
+  id: string;
+  reservationId: string;
+  atTime: string;
+  title: string;
+  responsible: string;
+  done: boolean;
+}
+
+export interface Vendor {
+  id: string;
+  businessId: string;
+  name: string;
+  category: string;
+  phone: string;
+  note: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+/** Bir tedarikçinin belirli bir organizasyona atanması. */
+export interface ReservationVendor {
+  id: string;
+  reservationId: string;
+  vendorId: string;
+  arriveAt?: string;
+  cost: number;
+  note: string;
+}
+
+export const VENDOR_CATEGORIES = [
+  'Orkestra / Müzik', 'Fotoğraf / Video', 'Çiçek / Süsleme', 'Pasta',
+  'Gelin Arabası', 'Ses ve Işık', 'İkram / Catering', 'Diğer',
+] as const;
+
 export type CashFlowKind = 'Gelir' | 'Gider';
 
 export interface CashFlowEntry {

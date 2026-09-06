@@ -9,6 +9,7 @@ import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage,
   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
   Invoice, InvoiceKind, BuyerKind, MessageStatus, Hall, Menu, SeatingTable,
+  Installment, EventTask, Vendor, ReservationVendor,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
@@ -84,6 +85,25 @@ export interface Repository {
   listMenus(businessId: string): Promise<Menu[]>;
   saveMenu(menu: Omit<Menu, 'createdAt'> & { createdAt?: string }): Promise<Menu>;
   deleteMenu(id: string): Promise<void>;
+
+  /* -- ödeme planı -------------------------------------------------- */
+  listInstallments(reservationId: string): Promise<Installment[]>;
+  /** Planın tamamını değiştirir; taksitler bir bütün olarak yönetilir. */
+  saveInstallments(reservationId: string, rows: Omit<Installment, 'id' | 'reservationId'>[]): Promise<void>;
+
+  /* -- etkinlik iş emri --------------------------------------------- */
+  listTasks(reservationId: string): Promise<EventTask[]>;
+  saveTasks(reservationId: string, rows: Omit<EventTask, 'id' | 'reservationId'>[]): Promise<void>;
+
+  /* -- tedarikçiler -------------------------------------------------- */
+  listVendors(businessId: string): Promise<Vendor[]>;
+  saveVendor(vendor: Omit<Vendor, 'createdAt'> & { createdAt?: string }): Promise<Vendor>;
+  deleteVendor(id: string): Promise<void>;
+  listReservationVendors(reservationId: string): Promise<ReservationVendor[]>;
+  saveReservationVendors(
+    reservationId: string,
+    rows: Omit<ReservationVendor, 'id' | 'reservationId'>[],
+  ): Promise<void>;
 
   /* -- masa oturma düzeni ------------------------------------------- */
   listSeating(reservationId: string): Promise<SeatingTable[]>;

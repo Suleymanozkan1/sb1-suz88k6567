@@ -1,6 +1,8 @@
 # Tanıtım sunumu
 
-`sunum-uret.js`, 20 slaytlık satış tanıtım sunumunu üretir. Ekran görüntüleri
+`sunum-uret.js`, 20 slaytlık tanıtım sunumunu üretir. Anlatım düzdür: slogan,
+satış cümlesi ve ölçülemeyen iddia içermez; her slayt ilgili ekranın ne yaptığını
+açıklar. Ekran görüntüleri
 uygulamadan gerçek zamanlı yakalanır; sunum elle çizilmiş görsel içermez.
 
 ```bash

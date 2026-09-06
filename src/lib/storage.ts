@@ -68,6 +68,10 @@ export const KEYS = {
   halls: 'halls',
   menus: 'menus',
   seating: 'seating',
+  installments: 'installments',
+  tasks: 'tasks',
+  vendors: 'vendors',
+  resVendors: 'resVendors',
   session: 'session',
   seeded: 'seeded',
 } as const;
