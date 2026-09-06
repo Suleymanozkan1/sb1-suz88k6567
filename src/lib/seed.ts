@@ -7,7 +7,7 @@
 import { KEYS, read, write } from './storage';
 import { addDays, toIso, todayIso } from './format';
 import { DEFAULT_COLOR_SETTINGS, ORG_TO_COLOR_KEY, OWNER_PERMISSIONS } from '../data/constants';
-import type { Business, CashFlowEntry, Hall, Menu, Payment, Reservation, User } from '../types';
+import type { Business, CashFlowEntry, Hall, Menu, Payment, Reservation, User, Vendor } from '../types';
 
 export { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS };
 
@@ -129,6 +129,21 @@ export function seedIfEmpty(): void {
   write(KEYS.menus, [
     ...read<Menu[]>(KEYS.menus, []).filter((m) => !demoMenus.some((d) => d.id === m.id)),
     ...demoMenus,
+  ]);
+
+  const demoVendors: Vendor[] = [
+    { id: 'vendor_demo1', businessId, name: 'Yıldız Orkestra', category: 'Orkestra / Müzik',
+      phone: '5321230001', note: 'Ses sistemi dahil.', isActive: true, createdAt: now },
+    { id: 'vendor_demo2', businessId, name: 'Kare Fotoğraf', category: 'Fotoğraf / Video',
+      phone: '5321230002', note: 'Drone çekimi ayrı ücretli.', isActive: true, createdAt: now },
+    { id: 'vendor_demo3', businessId, name: 'Lale Çiçekçilik', category: 'Çiçek / Süsleme',
+      phone: '5321230003', note: '', isActive: true, createdAt: now },
+    { id: 'vendor_demo4', businessId: 'biz_demo2', name: 'Bahçe Işık', category: 'Ses ve Işık',
+      phone: '5321230004', note: '', isActive: true, createdAt: now },
+  ];
+  write(KEYS.vendors, [
+    ...read<Vendor[]>(KEYS.vendors, []).filter((v) => !demoVendors.some((d) => d.id === v.id)),
+    ...demoVendors,
   ]);
 
   const list: Reservation[] = [];

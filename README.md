@@ -77,6 +77,7 @@ Demo hesapları yalnızca demo modunda vardır.
 | `/panel/raporlar` | Program bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
 | `/panel/salonlar` | Salon tanımları — bir işletmede birden çok salon |
 | `/panel/menuler` | Menü ve paket tanımları — kişi başı veya sabit fiyat |
+| `/panel/tedarikciler` | Tedarikçi defteri — orkestra, fotoğrafçı, çiçekçi |
 | `/panel/rezervasyonlar/:id/makbuz` | Yazdırılabilir tahsilat makbuzu |
 | `/panel/renk-ayarlari` | Organizasyon türü başına takvim rengi |
 | `/panel/isletmeler` | Firmalarım / Adminler — çok işletmeli kullanım |
@@ -138,7 +139,7 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 2. SQL Editor'da migration dosyalarını **sırayla** çalıştırın:
    `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` →
    `0004_backup_health.sql` → `0005_invoices.sql` → `0006_talepler.sql` →
-   `0007_salon_menu_masa.sql`
+   `0007_salon_menu_masa.sql` → `0008_odeme_plani_is_emri_tedarikci.sql`
 3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
 4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
 5. Authentication → Users bölümünden kendi hesabınızı oluşturun.
@@ -190,7 +191,7 @@ veritabanında art arda çalıştırılırsa ikinci paket birincil anahtar çak�
 durur.
 
 ```bash
-for t in supabase/tests/0[1-7]_*.sql; do
+for t in supabase/tests/0[1-8]_*.sql; do
   db="qa_$(basename "$t" .sql)"
   psql -c "drop database if exists $db" postgres
   psql -c "create database $db" postgres
@@ -215,8 +216,9 @@ done
 | `05_invoice_test.sql` | 15 | Fatura değişmezliği ve seri numarası |
 | `06_talepler_test.sql` | 11 | Talep kutusu yetkileri |
 | `07_salon_menu_masa_test.sql` | 13 | Salon, menü ve masa düzeni kuralları |
+| `08_odeme_plani_test.sql` | 14 | Ödeme planı, iş emri ve tedarikçi kuralları |
 
-Toplam **91 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
+Toplam **105 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
 `BASARISIZ:` ile başlayan bir hata görürseniz test gerçekten düşmüştür.
 
 `04_backup_restore_test.sql` yedeği temiz bir şemaya gerçekten geri yükler ve
@@ -242,6 +244,8 @@ korunduğunu kanıtlar.
 | **Talep gizliliği** | `is_owner()` + RLS | Siteden gelen talepleri yalnızca yönetici okur; içerik değiştirilemez, kayıt silinemez |
 | **Salon çakışması** | Postgres benzersiz dizin | Aynı salona aynı gün ve seansta ikinci rezervasyon açılamaz; farklı salonlara açılabilir |
 | **Kapsam bütünlüğü** | `check_reservation_scope()` | Başka işletmenin salonu veya menüsü bir rezervasyona bağlanamaz |
+| **Tedarikçi kapsamı** | `check_vendor_scope()` | Başka işletmenin tedarikçisi bir organizasyona atanamaz |
+| **Plan tutarlılığı** | `check_installment_total()` | Taksit toplamı rezervasyon tutarını aşamaz |
 | **Yedek erişimi** | Postgres RLS | Yedek yalnızca kendi kapsamını içerir; başka hesabın verisi dışa aktarılamaz |
 | **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `service_role` anahtarı yalnızca sunucuda; `VITE_` öneki taşımaz |
 | **Hata izleme** | `src/lib/monitoring.ts` | İsteğe bağlı Sentry; gönderilen olaylarda e-posta ve telefon maskelenir |
@@ -390,6 +394,26 @@ değiştirebilir — öneri dayatma değildir.
 plan öner" düğmesi, masa başına koltuk sayısından planı üretir ve toplam koltuk
 her zaman davetli sayısına yeter. Plan davetliyi karşılamıyorsa eksik koltuk
 sayısı uyarı olarak gösterilir.
+
+## Ödeme planı, iş emri ve tedarikçiler
+
+**Ödeme planı.** Rezervasyona vade tarihli taksitler tanımlanır. Kalan tutar
+istenen sayıda taksite bölünebilir; yuvarlama artığı ilk taksite eklendiği için
+taksit toplamı daima kalan tutara eşittir.
+
+Tahsilatlar tek tek taksitlere bağlanmaz: toplam tahsilat, vadesi önce gelen
+taksitten başlayarak düşülür. Vadesi geçmiş ve karşılanmamış tutar ayrıca
+gösterilir. Taksit toplamının rezervasyon tutarını aşması veritabanı
+tetikleyicisiyle engellenir.
+
+**Etkinlik iş emri.** Organizasyon gününün saat saat planıdır: hangi iş, ne
+zaman, kimin sorumluluğunda ve tamamlandı mı. Yeni bir iş emri örnek bir akışla
+başlatılabilir.
+
+**Tedarikçiler.** Orkestra, fotoğrafçı, çiçekçi gibi dış firmalar bir defterde
+tutulur ve organizasyonlara geliş saati ve ücretiyle atanır. Bir organizasyona
+atanmış tedarikçi silinemez; pasife alınır. Başka bir işletmenin tedarikçisi
+atanamaz.
 
 ## e-Arşiv / e-Fatura
 

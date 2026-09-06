@@ -1,6 +1,43 @@
 # Düğün Takip — Audit ve QA Raporu
 
-**Son güncelleme:** 2 Eylül 2026 (üçüncü tam denetim — salon, menü, masa düzeni)
+**Son güncelleme:** dördüncü tam denetim — ödeme planı, iş emri, tedarikçiler
+
+---
+
+## 0. Dördüncü tam denetim
+
+Rakip ürünlerde standart olup eksik kalan üç özellik eklendi: vade tarihli
+ödeme planı, etkinlik günü iş emri (BEO) ve tedarikçi yönetimi.
+
+| Kontrol | Sonuç |
+|---------|-------|
+| Veritabanı kuralları (psql, 8 paket) | ✅ 105/105 |
+| Birim + entegrasyon (Vitest) | ✅ 296/296 |
+| Uçtan uca (Playwright/Chromium) | ✅ 75/75 |
+| Göçlerin boş Postgres 16'ya uygulanması | ✅ 8/8 temiz |
+| TypeScript (`strict`) / ESLint | ✅ 0 hata |
+| Derlenmiş pakette sunucu sırrı | ✅ bulunmadı |
+
+Toplam **476 otomatik senaryo**.
+
+### 0.1 Doğrulanan kurallar
+
+- Taksit toplamı rezervasyon tutarını aşamaz (veritabanı tetikleyicisi)
+- Tahsilat, vadesi önce gelen taksitten düşülür; ödenmiş taksit vadesi geçse bile gecikmiş sayılmaz
+- Taksit bölmede yuvarlama artığı ilk taksite eklenir; toplam daima kalan tutara eşittir
+- Başka işletmenin tedarikçisi bir organizasyona atanamaz
+- Organizasyona atanmış tedarikçi silinemez
+- Rezervasyon silinince plan, iş emri ve tedarikçi atamaları da silinir
+
+### 0.2 Test edilirken düzeltilen nokta
+
+`08` paketindeki mükerrer taksit sırası senaryosu, benzersizlik kısıtını değil
+tutar aşımı kontrolünü tetikliyordu; yani doğru sonucu yanlış nedenle
+veriyordu. Senaryo boş bir rezervasyon üzerinde izole edildi.
+
+---
+
+**Önceki güncelleme:** üçüncü tam denetim — salon, menü, masa düzeni
 
 ---
 

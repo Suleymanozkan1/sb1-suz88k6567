@@ -4,7 +4,7 @@ import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants'
 import { RepoError, type PublicReservation, type Repository } from './types';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, MessageStatus,
-  Hall, Menu, SeatingTable,
+  Hall, Menu, SeatingTable, Installment, EventTask, Vendor, ReservationVendor,
   Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
 } from '../../types';
@@ -227,6 +227,42 @@ function toSeating(row: Row): SeatingTable {
     tableNo: Number(row.table_no ?? 0),
     seats: Number(row.seats ?? 0),
     label: (row.label as string) ?? '',
+  };
+}
+
+function toInstallment(row: Row): Installment {
+  return {
+    id: String(row.id), reservationId: String(row.reservation_id),
+    seq: Number(row.seq ?? 0), dueDate: (row.due_date as string) ?? '',
+    amount: Number(row.amount ?? 0), note: (row.note as string) ?? '',
+  };
+}
+
+function toTask(row: Row): EventTask {
+  return {
+    id: String(row.id), reservationId: String(row.reservation_id),
+    // Postgres time alanı 19:00:00 döner; arayüzde saat:dakika kullanılır.
+    atTime: String(row.at_time ?? '').slice(0, 5),
+    title: (row.title as string) ?? '', responsible: (row.responsible as string) ?? '',
+    done: Boolean(row.done),
+  };
+}
+
+function toVendor(row: Row): Vendor {
+  return {
+    id: String(row.id), businessId: String(row.business_id),
+    name: (row.name as string) ?? '', category: (row.category as string) ?? '',
+    phone: (row.phone as string) ?? '', note: (row.note as string) ?? '',
+    isActive: Boolean(row.is_active ?? true), createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toReservationVendor(row: Row): ReservationVendor {
+  return {
+    id: String(row.id), reservationId: String(row.reservation_id),
+    vendorId: String(row.vendor_id),
+    arriveAt: row.arrive_at ? String(row.arrive_at).slice(0, 5) : undefined,
+    cost: Number(row.cost ?? 0), note: (row.note as string) ?? '',
   };
 }
 
@@ -894,6 +930,98 @@ export const supabaseRepo: Repository = {
       })),
     );
     if (error) fail('Masa düzeni kaydedilemedi.', error);
+  },
+
+  async listInstallments(reservationId) {
+    const { data, error } = await db().from('payment_installments')
+      .select('*').eq('reservation_id', reservationId).order('due_date');
+    if (error) fail('Ödeme planı okunamadı.', error);
+    return (data ?? []).map(toInstallment);
+  },
+
+  async saveInstallments(reservationId, rows) {
+    // Plan bir bütün olarak değişir; tutar kontrolü veritabanı tetikleyicisinde.
+    const { error: delError } = await db().from('payment_installments')
+      .delete().eq('reservation_id', reservationId);
+    if (delError) fail('Ödeme planı güncellenemedi.', delError);
+    if (rows.length === 0) return;
+
+    const { error } = await db().from('payment_installments').insert(
+      rows.map((r) => ({
+        reservation_id: reservationId, seq: r.seq,
+        due_date: r.dueDate, amount: r.amount, note: r.note,
+      })),
+    );
+    if (error) fail('Ödeme planı kaydedilemedi.', error);
+  },
+
+  async listTasks(reservationId) {
+    const { data, error } = await db().from('event_tasks')
+      .select('*').eq('reservation_id', reservationId).order('at_time');
+    if (error) fail('İş emri okunamadı.', error);
+    return (data ?? []).map(toTask);
+  },
+
+  async saveTasks(reservationId, rows) {
+    const { error: delError } = await db().from('event_tasks')
+      .delete().eq('reservation_id', reservationId);
+    if (delError) fail('İş emri güncellenemedi.', delError);
+    if (rows.length === 0) return;
+
+    const { error } = await db().from('event_tasks').insert(
+      rows.map((r) => ({
+        reservation_id: reservationId, at_time: r.atTime,
+        title: r.title, responsible: r.responsible, done: r.done,
+      })),
+    );
+    if (error) fail('İş emri kaydedilemedi.', error);
+  },
+
+  async listVendors(businessId) {
+    const { data, error } = await db().from('vendors')
+      .select('*').eq('business_id', businessId).order('name');
+    if (error) fail('Tedarikçiler okunamadı.', error);
+    return (data ?? []).map(toVendor);
+  },
+
+  async saveVendor(vendor) {
+    const { data, error } = await db().from('vendors').upsert({
+      id: vendor.id, business_id: vendor.businessId, name: vendor.name,
+      category: vendor.category, phone: vendor.phone, note: vendor.note,
+      is_active: vendor.isActive,
+    }).select().single();
+    if (error) fail('Tedarikçi kaydedilemedi.', error);
+    return toVendor(data);
+  },
+
+  async deleteVendor(id) {
+    const { error } = await db().from('vendors').delete().eq('id', id);
+    if (error && (error as { code?: string }).code === '23503') {
+      throw new RepoError('Bu tedarikçi organizasyonlara bağlı; silmek yerine pasife alın.');
+    }
+    if (error) fail('Tedarikçi silinemedi.', error);
+  },
+
+  async listReservationVendors(reservationId) {
+    const { data, error } = await db().from('reservation_vendors')
+      .select('*').eq('reservation_id', reservationId);
+    if (error) fail('Tedarikçi atamaları okunamadı.', error);
+    return (data ?? []).map(toReservationVendor);
+  },
+
+  async saveReservationVendors(reservationId, rows) {
+    const { error: delError } = await db().from('reservation_vendors')
+      .delete().eq('reservation_id', reservationId);
+    if (delError) fail('Tedarikçi atamaları güncellenemedi.', delError);
+    if (rows.length === 0) return;
+
+    const { error } = await db().from('reservation_vendors').insert(
+      rows.map((r) => ({
+        reservation_id: reservationId, vendor_id: r.vendorId,
+        arrive_at: r.arriveAt || null, cost: r.cost, note: r.note,
+      })),
+    );
+    if (error) fail('Tedarikçi atamaları kaydedilemedi.', error);
   },
 
   async listMessages() {

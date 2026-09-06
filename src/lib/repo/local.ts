@@ -11,7 +11,8 @@ import { normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import type {
   Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, Invoice,
-  Hall, Menu, MessageStatus, Payment, Reservation, SeatingTable, SmsConsent, SmsLogEntry,
+  EventTask, Hall, Installment, Menu, MessageStatus, Payment, Reservation, ReservationVendor,
+  SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   SmsQueueEntry, User,
 } from '../../types';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
@@ -44,6 +45,10 @@ function currentUser(): User | null {
 const halls = () => read<Hall[]>(KEYS.halls, []);
 const menus = () => read<Menu[]>(KEYS.menus, []);
 const seating = () => read<SeatingTable[]>(KEYS.seating, []);
+const installments = () => read<Installment[]>(KEYS.installments, []);
+const tasks = () => read<EventTask[]>(KEYS.tasks, []);
+const vendors = () => read<Vendor[]>(KEYS.vendors, []);
+const resVendors = () => read<ReservationVendor[]>(KEYS.resVendors, []);
 
 function requireUser(id: string): User {
   const found = users().find((u) => u.id === id);
@@ -581,6 +586,108 @@ export const localRepo: Repository = {
     const others = seating().filter((t) => t.reservationId !== reservationId);
     const next = tables.map((t) => ({ ...t, id: uid('seat'), reservationId }));
     write(KEYS.seating, [...others, ...next]);
+    return wait(undefined);
+  },
+
+  async listInstallments(reservationId) {
+    return wait(installments().filter((i) => i.reservationId === reservationId)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.seq - b.seq));
+  },
+
+  async saveInstallments(reservationId, rows) {
+    const seqs = rows.map((r) => r.seq);
+    if (new Set(seqs).size !== seqs.length) {
+      throw new RepoError('Aynı taksit sırası birden çok kez kullanılamaz.');
+    }
+    if (rows.some((r) => r.amount <= 0)) {
+      throw new RepoError('Taksit tutarı sıfırdan büyük olmalıdır.');
+    }
+    // Veritabanı tetikleyicisinin karşılığı: plan rezervasyon tutarını aşamaz.
+    const reservation = reservations().find((r) => r.id === reservationId);
+    if (!reservation) throw new RepoError('Rezervasyon bulunamadı.');
+    const planned = rows.reduce((sum, r) => sum + r.amount, 0);
+    if (planned > reservation.totalAmount) {
+      throw new RepoError('Taksit toplamı rezervasyon tutarını aşamaz.');
+    }
+
+    const others = installments().filter((i) => i.reservationId !== reservationId);
+    write(KEYS.installments, [
+      ...others,
+      ...rows.map((r) => ({ ...r, id: uid('inst'), reservationId })),
+    ]);
+    return wait(undefined);
+  },
+
+  async listTasks(reservationId) {
+    return wait(tasks().filter((t) => t.reservationId === reservationId)
+      .sort((a, b) => a.atTime.localeCompare(b.atTime)));
+  },
+
+  async saveTasks(reservationId, rows) {
+    if (rows.some((r) => !r.title.trim())) {
+      throw new RepoError('İş emri satırının başlığı boş olamaz.');
+    }
+    const others = tasks().filter((t) => t.reservationId !== reservationId);
+    write(KEYS.tasks, [
+      ...others,
+      ...rows.map((r) => ({ ...r, id: uid('task'), reservationId })),
+    ]);
+    return wait(undefined);
+  },
+
+  async listVendors(businessId) {
+    return wait(vendors().filter((v) => v.businessId === businessId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr')));
+  },
+
+  async saveVendor(vendor) {
+    const list = vendors();
+    const duplicate = list.some(
+      (v) => v.businessId === vendor.businessId && v.id !== vendor.id &&
+             v.name.trim().toLocaleLowerCase('tr') === vendor.name.trim().toLocaleLowerCase('tr'),
+    );
+    if (duplicate) throw new RepoError('Bu isimde bir tedarikçi zaten var.');
+
+    const next: Vendor = { ...vendor, createdAt: vendor.createdAt ?? new Date().toISOString() };
+    const idx = list.findIndex((v) => v.id === next.id);
+    if (idx >= 0) list[idx] = next; else list.push(next);
+    write(KEYS.vendors, list);
+    return wait(next);
+  },
+
+  async deleteVendor(id) {
+    if (resVendors().some((rv) => rv.vendorId === id)) {
+      throw new RepoError('Bu tedarikçi organizasyonlara bağlı; silmek yerine pasife alın.');
+    }
+    write(KEYS.vendors, vendors().filter((v) => v.id !== id));
+    return wait(undefined);
+  },
+
+  async listReservationVendors(reservationId) {
+    return wait(resVendors().filter((rv) => rv.reservationId === reservationId));
+  },
+
+  async saveReservationVendors(reservationId, rows) {
+    const ids = rows.map((r) => r.vendorId);
+    if (new Set(ids).size !== ids.length) {
+      throw new RepoError('Aynı tedarikçi birden çok kez eklenemez.');
+    }
+    const reservation = reservations().find((r) => r.id === reservationId);
+    if (!reservation) throw new RepoError('Rezervasyon bulunamadı.');
+    // Tedarikçi, rezervasyonun işletmesine ait olmalı (0008 tetikleyicisi)
+    for (const row of rows) {
+      const vendor = vendors().find((v) => v.id === row.vendorId);
+      if (!vendor || vendor.businessId !== reservation.businessId) {
+        throw new RepoError('Tedarikçi bu işletmeye ait değil.');
+      }
+      if (row.cost < 0) throw new RepoError('Tedarikçi maliyeti negatif olamaz.');
+    }
+
+    const others = resVendors().filter((rv) => rv.reservationId !== reservationId);
+    write(KEYS.resVendors, [
+      ...others,
+      ...rows.map((r) => ({ ...r, id: uid('rv'), reservationId })),
+    ]);
     return wait(undefined);
   },
 

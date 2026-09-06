@@ -4,6 +4,9 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import MasaDuzeni from '../../components/MasaDuzeni';
+import OdemePlani from '../../components/OdemePlani';
+import IsEmri from '../../components/IsEmri';
+import TedarikciAtama from '../../components/TedarikciAtama';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
@@ -301,6 +304,41 @@ export default function RezervasyonDetay() {
             </table>
           </div>
         )}
+      </section>
+
+      <section className="card mb-6 p-5">
+        <h2 className="mb-1 font-heading text-lg font-bold text-brand">Ödeme Planı</h2>
+        <p className="mb-4 text-sm text-brand-muted">
+          Vade tarihli taksitler tanımlayın. Tahsilatlar vadesi önce gelen taksitten
+          düşülür; vadesi geçmiş ve karşılanmamış tutar ayrıca gösterilir.
+        </p>
+        <OdemePlani
+          reservationId={reservation.id}
+          totalAmount={reservation.totalAmount}
+          currency={reservation.currency}
+          payments={payments}
+          canEdit={can('kasa.duzenle')}
+        />
+      </section>
+
+      <section className="card mb-6 p-5">
+        <h2 className="mb-1 font-heading text-lg font-bold text-brand">Etkinlik İş Emri</h2>
+        <p className="mb-4 text-sm text-brand-muted">
+          Organizasyon gününün saat saat planı: hangi iş, ne zaman, kimin sorumluluğunda.
+        </p>
+        <IsEmri reservationId={reservation.id} canEdit={can('rezervasyon.duzenle')} />
+      </section>
+
+      <section className="card mb-6 p-5">
+        <h2 className="mb-1 font-heading text-lg font-bold text-brand">Tedarikçiler</h2>
+        <p className="mb-4 text-sm text-brand-muted">
+          Bu organizasyonda çalışacak dış firmalar, geliş saatleri ve ücretleri.
+        </p>
+        <TedarikciAtama
+          reservationId={reservation.id}
+          currency={reservation.currency}
+          canEdit={can('rezervasyon.duzenle')}
+        />
       </section>
 
       <section className="card mb-6 p-5">

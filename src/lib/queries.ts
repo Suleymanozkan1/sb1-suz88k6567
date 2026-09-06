@@ -34,6 +34,10 @@ export const keys = {
   halls: (businessId: string) => ['halls', businessId] as const,
   menus: (businessId: string) => ['menus', businessId] as const,
   seating: (reservationId: string) => ['seating', reservationId] as const,
+  installments: (reservationId: string) => ['installments', reservationId] as const,
+  tasks: (reservationId: string) => ['tasks', reservationId] as const,
+  vendors: (businessId: string) => ['vendors', businessId] as const,
+  resVendors: (reservationId: string) => ['resVendors', reservationId] as const,
 };
 
 /** Oturumdaki kullanıcının aktif işletmesi */
@@ -189,6 +193,83 @@ export function useSaveSeating(reservationId: string | undefined) {
     mutationFn: (tables: Parameters<typeof repo.saveSeating>[1]) =>
       repo.saveSeating(reservationId!, tables),
     onSuccess: () => client.invalidateQueries({ queryKey: keys.seating(reservationId ?? '') }),
+  });
+}
+
+export function useInstallments(reservationId: string | undefined) {
+  return useQuery({
+    queryKey: keys.installments(reservationId ?? ''),
+    queryFn: () => repo.listInstallments(reservationId!),
+    enabled: Boolean(reservationId),
+  });
+}
+
+export function useSaveInstallments(reservationId: string | undefined) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: Parameters<typeof repo.saveInstallments>[1]) =>
+      repo.saveInstallments(reservationId!, rows),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.installments(reservationId ?? '') }),
+  });
+}
+
+export function useTasks(reservationId: string | undefined) {
+  return useQuery({
+    queryKey: keys.tasks(reservationId ?? ''),
+    queryFn: () => repo.listTasks(reservationId!),
+    enabled: Boolean(reservationId),
+  });
+}
+
+export function useSaveTasks(reservationId: string | undefined) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: Parameters<typeof repo.saveTasks>[1]) => repo.saveTasks(reservationId!, rows),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.tasks(reservationId ?? '') }),
+  });
+}
+
+export function useVendors() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.vendors(businessId),
+    queryFn: () => repo.listVendors(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveVendor() {
+  const client = useQueryClient();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (vendor: Parameters<typeof repo.saveVendor>[0]) => repo.saveVendor(vendor),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.vendors(businessId) }),
+  });
+}
+
+export function useDeleteVendor() {
+  const client = useQueryClient();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteVendor(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.vendors(businessId) }),
+  });
+}
+
+export function useReservationVendors(reservationId: string | undefined) {
+  return useQuery({
+    queryKey: keys.resVendors(reservationId ?? ''),
+    queryFn: () => repo.listReservationVendors(reservationId!),
+    enabled: Boolean(reservationId),
+  });
+}
+
+export function useSaveReservationVendors(reservationId: string | undefined) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: Parameters<typeof repo.saveReservationVendors>[1]) =>
+      repo.saveReservationVendors(reservationId!, rows),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.resVendors(reservationId ?? '') }),
   });
 }
 
