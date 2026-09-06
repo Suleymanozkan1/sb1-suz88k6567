@@ -3,662 +3,501 @@ const path = require('path');
 const SS = path.resolve(__dirname, '../ss');
 const img = (n) => path.join(SS, n);
 
-const NAVY='25365A', BRAND='37517E', SKY='47B2E4', GOLD='C9A227';
+const NAVY='25365A', BRAND='37517E', SKY='47B2E4', ACCENT='C9A227';
 const SURFACE='F3F5FA', INK='333F55', MUTED='6B7A99', WHITE='FFFFFF', PALE='C6D2E8', LINE='DCE3EF';
 const H='Cambria', B='Calibri';
 
 const pres = new pptxgen();
-pres.layout = 'LAYOUT_WIDE';                 // 13.3 x 7.5
+pres.layout = 'LAYOUT_WIDE';
 pres.author = 'Düğün Takip';
 pres.title = 'Düğün Takip — Salon Yönetim Sistemi';
 
-/** Ekran görüntüsü çerçevesi + "neyi kanıtlıyor" altyazısı: sunumun tekrar eden motifi. */
-function shot(s, file, x, y, w, h, caption, capColor) {
+function shot(s, file, x, y, w, h, caption) {
   s.addShape(pres.ShapeType.roundRect, {
     x: x-0.08, y: y-0.08, w: w+0.16, h: h+0.16, rectRadius: 0.08,
     fill: { color: WHITE }, line: { color: LINE, width: 1 },
-    shadow: { type:'outer', color:'1B2A4A', opacity:0.18, blur:14, offset:4, angle:90 },
+    shadow: { type:'outer', color:'1B2A4A', opacity:0.16, blur:12, offset:3, angle:90 },
   });
   s.addImage({ path: file, x, y, w, h });
   if (caption) {
-    s.addText(caption, {
-      x, y: y+h+0.16, w, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 10.5, italic: true, color: capColor || MUTED,
-    });
+    s.addText(caption, { x, y: y+h+0.14, w, h: 0.28, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 10.5, color: MUTED });
   }
 }
 
 function head(s, kicker, title, onDark) {
-  s.addText(kicker, {
-    x: 0.7, y: 0.44, w: 9, h: 0.3, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 12, bold: true, color: SKY, charSpacing: 2,
-  });
-  s.addText(title, {
-    x: 0.7, y: 0.78, w: 11.9, h: 0.82, isTextBox: true, margin: 0,
-    fontFace: H, fontSize: 33, bold: true, color: onDark ? WHITE : NAVY,
+  s.addText(kicker, { x: 0.7, y: 0.44, w: 9, h: 0.3, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12, bold: true, color: SKY, charSpacing: 2 });
+  s.addText(title, { x: 0.7, y: 0.78, w: 11.9, h: 0.8, isTextBox: true, margin: 0,
+    fontFace: H, fontSize: 31, bold: true, color: onDark ? WHITE : NAVY });
+}
+
+/** Görselin yanında maddeler — en sık kullanılan düzen. */
+function notes(s, x, y, items, gap, width) {
+  items.forEach(([bas, ack], i) => {
+    const yy = y + i * gap;
+    s.addText(bas, { x, y: yy, w: width, h: 0.3, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 14, bold: true, color: NAVY });
+    s.addText(ack, { x, y: yy + 0.33, w: width, h: gap - 0.4, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 12, color: INK, lineSpacing: 16 });
   });
 }
 
-/* ═══════════════════════════════════ 1 — Kapak (tam kanama, koyu) */
+/* ── 1 Kapak ─────────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: NAVY };
-  s.addShape(pres.ShapeType.ellipse, { x: 9.6, y: -2.1, w: 6.6, h: 6.6, fill:{color:BRAND}, line:{color:BRAND} });
-  s.addShape(pres.ShapeType.ellipse, { x: 11.4, y: 4.9, w: 3.4, h: 3.4, fill:{color:BRAND}, line:{color:BRAND} });
-  s.addText('SALON YÖNETİM SİSTEMİ', {
-    x: 0.9, y: 2.0, w: 8, h: 0.32, isTextBox: true, margin: 0,
+  s.addShape(pres.ShapeType.ellipse, { x: 9.8, y: -2.0, w: 6.2, h: 6.2, fill:{color:BRAND}, line:{color:BRAND} });
+  s.addText('SALON YÖNETİM SİSTEMİ', { x: 0.9, y: 2.5, w: 8, h: 0.32, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 13, bold: true, color: SKY, charSpacing: 3 });
-  s.addText('Düğün Takip', {
-    x: 0.9, y: 2.4, w: 8.4, h: 1.3, isTextBox: true, margin: 0,
-    fontFace: H, fontSize: 62, bold: true, color: WHITE });
-  s.addText('Rezervasyondan tahsilata, sözleşmeden faturaya\nsalonunuzun tamamı tek ekranda.', {
-    x: 0.9, y: 3.78, w: 8, h: 0.95, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 19, color: PALE, lineSpacing: 30 });
-  s.addShape(pres.ShapeType.roundRect, {
-    x: 0.9, y: 5.1, w: 4.6, h: 0.64, rectRadius: 0.32, fill:{color:GOLD}, line:{color:GOLD} });
-  s.addText('Defterle salon yönetilmez.', {
-    x: 0.9, y: 5.1, w: 4.6, h: 0.64, isTextBox: true, margin: 0,
-    align:'center', valign:'middle', fontFace: B, fontSize: 15, bold: true, color: NAVY });
-  s.addNotes('Açılış. Dinleyiciye "salonunuzu şu an nasıl takip ediyorsunuz?" diye sorarak başlayın; cevap sonraki slaytın zeminini kurar.');
+  s.addText('Düğün Takip', { x: 0.9, y: 2.9, w: 8.4, h: 1.3, isTextBox: true, margin: 0,
+    fontFace: H, fontSize: 58, bold: true, color: WHITE });
+  s.addText('Rezervasyon, tahsilat, sözleşme, fatura ve organizasyon planlaması için\nweb tabanlı salon yönetim sistemi.', {
+    x: 0.9, y: 4.25, w: 8.2, h: 0.9, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 17, color: PALE, lineSpacing: 27 });
+  s.addNotes('Tanıtımın açılışı. Sistemin ne olduğu tek cümlede belirtilir.');
 }
 
-/* ═══════════════════════════════════ 2 — Sorun (2x2 kart ızgarası) */
+/* ── 2 Kapsam ────────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: WHITE };
-  head(s, 'SORUN', 'Salon işletmenin görünmeyen maliyeti');
-  s.addText('Defter, Excel ve WhatsApp ile yönetilen bir salonda bunlar er ya da geç yaşanır:', {
-    x: 0.7, y: 1.7, w: 11.9, h: 0.34, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 15, color: MUTED });
-  [['Çifte rezervasyon','Aynı güne iki nikâh yazılır. Fark edildiğinde iş işten geçmiştir; müşteri kaybı ve itibar zararı.'],
-   ['Takip edilmeyen alacak','Kim ne kadar ödedi, ne kadar kaldı? Kapora alınır, kalanı düğün günü hatırlanır.'],
-   ['Kaybolan sözleşme','Anlaşma sözlü kalır ya da kâğıt kaybolur. Anlaşmazlıkta elinizde belge yoktur.'],
-   ['Fatura ve mevzuat riski','e-Arşiv süresi kaçar, KVKK ve İYS yükümlülükleri takip edilmez. Ceza kapıya dayanır.'],
-  ].forEach(([bas, ack], i) => {
-    const x = 0.7 + (i%2)*6.2, y = 2.3 + Math.floor(i/2)*2.05;
-    s.addShape(pres.ShapeType.roundRect, { x, y, w: 5.8, h: 1.78, rectRadius: 0.1,
+  head(s, 'KAPSAM', 'Sistem neleri kapsıyor');
+  const gruplar = [
+    ['Rezervasyon', 'Takvim, salon tanımları, rezervasyon kaydı, sözleşme, kod doğrulama'],
+    ['Para', 'Tahsilat, ödeme planı, kasa, makbuz, raporlar'],
+    ['Organizasyon', 'Menü ve paketler, masa düzeni, iş emri, tedarikçiler'],
+    ['Mevzuat', 'e-Arşiv / e-Fatura, İYS kuralları, KVKK, denetim kaydı'],
+    ['İletişim', 'Müşteriye SMS, siteden gelen talepler'],
+    ['Yönetim', 'Kullanıcılar ve yetkiler, yedekleme, sistem durumu'],
+  ];
+  gruplar.forEach(([bas, ack], i) => {
+    const x = 0.7 + (i % 3) * 4.07, y = 1.85 + Math.floor(i / 3) * 2.35;
+    s.addShape(pres.ShapeType.roundRect, { x, y, w: 3.77, h: 2.0, rectRadius: 0.1,
       fill:{color:SURFACE}, line:{color:'E3E9F4', width:1} });
-    s.addShape(pres.ShapeType.ellipse, { x: x+0.32, y: y+0.38, w: 0.64, h: 0.64, fill:{color:BRAND}, line:{color:BRAND} });
-    s.addText(String(i+1), { x: x+0.32, y: y+0.38, w: 0.64, h: 0.64, isTextBox: true, margin: 0,
-      align:'center', valign:'middle', fontFace: H, fontSize: 23, bold: true, color: WHITE });
-    s.addText(bas, { x: x+1.14, y: y+0.32, w: 4.4, h: 0.34, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 16, bold: true, color: NAVY });
-    s.addText(ack, { x: x+1.14, y: y+0.68, w: 4.42, h: 0.9, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 12, color: INK, lineSpacing: 17 });
-  });
-  s.addNotes('En az biri her salonun başına gelmiştir. "Bunlardan hangisi sizde oldu?" diye sorup cevabı bekleyin.');
-}
-
-/* ═══════════════════════════════════ 3 — Öncesi / Sonrası (iki sütun) */
-{
-  const s = pres.addSlide();
-  s.background = { color: WHITE };
-  head(s, 'ÇÖZÜM', 'Aynı işler, dörtte bir sürede');
-  const L = ['Takvim defterde; boşluğu göz kararı bulursunuz',
-             'Ödeme kaydı ayrı bir kâğıtta, çoğu zaman eksik',
-             'Sözleşme Word’de elle doldurulur',
-             'Müşteriye tek tek telefon açılır',
-             'Ay sonu ciro hesabı akşamları yapılır',
-             'Fatura için ayrı programa yeniden veri girilir'];
-  const R = ['Takvim ekranda; dolu seansa ikinci kayıt açılamaz',
-             'Her tahsilat kayıtlı; kalan alacak kendiliğinden',
-             'Sözleşme rezervasyondan tek tıkla üretilir',
-             'Onay ve hatırlatma SMS’i otomatik gider',
-             'Aylık ciro ve alacak raporu hazır bekler',
-             'Fatura aynı kayıttan oluşur, e-Arşiv’e gider'];
-  [[ 'ÖNCESİ', L, 0.7, SURFACE, 'E3E9F4', MUTED, INK, '–', MUTED ],
-   [ 'DÜĞÜN TAKİP İLE', R, 6.9, NAVY, NAVY, SKY, WHITE, '✓', GOLD ],
-  ].forEach(([bas, list, x, fill, line, headC, textC, mark, markC]) => {
-    s.addShape(pres.ShapeType.roundRect, { x, y: 1.78, w: 5.7, h: 4.95, rectRadius: 0.1,
-      fill:{color:fill}, line:{color:line, width:1} });
-    s.addText(bas, { x: x+0.4, y: 2.06, w: 4.9, h: 0.34, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 13, bold: true, charSpacing: 2, color: headC });
-    list.forEach((t, i) => {
-      const yy = 2.64 + i*0.67;
-      s.addText(mark, { x: x+0.4, y: yy, w: 0.3, h: 0.3, isTextBox: true, margin: 0,
-        fontFace: B, fontSize: 14, bold: true, color: markC });
-      s.addText(t, { x: x+0.78, y: yy-0.03, w: 4.6, h: 0.58, isTextBox: true, margin: 0,
-        fontFace: B, fontSize: 13, color: textC, lineSpacing: 16 });
-    });
-  });
-  s.addNotes('Sağ sütunda vurgulanacak satır: dolu seansa ikinci kayıt AÇILAMAZ. Uyarı değil, engelleme.');
-}
-
-/* ═══════════════════════════════════ 4 — Takvim (split: görsel baskın sol) */
-{
-  const s = pres.addSlide();
-  s.background = { color: WHITE };
-  head(s, 'TAKVİM', 'Çifte rezervasyon artık mümkün değil');
-  shot(s, img('panel-takvim.png'), 0.7, 1.85, 7.7, 4.81,
-       'Gerçek ekran: bir ayın gündüz ve gece seansları, türe göre renklendirilmiş.');
-  [['Gündüz ve gece ayrı','Her gün iki seans olarak tutulur; yarım gün satışları da takip edilir.'],
-   ['Renk = organizasyon türü','Düğün, nişan, kına, sünnet… Takvime bakınca ay bir bakışta okunur.'],
-   ['Sistem izin vermez','Dolu bir seansa ikinci kayıt açmaya çalışırsanız kayıt reddedilir. Bu kural veritabanında tanımlıdır; hiçbir kullanıcı atlayamaz.'],
-  ].forEach(([bas, ack], i) => {
-    const y = 1.95 + i*1.62;
-    s.addText(bas, { x: 8.85, y, w: 3.75, h: 0.32, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 15, bold: true, color: NAVY });
-    s.addText(ack, { x: 8.85, y: y+0.36, w: 3.75, h: 1.15, isTextBox: true, margin: 0,
+    s.addText(bas, { x: x+0.32, y: y+0.3, w: 3.15, h: 0.36, isTextBox: true, margin: 0,
+      fontFace: H, fontSize: 18, bold: true, color: NAVY });
+    s.addText(ack, { x: x+0.32, y: y+0.75, w: 3.15, h: 1.0, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17 });
   });
-  s.addNotes('En güçlü satış argümanı. "Uyarı verir" değil — sistem kaydı kabul etmez.');
+  s.addNotes('Altı modülün kısa dökümü. Ayrıntılar sonraki slaytlarda.');
 }
 
-/* ═══════════════════════════════════ 5 — Tahsilat (büyük sayı önde, görsel sağda) */
+/* ── 3 Takvim ────────────────────────────────────────────────────── */
+{
+  const s = pres.addSlide();
+  s.background = { color: WHITE };
+  head(s, 'TAKVİM', 'Rezervasyon takvimi');
+  shot(s, img('panel-takvim.png'), 0.7, 1.75, 7.7, 4.81,
+       'Bir ayın gündüz ve gece seansları, organizasyon türüne göre renklendirilmiş.');
+  notes(s, 8.85, 1.9, [
+    ['Gün başına iki seans', 'Gündüz ve gece ayrı tutulur; yarım gün satışları da izlenir.'],
+    ['Renk kodu', 'Düğün, nişan, kına, sünnet gibi türler ayrı renkte gösterilir.'],
+    ['Çakışma engeli', 'Dolu bir salon-seans birleşimine ikinci kayıt açılamaz. Kural veritabanında tanımlıdır.'],
+  ], 1.6, 3.75);
+  s.addNotes('Renk eşlemesi Renk Ayarları ekranından değiştirilebilir.');
+}
+
+/* ── 4 Salonlar ──────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: SURFACE };
-  head(s, 'REZERVASYON VE TAHSİLAT', 'Kimden ne kadar alacağınız her an belli');
+  head(s, 'SALONLAR', 'Salon tanımları');
+  shot(s, img('panel-salonlar.png'), 0.7, 1.75, 7.3, 4.56,
+       'Her salonun kapasitesi ve bağlı rezervasyon sayısı.');
+  notes(s, 8.45, 1.9, [
+    ['Birden çok salon', 'Bir işletmede istenen sayıda salon tanımlanır.'],
+    ['Salon bazlı çakışma', 'Aynı gün ve seansta farklı salonlara rezervasyon açılabilir, aynı salona açılamaz.'],
+    ['Kapasite', 'Salonun kişi kapasitesi rezervasyon ekranında görünür.'],
+    ['Pasife alma', 'Kullanım dışı salon, kayıtları silinmeden yeni rezervasyona kapatılır.'],
+  ], 1.2, 4.15);
+  s.addNotes('Yeni bir işletme oluşturulduğunda sistem kendiliğinden bir "Ana Salon" açar.');
+}
 
-  s.addShape(pres.ShapeType.roundRect, { x: 0.7, y: 1.85, w: 5.15, h: 2.35, rectRadius: 0.1,
-    fill:{color:NAVY}, line:{color:NAVY} });
-  s.addText('210.000 ₺ toplam  −  63.000 ₺ tahsilat', {
-    x: 1.05, y: 2.12, w: 4.5, h: 0.3, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 12, bold: true, color: SKY });
-  s.addText('147.000 ₺', { x: 1.05, y: 2.48, w: 4.5, h: 0.95, isTextBox: true, margin: 0,
-    fontFace: H, fontSize: 48, bold: true, color: GOLD });
-  s.addText('kalan alacak — elle hesaplanmadan, her açtığınızda güncel.', {
-    x: 1.05, y: 3.42, w: 4.5, h: 0.62, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 17 });
+/* ── 5 Rezervasyon ve tahsilat ───────────────────────────────────── */
+{
+  const s = pres.addSlide();
+  s.background = { color: WHITE };
+  head(s, 'REZERVASYON', 'Rezervasyon kaydı ve tahsilat');
+  shot(s, img('panel-rezervasyon-detay.png'), 0.7, 1.75, 7.2, 4.5,
+       'Rezervasyon bilgileri, ödeme durumu ve tahsilat listesi tek sayfada.');
+  notes(s, 8.35, 1.9, [
+    ['Kalan alacak', 'Toplam tutardan tahsilatlar düşülerek hesaplanır.'],
+    ['Tahsilat kaydı', 'Tarih, tutar, ödeme şekli ve açıklama tutulur.'],
+    ['Kapora kontrolü', 'Kapora toplam tutarı aşamaz.'],
+    ['Durum', 'Ön rezervasyon, kesin rezervasyon, tamamlandı, iptal.'],
+  ], 1.2, 4.25);
+  s.addNotes('Ekrandaki örnekte 210.000 ₺ toplam, 63.000 ₺ tahsilat, 147.000 ₺ kalan alacak görünüyor.');
+}
 
-  [['Her tahsilat kayıtlı','Tarih, tutar, ödeme şekli ve açıklama. Nakit, havale, kart ayrı ayrı görünür.'],
-   ['Kapora toplamı aşamaz','Hatalı giriş sistem tarafından baştan reddedilir.'],
-   ['Tahsilat oranı görünür','Rezervasyonun ne kadarı tahsil edilmiş, çubuk olarak gösterilir.'],
+/* ── 6 Ödeme planı (YENİ) ────────────────────────────────────────── */
+{
+  const s = pres.addSlide();
+  s.background = { color: SURFACE };
+  head(s, 'ÖDEME PLANI', 'Vade tarihli taksit planı');
+  shot(s, img('panel-odeme-plani.png'), 0.7, 1.75, 7.6, 3.6,
+       'Taksitler, vadeleri ve durumları; üstte planlanan, tahsil edilen ve vadesi geçen tutarlar.');
+  notes(s, 8.7, 1.9, [
+    ['Otomatik bölme', 'Kalan tutar istenen sayıda taksite bölünür. Yuvarlama artığı ilk taksite eklenir; toplam daima kalan tutara eşittir.'],
+    ['Tahsilat eşleştirme', 'Toplam tahsilat, vadesi önce gelen taksitten başlayarak düşülür.'],
+    ['Durum', 'Ödendi, gecikti, yaklaşıyor, bekliyor.'],
+  ], 1.55, 3.9);
+  s.addText('Taksit toplamının rezervasyon tutarını aşması veritabanı düzeyinde engellenir.', {
+    x: 0.7, y: 5.85, w: 7.6, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12, color: INK });
+  s.addNotes('Ekrandaki örnekte ilk iki taksitin vadesi geçmiş, bu yüzden gecikmiş olarak işaretli.');
+}
+
+/* ── 7 Menüler ───────────────────────────────────────────────────── */
+{
+  const s = pres.addSlide();
+  s.background = { color: WHITE };
+  head(s, 'MENÜLER', 'Menü ve paket tanımları');
+  shot(s, img('panel-menuler.png'), 0.7, 1.75, 7.3, 4.4,
+       'Menü kartları; kişi başı menülerde örnek kişi sayılarına göre tutarlar.');
+  notes(s, 8.45, 1.9, [
+    ['İki fiyat türü', 'Kişi başı ya da sabit tutar.'],
+    ['Tutar önerisi', 'Rezervasyona menü seçildiğinde toplam tutar hesaplanıp önerilir; kullanıcı değiştirebilir.'],
+    ['Örnek tutarlar', '150, 300 ve 500 kişilik karşılıklar menü kartında görünür.'],
+  ], 1.55, 4.15);
+  s.addNotes('Fiyatlar kuruş cinsinden tamsayı olarak saklanır.');
+}
+
+/* ── 8 Sözleşme ve makbuz ────────────────────────────────────────── */
+{
+  const s = pres.addSlide();
+  s.background = { color: SURFACE };
+  head(s, 'BELGELER', 'Sözleşme ve tahsilat makbuzu');
+  shot(s, img('panel-sozlesme.png'), 0.7, 1.75, 5.6, 4.35, 'Salon kiralama sözleşmesi.');
+  shot(s, img('panel-makbuz.png'), 6.9, 1.75, 5.7, 4.35, 'Tahsilat makbuzu.');
+  s.addText('Her iki belge de rezervasyon kaydından üretilir; bilgiler ikinci kez girilmez. A4 çıktı için biçimlendirilmiştir.', {
+    x: 0.7, y: 6.35, w: 11.9, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12.5, color: INK });
+  s.addNotes('Makbuz her tahsilat satırı için ayrı ayrı üretilir ve kendi belge numarasını taşır.');
+}
+
+/* ── 9 İş emri (YENİ) ────────────────────────────────────────────── */
+{
+  const s = pres.addSlide();
+  s.background = { color: WHITE };
+  head(s, 'İŞ EMRİ', 'Etkinlik günü iş emri');
+  shot(s, img('panel-is-emri.png'), 0.7, 1.75, 7.6, 3.5,
+       'Saat, iş, sorumlu ve tamamlanma durumu.');
+  notes(s, 8.7, 1.9, [
+    ['Saat bazlı plan', 'Organizasyon günü hangi işin ne zaman yapılacağı sırayla yazılır.'],
+    ['Sorumlu', 'Her satıra servis, mutfak, resepsiyon gibi bir sorumlu atanır.'],
+    ['Takip', 'Tamamlanan işler işaretlenir; üstte kaç işten kaçının bittiği görünür.'],
+  ], 1.5, 3.9);
+  s.addText('Yeni bir iş emri, salonların ortak akışını içeren örnek bir listeyle başlatılabilir.', {
+    x: 0.7, y: 5.7, w: 7.6, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12, color: INK });
+  s.addNotes('Yabancı ürünlerde BEO (banquet event order) olarak geçen belgenin karşılığıdır.');
+}
+
+/* ── 10 Tedarikçiler (YENİ) ──────────────────────────────────────── */
+{
+  const s = pres.addSlide();
+  s.background = { color: SURFACE };
+  head(s, 'TEDARİKÇİLER', 'Tedarikçi defteri ve atama');
+  shot(s, img('panel-tedarikciler.png'), 0.7, 1.75, 6.0, 3.75, 'Tedarikçi defteri.');
+  shot(s, img('panel-tedarikci-atama.png'), 7.1, 1.75, 5.5, 2.2, 'Organizasyona atama.');
+  notes(s, 7.1, 4.6, [
+    ['Kategori ve iletişim', 'Orkestra, fotoğraf, çiçek, pasta gibi kategoriler ve telefon bilgisi.'],
+    ['Atama', 'Her organizasyona geliş saati ve ücretiyle tedarikçi eklenir; toplam maliyet gösterilir.'],
+  ], 1.05, 5.5);
+  s.addText('Bir organizasyona atanmış tedarikçi silinemez, pasife alınır. Başka bir işletmenin tedarikçisi atanamaz.', {
+    x: 0.7, y: 5.9, w: 6.0, h: 0.7, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12, color: INK, lineSpacing: 16 });
+  s.addNotes('Tedarikçi ücretleri organizasyonun dış gider yükünü gösterir.');
+}
+
+/* ── 11 Masa düzeni ──────────────────────────────────────────────── */
+{
+  const s = pres.addSlide();
+  s.background = { color: WHITE };
+  head(s, 'MASA DÜZENİ', 'Masa oturma planı');
+  shot(s, img('panel-masa-duzeni.png'), 3.1, 1.8, 7.1, 3.45,
+       null);
+  s.addText('80 davetli için önerilen plan; masa sayısı, koltuk toplamı ve fazlalık üstte özetlenir.', {
+    x: 3.1, y: 5.4, w: 7.1, h: 0.3, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 10.5, color: MUTED });
+  [['Plan önerisi', 'Davetli sayısı ve masa başına koltuktan plan üretilir.'],
+   ['Eksik uyarısı', 'Koltuk toplamı davetliyi karşılamıyorsa eksik sayısı gösterilir.'],
+   ['Masa notu', 'Her masaya açıklama yazılabilir.'],
   ].forEach(([bas, ack], i) => {
-    const y = 4.45 + i*0.78;
-    s.addShape(pres.ShapeType.ellipse, { x: 0.7, y: y+0.04, w: 0.3, h: 0.3, fill:{color:GOLD}, line:{color:GOLD} });
-    s.addText('✓', { x: 0.7, y: y+0.04, w: 0.3, h: 0.3, isTextBox: true, margin: 0,
-      align:'center', valign:'middle', fontFace: B, fontSize: 12, bold: true, color: NAVY });
-    s.addText(bas, { x: 1.14, y, w: 4.7, h: 0.28, isTextBox: true, margin: 0,
+    const x = 0.7 + i * 4.07;
+    s.addText(bas, { x, y: 5.95, w: 3.77, h: 0.28, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 13.5, bold: true, color: NAVY });
-    s.addText(ack, { x: 1.14, y: y+0.3, w: 4.7, h: 0.44, isTextBox: true, margin: 0,
+    s.addText(ack, { x, y: 6.25, w: 3.77, h: 0.55, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 11.5, color: INK, lineSpacing: 15 });
   });
-  shot(s, img('panel-rezervasyon-detay.png'), 6.35, 1.85, 6.25, 4.35,
-       'Gerçek ekran: tahsilatlar ve kalan alacak, rezervasyonun kendi sayfasında.');
-  s.addNotes('Salon sahibinin en çok para kaybettiği yer. "Düğün günü kalan ne kadardı?" sorusunun cevabı ekranda.');
+  s.addNotes('Önerilen planın koltuk toplamı her zaman davetli sayısına eşittir.');
 }
 
-/* ═══════════════════════════════════ 6 — Sözleşme (ters split: metin sol) */
+/* ── 12 SMS ──────────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
-  s.background = { color: WHITE };
-  head(s, 'SÖZLEŞME', 'Sözleşme tek tıkla, elle doldurmadan');
-  s.addText('Rezervasyondaki bilgiler sözleşmeye kendiliğinden geçer: müşteri, tarih, seans, hizmetler, tutar ve ödeme planı. Yazdırıp imzalatırsınız — anlaşmazlıkta elinizde belge olur.', {
-    x: 0.7, y: 1.85, w: 5.2, h: 1.5, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 14, color: INK, lineSpacing: 21 });
-  [['Yazım hatası olmaz','Veri tek yerden gelir, ikinci kez yazılmaz.'],
-   ['Her rezervasyonun kendi sözleşmesi','Klasör karıştırmaya son.'],
-   ['Yazdırmaya hazır düzen','A4 çıktı için biçimlenmiştir.']].forEach(([bas, ack], i) => {
-    const y = 3.6 + i*1.05;
-    s.addShape(pres.ShapeType.ellipse, { x: 0.7, y: y+0.04, w: 0.34, h: 0.34, fill:{color:GOLD}, line:{color:GOLD} });
-    s.addText('✓', { x: 0.7, y: y+0.04, w: 0.34, h: 0.34, isTextBox: true, margin: 0,
-      align:'center', valign:'middle', fontFace: B, fontSize: 13, bold: true, color: NAVY });
-    s.addText(bas, { x: 1.2, y, w: 4.7, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 14.5, bold: true, color: NAVY });
-    s.addText(ack, { x: 1.2, y: y+0.33, w: 4.7, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 12.5, color: MUTED });
-  });
-  shot(s, img('panel-sozlesme.png'), 6.35, 1.85, 6.25, 4.6,
-       'Gerçek çıktı: rezervasyon bilgileriyle dolmuş kiralama sözleşmesi.');
-  s.addNotes('Sözlü anlaşmanın riskini hatırlatın. Bu slayt hukuki güvence mesajı verir.');
-}
-
-/* ═══════════════════════════════════ 7 — SMS (kart satırı + koyu bant) */
-{
-  const s = pres.addSlide();
-  s.background = { color: WHITE };
-  head(s, 'OTOMATİK SMS', 'Müşteriniz bilgilendirilir, siz uğraşmazsınız');
-  [['Rezervasyon onayı','Kayıt açılır açılmaz müşteriye tarih, seans ve doğrulama kodu gider.'],
-   ['Yaklaşan tarih hatırlatması','Organizasyon öncesi otomatik hatırlatma; "unuttum" diye bir şey kalmaz.'],
-   ['Tahsilat bildirimi','Ödeme alındığında müşteriye bilgi geçilir; güven artar.'],
+  s.background = { color: SURFACE };
+  head(s, 'SMS', 'Müşteriye SMS gönderimi');
+  [['Rezervasyon onayı', 'Kayıt açıldığında tarih, seans ve doğrulama kodu gönderilir.'],
+   ['Tarih hatırlatması', 'Organizasyon öncesi hatırlatma gönderilir.'],
+   ['Tahsilat bildirimi', 'Ödeme alındığında müşteriye bilgi geçilir.'],
   ].forEach(([bas, ack], i) => {
-    const x = 0.7 + i*4.07;
-    s.addShape(pres.ShapeType.roundRect, { x, y: 1.8, w: 3.77, h: 2.2, rectRadius: 0.1,
-      fill:{color:SURFACE}, line:{color:'E3E9F4', width:1} });
-    s.addShape(pres.ShapeType.ellipse, { x: x+0.32, y: 2.05, w: 0.5, h: 0.5, fill:{color:SKY}, line:{color:SKY} });
-    s.addText(String(i+1), { x: x+0.32, y: 2.05, w: 0.5, h: 0.5, isTextBox: true, margin: 0,
-      align:'center', valign:'middle', fontFace: H, fontSize: 18, bold: true, color: WHITE });
-    s.addText(bas, { x: x+0.32, y: 2.68, w: 3.15, h: 0.34, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 15, bold: true, color: NAVY });
-    s.addText(ack, { x: x+0.32, y: 3.06, w: 3.15, h: 0.85, isTextBox: true, margin: 0,
+    const x = 0.7 + i * 4.07;
+    s.addShape(pres.ShapeType.roundRect, { x, y: 1.8, w: 3.77, h: 1.9, rectRadius: 0.1,
+      fill:{color:WHITE}, line:{color:LINE, width:1} });
+    s.addText(bas, { x: x+0.32, y: 2.08, w: 3.15, h: 0.32, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 14.5, bold: true, color: NAVY });
+    s.addText(ack, { x: x+0.32, y: 2.46, w: 3.15, h: 1.0, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17 });
   });
-  s.addShape(pres.ShapeType.roundRect, { x: 0.7, y: 4.28, w: 11.9, h: 2.42, rectRadius: 0.1,
+  s.addShape(pres.ShapeType.roundRect, { x: 0.7, y: 4.0, w: 11.9, h: 2.4, rectRadius: 0.1,
     fill:{color:NAVY}, line:{color:NAVY} });
-  s.addText('Mevzuata uygun gönderim', { x: 1.1, y: 4.55, w: 6.4, h: 0.38, isTextBox: true, margin: 0,
-    fontFace: H, fontSize: 21, bold: true, color: WHITE });
-  s.addText('Rezervasyon onayı, hatırlatma ve doğrulama kodu işlem bildirimidir; İYS onayı gerektirmez. Kampanya SMS’i ise ancak müşteri onay verdiyse gönderilebilir — bu kural sistemin içine yazılmıştır, onaysız ticari mesaj hiçbir şekilde çıkmaz.', {
-    x: 1.1, y: 5.02, w: 6.7, h: 1.4, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 13, color: PALE, lineSpacing: 19 });
-  [['Gönderim kuyruğu','Operatör anlık cevap vermezse mesaj kaybolmaz, yeniden denenir.'],
-   ['Günlük üst sınır','Hatalı bir işlem kontörünüzü tüketemez.']].forEach(([bas, ack], i) => {
-    const y = 4.62 + i*1.0;
+  s.addText('İYS kuralları', { x: 1.1, y: 4.3, w: 6.4, h: 0.36, isTextBox: true, margin: 0,
+    fontFace: H, fontSize: 19, bold: true, color: WHITE });
+  s.addText('Rezervasyon onayı, hatırlatma ve doğrulama kodu işlem bildirimi sayılır ve İYS onayı gerektirmez. Ticari ileti (kampanya, tanıtım) yalnızca müşteri onay verdiyse gönderilebilir; bu kural veritabanı düzeyinde uygulanır.', {
+    x: 1.1, y: 4.76, w: 6.7, h: 1.4, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 18 });
+  [['Gönderim kuyruğu', 'Operatörden cevap alınamazsa mesaj yeniden denenir.'],
+   ['Günlük üst sınır', 'Günlük gönderim adedi sınırlıdır.'],
+  ].forEach(([bas, ack], i) => {
+    const y = 4.35 + i * 1.0;
     s.addText(bas, { x: 8.2, y, w: 4.1, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 14, bold: true, color: SKY });
-    s.addText(ack, { x: 8.2, y: y+0.32, w: 4.1, h: 0.62, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 13.5, bold: true, color: SKY });
+    s.addText(ack, { x: 8.2, y: y+0.32, w: 4.1, h: 0.6, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 12, color: PALE, lineSpacing: 16 });
   });
-  s.addNotes('İYS cezaları yüksek ve salon sahipleri çoğu zaman bilmez. Burada bilgi vererek güven kazanırsınız.');
+  s.addNotes('SMS gönderimi için Netgsm aboneliği ve onaylı başlık gerekir.');
 }
 
-/* ═══════════════════════════════════ 8 — Kod doğrulama (ortalanmış kompozisyon) */
-{
-  const s = pres.addSlide();
-  s.background = { color: SURFACE };
-  head(s, 'GÜVEN', 'Müşteri rezervasyonunu kendi doğrular');
-  s.addText('Her rezervasyona bir kod verilir. Müşteri bu kodu sitenizden sorgulayarak tarihini, seansını ve tutarını görür — sizi aramasına gerek kalmaz.', {
-    x: 3.15, y: 1.72, w: 7, h: 0.6, isTextBox: true, margin: 0,
-    align: 'center', fontFace: B, fontSize: 14, color: INK, lineSpacing: 20 });
-  shot(s, img('site-kod-dogrulama.png'), 3.9, 2.45, 5.5, 2.62,
-       'Gerçek ekran: telefon 532*****00 olarak maskeli, ödeme bilgisi hiç görünmüyor.');
-  [['Telefon maskeli','532*****00 biçiminde gösterilir.'],
-   ['Ödeme bilgisi gizli','Tutar ve tahsilat dışarı açılmaz.'],
-   ['Telefon trafiği azalır','"Kaydım yapıldı mı?" araması biter.'],
-  ].forEach(([bas, ack], i) => {
-    const x = 0.7 + i*4.07;
-    s.addText(bas, { x, y: 5.65, w: 3.77, h: 0.3, isTextBox: true, margin: 0,
-      align: 'center', fontFace: B, fontSize: 14, bold: true, color: NAVY });
-    s.addText(ack, { x, y: 5.98, w: 3.77, h: 0.55, isTextBox: true, margin: 0,
-      align: 'center', fontFace: B, fontSize: 12, color: INK, lineSpacing: 16 });
-  });
-  s.addNotes('Küçük ama fark yaratan özellik: salonu kurumsal gösterir.');
-}
-
-
-/* ═══════════════════════════════════ 4b — Salonlar (kart + görsel) */
+/* ── 13 Kod doğrulama ────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: WHITE };
-  head(s, 'SALONLAR', 'Birden çok salonu tek takvimden yönetin');
-  s.addText('Kristal Salon, Bahçe, Teras… Her salon ayrı takvim gibi çalışır.', {
-    x: 0.7, y: 1.7, w: 11.9, h: 0.36, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 15, color: MUTED });
-  shot(s, img('panel-salonlar.png'), 0.7, 2.2, 7.3, 4.56,
-       'Gerçek ekran: her salonun kapasitesi ve bağlı rezervasyon sayısı.');
-  [['Çakışma salon bazında','Aynı salona ikinci kayıt açılamaz; farklı salona açılabilir. Kural veritabanında tanımlıdır.'],
-   ['Kapasite takibi','Salonun kaç kişilik olduğunu tanımlar, rezervasyonda görürsünüz.'],
-   ['Pasife alma','Tadilattaki salonu listeden kaldırmadan yeni rezervasyona kapatırsınız.'],
+  head(s, 'KOD DOĞRULAMA', 'Müşterinin rezervasyon sorgusu');
+  s.addText('Her rezervasyona bir kod verilir. Müşteri bu kodu sitenizden sorgulayarak tarihini, seansını ve tutarını görebilir.', {
+    x: 3.15, y: 1.72, w: 7, h: 0.55, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 14, color: INK, lineSpacing: 19 });
+  shot(s, img('site-kod-dogrulama.png'), 3.9, 2.4, 5.5, 2.62,
+       'Telefon numarası maskeli gösterilir; ödeme bilgisi görünmez.');
+  [['Maskeleme', 'Telefon 532*****00 biçiminde gösterilir.'],
+   ['Ödeme bilgisi', 'Tahsilat ve kalan alacak dışarı açılmaz.'],
+   ['Erişim', 'Sorgu için üyelik gerekmez.'],
   ].forEach(([bas, ack], i) => {
-    const y = 2.3 + i*1.55;
-    s.addText(bas, { x: 8.45, y, w: 4.15, h: 0.32, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 15, bold: true, color: NAVY });
-    s.addText(ack, { x: 8.45, y: y+0.36, w: 4.15, h: 1.05, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17 });
+    const x = 0.7 + i * 4.07;
+    s.addText(bas, { x, y: 5.6, w: 3.77, h: 0.3, isTextBox: true, margin: 0,
+      align: 'center', fontFace: B, fontSize: 13.5, bold: true, color: NAVY });
+    s.addText(ack, { x, y: 5.92, w: 3.77, h: 0.5, isTextBox: true, margin: 0,
+      align: 'center', fontFace: B, fontSize: 11.5, color: INK, lineSpacing: 15 });
   });
-  s.addNotes('Çok salonlu işletmeler için en güçlü argüman. Tek salonu olan salona da "ileride ikinciyi açarsanız hazır" denebilir.');
+  s.addNotes('Kod, rezervasyon onayı SMS’inde müşteriye gönderilir.');
 }
 
-/* ═══════════════════════════════════ 5b — Menü / paket (büyük sayı + görsel) */
+/* ── 14 Kasa ve raporlar ─────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: SURFACE };
-  head(s, 'MENÜ VE PAKETLER', 'Fiyatı bir kez tanımlayın, sistem hesaplasın');
-
-  s.addShape(pres.ShapeType.roundRect, { x: 0.7, y: 1.85, w: 5.15, h: 2.3, rectRadius: 0.1,
-    fill:{color:NAVY}, line:{color:NAVY} });
-  s.addText('450 ₺ / kişi  ×  400 kişi', { x: 1.05, y: 2.12, w: 4.5, h: 0.3, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 12, bold: true, color: SKY });
-  s.addText('180.000 ₺', { x: 1.05, y: 2.46, w: 4.5, h: 0.92, isTextBox: true, margin: 0,
-    fontFace: H, fontSize: 46, bold: true, color: GOLD });
-  s.addText('tek tıkla uygulanır — hesap makinesi yok, yazım hatası yok.', {
-    x: 1.05, y: 3.38, w: 4.5, h: 0.6, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 17 });
-
-  [['Kişi başı ya da sabit','Açık büfe kişi başı, yemeksiz salon kirası sabit tutarlı tanımlanır.'],
-   ['Öneri, dayatma değil','Pazarlık yaptıysanız tutarı elle değiştirirsiniz.'],
-   ['Menü listesi hazır','150 / 300 / 500 kişilik tutarlar menü kartında görünür; müşteriye anında fiyat verirsiniz.'],
+  head(s, 'KASA VE RAPORLAR', 'Gelir gider ve raporlama');
+  shot(s, img('panel-raporlar.png'), 0.7, 1.75, 6.05, 3.78, null);
+  shot(s, img('panel-kasa.png'), 7.15, 1.75, 5.45, 3.4, null);
+  s.addText('Solda aylık ciro ve organizasyon dağılımı, sağda gelir–gider kasası ve anlık bakiye.', {
+    x: 0.7, y: 5.65, w: 11.9, h: 0.3, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 10.5, color: MUTED });
+  [['Kasa bakiyesi', 'Gelir ve gider tek yerde'],
+   ['Aylık ciro', 'Ay bazında dağılım'],
+   ['Alacak bakiyesi', 'Toplam kalan alacak'],
+   ['CSV aktarım', 'Listeler dışa aktarılır'],
   ].forEach(([bas, ack], i) => {
-    const y = 4.35 + i*0.82;
-    s.addShape(pres.ShapeType.ellipse, { x: 0.7, y: y+0.04, w: 0.3, h: 0.3, fill:{color:GOLD}, line:{color:GOLD} });
-    s.addText('✓', { x: 0.7, y: y+0.04, w: 0.3, h: 0.3, isTextBox: true, margin: 0,
-      align:'center', valign:'middle', fontFace: B, fontSize: 12, bold: true, color: NAVY });
-    s.addText(bas, { x: 1.14, y, w: 4.7, h: 0.28, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 13.5, bold: true, color: NAVY });
-    s.addText(ack, { x: 1.14, y: y+0.3, w: 4.7, h: 0.48, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 11.5, color: INK, lineSpacing: 15 });
-  });
-  shot(s, img('panel-menuler.png'), 6.35, 1.85, 6.25, 3.9,
-       'Gerçek ekran: menü kartları ve örnek kişi sayılarına göre tutarlar.');
-  s.addNotes('Telefonda fiyat sorulduğunda menü ekranından anında cevap verilebilir — bu, salon sahibinin günlük derdi.');
-}
-
-/* ═══════════════════════════════════ 8b — Masa düzeni (ortalanmış) */
-{
-  const s = pres.addSlide();
-  s.background = { color: WHITE };
-  head(s, 'MASA OTURMA DÜZENİ', 'Kaç masa kuracağınızı sistem söylesin');
-  s.addText('Davetli sayısını girin, plan kendiliğinden oluşsun.', {
-    x: 0.7, y: 1.7, w: 11.9, h: 0.36, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 15, color: MUTED });
-  shot(s, img('panel-masa-duzeni.png'), 3.1, 2.2, 7.1, 3.45, null);
-  s.addText('Gerçek ekran: 80 davetli için önerilen plan; masa sayısı, koltuk toplamı ve fazlalık üstte özetlenir.', {
-    x: 3.1, y: 5.8, w: 7.1, h: 0.3, isTextBox: true, margin: 0,
-    align: 'center', fontFace: B, fontSize: 10.5, italic: true, color: MUTED });
-  [['Otomatik plan','Davetliye göre masa sayısı hesaplanır.'],
-   ['Eksik koltuk uyarısı','Plan yetersizse kaç koltuk eksik olduğu yazar.'],
-   ['Masa açıklaması','“Gelin tarafı”, “damat tarafı” gibi not düşülür.'],
-  ].forEach(([bas, ack], i) => {
-    const x = 0.7 + i*4.07;
-    s.addText(bas, { x, y: 6.25, w: 3.77, h: 0.28, isTextBox: true, margin: 0,
-      align:'center', fontFace: B, fontSize: 13.5, bold: true, color: NAVY });
-    s.addText(ack, { x, y: 6.55, w: 3.77, h: 0.3, isTextBox: true, margin: 0,
-      align:'center', fontFace: B, fontSize: 11.5, color: MUTED });
-  });
-  s.addNotes('Düğün öncesi en çok zaman alan işlerden biri. Excel ile yapılan işi ekran yapıyor.');
-}
-
-/* ═══════════════════════════════════ 9b — Makbuz (ters split) */
-{
-  const s = pres.addSlide();
-  s.background = { color: SURFACE };
-  head(s, 'TAHSİLAT MAKBUZU', 'Her ödemeye imzalı belge');
-  s.addText('Aldığınız her kapora ve ara ödeme için tek tıkla makbuz üretilir. Müşteri imzalar, iki tarafta da belge kalır.', {
-    x: 0.7, y: 1.85, w: 5.2, h: 1.0, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 14, color: INK, lineSpacing: 21 });
-  [['Belge numarası','Her makbuzun kendi numarası olur.'],
-   ['Rezervasyona bağlı','Hangi organizasyonun ödemesi olduğu yazar.'],
-   ['Yazdırmaya hazır','A4 çıktı için biçimlenmiştir.'],
-  ].forEach(([bas, ack], i) => {
-    const y = 3.15 + i*1.05;
-    s.addShape(pres.ShapeType.ellipse, { x: 0.7, y: y+0.04, w: 0.34, h: 0.34, fill:{color:GOLD}, line:{color:GOLD} });
-    s.addText('✓', { x: 0.7, y: y+0.04, w: 0.34, h: 0.34, isTextBox: true, margin: 0,
-      align:'center', valign:'middle', fontFace: B, fontSize: 13, bold: true, color: NAVY });
-    s.addText(bas, { x: 1.2, y, w: 4.7, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 14.5, bold: true, color: NAVY });
-    s.addText(ack, { x: 1.2, y: y+0.33, w: 4.7, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 12.5, color: MUTED });
-  });
-  s.addText('“Kaporayı ödedim” tartışması bitiyor.', {
-    x: 0.7, y: 6.15, w: 5.2, h: 0.4, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 13, italic: true, color: BRAND });
-  shot(s, img('panel-makbuz.png'), 6.35, 1.85, 6.25, 4.6,
-       'Gerçek çıktı: tahsil edilen tutar, ödeme şekli ve imza alanları.');
-  s.addNotes('Nakit tahsilatın çok olduğu bir sektörde belge, salon sahibini korur.');
-}
-
-/* ═══════════════════════════════════ 9 — Kasa & Rapor (tam genişlik görsel bandı) */
-{
-  const s = pres.addSlide();
-  s.background = { color: WHITE };
-  head(s, 'KASA VE RAPORLAR', 'Hangi ay ne kazandınız, hazır bekliyor');
-  shot(s, img('panel-raporlar.png'), 0.7, 1.82, 6.05, 3.78, null);
-  shot(s, img('panel-kasa.png'), 7.15, 1.82, 5.45, 3.4, null);
-  s.addText('Gerçek ekranlar: aylık ciro ve organizasyon dağılımı (solda), gelir–gider kasası ve anlık bakiye (sağda).', {
-    x: 0.7, y: 5.72, w: 11.9, h: 0.3, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 10.5, italic: true, color: MUTED });
-  [['Anlık kasa bakiyesi', 'Gelir ve gider tek yerde'],
-   ['Aylık ciro grafiği', 'Hangi ay ne kazandınız'],
-   ['Toplam alacak', 'Kimden ne kadar kaldı'],
-   ['Excel’e aktarım', 'Tüm listeler CSV olarak']].forEach(([bas, ack], i) => {
-    const x = 0.7 + i*3.05;
-    s.addText(bas, { x, y: 6.25, w: 2.85, h: 0.28, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 13.5, bold: true, color: NAVY });
-    s.addText(ack, { x, y: 6.55, w: 2.85, h: 0.28, isTextBox: true, margin: 0,
+    const x = 0.7 + i * 3.05;
+    s.addText(bas, { x, y: 6.15, w: 2.85, h: 0.28, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 13, bold: true, color: NAVY });
+    s.addText(ack, { x, y: 6.45, w: 2.85, h: 0.28, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 11.5, color: MUTED });
   });
-  s.addNotes('Mali müşavire gidecek veriyi hazırlamak da kolaylaşır. CSV aktarımını vurgulayın.');
+  s.addNotes('Raporlar tarih aralığına göre filtrelenebilir.');
 }
 
-/* ═══════════════════════════════════ 10 — e-Fatura (süreç akışı) */
+/* ── 15 e-Fatura ─────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: WHITE };
-  head(s, 'e-ARŞİV / e-FATURA', 'Fatura aynı kayıttan çıkar');
-  s.addText('Rezervasyon bilgisi faturaya doğrudan geçer. Hiçbir veriyi ikinci kez yazmazsınız:', {
-    x: 0.7, y: 1.7, w: 11.9, h: 0.34, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 15, color: MUTED });
-
+  head(s, 'e-ARŞİV / e-FATURA', 'Fatura düzenleme');
   const adim = [['Rezervasyon','Müşteri, tarih, tutar'],
                 ['Tahsilat','Ödemeler işlenir'],
-                ['Fatura','KDV kuruş hassasiyetinde'],
+                ['Fatura','KDV hesaplanır'],
                 ['e-Arşiv','GİB’e gönderilir']];
   adim.forEach(([bas, ack], i) => {
     const x = 0.7 + i*3.13;
-    s.addShape(pres.ShapeType.roundRect, { x, y: 2.25, w: 2.72, h: 1.35, rectRadius: 0.1,
+    s.addShape(pres.ShapeType.roundRect, { x, y: 1.8, w: 2.72, h: 1.3, rectRadius: 0.1,
       fill:{color: i===3 ? NAVY : SURFACE}, line:{color: i===3 ? NAVY : 'E3E9F4', width:1} });
-    s.addText(bas, { x: x+0.28, y: 2.5, w: 2.2, h: 0.34, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 15, bold: true, color: i===3 ? WHITE : NAVY });
-    s.addText(ack, { x: x+0.28, y: 2.88, w: 2.2, h: 0.55, isTextBox: true, margin: 0,
+    s.addText(bas, { x: x+0.28, y: 2.04, w: 2.2, h: 0.32, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 14.5, bold: true, color: i===3 ? WHITE : NAVY });
+    s.addText(ack, { x: x+0.28, y: 2.4, w: 2.2, h: 0.5, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 11.5, color: i===3 ? PALE : INK, lineSpacing: 15 });
-    if (i < 3) {
-      s.addShape(pres.ShapeType.rightArrow, { x: x+2.82, y: 2.78, w: 0.3, h: 0.3,
-        fill:{color:GOLD}, line:{color:GOLD} });
-    }
+    if (i < 3) s.addShape(pres.ShapeType.rightArrow, { x: x+2.82, y: 2.3, w: 0.28, h: 0.3,
+      fill:{color:ACCENT}, line:{color:ACCENT} });
   });
-
-  shot(s, img('panel-faturalar.png'), 0.7, 4.05, 6.6, 2.35,
-       'Gerçek ekran: fatura listesi, durum ve kalan süre bilgisiyle.');
-  [['7 günlük süre takibi','Fatura kesme süresi ekranda gösterilir; VUK süresini kaçırmazsınız.'],
-   ['Kesilen fatura değiştirilemez','Vergi belgesi olarak korunur; yalnızca iptal edilebilir, silinemez.'],
-   ['Toplamlar birbirini tutar','Matrah + KDV = toplam kuralı sistemce zorunlu kılınır.'],
-  ].forEach(([bas, ack], i) => {
-    const y = 4.05 + i*0.9;
-    s.addText(bas, { x: 7.75, y, w: 4.85, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 14, bold: true, color: NAVY });
-    s.addText(ack, { x: 7.75, y: y+0.32, w: 4.85, h: 0.52, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 12, color: INK, lineSpacing: 16 });
-  });
-  s.addNotes('Zorunluluk hadlerinin mali müşavire sorulması gerektiğini mutlaka söyleyin; söz vermeyin.');
+  shot(s, img('panel-faturalar.png'), 0.7, 3.55, 6.6, 2.35, 'Fatura listesi ve durumları.');
+  notes(s, 7.75, 3.55, [
+    ['Süre takibi', 'Fatura düzenleme süresi (VUK, 7 gün) ekranda gösterilir.'],
+    ['Değiştirilemezlik', 'Gönderilmiş fatura değiştirilemez ve silinemez; yalnızca iptal edilebilir.'],
+    ['Tutar tutarlılığı', 'Matrah + KDV = toplam kuralı zorunludur.'],
+  ], 0.85, 4.85);
+  s.addNotes('Gönderim Paraşüt üzerinden yapılır. Mükellefiyet durumu mali müşavire sorulmalıdır.');
 }
 
-/* ═══════════════════════════════════ 11 — Talepler (akış + görsel) */
+/* ── 16 Talepler ─────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: SURFACE };
-  head(s, 'MÜŞTERİ TALEPLERİ', 'Siteden gelen her talep bir yerde toplanır');
-
-  [['Müşteri siteden yazar','Fiyat sorar, salonu gezmek ister'],
-   ['Talep kutusuna düşer','Yeni olarak işaretli, kaybolmaz'],
-   ['Siz sonuçlandırırsınız','Not düşer, işlemde ya da kapatıldı yaparsınız'],
-  ].forEach(([bas, ack], i) => {
-    const y = 1.85 + i*1.32;
-    s.addShape(pres.ShapeType.roundRect, { x: 0.7, y, w: 5.3, h: 1.1, rectRadius: 0.1,
-      fill:{color:WHITE}, line:{color:LINE, width:1} });
-    s.addShape(pres.ShapeType.ellipse, { x: 1.0, y: y+0.3, w: 0.5, h: 0.5, fill:{color:BRAND}, line:{color:BRAND} });
-    s.addText(String(i+1), { x: 1.0, y: y+0.3, w: 0.5, h: 0.5, isTextBox: true, margin: 0,
-      align:'center', valign:'middle', fontFace: H, fontSize: 18, bold: true, color: WHITE });
-    s.addText(bas, { x: 1.68, y: y+0.24, w: 4.0, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 14.5, bold: true, color: NAVY });
-    s.addText(ack, { x: 1.68, y: y+0.55, w: 4.0, h: 0.32, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 12, color: INK });
-    if (i < 2) {
-      s.addText('▼', { x: 3.05, y: y+1.1, w: 0.6, h: 0.32, isTextBox: true, margin: 0,
-        align: 'center', fontFace: B, fontSize: 15, bold: true, color: GOLD });
-    }
-  });
-  s.addText('Kaçan talep, kaçan cirodur. Bu ekran onu kaçırmanızı engeller.', {
-    x: 0.7, y: 5.95, w: 5.3, h: 0.5, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 13, italic: true, color: BRAND, lineSpacing: 18 });
-  shot(s, img('panel-talepler.png'), 6.5, 1.85, 6.1, 3.82,
-       'Gerçek ekran: talepler durumlarına göre sayılmış ve filtrelenebilir.');
-  s.addText('Talebin içeriği sonradan değiştirilemez ve kayıt silinemez. Talepleri yalnızca yönetici görür; personel müşteri iletişim bilgisine erişemez.', {
-    x: 6.5, y: 6.1, w: 6.1, h: 0.6, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 12, color: INK, lineSpacing: 16 });
-  s.addNotes('Satışa doğrudan dokunan slayt. "Geçen ay kaç kişi fiyat sordu?" diye sorun — çoğu bilmez.');
+  head(s, 'TALEPLER', 'Siteden gelen müşteri talepleri');
+  shot(s, img('panel-talepler.png'), 0.7, 1.75, 7.4, 4.63,
+       'Talepler durumlarına göre sayılır ve filtrelenir.');
+  notes(s, 8.45, 1.9, [
+    ['Tek liste', 'İletişim formu, demo talebi ve salon teklif formu aynı yerde toplanır.'],
+    ['Durum ve not', 'Her talep yeni, işlemde ya da kapatıldı olarak işaretlenir; not yazılabilir.'],
+    ['Değiştirilemezlik', 'Talebin içeriği sonradan değiştirilemez, kayıt silinemez.'],
+    ['Erişim', 'Talepleri yalnızca yönetici görür.'],
+  ], 1.2, 4.15);
+  s.addNotes('Talep geldiğinde işleyen kullanıcı ve zaman damgası kaydedilir.');
 }
 
-/* ═══════════════════════════════════ 12 — Yetkiler (yerel tablo) */
+/* ── 17 Yetkiler ─────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: WHITE };
-  head(s, 'YETKİ YÖNETİMİ', 'Personeliniz yalnızca işini görür');
-  s.addText('Her personele ayrı hesap açar, hangi ekrana girebileceğini tek tek belirlersiniz. Örnek bir dağılım:', {
+  head(s, 'YETKİLER', 'Kullanıcı yetkileri');
+  s.addText('Her personele ayrı hesap açılır ve hangi ekrana erişebileceği tek tek belirlenir. Örnek bir dağılım:', {
     x: 0.7, y: 1.68, w: 11.9, h: 0.34, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 15, color: MUTED });
-
+    fontFace: B, fontSize: 14, color: MUTED });
   const satir = [
-    ['Rezervasyon görüntüleme','✓','✓'],
-    ['Rezervasyon ekleme / düzenleme','✓','✓'],
-    ['Rezervasyon silme','✓','—'],
-    ['Gelir – gider (kasa)','✓','—'],
-    ['Raporlar ve ciro','✓','—'],
-    ['Müşteri talepleri','✓','—'],
+    ['Rezervasyon görüntüleme','✓','✓'], ['Rezervasyon ekleme / düzenleme','✓','✓'],
+    ['Rezervasyon silme','✓','—'], ['Gelir – gider (kasa)','✓','—'],
+    ['Raporlar ve ciro','✓','—'], ['Müşteri talepleri','✓','—'],
     ['Kullanıcı ve yetki yönetimi','✓','—'],
   ];
   const rows = [[
-    { text: 'YETKİ', options: { bold: true, color: WHITE, fill: { color: NAVY }, fontSize: 12.5, align: 'left' } },
-    { text: 'YÖNETİCİ', options: { bold: true, color: WHITE, fill: { color: NAVY }, fontSize: 12.5, align: 'center' } },
-    { text: 'PERSONEL', options: { bold: true, color: WHITE, fill: { color: NAVY }, fontSize: 12.5, align: 'center' } },
+    { text: 'YETKİ', options: { bold: true, color: WHITE, fill: { color: NAVY }, fontSize: 12, align: 'left' } },
+    { text: 'YÖNETİCİ', options: { bold: true, color: WHITE, fill: { color: NAVY }, fontSize: 12, align: 'center' } },
+    { text: 'PERSONEL', options: { bold: true, color: WHITE, fill: { color: NAVY }, fontSize: 12, align: 'center' } },
   ]];
   satir.forEach(([ad, y1, y2], i) => {
     const bg = i % 2 ? SURFACE : WHITE;
     rows.push([
-      { text: ad, options: { color: INK, fill: { color: bg }, fontSize: 13, align: 'left' } },
-      { text: y1, options: { color: y1 === '✓' ? '1E7B3C' : MUTED, bold: true, fill: { color: bg }, fontSize: 14, align: 'center' } },
-      { text: y2, options: { color: y2 === '✓' ? '1E7B3C' : MUTED, bold: true, fill: { color: bg }, fontSize: 14, align: 'center' } },
+      { text: ad, options: { color: INK, fill: { color: bg }, fontSize: 12.5, align: 'left' } },
+      { text: y1, options: { color: y1 === '✓' ? '1E7B3C' : MUTED, bold: true, fill: { color: bg }, fontSize: 13.5, align: 'center' } },
+      { text: y2, options: { color: y2 === '✓' ? '1E7B3C' : MUTED, bold: true, fill: { color: bg }, fontSize: 13.5, align: 'center' } },
     ]);
   });
-  s.addTable(rows, {
-    x: 0.7, y: 2.25, w: 7.3, colW: [4.1, 1.6, 1.6], rowH: 0.42,
-    border: { type: 'solid', color: LINE, pt: 1 },
-    fontFace: B, valign: 'middle', margin: 0.08,
-  });
+  s.addTable(rows, { x: 0.7, y: 2.2, w: 7.3, colW: [4.1, 1.6, 1.6], rowH: 0.42,
+    border: { type: 'solid', color: LINE, pt: 1 }, fontFace: B, valign: 'middle', margin: 0.08 });
 
-  s.addShape(pres.ShapeType.roundRect, { x: 8.45, y: 2.25, w: 4.15, h: 2.6, rectRadius: 0.1,
+  s.addShape(pres.ShapeType.roundRect, { x: 8.45, y: 2.2, w: 4.15, h: 2.5, rectRadius: 0.1,
     fill:{color:NAVY}, line:{color:NAVY} });
-  s.addText('Denetim kaydı', { x: 8.8, y: 2.55, w: 3.45, h: 0.36, isTextBox: true, margin: 0,
-    fontFace: H, fontSize: 20, bold: true, color: WHITE });
-  s.addText('Kim, neyi, ne zaman değiştirdi — hepsi kayıtlı. Rezervasyonun tutarı değiştiyse eski ve yeni değer birlikte görünür. Bu kayıtlar silinemez ve değiştirilemez.', {
-    x: 8.8, y: 3.02, w: 3.45, h: 1.6, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 18 });
-  s.addShape(pres.ShapeType.roundRect, { x: 8.45, y: 5.1, w: 4.15, h: 1.55, rectRadius: 0.1,
-    fill:{color:SURFACE}, line:{color:'E3E9F4', width:1} });
-  s.addText('Şifreyi siz görmezsiniz', {
-    x: 8.8, y: 5.38, w: 3.45, h: 0.34, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 14, bold: true, color: NAVY });
-  s.addText('Her personel kendi şifresini belirler. Siz yalnızca yetkilerini bu ekrandan düzenlersiniz.', {
-    x: 8.8, y: 5.75, w: 3.45, h: 0.72, isTextBox: true, margin: 0,
+  s.addText('Denetim kaydı', { x: 8.8, y: 2.5, w: 3.45, h: 0.36, isTextBox: true, margin: 0,
+    fontFace: H, fontSize: 19, bold: true, color: WHITE });
+  s.addText('Ekleme, değişiklik ve silme işlemleri kullanıcı ve zaman bilgisiyle kaydedilir. Değişen alanın eski ve yeni değeri birlikte tutulur. Kayıtlar silinemez ve değiştirilemez.', {
+    x: 8.8, y: 2.96, w: 3.45, h: 1.6, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12, color: PALE, lineSpacing: 17 });
+  s.addText('Personel hesapları ayrı şifreyle açılır; şifreler yöneticiye görünmez.', {
+    x: 8.45, y: 4.95, w: 4.15, h: 0.7, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12, color: INK, lineSpacing: 16 });
-  s.addNotes('Personel devri yüksek salonlar için önemli. "Rezervasyonu kim sildi?" sorusunun cevabı var.');
+  s.addNotes('Yedi ayrı yetki tanımlıdır; tablo bunlardan bir dağılım örneğidir.');
 }
 
-/* ═══════════════════════════════════ 13 — Güvenlik (koyu, stat callout) */
+/* ── 18 Veri güvenliği ───────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: NAVY };
-  head(s, 'GÜVENCE', 'Verileriniz emanet değil, güvence altında', true);
-  [['Her gece','otomatik yedek','Yedekten geri dönüş prosedürü belgeli ve gerçekten denenmiştir.'],
-   ['AB','sunucularında','Veriler Frankfurt’ta tutulur — KVKK açısından tercih edilen bölge.'],
-   ['0','silinebilir kayıt','Fatura ve denetim kayıtları silinemez; iz her zaman kalır.'],
-  ].forEach(([buyuk, alt, ack], i) => {
+  head(s, 'VERİ', 'Veri saklama ve yedekleme', true);
+  [['Sunucu konumu', 'Veriler AB bölgesinde (Frankfurt) tutulur.'],
+   ['Gecelik yedek', 'Her gece otomatik yedek alınır; geri yükleme prosedürü belgelidir.'],
+   ['Veri ayrımı', 'Her hesap yalnızca kendi verisini görür. Ayrım sunucu düzeyindedir.'],
+  ].forEach(([bas, ack], i) => {
     const x = 0.7 + i*4.07;
-    s.addShape(pres.ShapeType.roundRect, { x, y: 1.95, w: 3.77, h: 2.55, rectRadius: 0.1,
+    s.addShape(pres.ShapeType.roundRect, { x, y: 1.85, w: 3.77, h: 1.95, rectRadius: 0.1,
       fill:{color:BRAND}, line:{color:BRAND} });
-    s.addText(buyuk, { x: x+0.32, y: 2.18, w: 3.15, h: 0.88, isTextBox: true, margin: 0,
-      fontFace: H, fontSize: 40, bold: true, color: GOLD });
-    s.addText(alt, { x: x+0.32, y: 3.04, w: 3.15, h: 0.32, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 14, bold: true, color: WHITE });
-    s.addText(ack, { x: x+0.32, y: 3.44, w: 3.15, h: 0.95, isTextBox: true, margin: 0,
+    s.addText(bas, { x: x+0.32, y: 2.15, w: 3.15, h: 0.34, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 15, bold: true, color: WHITE });
+    s.addText(ack, { x: x+0.32, y: 2.56, w: 3.15, h: 1.0, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 12, color: PALE, lineSpacing: 16 });
   });
-  [['Şifre denemesi sınırlı','Art arda hatalı girişte hesap geçici olarak kilitlenir.'],
-   ['Salon verileri ayrık','Her hesap yalnızca kendi verisini görür; sunucu düzeyinde ayrılmıştır.'],
-   ['Sistem durumu ekranı','Yedek alındı mı, mesaj gitti mi — kendiniz görürsünüz.'],
+  [['Giriş koruması', 'Art arda hatalı girişte hesap geçici olarak kilitlenir.'],
+   ['Silinemeyen kayıtlar', 'Fatura, denetim kaydı ve müşteri talepleri silinemez.'],
+   ['Sistem durumu ekranı', 'Yedek, SMS kuyruğu ve İYS durumu panelden izlenir.'],
   ].forEach(([bas, ack], i) => {
     const x = 0.7 + i*4.07;
-    s.addText(bas, { x, y: 4.95, w: 3.77, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 14, bold: true, color: SKY });
-    s.addText(ack, { x, y: 5.3, w: 3.77, h: 0.85, isTextBox: true, margin: 0,
+    s.addText(bas, { x, y: 4.3, w: 3.77, h: 0.3, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 13.5, bold: true, color: SKY });
+    s.addText(ack, { x, y: 4.63, w: 3.77, h: 0.8, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 12, color: PALE, lineSpacing: 16 });
   });
-  s.addNotes('"Verim nerede duruyor?" sorusunun cevabı hazır: AB sunucusu, gecelik yedek, silinemez kayıt.');
+  s.addText('Kuralların çoğu arayüzde değil veritabanı düzeyinde tanımlıdır: çifte rezervasyon, kapora aşımı, onaysız ticari SMS, gönderilmiş faturanın değiştirilmesi ve taksit toplamının rezervasyon tutarını aşması kayıt aşamasında reddedilir.', {
+    x: 0.7, y: 5.7, w: 11.9, h: 0.9, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 18 });
+  s.addNotes('Veriler Supabase (PostgreSQL) üzerinde tutulur.');
 }
 
-/* ═══════════════════════════════════ 14 — Mobil (ortalanmış, telefonlar merkezde) */
-{
-  const s = pres.addSlide();
-  s.background = { color: SURFACE };
-  head(s, 'HER CİHAZDAN', 'Salonda, evde, yoldayken');
-  s.addText('Kurulum gerekmez, program indirilmez. Telefonun tarayıcısından girer, aynı ekranları kullanırsınız.', {
-    x: 0.7, y: 1.72, w: 11.9, h: 0.36, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 15, color: MUTED });
-
-  shot(s, img('mobil-anasayfa.png'), 4.85, 2.25, 1.75, 3.79, null);
-  shot(s, img('mobil-panel.png'), 6.9, 2.25, 1.75, 3.79, null);
-  s.addText('Gerçek ekranlar: site ve panel, telefon genişliğinde.', {
-    x: 4.5, y: 6.2, w: 4.5, h: 0.3, isTextBox: true, margin: 0,
-    align: 'center', fontFace: B, fontSize: 10.5, italic: true, color: MUTED });
-
-  [['Bilgisayar gerekmez','Düğün alanında telefondan rezervasyon açabilirsiniz.'],
-   ['Güncelleme derdi yok','Sistem sürekli güncel; siz bir şey yapmazsınız.'],
-  ].forEach(([bas, ack], i) => {
-    const y = 2.6 + i*1.5;
-    s.addText(bas, { x: 0.7, y, w: 3.85, h: 0.3, isTextBox: true, margin: 0,
-      align: 'right', fontFace: B, fontSize: 14.5, bold: true, color: NAVY });
-    s.addText(ack, { x: 0.7, y: y+0.34, w: 3.85, h: 0.65, isTextBox: true, margin: 0,
-      align: 'right', fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17 });
-  });
-  [['Aynı anda birden çok kişi','Resepsiyon ve yönetici aynı veriyi aynı anda görür.'],
-   ['Her yerden erişim','Salonda, evde ya da yolda; internet yeterli.'],
-  ].forEach(([bas, ack], i) => {
-    const y = 2.6 + i*1.5;
-    s.addText(bas, { x: 8.95, y, w: 3.65, h: 0.3, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 14.5, bold: true, color: NAVY });
-    s.addText(ack, { x: 8.95, y: y+0.34, w: 3.65, h: 0.65, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17 });
-  });
-  s.addNotes('Kısa geçin. Asıl mesaj: kurulum yok, güncelleme yok.');
-}
-
-/* ═══════════════════════════════════ 15 — Kanıt */
+/* ── 19 Kurulum ──────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: WHITE };
-  head(s, 'ARKASINDAKİ İŞ', 'Sözle değil, kanıtla');
-  s.addText('Bir salon yazılımı ciroyu ve müşteri verisini tutar. Bu yüzden sistemin her parçası otomatik testlerle sürekli denetlenir.', {
-    x: 0.7, y: 1.7, w: 11.9, h: 0.36, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 15, color: MUTED });
-  [['372','otomatik test'],['0','bilinen hata'],['%100','ekran doğrulaması']].forEach(([n, l], i) => {
-    const x = 0.7 + i*4.07;
-    s.addShape(pres.ShapeType.roundRect, { x, y: 2.35, w: 3.77, h: 1.8, rectRadius: 0.1,
-      fill:{color:SURFACE}, line:{color:'E3E9F4', width:1} });
-    s.addText(n, { x, y: 2.55, w: 3.77, h: 0.95, isTextBox: true, margin: 0,
-      align:'center', fontFace: H, fontSize: 46, bold: true, color: BRAND });
-    s.addText(l, { x, y: 3.52, w: 3.77, h: 0.34, isTextBox: true, margin: 0,
-      align:'center', fontFace: B, fontSize: 13.5, color: MUTED });
+  head(s, 'KURULUM', 'Kurulum ve gereksinimler');
+  const rows = [[
+    { text: 'BİLEŞEN', options: { bold: true, color: WHITE, fill: { color: NAVY }, fontSize: 12, align: 'left' } },
+    { text: 'GEREKLİ Mİ', options: { bold: true, color: WHITE, fill: { color: NAVY }, fontSize: 12, align: 'center' } },
+    { text: 'AÇIKLAMA', options: { bold: true, color: WHITE, fill: { color: NAVY }, fontSize: 12, align: 'left' } },
+  ]];
+  [['Veritabanı ve barındırma','Evet','Sistem bunlar olmadan çalışmaz.'],
+   ['SMS sağlayıcısı','Hayır','Tanımlı değilse mesaj gönderilmez, kayıt tutulur.'],
+   ['e-Fatura entegratörü','Hayır','Tanımlı değilse fatura taslak olarak kalır.'],
+   ['İYS entegrasyonu','Hayır','Yalnızca ticari ileti gönderilecekse gerekir.'],
+   ['Hata izleme','Hayır','Tanımlı değilse dış servise istek gitmez.'],
+  ].forEach(([a, b2, c], i) => {
+    const bg = i % 2 ? SURFACE : WHITE;
+    rows.push([
+      { text: a, options: { color: INK, fill: { color: bg }, fontSize: 12.5, align: 'left' } },
+      { text: b2, options: { color: b2 === 'Evet' ? NAVY : MUTED, bold: true, fill: { color: bg }, fontSize: 12.5, align: 'center' } },
+      { text: c, options: { color: INK, fill: { color: bg }, fontSize: 12, align: 'left' } },
+    ]);
   });
-  s.addShape(pres.ShapeType.roundRect, { x: 0.7, y: 4.45, w: 11.9, h: 2.2, rectRadius: 0.1,
-    fill:{color:SURFACE}, line:{color:'E3E9F4', width:1} });
-  [['Kurallar sistemin içinde','Çifte rezervasyon, hatalı kapora, onaysız ticari SMS — hiçbiri kaydedilemez. Arayüzdeki bir hata bu kuralları çiğneyemez.'],
-   ['Yedek gerçekten denendi','Yedek almak yetmez: alınan yedek boş bir sisteme geri yüklendi ve tutarların, kayıtların eksiksiz döndüğü kanıtlandı.'],
-  ].forEach(([bas, ack], i) => {
-    const x = 1.1 + i*5.85;
-    s.addText(bas, { x, y: 4.75, w: 5.2, h: 0.32, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 15, bold: true, color: NAVY });
-    s.addText(ack, { x, y: 5.15, w: 5.2, h: 1.25, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 18 });
-  });
-  s.addNotes('Teknik dinleyici varsa burada durun. Değilse hızlı geçip "test edilmiş sistem" mesajını bırakın.');
+  s.addTable(rows, { x: 0.7, y: 1.9, w: 11.9, colW: [3.6, 1.8, 6.5], rowH: 0.5,
+    border: { type: 'solid', color: LINE, pt: 1 }, fontFace: B, valign: 'middle', margin: 0.08 });
+  s.addText('Kurulum gerektirmez; tarayıcıdan kullanılır. Bilgisayar, tablet ve telefonda aynı ekranlar çalışır.', {
+    x: 0.7, y: 5.6, w: 11.9, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 13, color: INK });
+  s.addText('Bir sağlayıcı tanımlı değilse ilgili özellik kapanır; sistemin geri kalanı çalışmaya devam eder ve arayüz durumu açıkça belirtir.', {
+    x: 0.7, y: 6.1, w: 11.9, h: 0.5, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12.5, color: MUTED, lineSpacing: 17 });
+  s.addNotes('Netgsm başlık onayı birkaç iş günü sürer; en erken başvurulması gereken adımdır.');
 }
 
-/* ═══════════════════════════════════ 16 — Kapanış */
+/* ── 20 Kapanış ──────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
   s.background = { color: NAVY };
-  s.addShape(pres.ShapeType.ellipse, { x: -2.3, y: 4.2, w: 5.6, h: 5.6, fill:{color:BRAND}, line:{color:BRAND} });
-  s.addText('Salonunuzu bir defterden çıkarın.', {
-    x: 0.9, y: 1.3, w: 9.8, h: 1.45, isTextBox: true, margin: 0,
-    fontFace: H, fontSize: 41, bold: true, color: WHITE, lineSpacing: 48 });
-  s.addText('Rezervasyon, tahsilat, sözleşme, SMS, fatura ve raporlar tek sistemde.\nKurulum yok, program yok — bugün başlayabilirsiniz.', {
-    x: 0.9, y: 2.95, w: 8.4, h: 1.0, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 16, color: PALE, lineSpacing: 26 });
-  [['Demo','Salonunuza özel canlı gösterim'],
-   ['Kurulum','Verileriniz aktarılır, ekip eğitilir'],
-   ['Destek','Sorunuz olduğunda ulaşabilirsiniz'],
+  s.addShape(pres.ShapeType.ellipse, { x: -2.3, y: 4.4, w: 5.4, h: 5.4, fill:{color:BRAND}, line:{color:BRAND} });
+  s.addText('Özet', { x: 0.9, y: 1.3, w: 9.8, h: 0.8, isTextBox: true, margin: 0,
+    fontFace: H, fontSize: 36, bold: true, color: WHITE });
+  s.addText('Rezervasyondan faturaya kadar salon işletmeciliğinin kayıt tutulan tüm adımları tek sistemde toplanır: takvim ve salonlar, tahsilat ve ödeme planı, sözleşme ve makbuz, menü, masa düzeni, iş emri, tedarikçiler, SMS, e-fatura, raporlar ve yedekleme.', {
+    x: 0.9, y: 2.25, w: 11.5, h: 1.4, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 15, color: PALE, lineSpacing: 24 });
+  [['Demo', 'Salonunuzun verisiyle canlı gösterim'],
+   ['Kurulum', 'Mevcut kayıtların aktarımı ve ekip eğitimi'],
+   ['Destek', 'Kurulum sonrası iletişim'],
   ].forEach(([bas, ack], i) => {
     const x = 0.9 + i*3.9;
-    s.addText(bas, { x, y: 4.35, w: 3.6, h: 0.36, isTextBox: true, margin: 0,
-      fontFace: H, fontSize: 19, bold: true, color: GOLD });
-    s.addText(ack, { x, y: 4.78, w: 3.6, h: 0.6, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 13, color: PALE, lineSpacing: 18 });
+    s.addText(bas, { x, y: 4.2, w: 3.6, h: 0.36, isTextBox: true, margin: 0,
+      fontFace: H, fontSize: 18, bold: true, color: ACCENT });
+    s.addText(ack, { x, y: 4.62, w: 3.6, h: 0.6, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 17 });
   });
   s.addShape(pres.ShapeType.roundRect, { x: 0.9, y: 5.85, w: 11.5, h: 0.85, rectRadius: 0.12,
     fill:{color:BRAND}, line:{color:BRAND} });
-  s.addText('Demo talebi ve fiyat bilgisi için:   [telefon]   ·   [e-posta]   ·   [web adresi]', {
+  s.addText('İletişim:   [telefon]   ·   [e-posta]   ·   [web adresi]', {
     x: 0.9, y: 5.85, w: 11.5, h: 0.85, isTextBox: true, margin: 0,
-    align:'center', valign:'middle', fontFace: B, fontSize: 15, bold: true, color: WHITE });
-  s.addNotes('Köşeli parantezli alanları kendi iletişim bilgilerinizle değiştirin. Somut bir adım isteyin: "Salonunuzda 20 dakikalık demo yapalım mı?"');
+    align:'center', valign:'middle', fontFace: B, fontSize: 14.5, bold: true, color: WHITE });
+  s.addNotes('Köşeli parantezli alanları kendi iletişim bilgilerinizle değiştirin.');
 }
 
 pres.writeFile({ fileName: 'Dugun-Takip-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));
