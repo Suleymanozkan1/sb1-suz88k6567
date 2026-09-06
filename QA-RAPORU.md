@@ -1,6 +1,69 @@
 # Düğün Takip — Audit ve QA Raporu
 
-**Son güncelleme:** 2 Eylül 2026 (ikinci tam denetim)
+**Son güncelleme:** 2 Eylül 2026 (üçüncü tam denetim — salon, menü, masa düzeni)
+
+---
+
+## 0. Üçüncü tam denetim (yeni özellikler)
+
+Yerli (TOY, ÖzgürKod, EBS, SA Yazılım, Salon-Takip, HesapKobi) ve yabancı
+(Tripleseat, Perfect Venue, Event Temple) salon yönetim yazılımları tarandı;
+ortak olup bizde bulunmayan özellikler eklendi.
+
+| Kontrol | Sonuç |
+|---------|-------|
+| Veritabanı kuralları (psql, 7 paket) | ✅ 91/91 |
+| Birim + entegrasyon (Vitest) | ✅ 263/263 |
+| Uçtan uca (Playwright/Chromium) | ✅ 69/69 |
+| TypeScript (`strict`) | ✅ 0 hata |
+| ESLint | ✅ 0 hata |
+| Göçlerin boş Postgres 16'ya uygulanması | ✅ 7/7 temiz |
+| Derlenmiş pakette sunucu sırrı | ✅ bulunmadı |
+
+Toplam **423 otomatik senaryo**.
+
+### 0.1 Eklenen özellikler
+
+| Özellik | Neden | Nerede |
+|---|---|---|
+| **Salonlar** | Her rakip üründe var; bir işletmede birden çok salon | `/panel/salonlar` |
+| **Menü / paket** | Kişi başı fiyatlandırma sektör standardı | `/panel/menuler` |
+| **Masa oturma düzeni** | Yabancı ürünlerin ayırt edici özelliği | Rezervasyon detayı |
+| **Tahsilat makbuzu** | Yerli ürünlerde "makbuz basımı" olarak geçiyor | `/…/makbuz` |
+| **Self-servis kayıt** | Başka salonlara satış için | `VITE_ALLOW_SIGNUP=true` |
+
+Abonelik, plan ve ücretlendirme **bilinçli olarak yapılmadı**.
+
+### 0.2 Bu turda bulunan ve düzeltilen hatalar
+
+**A. Göçten sonra açılan işletmelerin hiç salonu olmuyordu — *yüksek***
+
+Göç, var olan işletmelere "Ana Salon" açıyordu; sonradan oluşturulan
+işletmeler salonsuz kalıyor ve rezervasyon açılamıyordu.
+*Düzeltme:* `businesses` üzerinde AFTER INSERT tetikleyicisi.
+
+**B. Tohumlama salon ve menüleri koşulsuz eziyordu — *orta***
+
+Daha önce rezervasyonlarda düzeltilen hatanın aynısı: demo verisi yazılırken
+başka işletmelerin salon ve menüleri siliniyordu.
+*Düzeltme:* Yalnızca demo kimlikleri değiştirilir, diğerleri korunur.
+
+**C. Masa düzeni politikası çağıranın tablo yetkisine bağlıydı — *orta***
+
+`seating_tables` politikası doğrudan `reservations` tablosunu sorguluyordu;
+çağıranın o tabloda yetkisi yoksa kendi masa düzenini de göremiyordu.
+*Düzeltme:* Kontrol `owns_reservation()` SECURITY DEFINER fonksiyonuna alındı.
+
+**D. Salon belirtilmeyen rezervasyonda sessiz tahmin riski — *orta***
+
+Çok salonlu bir işletmede salon verilmezse hangisine yazılacağı belirsizdi.
+*Düzeltme:* Tek salon varsa o seçilir; birden çoksa kayıt reddedilir.
+
+---
+
+## 1. İkinci tam denetim (2 Eylül 2026)
+
+**Önceki güncelleme:** 2 Eylül 2026 (ikinci tam denetim)
 **Kapsam:** Tanıtım sitesinin tüm sayfaları + üye panelinin tüm ekranları +
 veritabanı kuralları, API uç noktaları ve yetkilendirme
 

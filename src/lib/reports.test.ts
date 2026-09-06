@@ -11,7 +11,7 @@ import type { Reservation } from '../types';
 function make(over: Partial<Reservation> = {}): Reservation {
   return {
     id: uid('res'),
-    businessId: 'biz_test',
+    businessId: 'biz_test', hallId: 'hall_test',
     code: 'DT-2026-0001',
     customerName: 'Müşteri',
     customerPhone: '5321112233',

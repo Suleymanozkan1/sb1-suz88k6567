@@ -30,6 +30,9 @@ const RezervasyonDetay = lazy(() => import('./pages/app/RezervasyonDetay'));
 const Sozlesme = lazy(() => import('./pages/app/Sozlesme'));
 const Kasa = lazy(() => import('./pages/app/Kasa'));
 const Talepler = lazy(() => import('./pages/app/Talepler'));
+const Salonlar = lazy(() => import('./pages/app/Salonlar'));
+const Menuler = lazy(() => import('./pages/app/Menuler'));
+const Makbuz = lazy(() => import('./pages/app/Makbuz'));
 const Raporlar = lazy(() => import('./pages/app/Raporlar'));
 const RenkAyarlari = lazy(() => import('./pages/app/RenkAyarlari'));
 const Musteriler = lazy(() => import('./pages/app/Musteriler'));
@@ -114,6 +117,7 @@ export default function App() {
             <Route path="rezervasyonlar/:id" element={<RezervasyonDetay />} />
             <Route path="rezervasyonlar/:id/duzenle" element={<RezervasyonForm />} />
             <Route path="rezervasyonlar/:id/sozlesme" element={<Sozlesme />} />
+            <Route path="rezervasyonlar/:id/makbuz" element={<Makbuz />} />
             <Route path="kasa" element={<Kasa />} />
             <Route path="faturalar" element={<Faturalar />} />
             <Route path="raporlar" element={<Raporlar />} />
@@ -122,6 +126,8 @@ export default function App() {
             <Route path="isletmeler" element={<Isletmeler />} />
             <Route path="kullanicilar" element={<Kullanicilar />} />
             <Route path="talepler" element={<Talepler />} />
+            <Route path="salonlar" element={<Salonlar />} />
+            <Route path="menuler" element={<Menuler />} />
             <Route path="sms" element={<SmsKayitlari />} />
             <Route path="izinler" element={<IzinYonetimi />} />
             <Route path="denetim" element={<DenetimKaydi />} />

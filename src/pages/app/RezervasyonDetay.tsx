@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import MasaDuzeni from '../../components/MasaDuzeni';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
@@ -282,6 +283,12 @@ export default function RezervasyonDetay() {
                     <td className="py-2.5 text-brand-muted">{p.note || '—'}</td>
                     <td className="py-2.5 text-right font-medium text-brand">{formatMoney(p.amount, reservation.currency)}</td>
                     <td className="py-2.5 text-right">
+                      <Link
+                        to={`/panel/rezervasyonlar/${reservation.id}/makbuz?tahsilat=${p.id}`}
+                        className="mr-1 text-xs text-brand underline"
+                      >
+                        Makbuz
+                      </Link>
                       {can('kasa.duzenle') && (
                         <button type="button" onClick={() => setPaymentToDelete(p)} aria-label="Tahsilatı sil" className="rounded p-1 text-brand-muted hover:text-[#e74c3c]">
                           <IconTrash size={15} />
@@ -294,6 +301,19 @@ export default function RezervasyonDetay() {
             </table>
           </div>
         )}
+      </section>
+
+      <section className="card mb-6 p-5">
+        <h2 className="mb-1 font-heading text-lg font-bold text-brand">Masa Oturma Düzeni</h2>
+        <p className="mb-4 text-sm text-brand-muted">
+          Davetli sayısına göre masa planı oluşturun; planın koltuk toplamı davetli sayısını
+          karşılamıyorsa uyarı gösterilir.
+        </p>
+        <MasaDuzeni
+          reservationId={reservation.id}
+          guestCount={reservation.guestCount}
+          canEdit={can('rezervasyon.duzenle')}
+        />
       </section>
 
       <ConfirmDialog

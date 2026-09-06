@@ -8,7 +8,7 @@
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage,
   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
-  Invoice, InvoiceKind, BuyerKind, MessageStatus,
+  Invoice, InvoiceKind, BuyerKind, MessageStatus, Hall, Menu, SeatingTable,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
@@ -74,6 +74,21 @@ export interface Repository {
   listBusinesses(ownerId: string): Promise<Business[]>;
   saveBusiness(business: Omit<Business, 'createdAt'> & { createdAt?: string }): Promise<Business>;
   deleteBusiness(id: string): Promise<void>;
+
+  /* -- salonlar ----------------------------------------------------- */
+  listHalls(businessId: string): Promise<Hall[]>;
+  saveHall(hall: Omit<Hall, 'createdAt'> & { createdAt?: string }): Promise<Hall>;
+  deleteHall(id: string): Promise<void>;
+
+  /* -- menüler / paketler ------------------------------------------- */
+  listMenus(businessId: string): Promise<Menu[]>;
+  saveMenu(menu: Omit<Menu, 'createdAt'> & { createdAt?: string }): Promise<Menu>;
+  deleteMenu(id: string): Promise<void>;
+
+  /* -- masa oturma düzeni ------------------------------------------- */
+  listSeating(reservationId: string): Promise<SeatingTable[]>;
+  /** Planın tamamını değiştirir; kısmi güncelleme yerine tek işlem. */
+  saveSeating(reservationId: string, tables: Omit<SeatingTable, 'id' | 'reservationId'>[]): Promise<void>;
 
   /* -- rezervasyonlar ----------------------------------------------- */
   listReservations(businessId: string): Promise<Reservation[]>;

@@ -32,6 +32,8 @@ export interface Payment {
 export interface Reservation {
   id: string;
   businessId: string;
+  hallId: string;
+  menuId?: string;
   code: string; // Kod doğrulama ekranında sorgulanan rezervasyon kodu
   customerName: string;
   customerPhone: string;
@@ -51,6 +53,46 @@ export interface Reservation {
   address?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Bir işletmedeki fiziksel salon. Çakışma kuralı salon bazında işler. */
+export interface Hall {
+  id: string;
+  businessId: string;
+  name: string;
+  capacity: number;
+  note: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+/** Menü fiyatı kişi başı ya da sabit olabilir. */
+export type MenuPricing = 'kisi_basi' | 'sabit';
+
+export const MENU_PRICING_LABELS: Record<MenuPricing, string> = {
+  kisi_basi: 'Kişi başı',
+  sabit: 'Sabit tutar',
+};
+
+export interface Menu {
+  id: string;
+  businessId: string;
+  name: string;
+  pricing: MenuPricing;
+  /** Kuruş cinsinden tamsayı; ondalık aritmetik kuruş kaydırır. */
+  priceKurus: number;
+  description: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+/** Rezervasyona bağlı tek bir masa. */
+export interface SeatingTable {
+  id: string;
+  reservationId: string;
+  tableNo: number;
+  seats: number;
+  label: string;
 }
 
 export type CashFlowKind = 'Gelir' | 'Gider';

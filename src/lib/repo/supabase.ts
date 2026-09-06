@@ -4,6 +4,7 @@ import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants'
 import { RepoError, type PublicReservation, type Repository } from './types';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, MessageStatus,
+  Hall, Menu, SeatingTable,
   Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
 } from '../../types';
@@ -75,6 +76,8 @@ function toReservation(row: Row): Reservation {
   return {
     id: String(row.id),
     businessId: String(row.business_id),
+    hallId: String(row.hall_id ?? ''),
+    menuId: (row.menu_id as string) ?? undefined,
     code: (row.code as string) ?? '',
     customerName: (row.customer_name as string) ?? '',
     customerPhone: (row.customer_phone as string) ?? '',
@@ -99,7 +102,8 @@ function toReservation(row: Row): Reservation {
 
 function fromReservation(r: Reservation) {
   return {
-    id: r.id, business_id: r.businessId, code: r.code,
+    id: r.id, business_id: r.businessId, hall_id: r.hallId,
+    menu_id: r.menuId || null, code: r.code,
     customer_name: r.customerName, customer_phone: r.customerPhone,
     customer_email: r.customerEmail || null, second_person_name: r.secondPersonName || null,
     date: r.date, slot: r.slot, organization_type: r.organizationType,
@@ -188,6 +192,41 @@ function toSms(row: Row): SmsLogEntry {
     body: (row.body as string) ?? '',
     kind: (row.kind as SmsLogEntry['kind']) ?? 'Bilgilendirme',
     sentAt: (row.sent_at as string) ?? '',
+  };
+}
+
+function toHall(row: Row): Hall {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    name: (row.name as string) ?? '',
+    capacity: Number(row.capacity ?? 0),
+    note: (row.note as string) ?? '',
+    isActive: Boolean(row.is_active ?? true),
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toMenu(row: Row): Menu {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    name: (row.name as string) ?? '',
+    pricing: (row.pricing as Menu['pricing']) ?? 'kisi_basi',
+    priceKurus: Number(row.price_kurus ?? 0),
+    description: (row.description as string) ?? '',
+    isActive: Boolean(row.is_active ?? true),
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toSeating(row: Row): SeatingTable {
+  return {
+    id: String(row.id),
+    reservationId: String(row.reservation_id),
+    tableNo: Number(row.table_no ?? 0),
+    seats: Number(row.seats ?? 0),
+    label: (row.label as string) ?? '',
   };
 }
 
@@ -467,7 +506,7 @@ export const supabaseRepo: Repository = {
     if (error) {
       const code = (error as { code?: string }).code;
       if (code === '23505') {
-        throw new RepoError('Bu tarih ve seans için zaten bir rezervasyon kaydı var.');
+        throw new RepoError('Bu salonda seçilen tarih ve seans için zaten bir rezervasyon var.');
       }
       fail('Rezervasyon kaydedilemedi.', error);
     }
@@ -786,6 +825,75 @@ export const supabaseRepo: Repository = {
       message: message.message, kind: message.kind,
     });
     if (error) fail('Mesajınız gönderilemedi.', error);
+  },
+
+  async listHalls(businessId) {
+    const { data, error } = await db().from('halls')
+      .select('*').eq('business_id', businessId).order('name');
+    if (error) fail('Salonlar okunamadı.', error);
+    return (data ?? []).map(toHall);
+  },
+
+  async saveHall(hall) {
+    const { data, error } = await db().from('halls').upsert({
+      id: hall.id, business_id: hall.businessId, name: hall.name,
+      capacity: hall.capacity, note: hall.note, is_active: hall.isActive,
+    }).select().single();
+    if (error) fail('Salon kaydedilemedi.', error);
+    return toHall(data);
+  },
+
+  async deleteHall(id) {
+    const { error } = await db().from('halls').delete().eq('id', id);
+    // 23503: salona bağlı rezervasyon var — kayıt silinmek yerine pasife alınmalı
+    if (error && (error as { code?: string }).code === '23503') {
+      throw new RepoError('Bu salona bağlı rezervasyonlar var; salonu silmek yerine pasife alın.');
+    }
+    if (error) fail('Salon silinemedi.', error);
+  },
+
+  async listMenus(businessId) {
+    const { data, error } = await db().from('menus')
+      .select('*').eq('business_id', businessId).order('name');
+    if (error) fail('Menüler okunamadı.', error);
+    return (data ?? []).map(toMenu);
+  },
+
+  async saveMenu(menu) {
+    const { data, error } = await db().from('menus').upsert({
+      id: menu.id, business_id: menu.businessId, name: menu.name,
+      pricing: menu.pricing, price_kurus: menu.priceKurus,
+      description: menu.description, is_active: menu.isActive,
+    }).select().single();
+    if (error) fail('Menü kaydedilemedi.', error);
+    return toMenu(data);
+  },
+
+  async deleteMenu(id) {
+    const { error } = await db().from('menus').delete().eq('id', id);
+    if (error) fail('Menü silinemedi.', error);
+  },
+
+  async listSeating(reservationId) {
+    const { data, error } = await db().from('seating_tables')
+      .select('*').eq('reservation_id', reservationId).order('table_no');
+    if (error) fail('Masa düzeni okunamadı.', error);
+    return (data ?? []).map(toSeating);
+  },
+
+  async saveSeating(reservationId, tables) {
+    // Plan bir bütün olarak değiştirilir: önce mevcut satırlar silinir.
+    const { error: delError } = await db().from('seating_tables')
+      .delete().eq('reservation_id', reservationId);
+    if (delError) fail('Masa düzeni güncellenemedi.', delError);
+    if (tables.length === 0) return;
+
+    const { error } = await db().from('seating_tables').insert(
+      tables.map((t) => ({
+        reservation_id: reservationId, table_no: t.tableNo, seats: t.seats, label: t.label,
+      })),
+    );
+    if (error) fail('Masa düzeni kaydedilemedi.', error);
   },
 
   async listMessages() {

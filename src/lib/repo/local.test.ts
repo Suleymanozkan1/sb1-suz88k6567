@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { localRepo } from './local';
-import { clearAll } from '../storage';
+import { KEYS, clearAll, write } from '../storage';
 import { seedIfEmpty, DEMO_CREDENTIALS, DEFAULT_COLOR_SETTINGS } from '../seed';
 import { makeReservationCode, normalizeEmail, uid } from '../ids';
 import { makeBalanceLookup, remainingBalance, totalPaid } from '../money';
@@ -11,7 +11,7 @@ const BIZ = 'biz_test';
 function makeReservation(over: Partial<Reservation> = {}): Reservation {
   const now = new Date().toISOString();
   return {
-    id: uid('res'), businessId: BIZ, code: makeReservationCode(),
+    id: uid('res'), businessId: BIZ, hallId: 'hall_test', code: makeReservationCode(),
     customerName: 'Test Müşteri', customerPhone: '5321112233',
     date: '2026-09-12', slot: 'Gece', organizationType: 'Düğün',
     guestCount: 300, totalAmount: 100000, deposit: 20000, currency: 'TL',
@@ -20,7 +20,15 @@ function makeReservation(over: Partial<Reservation> = {}): Reservation {
   };
 }
 
-beforeEach(() => clearAll());
+/** Sentetik test işletmesinin salonu; rezervasyon kapsam kuralı bunu arar. */
+function testHall() {
+  write(KEYS.halls, [{
+    id: 'hall_test', businessId: BIZ, name: 'Test Salonu',
+    capacity: 500, note: '', isActive: true, createdAt: new Date().toISOString(),
+  }]);
+}
+
+beforeEach(() => { clearAll(); testHall(); });
 
 describe('tohumlama', () => {
   it('demo hesabı ve örnek verileri oluşturur', async () => {
@@ -103,7 +111,7 @@ describe('rezervasyonlar', () => {
   it('aynı tarih ve seansta ikinci kaydı reddeder', async () => {
     await localRepo.saveReservation(makeReservation({ date: '2026-10-10', slot: 'Gece' }));
     await expect(localRepo.saveReservation(makeReservation({ date: '2026-10-10', slot: 'Gece' })))
-      .rejects.toThrow('zaten bir rezervasyon kaydı var');
+      .rejects.toThrow('zaten bir rezervasyon');
   });
 
   it('farklı seansa izin verir', async () => {
@@ -473,5 +481,136 @@ describe('talep kutusu', () => {
   it('bulunmayan talebin durumu değiştirilemez', async () => {
     await gonderVeGir();
     await expect(localRepo.setMessageStatus('yok', 'kapatildi', '')).rejects.toThrow();
+  });
+});
+
+describe('salonlar', () => {
+  it('aynı gün ve seansta farklı salonlara rezervasyon açılabilir', async () => {
+    seedIfEmpty();
+    const ortak = { date: '2027-06-12', slot: 'Gece' as const };
+    await localRepo.saveReservation(makeReservation({
+      ...ortak, businessId: 'biz_demo', hallId: 'hall_demo1', code: 'A1',
+    }));
+    await expect(localRepo.saveReservation(makeReservation({
+      ...ortak, businessId: 'biz_demo', hallId: 'hall_demo2', code: 'A2',
+    }))).resolves.toBeTruthy();
+  });
+
+  it('aynı salona aynı gün ve seansta ikinci kayıt açılamaz', async () => {
+    seedIfEmpty();
+    const ortak = { date: '2027-06-13', slot: 'Gece' as const, businessId: 'biz_demo', hallId: 'hall_demo1' };
+    await localRepo.saveReservation(makeReservation({ ...ortak, code: 'B1' }));
+    await expect(localRepo.saveReservation(makeReservation({ ...ortak, code: 'B2' })))
+      .rejects.toThrow(/zaten bir rezervasyon/);
+  });
+
+  it('başka işletmenin salonuna rezervasyon yazılamaz', async () => {
+    seedIfEmpty();
+    await expect(localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo3', code: 'C1', date: '2027-06-14',
+    }))).rejects.toThrow(/Salon bu işletmeye ait değil/);
+  });
+
+  it('aynı isimde ikinci salon eklenemez', async () => {
+    seedIfEmpty();
+    await expect(localRepo.saveHall({
+      id: 'hall_yeni', businessId: 'biz_demo', name: 'Kristal Salon',
+      capacity: 100, note: '', isActive: true,
+    })).rejects.toThrow(/zaten var/);
+  });
+
+  it('rezervasyonu olan salon silinemez', async () => {
+    seedIfEmpty();
+    await localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo2', code: 'D1', date: '2027-09-09',
+    }));
+    await expect(localRepo.deleteHall('hall_demo2')).rejects.toThrow(/pasife alın/);
+  });
+});
+
+describe('menüler', () => {
+  it('başka işletmenin menüsü seçilemez', async () => {
+    seedIfEmpty();
+    await expect(localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1', menuId: 'menu_demo4',
+      code: 'E1', date: '2027-06-15',
+    }))).rejects.toThrow(/Menü bu işletmeye ait değil/);
+  });
+
+  it('negatif fiyatlı menü kaydedilemez', async () => {
+    seedIfEmpty();
+    await expect(localRepo.saveMenu({
+      id: 'menu_x', businessId: 'biz_demo', name: 'Hatalı',
+      pricing: 'kisi_basi', priceKurus: -1, description: '', isActive: true,
+    })).rejects.toThrow(/negatif/);
+  });
+
+  it('menü silinince rezervasyonun menü bağlantısı kalkar, tutarı değişmez', async () => {
+    seedIfEmpty();
+    const kayit = await localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1', menuId: 'menu_demo1',
+      code: 'F1', date: '2027-06-16', totalAmount: 250000,
+    }));
+    await localRepo.deleteMenu('menu_demo1');
+    const sonra = await localRepo.getReservation(kayit.id);
+    expect(sonra?.menuId).toBeUndefined();
+    expect(sonra?.totalAmount).toBe(250000);
+  });
+});
+
+describe('masa düzeni', () => {
+  async function rezervasyonAc() {
+    seedIfEmpty();
+    return localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'G1',
+      date: '2027-06-17', guestCount: 250,
+    }));
+  }
+
+  it('plan kaydedilir ve masa numarasına göre sıralı okunur', async () => {
+    const r = await rezervasyonAc();
+    await localRepo.saveSeating(r.id, [
+      { tableNo: 3, seats: 10, label: 'Üç' },
+      { tableNo: 1, seats: 10, label: 'Bir' },
+    ]);
+    expect((await localRepo.listSeating(r.id)).map((t) => t.tableNo)).toEqual([1, 3]);
+  });
+
+  it('aynı masa numarası iki kez kullanılamaz', async () => {
+    const r = await rezervasyonAc();
+    await expect(localRepo.saveSeating(r.id, [
+      { tableNo: 1, seats: 10, label: '' },
+      { tableNo: 1, seats: 8, label: '' },
+    ])).rejects.toThrow(/aynı masa numarası/i);
+  });
+
+  it('geçersiz koltuk sayısı reddedilir', async () => {
+    const r = await rezervasyonAc();
+    await expect(localRepo.saveSeating(r.id, [{ tableNo: 1, seats: 0, label: '' }]))
+      .rejects.toThrow(/koltuk sayısı/);
+    await expect(localRepo.saveSeating(r.id, [{ tableNo: 1, seats: 99, label: '' }]))
+      .rejects.toThrow(/koltuk sayısı/);
+  });
+
+  it('planın tamamı değiştirilir, eski masalar kalmaz', async () => {
+    const r = await rezervasyonAc();
+    await localRepo.saveSeating(r.id, [
+      { tableNo: 1, seats: 10, label: '' }, { tableNo: 2, seats: 10, label: '' },
+    ]);
+    await localRepo.saveSeating(r.id, [{ tableNo: 1, seats: 12, label: 'Tek masa' }]);
+    const plan = await localRepo.listSeating(r.id);
+    expect(plan).toHaveLength(1);
+    expect(plan[0].seats).toBe(12);
+  });
+
+  it('başka rezervasyonun planı etkilenmez', async () => {
+    const r1 = await rezervasyonAc();
+    const r2 = await localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo2', code: 'G2', date: '2027-06-18',
+    }));
+    await localRepo.saveSeating(r1.id, [{ tableNo: 1, seats: 10, label: '' }]);
+    await localRepo.saveSeating(r2.id, [{ tableNo: 1, seats: 8, label: '' }]);
+    expect((await localRepo.listSeating(r1.id))[0].seats).toBe(10);
+    expect((await localRepo.listSeating(r2.id))[0].seats).toBe(8);
   });
 });

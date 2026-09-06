@@ -130,7 +130,7 @@ describe('Kod Doğrulama', () => {
     seedIfEmpty();
     const code = makeReservationCode();
     await localRepo.saveReservation({
-      id: uid('res'), businessId: 'biz_demo', code, customerName: 'Test Çift',
+      id: uid('res'), businessId: 'biz_demo', hallId: 'hall_demo1', code, customerName: 'Test Çift',
       customerPhone: '5321112233', date: '2026-09-12', slot: 'Gece', organizationType: 'Düğün',
       guestCount: 250, totalAmount: 100000, deposit: 40000, currency: 'TL',
       status: 'Kesin Rezervasyon', colorKey: 'dugun', services: [], createdAt: '', updatedAt: '',
