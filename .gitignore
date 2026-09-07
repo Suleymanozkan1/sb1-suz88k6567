@@ -13,3 +13,7 @@ playwright-report
 
 # TypeScript artımlı derleme artıkları
 *.tsbuildinfo
+
+# Sunum ekran görüntüleri (ss-yakala.mjs üretir)
+docs/ss/
+Dugun-Takip-Tanitim.pptx
