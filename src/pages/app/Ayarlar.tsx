@@ -118,7 +118,7 @@ export default function Ayarlar() {
               <input id="st-mobile" type="tel" className="field-input" value={profile.mobile} onChange={(e) => setProfile((p) => ({ ...p, mobile: e.target.value }))} />
             </div>
             <div>
-              <label htmlFor="st-email" className="field-label">Email Adresiniz</label>
+              <label htmlFor="st-email" className="field-label">E-posta Adresiniz</label>
               <input id="st-email" className="field-input bg-surface" value={user.email} readOnly tabIndex={-1} />
             </div>
             <div>

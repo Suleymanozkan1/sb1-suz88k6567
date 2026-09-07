@@ -95,7 +95,7 @@ export default function Sozlesme() {
           <table className="w-full border-collapse text-sm">
             <tbody>
               <Row label="Toplam Kira Bedeli" value={formatMoney(reservation.totalAmount, reservation.currency)} />
-              <Row label="Alınan Kaparo" value={formatMoney(reservation.deposit, reservation.currency)} />
+              <Row label="Alınan Kapora" value={formatMoney(reservation.deposit, reservation.currency)} />
               <Row label="Toplam Tahsilat" value={formatMoney(paid, reservation.currency)} />
               <Row label="Kalan Bakiye" value={formatMoney(remaining, reservation.currency)} />
             </tbody>
@@ -110,7 +110,7 @@ export default function Sozlesme() {
           <h3 className="mb-2 font-heading font-bold text-brand">4. GENEL HÜKÜMLER</h3>
           <ol className="list-decimal space-y-1.5 pl-5 text-xs">
             <li>Kiracı, belirtilen tarih ve seansta salonu kullanma hakkına sahiptir.</li>
-            <li>Kaparo, kiracının organizasyonu iptal etmesi hâlinde iade edilmez.</li>
+            <li>Kapora, kiracının organizasyonu iptal etmesi hâlinde iade edilmez.</li>
             <li>Davetli sayısının sözleşmede belirtilen sayıyı aşması hâlinde kişi başı ek ücret uygulanır.</li>
             <li>Salona ve demirbaşlara verilecek zararlardan kiracı sorumludur.</li>
             <li>Kiraya veren, mücbir sebep hâlinde tarihi karşılıklı mutabakat ile değiştirebilir.</li>

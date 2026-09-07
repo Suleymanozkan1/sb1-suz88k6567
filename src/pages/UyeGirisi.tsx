@@ -148,7 +148,7 @@ export default function UyeGirisi() {
 
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="login-email" className="field-label">Email Adresiniz</label>
+                  <label htmlFor="login-email" className="field-label">E-posta Adresiniz</label>
                   <input id="login-email" type="email" className="field-input" value={email}
                     onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
                 </div>

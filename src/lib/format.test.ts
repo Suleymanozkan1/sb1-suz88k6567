@@ -87,11 +87,20 @@ describe('normalizeTr', () => {
   it('arama eşleşmesini büyük/küçük harften bağımsız yapar', () => {
     expect(normalizeTr('İSTANBUL')).toBe('istanbul');
   });
+
+  it('şapkalı ünlüyü sade karşılığına indirger', () => {
+    expect(normalizeTr('Nikâh')).toBe('nikah');
+    expect(normalizeTr('İMKÂN')).toBe('imkan');
+  });
 });
 
 describe('slugify', () => {
   it('URL uyumlu slug üretir', () => {
     expect(slugify('Kır Düğünü Mekanları')).toBe('kir-dugunu-mekanlari');
+  });
+
+  it('şapkalı harf slug\'da boşluğa dönüşmez', () => {
+    expect(slugify('Çankaya Belediyesi Nikâh Salonu')).toBe('cankaya-belediyesi-nikah-salonu');
   });
 });
 

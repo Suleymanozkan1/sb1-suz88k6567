@@ -139,7 +139,8 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 2. SQL Editor'da migration dosyalarını **sırayla** çalıştırın:
    `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` →
    `0004_backup_health.sql` → `0005_invoices.sql` → `0006_talepler.sql` →
-   `0007_salon_menu_masa.sql` → `0008_odeme_plani_is_emri_tedarikci.sql`
+   `0007_salon_menu_masa.sql` → `0008_odeme_plani_is_emri_tedarikci.sql` →
+   `0009_nikah_yazimi.sql`
 3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
 4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
 5. Authentication → Users bölümünden kendi hesabınızı oluşturun.

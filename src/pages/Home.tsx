@@ -18,7 +18,7 @@ export default function Home() {
     <>
       <Seo
         title="Düğün Takip - Salon Takip - Düğün Salonu Takip Programı - Salon Yönetim Sistemi"
-        description="Türkiye'nin ilk online düğün takip sistemi! Düğün Takip Programı, düğün salonları için özel olarak geliştirilmiş rezervasyon ve ödeme takip sistemidir."
+        description="Türkiye’nin ilk online düğün takip sistemi! Düğün Takip Programı, düğün salonları için özel olarak geliştirilmiş rezervasyon ve ödeme takip sistemidir."
         path="/"
       />
 
@@ -150,7 +150,7 @@ export default function Home() {
               Üyelerimizin Düşünceleri
               <span className="absolute bottom-0 left-1/2 block h-1 w-14 -translate-x-1/2 bg-accent" />
             </h2>
-            <p className="mx-auto mt-3 max-w-3xl">Düğüntakip sistemini kullanan üyelerimizin düşünceleri...</p>
+            <p className="mx-auto mt-3 max-w-3xl">Düğün Takip sistemini kullanan üyelerimizin düşünceleri...</p>
           </div>
           <TestimonialSlider items={TESTIMONIALS} />
           <div className="mt-10 text-center">

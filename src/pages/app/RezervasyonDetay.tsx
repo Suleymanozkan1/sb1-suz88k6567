@@ -214,7 +214,7 @@ export default function RezervasyonDetay() {
           <h2 className="mb-4 font-heading text-lg font-bold text-brand">Ödeme Durumu</h2>
           <dl className="space-y-3">
             <Money label="Toplam Tutar" value={formatMoney(reservation.totalAmount, reservation.currency)} />
-            <Money label="Kaparo" value={formatMoney(reservation.deposit, reservation.currency)} />
+            <Money label="Kapora" value={formatMoney(reservation.deposit, reservation.currency)} />
             <Money label="Toplam Tahsilat" value={formatMoney(paid, reservation.currency)} tone="success" />
             <Money label="Kalan Alacak" value={formatMoney(remaining, reservation.currency)} tone={remaining > 0 ? 'danger' : 'success'} />
           </dl>
@@ -265,7 +265,7 @@ export default function RezervasyonDetay() {
         )}
 
         {payments.length === 0 ? (
-          <p className="py-6 text-center text-sm text-brand-muted">Kaparo dışında tahsilat kaydı bulunmuyor.</p>
+          <p className="py-6 text-center text-sm text-brand-muted">Kapora dışında tahsilat kaydı bulunmuyor.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-sm">

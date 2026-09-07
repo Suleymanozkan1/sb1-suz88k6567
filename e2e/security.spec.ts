@@ -64,7 +64,7 @@ test.describe('İstemci tarafı güvenlik', () => {
     // Telefon maskeli olmalı, ödeme alanları hiç görünmemeli
     await expect(page.getByText(/\*\*\*\*\*/)).toBeVisible();
     await expect(page.getByText('Kalan Alacak')).toHaveCount(0);
-    await expect(page.getByText('Kaparo')).toHaveCount(0);
+    await expect(page.getByText('Kapora')).toHaveCount(0);
     await expect(page.getByText('Ödenen')).toHaveCount(0);
   });
 

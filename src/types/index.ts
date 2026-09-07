@@ -9,7 +9,7 @@ export type OrganizationType =
   | 'Kına'
   | 'Konferans'
   | 'Kokteyl'
-  | 'Nikah'
+  | 'Nikâh'
   | 'Doğum Günü'
   | 'Toplantı'
   | 'Diğer';
@@ -44,7 +44,7 @@ export interface Reservation {
   organizationType: OrganizationType;
   guestCount: number;
   totalAmount: number;
-  deposit: number; // Kaparo
+  deposit: number; // Kapora
   currency: Currency;
   status: ReservationStatus;
   colorKey: string; // Rezervasyon Renk Ayarları ile eşleşen anahtar

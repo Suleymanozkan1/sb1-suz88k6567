@@ -21,7 +21,7 @@ const DEMO_CUSTOMERS: [string, string, string][] = [
   ['Hatice Arslan', '5364445566', 'Kına'],
   ['Yusuf & Merve Aydın', '5557778899', 'Düğün'],
   ['Kerem Şahin', '5382223344', 'Doğum Günü'],
-  ['Ayşe Koç', '5316667788', 'Nikah'],
+  ['Ayşe Koç', '5316667788', 'Nikâh'],
   ['Volkan Öztürk', '5429998877', 'Kokteyl'],
   ['Ada Yazılım A.Ş.', '5301114455', 'Konferans'],
   ['Fatma & Ali Doğan', '5347778811', 'Düğün'],
@@ -173,7 +173,7 @@ export function seedIfEmpty(): void {
       totalAmount: total, deposit, currency: 'TL',
       status: isPast ? 'Tamamlandı' : i % 6 === 5 ? 'Ön Rezervasyon' : 'Kesin Rezervasyon',
       colorKey: ORG_TO_COLOR_KEY[orgType] ?? 'diger',
-      note: i % 4 === 0 ? 'Nikah masası ve sahne süslemesi dahil.' : '',
+      note: i % 4 === 0 ? 'Nikâh masası ve sahne süslemesi dahil.' : '',
       services: ['Yemek (Açık Büfe)', 'Orkestra', 'Masa Süsleme'].slice(0, 1 + (i % 3)),
       createdAt: now, updatedAt: now,
     });

@@ -12,7 +12,7 @@ export function groupPayments(payments: Payment[]): Map<string, Payment[]> {
   return map;
 }
 
-/** Kaparo + ek tahsilatların toplamı */
+/** Kapora + ek tahsilatların toplamı */
 export function totalPaid(reservation: Reservation, payments: Payment[] = []): number {
   const extra = payments.reduce((sum, p) => sum + p.amount, 0);
   return reservation.deposit + extra;

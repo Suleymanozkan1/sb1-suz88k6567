@@ -10,11 +10,11 @@ export const PRIVACY_POLICY: LegalDoc = {
   sections: [
     {
       paragraphs: [
-        "Bu gizlilik politikası duguntakip.com 'la başlayan tüm URL 'i sitelerde geçerlidir.",
-        'Size ait üyelik bilgileri (email, şifre v.b.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz.',
+        'Bu gizlilik politikası duguntakip.com’la başlayan tüm URL’li sitelerde geçerlidir.',
+        'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz.',
         'Sitemizi ziyaret için herhangi bir kişisel bilginizi bize vermek zorunda değilsiniz.',
         'Ancak, hizmetlerimizden faydalanmak için üye olmanız ve bazı kişisel bilgilerinizi vermeniz gerekmektedir.',
-        'Size ait üyelik bilgileri (email, şifre v.b.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz, şifrelerin başkasının eline geçmesi yada çalınmasından duguntakip.com sorumlu değildir.',
+        'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz, şifrelerin başkasının eline geçmesi ya da çalınmasından duguntakip.com sorumlu değildir.',
         'Üye ve ziyaretçilerin site ile ilgili tarafımıza ulaştırdıkları her türlü öneri, istek, soru ve şikâyetleri içeren bilgiler site performansını ölçmek açısından saklanmaktadır.',
         'Bu bilgiler kişilerin kendilerine yanıt vermek dışında herhangi bir amaç için kullanılamaz.',
       ],

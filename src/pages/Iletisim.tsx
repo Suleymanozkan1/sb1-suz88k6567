@@ -70,7 +70,7 @@ export default function Iletisim({ variant = 'iletisim' }: Props) {
       <PageHeader
         title={title}
         breadcrumbs={[{ label: isDemo ? 'Demo Talebi' : 'İletişim' }]}
-        description={isDemo ? 'Ücretsiz demo ve eğitim talebinde bulunmak yada sizi aramamızı istermisiniz?' : undefined}
+        description={isDemo ? 'Ücretsiz demo ve eğitim talebinde bulunmak ya da sizi aramamızı ister misiniz?' : undefined}
       />
 
       <section className="py-14">

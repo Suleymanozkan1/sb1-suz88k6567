@@ -90,8 +90,8 @@ export default function UyeOl() {
     else if (mobileDigits.length !== 10 || !mobileDigits.startsWith('5'))
       e.mobile = '532xxxyyzz şeklinde, 10 haneli olarak yazınız.';
 
-    if (!form.email.trim()) e.email = 'Email adresinizi giriniz.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) e.email = 'Geçerli bir email adresi giriniz.';
+    if (!form.email.trim()) e.email = 'E-posta adresinizi giriniz.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) e.email = 'Geçerli bir e-posta adresi giriniz.';
 
     if (!form.password) e.password = 'Şifrenizi giriniz.';
     else if (form.password.length < 6) e.password = 'Şifreniz en az 6 karakter olmalıdır.';
@@ -274,7 +274,7 @@ export default function UyeOl() {
             <fieldset className="mb-8">
               <legend className="mb-4 font-heading text-lg font-bold text-brand">Hesap Bilgileri</legend>
               <div className="grid gap-4 md:grid-cols-2">
-                <Field id="email" label="Email Adresiniz" required error={errors.email}>
+                <Field id="email" label="E-posta Adresiniz" required error={errors.email}>
                   <input id="email" type="email" className="field-input" value={form.email} onChange={(e) => update('email', e.target.value)} aria-invalid={Boolean(errors.email)} autoComplete="email" />
                 </Field>
                 <Field id="referredBy" label="Tavsiye Eden">

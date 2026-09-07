@@ -103,7 +103,7 @@ describe('Sık Sorulan Sorular', () => {
   it('başka bir soruya tıklandığında o cevap açılır', async () => {
     const user = userEvent.setup();
     renderAt('/sss', <Sss />);
-    const q = screen.getByRole('button', { name: /Rezervasyon Kaydı sınırı var mı\?/ });
+    const q = screen.getByRole('button', { name: /Rezervasyon kaydı sınırı var mı\?/ });
     await user.click(q);
     expect(q).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText(/Sisteme istediğiniz kadar rezervasyon kaydı ekleyebilirsiniz/)).toBeVisible();
@@ -161,7 +161,7 @@ describe('İletişim formu', () => {
   it('hatalı e-posta biçimini reddeder', async () => {
     const user = userEvent.setup();
     renderAt('/iletisim', <Iletisim />);
-    await user.type(screen.getByLabelText('Email'), 'gecersiz');
+    await user.type(screen.getByLabelText('E-posta'), 'gecersiz');
     await user.click(screen.getByRole('button', { name: 'Mesajımı gönder' }));
     expect(await screen.findByText('Geçerli bir e-posta adresi giriniz.')).toBeInTheDocument();
   });
@@ -170,7 +170,7 @@ describe('İletişim formu', () => {
     const user = userEvent.setup();
     renderAt('/iletisim', <Iletisim />);
     await user.type(screen.getByLabelText('Adınız Soyadınız'), 'Ahmet Yaz');
-    await user.type(screen.getByLabelText('Email'), 'ahmet@example.com');
+    await user.type(screen.getByLabelText('E-posta'), 'ahmet@example.com');
     await user.type(screen.getByLabelText('Telefon'), '5321234567');
     await user.type(screen.getByLabelText('Mesajınız'), 'Bilgi almak istiyorum.');
     await user.click(screen.getByRole('button', { name: 'Mesajımı gönder' }));
@@ -184,7 +184,7 @@ describe('İletişim formu', () => {
     const user = userEvent.setup();
     renderAt('/demo-talebi', <Iletisim variant="demo" />);
     await user.type(screen.getByLabelText('Adınız Soyadınız'), 'Sevil Karakuş');
-    await user.type(screen.getByLabelText('Email'), 'sevil@example.com');
+    await user.type(screen.getByLabelText('E-posta'), 'sevil@example.com');
     await user.type(screen.getByLabelText('Telefon'), '5339876543');
     await user.type(screen.getByLabelText('Mesajınız'), 'Demo istiyorum.');
     await user.click(screen.getByRole('button', { name: 'Talepte bulun' }));
@@ -236,7 +236,7 @@ describe('Üye Ol', () => {
     await user.selectOptions(screen.getByLabelText(/Kategori/), 'Düğün Salonu');
     await user.selectOptions(screen.getByLabelText(/Şehir/), 'Ankara');
     await user.selectOptions(screen.getByLabelText(/İlçe/), 'Çankaya');
-    await user.type(screen.getByLabelText(/Email Adresiniz/), 'yeni@example.com');
+    await user.type(screen.getByLabelText(/E-posta Adresiniz/), 'yeni@example.com');
     await user.type(passwordField(), 'sifre123');
     await user.type(passwordRepeatField(), 'sifre123');
     await user.click(screen.getByLabelText(/Gizlilik Politikası/));
@@ -260,7 +260,7 @@ describe('Üye Ol', () => {
     await user.selectOptions(screen.getByLabelText(/Kategori/), 'Düğün Salonu');
     await user.selectOptions(screen.getByLabelText(/Şehir/), 'Ankara');
     await user.selectOptions(screen.getByLabelText(/İlçe/), 'Çankaya');
-    await user.type(screen.getByLabelText(/Email Adresiniz/), 'demo@duguntakip.com');
+    await user.type(screen.getByLabelText(/E-posta Adresiniz/), 'demo@duguntakip.com');
     await user.type(passwordField(), 'sifre123');
     await user.type(passwordRepeatField(), 'sifre123');
     await user.click(screen.getByLabelText(/Gizlilik Politikası/));
@@ -276,7 +276,7 @@ describe('Üye Girişi', () => {
     seedIfEmpty();
     const user = userEvent.setup();
     renderAt('/uye-girisi', <UyeGirisi />);
-    await user.type(screen.getByLabelText('Email Adresiniz'), 'demo@duguntakip.com');
+    await user.type(screen.getByLabelText('E-posta Adresiniz'), 'demo@duguntakip.com');
     await user.type(screen.getByLabelText('Şifreniz'), 'yanlis');
     await user.click(screen.getByRole('button', { name: 'Giriş Yap' }));
     expect(await screen.findByText('E-posta veya şifreniz hatalı.', {}, { timeout: 3000 })).toBeInTheDocument();
@@ -285,7 +285,7 @@ describe('Üye Girişi', () => {
   it('kayıtlı olmayan e-postada uyarı gösterir', async () => {
     const user = userEvent.setup();
     renderAt('/uye-girisi', <UyeGirisi />);
-    await user.type(screen.getByLabelText('Email Adresiniz'), 'yok@example.com');
+    await user.type(screen.getByLabelText('E-posta Adresiniz'), 'yok@example.com');
     await user.type(screen.getByLabelText('Şifreniz'), 'sifre123');
     await user.click(screen.getByRole('button', { name: 'Giriş Yap' }));
     expect(await screen.findByText(/kayıtlı üyelik bulunamadı/, {}, { timeout: 3000 })).toBeInTheDocument();
@@ -360,7 +360,7 @@ describe('Salon detay sayfası', () => {
 
     await user.selectOptions(screen.getByLabelText('Mesaj Konusu'), 'Rezervasyon');
     await user.type(screen.getByLabelText('Adınız Soyadınız'), 'Talep Eden');
-    await user.type(screen.getByLabelText('Email Adresiniz'), 'talep@example.com');
+    await user.type(screen.getByLabelText('E-posta Adresiniz'), 'talep@example.com');
     await user.type(screen.getByLabelText('Telefon'), '5321234567');
     await user.type(screen.getByLabelText('Mesajınız'), 'Fiyat bilgisi rica ederim.');
     await user.click(screen.getByRole('button', { name: 'Gönder' }));

@@ -79,7 +79,7 @@ test.describe('Üye paneli', () => {
     await page.getByLabel(/^Seans/).selectOption('Gündüz');
     await page.getByLabel(/Davetli Sayısı/).fill('400');
     await page.getByLabel(/Toplam Tutar/).fill('200000');
-    await page.getByLabel(/^Kaparo/).fill('50000');
+    await page.getByLabel(/^Kapora/).fill('50000');
     await expect(page.getByLabel('Kalan Alacak')).toHaveValue('150.000');
     await page.getByRole('button', { name: 'Kaydet' }).click();
 
@@ -176,7 +176,7 @@ test.describe('Üye kaydı', () => {
     await page.getByLabel(/Kategori/).selectOption('Düğün Salonu');
     await page.getByLabel(/Şehir/).selectOption('İzmir');
     await page.getByLabel(/İlçe/).selectOption('Bornova');
-    await page.getByLabel(/Email Adresiniz/).fill(email);
+    await page.getByLabel(/E-posta Adresiniz/).fill(email);
     await page.locator('#password').fill('sifre1234');
     await page.locator('#passwordRepeat').fill('sifre1234');
     await page.locator('#acceptPrivacy').check();

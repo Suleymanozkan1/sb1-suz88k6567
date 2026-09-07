@@ -189,7 +189,7 @@ Panelin 17 ekranı gerçek tarayıcıda açıldı; hiçbirinde uygulama hatası,
 
 - Rezervasyon oluşturma → zorunlu alan doğrulaması ("Davetli sayısını giriniz.")
   kaydı doğru şekilde engelliyor
-- 300.000 ₺ toplam + 50.000 ₺ kaparo → kalan alacak kendiliğinden 250.000 ₺
+- 300.000 ₺ toplam + 50.000 ₺ kapora → kalan alacak kendiliğinden 250.000 ₺
 - 80.000 ₺ tahsilat → toplam tahsilat 130.000 ₺, kalan 170.000 ₺
 - Sözleşme sayfası müşteri bilgisini taşıyor
 - Aynı tarih ve seansa ikinci rezervasyon engelleniyor
@@ -322,7 +322,7 @@ sınırı, ay içi toplama)
 | Dosya | Test | Kapsam |
 |-------|------|--------|
 | `format.test.ts` | 20 | Para/tarih/telefon biçimlendirme, Türkçe metin normalleştirme, slug, gün aritmetiği (ay ve yıl sınırları dâhil) |
-| `db.test.ts` | 26 | Tohumlama, rezervasyon CRUD, seans çakışması, kaparo/tahsilat/bakiye hesapları, renk ayarları, SMS günlüğü, kod üreticileri |
+| `db.test.ts` | 26 | Tohumlama, rezervasyon CRUD, seans çakışması, kapora/tahsilat/bakiye hesapları, renk ayarları, SMS günlüğü, kod üreticileri |
 | `reports.test.ts` | 19 | Tarih aralığı filtresi, toplamlar, program/ay/bakiye/seans raporları, CSV kaçışlama |
 
 Sınır durumları özellikle kapsandı: negatife düşmeyen bakiye, fazla tahsilat,
@@ -421,7 +421,7 @@ baştan sona elle yürütüldü:
 
 1. Anasayfa, referans listesi ve salon detay sayfası görüntülendi.
 2. Demo hesabıyla giriş yapıldı; SMS doğrulama kodu girildi.
-3. Yeni rezervasyon oluşturuldu: 250.000 ₺ toplam, 60.000 ₺ kaparo, 420 davetli,
+3. Yeni rezervasyon oluşturuldu: 250.000 ₺ toplam, 60.000 ₺ kapora, 420 davetli,
    iki hizmet seçili.
 4. 40.000 ₺ tahsilat eklendi.
 5. **Beklenen:** toplam tahsilat 100.000 ₺, kalan alacak 150.000 ₺ —

@@ -126,9 +126,9 @@ describe('rezervasyonlar', () => {
       .resolves.toBeTruthy();
   });
 
-  it('kaparo toplam tutarı aşamaz', async () => {
+  it('kapora toplam tutarı aşamaz', async () => {
     await expect(localRepo.saveReservation(makeReservation({ totalAmount: 1000, deposit: 5000 })))
-      .rejects.toThrow('Kaparo, toplam tutardan büyük olamaz.');
+      .rejects.toThrow('Kapora, toplam tutardan büyük olamaz.');
   });
 
   it('silindiğinde bağlı tahsilatları da siler', async () => {
@@ -164,13 +164,13 @@ describe('kod doğrulama', () => {
 });
 
 describe('bakiye hesapları', () => {
-  it('kaparo tek başına toplam tahsilattır', () => {
+  it('kapora tek başına toplam tahsilattır', () => {
     const r = makeReservation({ totalAmount: 100000, deposit: 20000 });
     expect(totalPaid(r, [])).toBe(20000);
     expect(remainingBalance(r, [])).toBe(80000);
   });
 
-  it('ek tahsilatları kaparoya ekler', () => {
+  it('ek tahsilatları kaporaya ekler', () => {
     const r = makeReservation({ totalAmount: 100000, deposit: 20000 });
     const payments = [{ id: 'p1', reservationId: r.id, date: '2026-09-01', amount: 30000,
       method: 'Nakit' as const, createdAt: '' }];
