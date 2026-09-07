@@ -80,9 +80,10 @@ async function rezervasyon(page, { ad, tarih, kisi, tutar, kapora, tur }) {
 
 const browser = await chromium.launch({
   executablePath: '/opt/pw-browsers/chromium',
-  // Tarih ve saat alanlarının biçimi tarayıcının arayüz diline bağlıdır;
-  // context'teki locale seçeneği bunu değiştirmiyor.
-  args: ['--lang=tr-TR'],
+  // Tarih ve saat alanlarının biçimini tarayıcının arayüz dili belirler.
+  // context'teki locale seçeneği ve --lang bunu değiştirmiyor; Chromium
+  // süreç ortamındaki LANG değerine bakıyor (saat 24 saatlik olur).
+  env: { ...process.env, LANG: 'tr_TR.UTF-8', LC_ALL: 'tr_TR.UTF-8' },
 });
 const ctx = await browser.newContext({
   viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2,
