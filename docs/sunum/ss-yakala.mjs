@@ -78,7 +78,12 @@ async function rezervasyon(page, { ad, tarih, kisi, tutar, kapora, tur }) {
   return page.url().split('/').pop();
 }
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium',
+  // Tarih ve saat alanlarının biçimi tarayıcının arayüz diline bağlıdır;
+  // context'teki locale seçeneği bunu değiştirmiyor.
+  args: ['--lang=tr-TR'],
+});
 const ctx = await browser.newContext({
   viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2,
   // Tarih ve saat alanları tarayıcı diline göre biçimlenir; ürün Türkçe olduğu
@@ -129,6 +134,12 @@ await page.getByRole('button', { name: 'Kalan tutarı böl' }).click();
 await page.getByRole('button', { name: 'Ödeme planını kaydet' }).click();
 await page.waitForTimeout(600);
 not('  · ödeme planı');
+
+await page.locator('#pay-amount').fill('35000');
+await page.locator('#pay-note').fill('Ara ödeme');
+await page.getByRole('button', { name: 'Ekle', exact: true }).click();
+await page.waitForTimeout(600);
+not('  · tahsilat');
 
 await page.getByRole('button', { name: 'Örnek akışla başla' }).click();
 for (const [sira, sorumlu] of [[1, 'Temizlik'], [2, 'Servis'], [3, 'Operasyon'],
