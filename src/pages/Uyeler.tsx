@@ -69,7 +69,7 @@ export default function Uyeler({ restrictCategories, title, intro, path, breadcr
       <section className="py-10">
         <div className="container-dt">
           <p className="mb-6 text-sm text-brand-muted">
-            İşletme sayı : <strong className="text-brand">{formatNumber(TOTAL_MEMBER_COUNT)}</strong>
+            İşletme sayısı: <strong className="text-brand">{formatNumber(TOTAL_MEMBER_COUNT)}</strong>
             {' · '}Listelenen: <strong className="text-brand">{formatNumber(filtered.length)}</strong>
           </p>
 

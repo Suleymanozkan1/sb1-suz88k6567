@@ -146,7 +146,7 @@ export default function Takvim() {
           </h2>
           {(selected ? selectedItems : monthReservations).length === 0 ? (
             <p className="py-6 text-center text-sm text-brand-muted">
-              {selected ? 'Bu güne ait rezervasyon bulunmuyor.' : 'Bu ay için rezervasyon bulunmuyor.'}
+              {selected ? 'Bugüne ait rezervasyon bulunmuyor.' : 'Bu ay için rezervasyon bulunmuyor.'}
             </p>
           ) : (
             <ul className="space-y-3">

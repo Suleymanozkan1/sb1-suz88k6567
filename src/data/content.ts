@@ -29,7 +29,7 @@ export const WHY_US = {
 export const HOME_ACCORDION: { no: string; question: string; answer: string; linkText?: string; linkTo?: string }[] = [
   {
     no: '01',
-    question: 'Düğün Takip Programını satın almadan önce kullanıp test etme imkanı var mı?',
+    question: 'Düğün Takip Programını satın almadan önce kullanıp test etme imkânı var mı?',
     answer: 'Evet sitemizden üye olarak 7 gün boyunca ücretsiz tam sürüm kullanabilirsiniz. Hemen üye olmak için ',
     linkText: 'tıklayınız',
     linkTo: '/uye-ol',
@@ -42,13 +42,13 @@ export const HOME_ACCORDION: { no: string; question: string; answer: string; lin
   },
   {
     no: '03',
-    question: 'Kredi kartı ve kişisel bilgilerim kayıt altına alınıyormu ve Online alışveriş ne kadar güvenli?',
+    question: 'Kredi kartı ve kişisel bilgilerim kayıt altına alınıyor mu ve online alışveriş ne kadar güvenli?',
     answer:
       'İnternet sitemiz üzerinden yaptığınız alışverişlerinizde lisans işlemleriniz için sadece fatura ve iletişim bilgileriniz kayıt altına alınmaktadır. Kredi kartı bilgileriniz ise 128 bit SSL güvenlik katmanı üzerinden sadece bankanıza ödeme bilgisi için gönderilmektedir.',
   },
   {
     no: '04',
-    question: 'Düğün Takip Programı tarafından sakladığınız bilgilerimi başka birileri görebilir mi ?',
+    question: 'Düğün Takip Programı tarafından sakladığınız bilgilerimi başka birileri görebilir mi?',
     answer:
       'Sistemimizde saklamış olduğunuz bilgileri şifrenizi kimseye söylemediğiniz sürece başkaları tarafından görülemez ve görüntülenemez.',
   },
@@ -81,7 +81,7 @@ export const SERVICES = {
 /** Demo talebi CTA bandı */
 export const CTA = {
   title: 'Demo Talebi',
-  description: 'Ücretsiz demo ve eğitim talebinde bulunmak yada sizi aramamızı istermisiniz?',
+  description: 'Ücretsiz demo ve eğitim talebinde bulunmak ya da sizi aramamızı ister misiniz?',
   button: 'Talepte bulun',
 };
 
@@ -140,60 +140,60 @@ export const TESTIMONIALS: Testimonial[] = [
 /** Sık Sorulan Sorular */
 export const FAQ: { question: string; answer: string }[] = [
   {
-    question: 'Tavsiye Et butonu hakkında detaylı bilgi alabilirmiyiz',
+    question: 'Tavsiye Et butonu hakkında detaylı bilgi alabilir miyiz?',
     answer:
-      'Tavsiye et butonunu Hem uygulamalarınızda (Mobil Paylaşma Butonu için Uygulamanız güncel olmalıdır), hem pcnizde bulabilirsiniz. Kodu kopyalayın yada uygulamadan paylaşın (whatsapp,instagram,sms) Arkadaşınıza gönderin o linkten üye olduğunda Yıllık abonelik ücretini yatırdığında Hemen 1 AY süreniz otomatik sisteminize yüklenecektir. Üye sınırı yoktur , Ne kadar ücretli üyelik o kadar EK süre.',
+      'Tavsiye Et butonunu hem uygulamalarınızda (mobil paylaşma butonu için uygulamanız güncel olmalıdır), hem PC’nizde bulabilirsiniz. Kodu kopyalayın ya da uygulamadan paylaşın (WhatsApp, Instagram, SMS), arkadaşınıza gönderin. O linkten üye olup yıllık abonelik ücretini yatırdığında, 1 AY süreniz otomatik olarak sisteminize yüklenecektir. Üye sınırı yoktur. Ne kadar ücretli üyelik, o kadar EK süre.',
   },
   {
-    question: 'Sistemimi benden başka kimse görebilirmi',
+    question: 'Sistemimi benden başka kimse görebilir mi?',
     answer:
-      'Sisteminiz size özeldir.Şifrenizi paylaşmadığınız sürece hiç bir kişi, kurum yada kuruluş bilgilerinize erişememektedir.',
+      'Sisteminiz size özeldir. Şifrenizi paylaşmadığınız sürece hiçbir kişi, kurum ya da kuruluş bilgilerinize erişememektedir.',
   },
   {
-    question: 'Studyo takip in İOS ve Android APP si varmı?',
-    answer: 'Markete studyo takip yada düğün takip yazdığınızda uygulamamızı indirebilirsiniz.',
+    question: 'Stüdyo Takip’in iOS ve Android uygulaması var mı?',
+    answer: 'Markette Stüdyo Takip ya da Düğün Takip yazdığınızda uygulamamızı indirebilirsiniz.',
   },
   {
-    question: 'Rezervasyon Kayıtlarını Müşteriye SMS atabilirmiyiz ?',
-    answer: 'Rezervasyon Kayıt ettiğinizde SMS OTOMATİK OLARAK GİDER',
+    question: 'Rezervasyon kayıtlarını müşteriye SMS ile atabilir miyiz?',
+    answer: 'Rezervasyon kaydettiğinizde SMS otomatik olarak gider.',
   },
   {
     question: 'Çıktı alamıyorum',
     answer:
-      "Crome kullanıyorsanız Popup engellemiş olabilir. AYARLAR-GELİŞMİŞ-İÇERİK AYARLARI-POP-UP'lar-İZİNVER EKLE kısmına www.duguntakip.com yazmanız yeterli",
+      "Chrome kullanıyorsanız pop-up engellemiş olabilir. AYARLAR - GELİŞMİŞ - İÇERİK AYARLARI - POP-UP’lar - İZİN VER - EKLE kısmına www.duguntakip.com yazmanız yeterlidir.",
   },
   {
-    question: 'Rezervasyon Kaydı sınırı var mı?',
+    question: 'Rezervasyon kaydı sınırı var mı?',
     answer: 'Sisteme istediğiniz kadar rezervasyon kaydı ekleyebilirsiniz. Sınır yok!',
   },
   {
-    question: "PC'ye kurulan Program var mı ?",
+    question: 'PC’ye kurulan program var mı?',
     answer:
-      "PC'ye Kurulan program mevcut değildir. PC göçmesi , PC bozulması , PC çalınması gibi durumlarda Veri kaybı yaşamamanız için iptal edilmiştir. www.duguntakip.com sadece internet üzerinden kontrol imkanı sağlamaktadır.",
+      'PC’ye kurulan program mevcut değildir. PC göçmesi, PC bozulması, PC çalınması gibi durumlarda veri kaybı yaşamamanız için iptal edilmiştir. www.duguntakip.com sadece internet üzerinden kontrol imkânı sağlamaktadır.',
   },
   {
-    question: 'Birden fazla düğün salonu sahibiyim ne yapmam gerekir ?',
+    question: 'Birden fazla düğün salonu sahibiyim, ne yapmam gerekir?',
     answer:
-      'Her salonunuz için 1 üyelik açıp , FİRMALARIM ADMİNLER - YENİ İŞLETME EKLE kısmından yeni işletme ekleyebilirsiniz.',
+      'Her salonunuz için 1 üyelik açıp FİRMALARIM / ADMİNLER - YENİ İŞLETME EKLE kısmından yeni işletme ekleyebilirsiniz.',
   },
   {
-    question: 'Duguntakip.com ne kadar Güvenilir',
-    answer: "SSL Güvenlik Paketi duguntakip.com 'a eklenmiştir verileriniz artık daha güvende",
+    question: 'Duguntakip.com ne kadar güvenilir?',
+    answer: 'SSL Güvenlik Paketi duguntakip.com’a eklenmiştir, verileriniz artık daha güvende.',
   },
   {
-    question: 'Geçmiş tarihli Düğünleri silemiyorum',
+    question: 'Geçmiş tarihli düğünleri silemiyorum',
     answer:
       'Geçmiş tarihli düğünü silemezsiniz ancak silmek istediğiniz düğünün içerisine girip tarihi bugünün tarihinden ileri bir tarihe transfer edip KAYDET dedikten sonra ileri aldığınız tarihin içerisinden silebilirsiniz.',
   },
   {
-    question: 'Kullanım süresi bitti bilgilerim silinirmi',
+    question: 'Kullanım süresi bitti, bilgilerim silinir mi?',
     answer:
       'Kullanım süreniz bittiğinde satış ve pazarlama departmanımız tarafından bilgilendirilirsiniz. Süreniz bitse de bilgileriniz duguntakip.com sitesinde saklanmaktadır.',
   },
   {
-    question: 'Programı Masa Üstüne Nasıl Alabilirim',
+    question: 'Programı masaüstüne nasıl alabilirim?',
     answer:
-      'Fotoğrafçılara, Organizasyonculara, Gelinlikçilere,Düğün salonlarına, araç kiralama firmalarına tavsiye et butonu ile üyelik açtırın, her yeni ücretli üye için 1 ay kazanın.',
+      'Fotoğrafçılara, Organizasyonculara, Gelinlikçilere, düğün salonlarına, araç kiralama firmalarına tavsiye et butonu ile üyelik açtırın, her yeni ücretli üye için 1 ay kazanın.',
   },
 ];
 
@@ -204,9 +204,9 @@ export const NEWS: NewsItem[] = [
     title: "DugunTakip.com'da Güvenlik Seviyesi Artırıldı",
     date: '2026-02-14',
     excerpt:
-      'Platforma giriş işlemlerinde tüm kullanıcılar için SMS doğrulama zorunlu hale getirilmiştir.',
+      'Platforma giriş işlemlerinde tüm kullanıcılar için SMS doğrulama zorunlu hâle getirilmiştir.',
     body: [
-      'Platforma giriş işlemlerinde tüm kullanıcılar için SMS doğrulama zorunlu hale getirilmiştir.',
+      'Platforma giriş işlemlerinde tüm kullanıcılar için SMS doğrulama zorunlu hâle getirilmiştir.',
       'Bu sayede e-posta adresi ve şifrenizi bilen üçüncü şahıslar sisteminize giriş yapamayacak.',
       'Alt kullanıcılar için kişiye özel giriş yöntemi oluşturulabilmektedir. Dilerseniz personellerinizin yalnızca belirli ekranlara erişmesini sağlayabilirsiniz.',
       'SSL Güvenlik Paketi duguntakip.com’a eklenmiştir, verileriniz artık daha güvende.',
@@ -301,7 +301,7 @@ export const CONTACT = {
   title: 'Düğün Takip Salon Takip Programı İletişim',
   formFields: {
     name: 'Adınız Soyadınız',
-    email: 'Email',
+    email: 'E-posta',
     phone: 'Telefon',
     message: 'Mesajınız',
   },

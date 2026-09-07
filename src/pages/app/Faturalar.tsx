@@ -197,7 +197,7 @@ export default function Faturalar() {
               </div>
               <div>
                 <label htmlFor="fb-name" className="field-label">
-                  {buyer.kind === 'kurumsal' ? 'Ünvan' : 'Ad Soyad'}
+                  {buyer.kind === 'kurumsal' ? 'Unvan' : 'Ad Soyad'}
                 </label>
                 <input id="fb-name" className="field-input" value={buyer.name}
                   onChange={(e) => setBuyer((b) => ({ ...b, name: e.target.value }))} />

@@ -176,7 +176,7 @@ test.describe('Üye kaydı', () => {
     await page.getByLabel(/Kategori/).selectOption('Düğün Salonu');
     await page.getByLabel(/Şehir/).selectOption('İzmir');
     await page.getByLabel(/İlçe/).selectOption('Bornova');
-    await page.getByLabel(/Email Adresiniz/).fill(email);
+    await page.getByLabel(/E-posta Adresiniz/).fill(email);
     await page.locator('#password').fill('sifre1234');
     await page.locator('#passwordRepeat').fill('sifre1234');
     await page.locator('#acceptPrivacy').check();

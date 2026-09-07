@@ -18,13 +18,13 @@ export default function Dusunceler() {
     <>
       <Seo
         title="Üyelerimizin Düşünceleri - Düğün Takip"
-        description="Düğüntakip sistemini kullanan üyelerimizin düşünceleri ve yorumları."
+        description="Düğün Takip sistemini kullanan üyelerimizin düşünceleri ve yorumları."
         path="/dusunceler"
       />
       <PageHeader
         title="Üyelerimizin Düşünceleri"
         breadcrumbs={[{ label: 'Üyelerimizin Düşünceleri' }]}
-        description="Düğüntakip sistemini kullanan üyelerimizin düşünceleri..."
+        description="Düğün Takip sistemini kullanan üyelerimizin düşünceleri..."
       />
 
       <section className="py-12">

@@ -169,7 +169,7 @@ export default function SalonDetay() {
                 <Field id="sd-name" label="Adınız Soyadınız" error={errors.name}>
                   <input id="sd-name" className="field-input" value={form.name} onChange={set('name')} autoComplete="name" aria-invalid={Boolean(errors.name)} />
                 </Field>
-                <Field id="sd-email" label="Email Adresiniz" error={errors.email}>
+                <Field id="sd-email" label="E-posta Adresiniz" error={errors.email}>
                   <input id="sd-email" type="email" className="field-input" value={form.email} onChange={set('email')} autoComplete="email" aria-invalid={Boolean(errors.email)} />
                 </Field>
                 <Field id="sd-phone" label="Telefon" error={errors.phone} className="md:col-span-2">
