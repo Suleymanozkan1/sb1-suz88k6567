@@ -101,6 +101,11 @@ export function normalizeTr(value: string): string {
     .replace(/ü/g, 'u')
     .replace(/ö/g, 'o')
     .replace(/ç/g, 'c')
+    // Şapkalı ünlüler (nikâh, imkân, mekân) sade karşılıklarına indirgenir:
+    // hem URL üretiminde hem de aramada "nikah" ile "nikâh" eşleşsin diye.
+    .replace(/â/g, 'a')
+    .replace(/î/g, 'i')
+    .replace(/û/g, 'u')
     .trim();
 }
 

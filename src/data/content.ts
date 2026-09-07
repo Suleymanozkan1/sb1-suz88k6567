@@ -62,7 +62,7 @@ export const SECTORS = {
     { label: 'Düğün Salonları', value: 100 },
     { label: 'Organizasyon Firmaları', value: 90 },
     { label: 'Oteller', value: 75 },
-    { label: 'Belediye Nikah Salonları', value: 55 },
+    { label: 'Belediye Nikâh Salonları', value: 55 },
   ],
 };
 

@@ -60,7 +60,7 @@ export const CATEGORIES: string[] = [
   'Kır Düğünü / Bahçe',
   'Düğün Oteli',
   'Otel',
-  'Belediye Nikah Salonu',
+  'Belediye Nikâh Salonu',
   'Organizasyon Firması',
   'Konferans Salonu',
   'Restoran / Cafe',
@@ -71,7 +71,7 @@ export const CATEGORIES: string[] = [
   'Müzisyen / Orkestra',
   'Ses ve Işık Sistemleri',
   'Davetiye / Matbaa',
-  'Nikah Şekeri',
+  'Nikâh Şekeri',
   'Pasta / Tatlı',
   'Araç Kiralama',
   'Gelin Arabası Süsleme',
@@ -94,7 +94,7 @@ export const HEARD_FROM: string[] = [
 ];
 
 export const ORGANIZATION_TYPES: OrganizationType[] = [
-  'Düğün', 'Sünnet', 'Nişan', 'Kına', 'Konferans', 'Kokteyl', 'Nikah', 'Doğum Günü', 'Toplantı', 'Diğer',
+  'Düğün', 'Sünnet', 'Nişan', 'Kına', 'Konferans', 'Kokteyl', 'Nikâh', 'Doğum Günü', 'Toplantı', 'Diğer',
 ];
 
 export const CURRENCIES: { value: string; label: string; symbol: string }[] = [
@@ -112,7 +112,7 @@ export const DEFAULT_COLOR_SETTINGS: ColorSetting[] = [
   { key: 'kina', label: 'Kına', color: '#e74c3c' },
   { key: 'konferans', label: 'Konferans', color: '#8e44ad' },
   { key: 'kokteyl', label: 'Kokteyl', color: '#16a085' },
-  { key: 'nikah', label: 'Nikah', color: '#2c82c9' },
+  { key: 'nikah', label: 'Nikâh', color: '#2c82c9' },
   { key: 'dogumgunu', label: 'Doğum Günü', color: '#d81b60' },
   { key: 'toplanti', label: 'Toplantı', color: '#607d8b' },
   { key: 'diger', label: 'Diğer', color: '#95a5a6' },
@@ -125,7 +125,7 @@ export const ORG_TO_COLOR_KEY: Record<OrganizationType, string> = {
   'Kına': 'kina',
   'Konferans': 'konferans',
   'Kokteyl': 'kokteyl',
-  'Nikah': 'nikah',
+  'Nikâh': 'nikah',
   'Doğum Günü': 'dogumgunu',
   'Toplantı': 'toplanti',
   'Diğer': 'diger',
@@ -134,8 +134,8 @@ export const ORG_TO_COLOR_KEY: Record<OrganizationType, string> = {
 export const SERVICE_OPTIONS: string[] = [
   'Yemek (Açık Büfe)', 'Yemek (Masaya Servis)', 'Kokteyl İkramı', 'Pasta', 'Meşrubat Limitsiz',
   'Orkestra', 'DJ', 'Ses ve Işık', 'Sahne Efekti', 'Havai Fişek', 'Fotoğraf Çekimi',
-  'Video Çekimi', 'Drone Çekimi', 'Gelin Arabası', 'Nikah Masası', 'Masa Süsleme',
-  'Çiçek Süsleme', 'Vale', 'Otopark', 'Nikah Şekeri', 'Davetiye',
+  'Video Çekimi', 'Drone Çekimi', 'Gelin Arabası', 'Nikâh Masası', 'Masa Süsleme',
+  'Çiçek Süsleme', 'Vale', 'Otopark', 'Nikâh Şekeri', 'Davetiye',
 ];
 
 export const INCOME_CATEGORIES: string[] = [

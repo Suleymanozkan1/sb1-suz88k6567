@@ -9,7 +9,7 @@ export type OrganizationType =
   | 'Kına'
   | 'Konferans'
   | 'Kokteyl'
-  | 'Nikah'
+  | 'Nikâh'
   | 'Doğum Günü'
   | 'Toplantı'
   | 'Diğer';

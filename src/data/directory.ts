@@ -16,7 +16,7 @@ const NAME_SUFFIX: Record<string, string[]> = {
   'Kır Düğünü / Bahçe': ['Kır Bahçesi', 'Kır Düğün Bahçesi', 'Garden', 'Havuz Başı'],
   'Düğün Oteli': ['Otel & Düğün', 'Resort Düğün', 'Hotel Wedding'],
   Otel: ['Otel', 'Hotel & Spa', 'Resort'],
-  'Belediye Nikah Salonu': ['Belediyesi Nikah Salonu', 'Belediyesi Kültür Merkezi'],
+  'Belediye Nikâh Salonu': ['Belediyesi Nikâh Salonu', 'Belediyesi Kültür Merkezi'],
   'Organizasyon Firması': ['Organizasyon', 'Event', 'Concept Organizasyon', 'Davet Organizasyon'],
   'Konferans Salonu': ['Konferans Salonu', 'Kongre Merkezi'],
   'Restoran / Cafe': ['Restaurant', 'Cafe & Restaurant', 'Kır Lokantası'],
@@ -88,7 +88,7 @@ function buildDirectory(count: number): DirectoryMember[] {
     const prefix = NAME_PREFIX[Math.floor(rnd() * NAME_PREFIX.length)];
     const suffix = suffixes[Math.floor(rnd() * suffixes.length)];
     const name =
-      category === 'Belediye Nikah Salonu' ? `${district} ${suffix}` : `${prefix} ${suffix}`;
+      category === 'Belediye Nikâh Salonu' ? `${district} ${suffix}` : `${prefix} ${suffix}`;
 
     const key = `${name}|${district}`;
     if (used.has(key)) continue;
