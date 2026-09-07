@@ -40,8 +40,8 @@ async function cek(page, ad, hedef) {
   await page.waitForTimeout(300);
   await temizle(page, { stickyGizle: Boolean(hedef) });
   await page.waitForTimeout(120);
-  if (hedef) await page.locator(hedef).first().screenshot({ path: `${SS}/${ad}.png`, scale: 'css' });
-  else await page.screenshot({ path: `${SS}/${ad}.png`, scale: 'css' });
+  if (hedef) await page.locator(hedef).first().screenshot({ path: `${SS}/${ad}.png` });
+  else await page.screenshot({ path: `${SS}/${ad}.png` });
   not('  ✓ ' + ad);
 }
 
@@ -108,6 +108,56 @@ for (const [ad, tel, mesaj] of [
   not('  · talep: ' + ad);
   await page.waitForTimeout(250);
 }
+
+// Ödeme planı, iş emri, tedarikçi ve masa düzeni bölümleri boş görünmesin
+// diye örnek kayıt üzerinde gerçekten doldurulur.
+not('Örnek rezervasyon dolduruluyor…');
+await page.goto(`${KOK}/panel/rezervasyonlar/${rid}`);
+await page.waitForLoadState('domcontentloaded');
+await page.waitForTimeout(900);
+
+await page.locator('#plan-count').fill('3');
+await page.getByRole('button', { name: 'Kalan tutarı böl' }).click();
+await page.getByRole('button', { name: 'Ödeme planını kaydet' }).click();
+await page.waitForTimeout(600);
+not('  · ödeme planı');
+
+await page.getByRole('button', { name: 'Örnek akışla başla' }).click();
+await page.getByRole('button', { name: 'İş emrini kaydet' }).click();
+await page.waitForTimeout(600);
+not('  · iş emri');
+
+for (const [sira, saat, ucret, aciklama] of [[1, '14:00', '18000', 'Sahne ve masa süslemesi'],
+                                             [2, '17:30', '25000', 'Canlı müzik, 4 saat']]) {
+  await page.getByRole('button', { name: 'Tedarikçi ekle' }).click();
+  await page.getByLabel(`${sira}. tedarikçi`, { exact: true }).selectOption({ index: sira });
+  await page.getByLabel(`${sira}. tedarikçi geliş saati`).fill(saat);
+  await page.getByLabel(`${sira}. tedarikçi ücreti`).fill(ucret);
+  await page.getByLabel(`${sira}. tedarikçi notu`).fill(aciklama);
+}
+await page.getByRole('button', { name: 'Tedarikçileri kaydet' }).click();
+await page.waitForTimeout(600);
+not('  · tedarikçi ataması');
+
+await page.getByRole('button', { name: 'Davetliye göre plan öner' }).click();
+await page.getByRole('button', { name: 'Masa düzenini kaydet' }).click();
+await page.waitForTimeout(600);
+not('  · masa düzeni');
+
+// Fatura listesi boş görünmesin diye örnek bir e-Arşiv faturası kesilir.
+not('Örnek fatura kesiliyor…');
+await page.goto(`${KOK}/panel/faturalar`);
+await page.waitForLoadState('domcontentloaded');
+await page.waitForTimeout(700);
+await page.getByRole('button', { name: 'Yeni Fatura' }).click();
+await page.locator('#fb-name').fill('Ayşe Yıldız');
+await page.locator('#fb-address').fill('Bahçelievler Mah. Gül Sok. No:12, Çankaya / Ankara');
+await page.locator('#ln-desc-0').fill('Salon kiralama ve ikram hizmeti');
+await page.locator('#ln-qty-0').fill('1');
+await page.locator('#ln-price-0').fill('180000');
+await page.getByRole('button', { name: 'Faturayı oluştur ve gönder' }).click();
+await page.waitForTimeout(1000);
+not('  · fatura');
 
 not('Tam ekranlar yakalanıyor…');
 for (const [ad, yol] of [
