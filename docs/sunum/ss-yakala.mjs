@@ -79,7 +79,12 @@ async function rezervasyon(page, { ad, tarih, kisi, tutar, kapora, tur }) {
 }
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+const ctx = await browser.newContext({
+  viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2,
+  // Tarih ve saat alanları tarayıcı diline göre biçimlenir; ürün Türkçe olduğu
+  // için gg.aa.yyyy ve 24 saat gösterimi gerekir.
+  locale: 'tr-TR', timezoneId: 'Europe/Istanbul',
+});
 const page = await ctx.newPage();
 
 not('Giriş yapılıyor…');
@@ -92,6 +97,9 @@ await rezervasyon(page, { ad: 'Deniz & Kaan Şen',    tarih: buAy(19), kisi: 150
 await rezervasyon(page, { ad: 'Melis Ailesi',        tarih: buAy(24), kisi: 200, tutar: 120000, kapora: 30000, tur: 'Kına' });
 // Ayrıntı, ödeme planı, sözleşme, makbuz ve masa düzeni bu kayıt üzerinden gösterilir.
 const rid = await rezervasyon(page, { ad: 'Ayşe & Mert Yıldız', tarih: buAy(26), kisi: 280, tutar: 180000, kapora: 45000, tur: 'Düğün' });
+// Masa düzeni slaytı 80 davetlilik planı anlatıyor; 280 kişilik kaydın
+// 28 satırlık tablosu slayta sığmıyor.
+const ridMasa = await rezervasyon(page, { ad: 'Ece & Kerem Aydın', tarih: buAy(28), kisi: 80, tutar: 55000, kapora: 15000, tur: 'Nişan' });
 
 // Talepler ekranı için siteden gerçek talepler gönderilir.
 for (const [ad, tel, mesaj] of [
@@ -123,12 +131,17 @@ await page.waitForTimeout(600);
 not('  · ödeme planı');
 
 await page.getByRole('button', { name: 'Örnek akışla başla' }).click();
+for (const [sira, sorumlu] of [[1, 'Temizlik'], [2, 'Servis'], [3, 'Operasyon'],
+                               [4, 'Karşılama'], [5, 'Mutfak'], [6, 'Servis']]) {
+  await page.getByLabel(`${sira}. iş sorumlusu`).fill(sorumlu);
+}
 await page.getByRole('button', { name: 'İş emrini kaydet' }).click();
 await page.waitForTimeout(600);
 not('  · iş emri');
 
-for (const [sira, saat, ucret, aciklama] of [[1, '14:00', '18000', 'Sahne ve masa süslemesi'],
-                                             [2, '17:30', '25000', 'Canlı müzik, 4 saat']]) {
+for (const [sira, saat, ucret, aciklama] of [[1, '17:00', '18000', 'Fotoğraf ve video çekimi'],
+                                             [2, '14:00', '12000', 'Sahne ve masa süslemesi'],
+                                             [3, '20:00', '25000', 'Canlı müzik, 4 saat']]) {
   await page.getByRole('button', { name: 'Tedarikçi ekle' }).click();
   await page.getByLabel(`${sira}. tedarikçi`, { exact: true }).selectOption({ index: sira });
   await page.getByLabel(`${sira}. tedarikçi geliş saati`).fill(saat);
@@ -139,6 +152,9 @@ await page.getByRole('button', { name: 'Tedarikçileri kaydet' }).click();
 await page.waitForTimeout(600);
 not('  · tedarikçi ataması');
 
+await page.goto(`${KOK}/panel/rezervasyonlar/${ridMasa}`);
+await page.waitForLoadState('domcontentloaded');
+await page.waitForTimeout(900);
 await page.getByRole('button', { name: 'Davetliye göre plan öner' }).click();
 await page.getByRole('button', { name: 'Masa düzenini kaydet' }).click();
 await page.waitForTimeout(600);
@@ -180,11 +196,19 @@ for (const [ad, baslik] of [
   ['panel-odeme-plani',      'Ödeme Planı'],
   ['panel-is-emri',          'Etkinlik İş Emri'],
   ['panel-tedarikci-atama',  'Tedarikçiler'],
-  ['panel-masa-duzeni',      'Masa Oturma Düzeni'],
 ]) {
   const bolum = page.locator('section.card').filter({ has: page.getByRole('heading', { name: baslik, exact: true }) });
   await bolum.first().scrollIntoViewIfNeeded();
   await cek(page, ad, `section.card:has(h2:text-is("${baslik}"))`);
+}
+
+await page.goto(`${KOK}/panel/rezervasyonlar/${ridMasa}`);
+await page.waitForLoadState('domcontentloaded');
+await page.waitForTimeout(900);
+{
+  const bolum = page.locator('section.card:has(h2:text-is("Masa Oturma Düzeni"))');
+  await bolum.first().scrollIntoViewIfNeeded();
+  await cek(page, 'panel-masa-duzeni', 'section.card:has(h2:text-is("Masa Oturma Düzeni"))');
 }
 
 not('Belge ekranları yakalanıyor…');

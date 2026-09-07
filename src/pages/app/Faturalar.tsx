@@ -35,6 +35,15 @@ const EMPTY_LINE: InvoiceLineInput = {
   description: '', quantity: 1, unit: 'Adet', unitPrice: 0, discountRate: 0, vatRate: 20,
 };
 
+/**
+ * Belge türü veritabanında ASCII güvenli 'e-Arsiv' olarak saklanır;
+ * kullanıcıya doğru yazımıyla gösterilir.
+ */
+const BELGE_TURU: Record<Invoice['kind'], string> = {
+  'e-Arsiv': 'e-Arşiv',
+  'e-Fatura': 'e-Fatura',
+};
+
 export default function Faturalar() {
   const [params] = useSearchParams();
   const reservationId = params.get('rezervasyon') ?? undefined;
@@ -344,7 +353,7 @@ export default function Faturalar() {
                     {formatDate(invoice.issueDate)}
                   </td>
                   <td className="px-4 py-3 text-brand">{invoice.buyerName}</td>
-                  <td className="px-4 py-3 text-xs text-brand-muted">{invoice.kind}</td>
+                  <td className="px-4 py-3 text-xs text-brand-muted">{BELGE_TURU[invoice.kind]}</td>
                   <td className="px-4 py-3 text-right text-brand">{formatMoney(fromKurus(invoice.baseKurus))}</td>
                   <td className="px-4 py-3 text-right text-brand-muted">{formatMoney(fromKurus(invoice.vatKurus))}</td>
                   <td className="px-4 py-3 text-right font-medium text-brand">
