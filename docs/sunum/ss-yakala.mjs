@@ -195,9 +195,13 @@ for (const [ad, yol] of [
   ['panel-raporlar',    '/panel/raporlar'],
   ['panel-kasa',        '/panel/kasa'],
   ['panel-talepler',    '/panel/talepler'],
-  ['panel-faturalar',   '/panel/faturalar'],
   ['panel-rezervasyon-detay', `/panel/rezervasyonlar/${rid}`],
 ]) await ekran(page, ad, yol);
+
+await page.goto(`${KOK}/panel/faturalar`);
+await page.waitForLoadState('domcontentloaded');
+await page.waitForTimeout(700);
+await cek(page, 'panel-faturalar', 'div.card:has(table)');
 
 not('Bölüm görüntüleri yakalanıyor…');
 await page.goto(`${KOK}/panel/rezervasyonlar/${rid}`);
@@ -224,7 +228,16 @@ await page.waitForTimeout(900);
 
 not('Belge ekranları yakalanıyor…');
 await ekran(page, 'panel-sozlesme', `/panel/rezervasyonlar/${rid}/sozlesme`);
-await ekran(page, 'panel-makbuz',   `/panel/rezervasyonlar/${rid}/makbuz`);
+
+// Makbuz, hangi tahsilata ait olduğunu adresten okur; bağlantı üzerinden açılır.
+await page.goto(`${KOK}/panel/rezervasyonlar/${rid}`);
+await page.waitForLoadState('domcontentloaded');
+await page.waitForTimeout(800);
+await page.getByRole('link', { name: 'Makbuz' }).first().click();
+await page.waitForURL(/\/makbuz\?tahsilat=/);
+await page.waitForTimeout(700);
+await page.evaluate(() => window.scrollTo(0, 0));
+await cek(page, 'panel-makbuz');
 
 not('Site ekranı yakalanıyor…');
 await page.goto(`${KOK}/panel/rezervasyonlar/${rid}`);
