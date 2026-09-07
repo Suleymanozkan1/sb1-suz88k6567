@@ -153,8 +153,8 @@ export default function RezervasyonForm() {
     else if (!Number.isFinite(total) || total < 0) e.totalAmount = 'Geçerli bir tutar giriniz.';
 
     const deposit = Number(form.deposit || 0);
-    if (!Number.isFinite(deposit) || deposit < 0) e.deposit = 'Geçerli bir kaparo tutarı giriniz.';
-    else if (Number.isFinite(total) && deposit > total) e.deposit = 'Kaparo, toplam tutardan büyük olamaz.';
+    if (!Number.isFinite(deposit) || deposit < 0) e.deposit = 'Geçerli bir kapora tutarı giriniz.';
+    else if (Number.isFinite(total) && deposit > total) e.deposit = 'Kapora, toplam tutardan büyük olamaz.';
 
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -361,7 +361,7 @@ export default function RezervasyonForm() {
                 </span>
               </div>
             )}
-            <Field id="deposit" label="Kaparo" error={errors.deposit}>
+            <Field id="deposit" label="Kapora" error={errors.deposit}>
               <input id="deposit" inputMode="decimal" className="field-input" value={form.deposit} onChange={(e) => update('deposit', e.target.value)} aria-invalid={Boolean(errors.deposit)} />
             </Field>
             <Field id="balance" label="Kalan Alacak">

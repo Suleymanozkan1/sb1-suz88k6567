@@ -79,7 +79,7 @@ test.describe('Üye paneli', () => {
     await page.getByLabel(/^Seans/).selectOption('Gündüz');
     await page.getByLabel(/Davetli Sayısı/).fill('400');
     await page.getByLabel(/Toplam Tutar/).fill('200000');
-    await page.getByLabel(/^Kaparo/).fill('50000');
+    await page.getByLabel(/^Kapora/).fill('50000');
     await expect(page.getByLabel('Kalan Alacak')).toHaveValue('150.000');
     await page.getByRole('button', { name: 'Kaydet' }).click();
 

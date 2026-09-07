@@ -120,7 +120,7 @@ function CashFlowPreview() {
   const rows = [
     ['15.08.2026', 'Rezervasyon Tahsilatı', 'Gelir', '45.000 ₺'],
     ['12.08.2026', 'Personel Maaş', 'Gider', '28.000 ₺'],
-    ['08.08.2026', 'Rezervasyon Kaparo', 'Gelir', '15.000 ₺'],
+    ['08.08.2026', 'Rezervasyon Kapora', 'Gelir', '15.000 ₺'],
     ['05.08.2026', 'Elektrik', 'Gider', '9.400 ₺'],
   ];
   return (
@@ -155,7 +155,7 @@ function ReservationPreview() {
     ['Organizasyon', 'Düğün'],
     ['Davetli Sayısı', '450'],
     ['Toplam Tutar', '185.000 ₺'],
-    ['Kaparo', '45.000 ₺'],
+    ['Kapora', '45.000 ₺'],
     ['Kalan Alacak', '140.000 ₺'],
   ];
   return (

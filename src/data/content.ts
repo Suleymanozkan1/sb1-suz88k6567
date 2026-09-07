@@ -15,7 +15,7 @@ export const HERO = {
 export const WHY_US = {
   title: 'Düğün Takip Ne İşe Yarar?',
   description:
-    'Düğün Takip Programı ile; Düğün Salonunuzun, gündüz ve gece olmak üzere bütün yıl boyunca rezervasyonlarının takibi, Detaylı rezervasyon kaydı, Salon kiralama sözleşmesi oluşturma, Kaparo ve kalan alacak kaydı, Düğün, Sünnet, Nişan, Kına, Konferans, Kokteyl vs. organizasyonları ayrı ayrı kaydetme istenilen tarih aralığında rezervasyon ve alacak bakiyesi raporu alma, isim ve telefon no bazında detaylı kayıt arama, işlemlerini yapabilirsiniz.',
+    'Düğün Takip Programı ile; Düğün Salonunuzun, gündüz ve gece olmak üzere bütün yıl boyunca rezervasyonlarının takibi, Detaylı rezervasyon kaydı, Salon kiralama sözleşmesi oluşturma, Kapora ve kalan alacak kaydı, Düğün, Sünnet, Nişan, Kına, Konferans, Kokteyl vs. organizasyonları ayrı ayrı kaydetme istenilen tarih aralığında rezervasyon ve alacak bakiyesi raporu alma, isim ve telefon no bazında detaylı kayıt arama, işlemlerini yapabilirsiniz.',
   bullets: [
     '%100 Yerli sermaye',
     'Sürekli güncelleme ve geliştirme',
@@ -282,7 +282,7 @@ export const SCREENS: { title: string; description: string; kind: string }[] = [
     title: 'Detaylı Rezervasyon Kaydı',
     kind: 'reservation',
     description:
-      'Müşteri bilgisi, davetli sayısı, hizmetler, toplam tutar, kaparo ve kalan alacak tek formda kayıt altına alınır.',
+      'Müşteri bilgisi, davetli sayısı, hizmetler, toplam tutar, kapora ve kalan alacak tek formda kayıt altına alınır.',
   },
   {
     title: 'Salon Kiralama Sözleşmesi',

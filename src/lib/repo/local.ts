@@ -236,7 +236,7 @@ export const localRepo: Repository = {
       throw new RepoError('Bu salonda seçilen tarih ve seans için zaten bir rezervasyon var.');
     }
     if (reservation.deposit > reservation.totalAmount) {
-      throw new RepoError('Kaparo, toplam tutardan büyük olamaz.');
+      throw new RepoError('Kapora, toplam tutardan büyük olamaz.');
     }
     // Salon ve menü, rezervasyonun işletmesine ait olmalı (0007 tetikleyicisi)
     const hall = halls().find((h) => h.id === reservation.hallId);

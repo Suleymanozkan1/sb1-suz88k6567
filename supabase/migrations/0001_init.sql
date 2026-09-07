@@ -117,7 +117,7 @@ create table if not exists public.reservations (
   services           text[]             not null default '{}',
   created_at         timestamptz        not null default now(),
   updated_at         timestamptz        not null default now(),
-  -- Kaparo hiçbir zaman toplam tutarı aşamaz
+  -- Kapora hiçbir zaman toplam tutarı aşamaz
   constraint deposit_within_total check (deposit <= total_amount),
   constraint reservation_code_unique unique (business_id, code)
 );

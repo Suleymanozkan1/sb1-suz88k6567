@@ -167,23 +167,23 @@ describe('Yeni rezervasyon formu', () => {
     expect(await getReservations(BIZ)).toHaveLength(before);
   });
 
-  it('kaparo toplam tutardan büyük olamaz', async () => {
+  it('kapora toplam tutardan büyük olamaz', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
     await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Deneme Çift');
     await user.type(screen.getByLabelText(/^Telefon/), '5321234567');
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '300');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '50000');
-    await user.type(screen.getByLabelText(/^Kaparo/), '90000');
+    await user.type(screen.getByLabelText(/^Kapora/), '90000');
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
-    expect(await screen.findByText('Kaparo, toplam tutardan büyük olamaz.')).toBeInTheDocument();
+    expect(await screen.findByText('Kapora, toplam tutardan büyük olamaz.')).toBeInTheDocument();
   });
 
   it('kalan alacağı otomatik hesaplar', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
     await user.type(await screen.findByLabelText(/Toplam Tutar/), '100000');
-    await user.type(screen.getByLabelText(/^Kaparo/), '30000');
+    await user.type(screen.getByLabelText(/^Kapora/), '30000');
     expect(screen.getByLabelText('Kalan Alacak')).toHaveValue('70.000');
   });
 
@@ -199,7 +199,7 @@ describe('Yeni rezervasyon formu', () => {
     await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 90));
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '250');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '120000');
-    await user.type(screen.getByLabelText(/^Kaparo/), '30000');
+    await user.type(screen.getByLabelText(/^Kapora/), '30000');
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
     await waitFor(async () => expect(await getReservations(BIZ)).toHaveLength(before + 1), { timeout: 4000 });

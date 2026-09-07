@@ -32,7 +32,7 @@ const TABLE_LABELS: Record<string, string> = {
 const FIELD_LABELS: Record<string, string> = {
   customer_name: 'Müşteri adı', customer_phone: 'Telefon', customer_email: 'E-posta',
   date: 'Tarih', slot: 'Seans', organization_type: 'Organizasyon türü',
-  guest_count: 'Davetli sayısı', total_amount: 'Toplam tutar', deposit: 'Kaparo',
+  guest_count: 'Davetli sayısı', total_amount: 'Toplam tutar', deposit: 'Kapora',
   status: 'Durum', note: 'Not', services: 'Hizmetler', color_key: 'Renk',
   amount: 'Tutar', category: 'Kategori', description: 'Açıklama', kind: 'Tür',
   name: 'Ad', capacity: 'Kapasite', phone: 'Telefon', address: 'Adres',

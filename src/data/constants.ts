@@ -139,12 +139,12 @@ export const SERVICE_OPTIONS: string[] = [
 ];
 
 export const INCOME_CATEGORIES: string[] = [
-  'Rezervasyon Kaparo', 'Rezervasyon Tahsilatı', 'Ek Hizmet Satışı', 'Salon Kiralama',
+  'Rezervasyon Kapora', 'Rezervasyon Tahsilatı', 'Ek Hizmet Satışı', 'Salon Kiralama',
   'Ekipman Kiralama', 'İkram / Büfe', 'Diğer Gelir',
 ];
 
 export const EXPENSE_CATEGORIES: string[] = [
-  'Personel Maaş', 'Yemek / Catering', 'Elektrik', 'Su', 'Doğalgaz', 'Kira', 'Vergi / SGK',
+  'Personel Maaş', 'Yemek / Catering', 'Elektrik', 'Su', 'Doğal gaz', 'Kira', 'Vergi / SGK',
   'Bakım Onarım', 'Temizlik', 'Reklam / Pazarlama', 'Ekipman Alımı', 'Diğer Gider',
 ];
 

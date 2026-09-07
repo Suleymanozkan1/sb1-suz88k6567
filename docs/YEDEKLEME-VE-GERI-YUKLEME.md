@@ -126,7 +126,7 @@ commit;
 select public.backup_row_counts('<YENI_ID>');
 
 -- Parasal toplam kontrolü
-select sum(total_amount) as toplam, sum(deposit) as kaparo
+select sum(total_amount) as toplam, sum(deposit) as kapora
 from public.reservations;
 
 -- İlişkisel bütünlük: sahipsiz tahsilat olmamalı

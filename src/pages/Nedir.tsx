@@ -10,7 +10,7 @@ const CAPABILITIES = [
   'Gündüz ve gece olmak üzere bütün yıl boyunca rezervasyon takibi',
   'Detaylı rezervasyon kaydı',
   'Salon kiralama sözleşmesi oluşturma',
-  'Kaparo ve kalan alacak kaydı',
+  'Kapora ve kalan alacak kaydı',
   'Düğün, Sünnet, Nişan, Kına, Konferans, Kokteyl vs. organizasyonları ayrı ayrı kaydetme',
   'İstenilen tarih aralığında rezervasyon ve alacak bakiyesi raporu alma',
   'İsim ve telefon no bazında detaylı kayıt arama',
