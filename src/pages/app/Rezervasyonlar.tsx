@@ -102,7 +102,7 @@ export default function Rezervasyonlar() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Rezervasyonlar - Düğün Takip Panel" noindex />
+      <Seo title="Rezervasyonlar - Salon Ajandası Panel" noindex />
       {deleteError && <Alert kind="error" className="mb-5">{deleteError}</Alert>}
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">

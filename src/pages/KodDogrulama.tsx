@@ -41,8 +41,8 @@ export default function KodDogrulama() {
   return (
     <>
       <Seo
-        title="Rezervasyon Kod Doğrulama - Düğün Takip"
-        description="Düğün Takip sistemindeki rezervasyon kodunuzu doğrulayın."
+        title="Rezervasyon Kod Doğrulama - Salon Ajandası"
+        description="Salon Ajandası sistemindeki rezervasyon kodunuzu doğrulayın."
         path="/kod-dogrulama"
       />
       <PageHeader
@@ -58,7 +58,7 @@ export default function KodDogrulama() {
             <input
               id="rez-kod"
               className="field-input font-mono uppercase"
-              placeholder="DT-2026-0000"
+              placeholder="SA-2026-0000"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               aria-invalid={Boolean(error)}

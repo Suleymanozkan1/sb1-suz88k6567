@@ -61,8 +61,8 @@ beforeEach(() => clearAll());
 describe('Anasayfa', () => {
   it('hero başlığını ve sloganı gösterir', () => {
     renderAt('/', <Home />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Düğün Takip' })).toBeInTheDocument();
-    expect(screen.getByText("Türkiye’nin ilk online düğün takip sistemi!")).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Salon Ajandası' })).toBeInTheDocument();
+    expect(screen.getByText("Online salon yönetim sistemi")).toBeInTheDocument();
   });
 
   it('dört hizmet kartını listeler', () => {
@@ -121,7 +121,7 @@ describe('Kod Doğrulama', () => {
   it('bulunmayan kod için hata mesajı gösterir', async () => {
     const user = userEvent.setup();
     renderAt('/kod-dogrulama', <KodDogrulama />);
-    await user.type(screen.getByLabelText('Rezervasyon Kodu'), 'DT-2000-0000');
+    await user.type(screen.getByLabelText('Rezervasyon Kodu'), 'SA-2000-0000');
     await user.click(screen.getByRole('button', { name: 'Kodu Kontrol Et' }));
     expect(await screen.findByText(/bir rezervasyon kaydı bulunamadı/, {}, { timeout: 3000 })).toBeInTheDocument();
   });
@@ -260,7 +260,7 @@ describe('Üye Ol', () => {
     await user.selectOptions(screen.getByLabelText(/Kategori/), 'Düğün Salonu');
     await user.selectOptions(screen.getByLabelText(/Şehir/), 'Ankara');
     await user.selectOptions(screen.getByLabelText(/İlçe/), 'Çankaya');
-    await user.type(screen.getByLabelText(/E-posta Adresiniz/), 'demo@duguntakip.com');
+    await user.type(screen.getByLabelText(/E-posta Adresiniz/), 'demo@salonajandasi.com');
     await user.type(passwordField(), 'sifre123');
     await user.type(passwordRepeatField(), 'sifre123');
     await user.click(screen.getByLabelText(/Gizlilik Politikası/));
@@ -276,7 +276,7 @@ describe('Üye Girişi', () => {
     seedIfEmpty();
     const user = userEvent.setup();
     renderAt('/uye-girisi', <UyeGirisi />);
-    await user.type(screen.getByLabelText('E-posta Adresiniz'), 'demo@duguntakip.com');
+    await user.type(screen.getByLabelText('E-posta Adresiniz'), 'demo@salonajandasi.com');
     await user.type(screen.getByLabelText('Şifreniz'), 'yanlis');
     await user.click(screen.getByRole('button', { name: 'Giriş Yap' }));
     expect(await screen.findByText('E-posta veya şifreniz hatalı.', {}, { timeout: 3000 })).toBeInTheDocument();

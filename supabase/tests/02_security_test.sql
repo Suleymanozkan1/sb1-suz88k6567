@@ -58,7 +58,7 @@ insert into public.reservations
   (id, business_id, code, customer_name, customer_phone, date, slot, organization_type, guest_count, total_amount, deposit)
 values
   ('cccccccc-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000001',
-   'DT-A-0001','A Müşterisi','5321110000','2026-10-10','Gece','Düğün',200,100000,20000);
+   'SA-A-0001','A Müşterisi','5321110000','2026-10-10','Gece','Düğün',200,100000,20000);
 
 select action, table_name, summary, actor_email
 from public.audit_log where table_name = 'reservations';

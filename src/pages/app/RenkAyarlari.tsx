@@ -46,7 +46,7 @@ export default function RenkAyarlari() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Rezervasyon Renk Ayarları - Düğün Takip Panel" noindex />
+      <Seo title="Rezervasyon Renk Ayarları - Salon Ajandası Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">Rezervasyon Renk Ayarları</h1>
       <p className="mb-6 text-sm text-brand-muted">

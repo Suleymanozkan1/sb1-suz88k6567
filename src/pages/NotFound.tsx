@@ -4,7 +4,7 @@ import Seo from '../components/Seo';
 export default function NotFound() {
   return (
     <>
-      <Seo title="Sayfa bulunamadı - Düğün Takip" noindex />
+      <Seo title="Sayfa bulunamadı - Salon Ajandası" noindex />
       <section className="flex min-h-[70vh] items-center py-24">
         <div className="container-dt text-center">
           <p className="font-display text-7xl font-bold text-accent">404</p>

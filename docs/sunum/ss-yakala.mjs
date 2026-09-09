@@ -242,7 +242,7 @@ await cek(page, 'panel-makbuz');
 
 not('Site ekranı yakalanıyor…');
 await page.goto(`${KOK}/panel/rezervasyonlar/${rid}`);
-const kod = (await page.getByText(/DT-\d{4}-\d+/).first().textContent()).match(/DT-\d{4}-\d+/)[0];
+const kod = (await page.getByText(/SA-\d{4}-\d+/).first().textContent()).match(/SA-\d{4}-\d+/)[0];
 await page.goto(`${KOK}/kod-dogrulama`);
 await page.getByLabel(/[Kk]od/).first().fill(kod);
 await page.getByRole('button', { name: /Kodu Kontrol Et|Doğrula/ }).click();

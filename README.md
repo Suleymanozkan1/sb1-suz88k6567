@@ -1,6 +1,6 @@
-# Düğün Takip
+# Salon Ajandası
 
-Düğün salonları için rezervasyon ve ödeme takip sistemi. `duguntakip.com` sitesinin
+Düğün salonları için rezervasyon ve ödeme takip sistemi. `salonajandasi.com` sitesinin
 tüm herkese açık sayfaları ve üye panelinin tüm ekranları React + TypeScript ile
 yeniden inşa edilmiştir.
 
@@ -23,10 +23,10 @@ npm run dev                  # http://localhost:5173
 
 | Alan    | Değer                  |
 |---------|------------------------|
-| E-posta | `demo@duguntakip.com`  |
+| E-posta | `demo@salonajandasi.com`  |
 | Şifre   | `demo1234`             |
 
-Personel (kısıtlı yetki) hesabı: `personel@duguntakip.com` / `personel1234`
+Personel (kısıtlı yetki) hesabı: `personel@salonajandasi.com` / `personel1234`
 
 Demo hesapları yalnızca demo modunda vardır.
 

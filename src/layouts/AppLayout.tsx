@@ -63,7 +63,7 @@ export default function AppLayout() {
       >
         <div className="mb-6 flex items-center justify-between">
           <Link to="/" className="font-display text-xl font-bold text-white hover:text-white">
-            Düğün<span className="text-accent">Takip</span>
+            Salon<span className="text-accent">Ajandası</span>
           </Link>
           <button type="button" className="text-white lg:hidden" onClick={() => setSidebarOpen(false)} aria-label="Menüyü kapat">
             <IconClose size={22} />

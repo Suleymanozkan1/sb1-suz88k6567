@@ -1,5 +1,5 @@
 -- =====================================================================
--- Düğün Takip — veritabanı şeması
+-- Salon Ajandası — veritabanı şeması
 --
 -- Tek şirket kullanımı için tasarlanmıştır: bir yönetici (owner) ve ona
 -- bağlı personel (staff) hesapları. Yine de tüm tablolarda satır bazlı

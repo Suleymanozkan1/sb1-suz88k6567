@@ -23,6 +23,6 @@ describe('scrub — hata bildirimlerinde kişisel veri maskeleme', () => {
   });
 
   it('rezervasyon kodunu telefon sanmaz', () => {
-    expect(scrub('DT-2026-4821 bulunamadı')).toBe('DT-2026-4821 bulunamadı');
+    expect(scrub('SA-2026-4821 bulunamadı')).toBe('SA-2026-4821 bulunamadı');
   });
 });

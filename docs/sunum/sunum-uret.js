@@ -12,8 +12,8 @@ const H='Cambria', B='Calibri';
 
 const pres = new pptxgen();
 pres.layout = 'LAYOUT_WIDE';
-pres.author = 'Düğün Takip';
-pres.title = 'Düğün Takip — Salon Yönetim Sistemi';
+pres.author = 'Salon Ajandası';
+pres.title = 'Salon Ajandası — Salon Yönetim Sistemi';
 
 /** PNG başlığından gerçek en/boy okunur; görsel esnetilmeden yerleştirilir. */
 function pngBoyut(file) {
@@ -70,7 +70,7 @@ function notes(s, x, y, items, gap, width) {
   s.addShape(pres.ShapeType.ellipse, { x: 9.8, y: -2.0, w: 6.2, h: 6.2, fill:{color:BRAND}, line:{color:BRAND} });
   s.addText('SALON YÖNETİM SİSTEMİ', { x: 0.9, y: 2.5, w: 8, h: 0.32, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 13, bold: true, color: SKY, charSpacing: 3 });
-  s.addText('Düğün Takip', { x: 0.9, y: 2.9, w: 8.4, h: 1.3, isTextBox: true, margin: 0,
+  s.addText('Salon Ajandası', { x: 0.9, y: 2.9, w: 8.4, h: 1.3, isTextBox: true, margin: 0,
     fontFace: H, fontSize: 58, bold: true, color: WHITE });
   s.addText('Rezervasyon, tahsilat, sözleşme, fatura ve organizasyon planlaması için\nweb tabanlı salon yönetim sistemi.', {
     x: 0.9, y: 4.25, w: 8.2, h: 0.9, isTextBox: true, margin: 0,
@@ -491,32 +491,54 @@ function notes(s, x, y, items, gap, width) {
   s.addNotes('Netgsm başlık onayı birkaç iş günü sürer; en erken başvurulması gereken adımdır.');
 }
 
-/* ── 20 Kapanış ──────────────────────────────────────────────────── */
+/* ── 20 Maliyet ──────────────────────────────────────────────────── */
 {
   const s = pres.addSlide();
-  s.background = { color: NAVY };
-  s.addShape(pres.ShapeType.ellipse, { x: -2.3, y: 4.4, w: 5.4, h: 5.4, fill:{color:BRAND}, line:{color:BRAND} });
-  s.addText('Özet', { x: 0.9, y: 1.3, w: 9.8, h: 0.8, isTextBox: true, margin: 0,
-    fontFace: H, fontSize: 36, bold: true, color: WHITE });
-  s.addText('Rezervasyondan faturaya kadar salon işletmeciliğinin kayıt tutulan tüm adımları tek sistemde toplanır: takvim ve salonlar, tahsilat ve ödeme planı, sözleşme ve makbuz, menü, masa düzeni, iş emri, tedarikçiler, SMS, e-fatura, raporlar ve yedekleme.', {
-    x: 0.9, y: 2.25, w: 11.5, h: 1.4, isTextBox: true, margin: 0,
-    fontFace: B, fontSize: 15, color: PALE, lineSpacing: 24 });
-  [['Demo', 'Salonunuzun verisiyle canlı gösterim'],
-   ['Kurulum', 'Mevcut kayıtların aktarımı ve ekip eğitimi'],
-   ['Destek', 'Kurulum sonrası iletişim'],
-  ].forEach(([bas, ack], i) => {
-    const x = 0.9 + i*3.9;
-    s.addText(bas, { x, y: 4.2, w: 3.6, h: 0.36, isTextBox: true, margin: 0,
-      fontFace: H, fontSize: 18, bold: true, color: ACCENT });
-    s.addText(ack, { x, y: 4.62, w: 3.6, h: 0.6, isTextBox: true, margin: 0,
-      fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 17 });
-  });
-  s.addShape(pres.ShapeType.roundRect, { x: 0.9, y: 5.85, w: 11.5, h: 0.85, rectRadius: 0.12,
-    fill:{color:BRAND}, line:{color:BRAND} });
-  s.addText('İletişim:   [telefon]   ·   [e-posta]   ·   [web adresi]', {
-    x: 0.9, y: 5.85, w: 11.5, h: 0.85, isTextBox: true, margin: 0,
-    align:'center', valign:'middle', fontFace: B, fontSize: 14.5, bold: true, color: WHITE });
-  s.addNotes('Köşeli parantezli alanları kendi iletişim bilgilerinizle değiştirin.');
+  s.background = { color: WHITE };
+  head(s, 'MALİYET', 'Aylık ve tek seferlik giderler');
+
+  /** Bir sütun: başlık, kalem/tutar satırları ve altına açıklama. */
+  function sutun(x, baslik, kalemler, aciklama) {
+    s.addShape(pres.ShapeType.roundRect, { x, y: 1.75, w: 3.85, h: 3.95, rectRadius: 0.1,
+      fill: { color: SURFACE }, line: { color: 'E3E9F4', width: 1 } });
+    s.addText(baslik, { x: x + 0.3, y: 2.0, w: 3.25, h: 0.34, isTextBox: true, margin: 0,
+      fontFace: H, fontSize: 16, bold: true, color: NAVY });
+    kalemler.forEach(([ad, tutar], i) => {
+      const y = 2.55 + i * 0.52;
+      s.addText(ad, { x: x + 0.3, y, w: 2.1, h: 0.34, isTextBox: true, margin: 0,
+        fontFace: B, fontSize: 12, color: INK });
+      s.addText(tutar, { x: x + 2.35, y, w: 1.2, h: 0.34, isTextBox: true, margin: 0,
+        align: 'right', fontFace: B, fontSize: 12, bold: true, color: NAVY });
+    });
+    s.addText(aciklama, { x: x + 0.3, y: 4.95, w: 3.25, h: 0.65, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 10.5, color: MUTED, lineSpacing: 14 });
+  }
+
+  sutun(0.7, 'Zorunlu — her ay', [
+    ['Supabase Pro', '$25'],
+    ['Vercel Pro', '$20'],
+  ], 'Veritabanı, gecelik yedek, barındırma ve zamanlanmış görevler. Vercel’in ücretsiz planı ticari kullanıma kapalıdır ve zamanlanmış görevi günde bire indirir.');
+
+  sutun(4.75, 'SMS — kullandıkça', [
+    ['1.000 SMS', '370 ₺'],
+    ['5.000 SMS', '1.089 ₺'],
+    ['10.000 SMS', '1.699 ₺'],
+    ['25.000 SMS', '4.179 ₺'],
+  ], 'Netgsm paket fiyatları, KDV ve ÖİV dahil. Paketsiz tarife adet başına 0,42 ₺. Marka başlığı onayı gönderimden önce alınır.');
+
+  sutun(8.8, 'e-Fatura — isteğe bağlı', [
+    ['Paraşüt e-Portal', '150 ₺/ay'],
+    ['Mali mühür (3 yıl)', '1.620 ₺'],
+    ['100 e-kontör', '400 ₺'],
+  ], 'Paraşüt tutarları KDV hariç. Bir fatura bir kontördür; kontör paketi 12 ay geçerlidir. Mali mühür tüzel kişi tutarıdır.');
+
+  s.addText('Bir sağlayıcı tanımlanmazsa yalnızca o özellik kapanır: SMS sağlayıcısı yoksa mesajlar kuyrukta bekler, e-Fatura entegratörü yoksa faturalar taslak olarak kaydedilir. Sistemin geri kalanı çalışmaya devam eder.', {
+    x: 0.7, y: 5.9, w: 11.95, h: 0.55, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17 });
+  s.addText('Fiyatlar Eylül 2026’da sağlayıcıların yayımlanmış listelerinden alınmıştır. Supabase ve Vercel dolar üzerinden faturalandırır.', {
+    x: 0.7, y: 6.55, w: 11.95, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 11, color: MUTED });
+  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100–150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider iki abonelikten ibarettir.');
 }
 
-pres.writeFile({ fileName: 'Dugun-Takip-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));
+pres.writeFile({ fileName: 'Salon-Ajandasi-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));

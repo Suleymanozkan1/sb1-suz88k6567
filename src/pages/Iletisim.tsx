@@ -59,11 +59,11 @@ export default function Iletisim({ variant = 'iletisim' }: Props) {
   return (
     <>
       <Seo
-        title={`${isDemo ? 'Demo Talebi' : 'İletişim'} - Düğün Takip Salon Takip Programı`}
+        title={`${isDemo ? 'Demo Talebi' : 'İletişim'} - Salon Ajandası Salon Takip Programı`}
         description={
           isDemo
             ? 'Ücretsiz demo ve eğitim talebinde bulunun, sizi arayalım.'
-            : 'Düğün Takip salon takip programı iletişim bilgileri ve iletişim formu.'
+            : 'Salon Ajandası salon takip programı iletişim bilgileri ve iletişim formu.'
         }
         path={isDemo ? '/demo-talebi' : '/iletisim'}
       />

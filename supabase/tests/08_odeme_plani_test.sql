@@ -18,9 +18,9 @@ insert into public.reservations
    organization_type, guest_count, total_amount, deposit)
 values
   ('dddddddd-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000001',
-   'DT-A-0001','A Müşterisi','5321110001','2027-06-12','Gece','Düğün',300,100000.00,10000.00),
+   'SA-A-0001','A Müşterisi','5321110001','2027-06-12','Gece','Düğün',300,100000.00,10000.00),
   ('dddddddd-0000-0000-0000-000000000002','bbbbbbbb-0000-0000-0000-000000000001',
-   'DT-B-0001','B Müşterisi','5321110002','2027-06-12','Gece','Nişan',150,50000.00,5000.00);
+   'SA-B-0001','B Müşterisi','5321110002','2027-06-12','Gece','Nişan',150,50000.00,5000.00);
 
 insert into public.vendors (id, business_id, name, category, phone) values
   ('eeeeeeee-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000001','Yıldız Orkestra','Orkestra','5321230001'),

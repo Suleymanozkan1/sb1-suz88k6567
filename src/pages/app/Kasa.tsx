@@ -114,7 +114,7 @@ export default function Kasa() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={loadError}>
-      <Seo title="Gelir Gider Kayıtları - Düğün Takip Panel" noindex />
+      <Seo title="Gelir Gider Kayıtları - Salon Ajandası Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Gelir Gider Kayıtları</h1>

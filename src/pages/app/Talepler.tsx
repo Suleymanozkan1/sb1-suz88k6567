@@ -65,7 +65,7 @@ export default function Talepler() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={loadError}>
-      <Seo title="Talepler - Düğün Takip Panel" noindex />
+      <Seo title="Talepler - Salon Ajandası Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">Talepler</h1>
       <p className="mb-6 text-sm text-brand-muted">

@@ -1,9 +1,9 @@
 {
-  "name": "duguntakip",
+  "name": "salonajandasi",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Düğün Takip - Düğün Salonu Rezervasyon ve Ödeme Takip Sistemi",
+  "description": "Salon Ajandası - Düğün Salonu Rezervasyon ve Ödeme Takip Sistemi",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

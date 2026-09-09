@@ -31,10 +31,10 @@ insert into public.reservations
    organization_type, guest_count, total_amount, deposit)
 values
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-000000000001',
-   '11111111-cccc-0000-0000-000000000001', 'DT-A-0001', 'Kristal Müşterisi', '5321112233',
+   '11111111-cccc-0000-0000-000000000001', 'SA-A-0001', 'Kristal Müşterisi', '5321112233',
    '2027-06-12', 'Gece', 'Düğün', 300, 135000, 20000),
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-000000000002',
-   null, 'DT-A-0002', 'Bahçe Müşterisi', '5321112244',
+   null, 'SA-A-0002', 'Bahçe Müşterisi', '5321112244',
    '2027-06-12', 'Gece', 'Nişan', 200, 90000, 10000);
 select count(*) as ayni_gun_iki_salon_IKI_OLMALI from public.reservations where date = '2027-06-12';
 
@@ -44,7 +44,7 @@ do $$ begin
     (business_id, hall_id, code, customer_name, customer_phone, date, slot,
      organization_type, guest_count, total_amount, deposit)
   values ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-000000000001',
-          'DT-A-0003', 'Çakışan', '5321112255', '2027-06-12', 'Gece', 'Düğün', 100, 50000, 0);
+          'SA-A-0003', 'Çakışan', '5321112255', '2027-06-12', 'Gece', 'Düğün', 100, 50000, 0);
   raise exception 'BASARISIZ: ayni salona cift rezervasyon yazildi';
 exception
   when unique_violation then raise notice 'BEKLENEN: ayni salona ikinci kayit reddedildi';
@@ -59,7 +59,7 @@ do $$ begin
     (business_id, hall_id, code, customer_name, customer_phone, date, slot,
      organization_type, guest_count, total_amount, deposit)
   values ('aaaaaaaa-0000-0000-0000-000000000001', '22222222-bbbb-0000-0000-000000000001',
-          'DT-A-0004', 'Yabancı Salon', '5321112266', '2027-07-01', 'Gece', 'Düğün', 100, 50000, 0);
+          'SA-A-0004', 'Yabancı Salon', '5321112266', '2027-07-01', 'Gece', 'Düğün', 100, 50000, 0);
   raise exception 'BASARISIZ: yabanci salona rezervasyon yazildi';
 exception
   when check_violation then raise notice 'BEKLENEN: yabanci salon reddedildi';
@@ -74,7 +74,7 @@ do $$ begin
     (business_id, hall_id, menu_id, code, customer_name, customer_phone, date, slot,
      organization_type, guest_count, total_amount, deposit)
   values ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-000000000001',
-          '22222222-cccc-0000-0000-000000000001', 'DT-A-0005', 'Yabancı Menü', '5321112277',
+          '22222222-cccc-0000-0000-000000000001', 'SA-A-0005', 'Yabancı Menü', '5321112277',
           '2027-07-02', 'Gece', 'Düğün', 100, 50000, 0);
   raise exception 'BASARISIZ: yabanci menu kabul edildi';
 exception
@@ -110,13 +110,13 @@ end $$;
 
 \echo '=== 7) Masa duzeni: ayni masa numarasi iki kez yazilamamali ==='
 insert into public.seating_tables (reservation_id, table_no, seats, label)
-select id, 1, 10, 'Gelin tarafı' from public.reservations where code = 'DT-A-0001';
+select id, 1, 10, 'Gelin tarafı' from public.reservations where code = 'SA-A-0001';
 insert into public.seating_tables (reservation_id, table_no, seats, label)
-select id, 2, 8, 'Damat tarafı' from public.reservations where code = 'DT-A-0001';
+select id, 2, 8, 'Damat tarafı' from public.reservations where code = 'SA-A-0001';
 do $$
 declare rid uuid;
 begin
-  select id into rid from public.reservations where code = 'DT-A-0001';
+  select id into rid from public.reservations where code = 'SA-A-0001';
   insert into public.seating_tables (reservation_id, table_no, seats) values (rid, 1, 6);
   raise exception 'BASARISIZ: mukerrer masa numarasi kabul edildi';
 exception
@@ -127,13 +127,13 @@ exception
 end $$;
 select count(*) as masa_sayisi, sum(seats) as toplam_koltuk
 from public.seating_tables st
-join public.reservations r on r.id = st.reservation_id where r.code = 'DT-A-0001';
+join public.reservations r on r.id = st.reservation_id where r.code = 'SA-A-0001';
 
 \echo '=== 8) Gecersiz koltuk sayisi reddedilmeli ==='
 do $$
 declare rid uuid;
 begin
-  select id into rid from public.reservations where code = 'DT-A-0001';
+  select id into rid from public.reservations where code = 'SA-A-0001';
   insert into public.seating_tables (reservation_id, table_no, seats) values (rid, 9, 0);
   raise exception 'BASARISIZ: sifir koltuk kabul edildi';
 exception
@@ -144,8 +144,8 @@ exception
 end $$;
 
 \echo '=== 9) Rezervasyon silinince masa duzeni de silinmeli ==='
-delete from public.reservations where code = 'DT-A-0002';
-select count(*) as kalan_rezervasyon from public.reservations where code = 'DT-A-0002';
+delete from public.reservations where code = 'SA-A-0002';
+select count(*) as kalan_rezervasyon from public.reservations where code = 'SA-A-0002';
 
 -- Supabase, public şemadaki tablolara bu izinleri varsayılan olarak verir.
 grant usage on schema public to authenticated;

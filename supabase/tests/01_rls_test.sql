@@ -28,8 +28,8 @@ insert into public.businesses (id, owner_id, name) values
 insert into public.reservations
   (business_id, code, customer_name, customer_phone, date, slot, organization_type, guest_count, total_amount, deposit)
 values
-  ('aaaaaaaa-0000-0000-0000-000000000001','DT-A-0001','A Müşterisi','5321110000','2026-10-10','Gece','Düğün',200,100000,20000),
-  ('bbbbbbbb-0000-0000-0000-000000000001','DT-B-0001','B Müşterisi','5332220000','2026-10-11','Gece','Düğün',300,150000,30000);
+  ('aaaaaaaa-0000-0000-0000-000000000001','SA-A-0001','A Müşterisi','5321110000','2026-10-10','Gece','Düğün',200,100000,20000),
+  ('bbbbbbbb-0000-0000-0000-000000000001','SA-B-0001','B Müşterisi','5332220000','2026-10-11','Gece','Düğün',300,150000,30000);
 
 -- Supabase'de oturum açan kullanıcılar "authenticated" rolündedir;
 -- politikalar bu role bağlı olduğu için test de bu rolle çalışır.
@@ -57,14 +57,14 @@ do $$
 begin
   insert into public.reservations
     (business_id, code, customer_name, customer_phone, date, slot, organization_type, guest_count, total_amount, deposit)
-  values ('aaaaaaaa-0000-0000-0000-000000000001','DT-HACK','Saldirgan','5000000000','2026-12-01','Gece','Düğün',10,1000,0);
+  values ('aaaaaaaa-0000-0000-0000-000000000001','SA-HACK','Saldirgan','5000000000','2026-12-01','Gece','Düğün',10,1000,0);
   raise exception 'GUVENLIK ACIGI: B, A''nin isletmesine yazabildi!';
 exception when insufficient_privilege or check_violation then
   raise notice 'BEKLENEN: yazma reddedildi (%)', sqlerrm;
 end $$;
 
 \echo '=== 5) B, A''nin rezervasyonunu SILEMEMELI ==='
-with silinen as (delete from public.reservations where code = 'DT-A-0001' returning 1)
+with silinen as (delete from public.reservations where code = 'SA-A-0001' returning 1)
 select count(*) as "B_silebildigi_satir" from silinen;
 
 \echo '=== 6) B, A''nin profilini gorememeli ==='

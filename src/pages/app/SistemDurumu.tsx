@@ -23,7 +23,7 @@ export default function SistemDurumu() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `duguntakip-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `salonajandasi-yedek-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -43,7 +43,7 @@ export default function SistemDurumu() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Sistem Durumu - Düğün Takip Panel" noindex />
+      <Seo title="Sistem Durumu - Salon Ajandası Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">Sistem Durumu</h1>
       <p className="mb-6 text-sm text-brand-muted">

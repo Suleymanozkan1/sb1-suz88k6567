@@ -35,7 +35,7 @@ ya da proje yanlışlıkla silinirse o yedeklere de ulaşamazsınız. Bu yüzden
 
 Panel → **Sistem Durumu** → **Yedeği indir (JSON)**
 
-İnen dosya: `duguntakip-yedek-YYYY-AA-GG.json`
+İnen dosya: `salonajandasi-yedek-YYYY-AA-GG.json`
 
 İçindekiler: işletmeler, rezervasyonlar, tahsilatlar, gelir/gider kayıtları,
 SMS izinleri, SMS kayıtları, renk ayarları ve kullanıcı profilleri.
@@ -78,7 +78,7 @@ Yedek dosyasını sunucuya kopyalayın ve aşağıdaki betiği çalıştırın.
 `<ESKI_ID>` / `<YENI_ID>` ile eski kullanıcı kimliğini yenisiyle eşleyin.
 
 ```sql
-\set backup `cat duguntakip-yedek-2026-09-01.json`
+\set backup `cat salonajandasi-yedek-2026-09-01.json`
 
 begin;
 
