@@ -11,7 +11,8 @@
     "dogrula": "expo export --platform web --output-dir dist-web",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "jest"
+    "test": "jest",
+    "paket": "expo export --platform ios --platform android --no-bytecode --output-dir dist-paket"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -30,10 +31,13 @@
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
+    "babel-preset-expo": "^57.0.11",
     "jest": "^29.7.0",
     "jest-expo": "~54.0.0",
+    "ts-jest": "^29.4.12",
     "typescript": "~5.9.2"
   }
 }

@@ -6,15 +6,21 @@
  * Tutarlar veritabanında kuruş cinsinden tamsayı tutulur.
  */
 
-const TL = new Intl.NumberFormat('tr-TR', {
-  style: 'currency',
-  currency: 'TRY',
+/**
+ * ICU'nun `style: 'currency'` biçimi Türkçe yerelde simgeyi başa koyuyor
+ * (₺12.500,00). Türkçe yazımda simge sonda; web tarafı da simgeyi elle
+ * ekliyor. İki uygulamanın aynı tutarı farklı göstermesi kullanıcı için
+ * hatadır, bu yüzden burada da aynı yol izleniyor.
+ */
+const SAYI = new Intl.NumberFormat('tr-TR', {
   minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 /** Kuruş cinsinden tamsayıyı "12.500,00 ₺" biçimine çevirir. */
 export function tutar(kurus: number): string {
-  return TL.format(kurus / 100);
+  const guvenli = Number.isFinite(kurus) ? kurus : 0;
+  return `${SAYI.format(guvenli / 100)} ₺`;
 }
 
 /** Kuruşu kısa gösterim için yuvarlar: 1.250.000 → "12.500 ₺" */
