@@ -50,7 +50,7 @@ export function seedIfEmpty(): void {
 
   const owner: User = {
     id: ownerId,
-    companyName: 'Grand Yıldız Düğün Sarayı',
+    companyName: 'Grand Sahra Düğün ve Davet Salonu',
     fullName: 'Demo Kullanıcı',
     email: DEMO_CREDENTIALS.email,
     password: DEMO_CREDENTIALS.password,
@@ -84,7 +84,7 @@ export function seedIfEmpty(): void {
 
   write(KEYS.businesses, [
     {
-      id: businessId, ownerId, name: 'Grand Yıldız Düğün Sarayı', category: 'Düğün Salonu',
+      id: businessId, ownerId, name: 'Grand Sahra Düğün ve Davet Salonu', category: 'Düğün Salonu',
       city: 'İstanbul', district: 'Beylikdüzü', phone: '5320001122', capacity: 600, currency: 'TL',
       address: 'Barış Mah. Gül Cad. No:12 Beylikdüzü / İstanbul', instagram: 'grandyildizdugun',
       about: 'Şehrin merkezinde, geniş otoparkı ve modern ses-ışık sistemleri ile hizmetinizde.',

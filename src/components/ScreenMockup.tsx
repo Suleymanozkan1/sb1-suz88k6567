@@ -228,7 +228,7 @@ function PermissionsPreview() {
 
 function BusinessPreview() {
   const rows = [
-    ['Grand Yıldız Düğün Sarayı', 'Beylikdüzü / İstanbul', '600 kişi'],
+    ['Grand Sahra Düğün ve Davet Salonu', 'Beylikdüzü / İstanbul', '600 kişi'],
     ['Yıldız Kır Bahçesi', 'Silivri / İstanbul', '350 kişi'],
   ];
   return (
