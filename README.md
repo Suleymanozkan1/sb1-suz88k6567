@@ -92,7 +92,8 @@ Demo hesapları yalnızca demo modunda vardır.
 ## Mimari
 
 ```
-api/            Sunucu tarafı fonksiyonlar (Vercel)
+api/            Sunucu tarafı uç noktalar
+worker/         Cloudflare Worker giriş noktası (yönlendirici + zamanlanmış görevler)
   sms.ts        SMS gönderimi — sağlayıcı anahtarı yalnızca burada
   otp.ts        Giriş SMS doğrulaması (HMAC imzalı, 5 dk geçerli)
   login.ts      Korumalı giriş — hesap kilidi ve hız sınırı
@@ -250,7 +251,7 @@ korunduğunu kanıtlar.
 | **Yedek erişimi** | Postgres RLS | Yedek yalnızca kendi kapsamını içerir; başka hesabın verisi dışa aktarılamaz |
 | **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `service_role` anahtarı yalnızca sunucuda; `VITE_` öneki taşımaz |
 | **Hata izleme** | `src/lib/monitoring.ts` | İsteğe bağlı Sentry; gönderilen olaylarda e-posta ve telefon maskelenir |
-| **Güvenlik başlıkları** | `vercel.json` | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
+| **Güvenlik başlıkları** | `public/_headers` | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
 
 Giriş kilidi ve hız sınırı **sunucu tarafında** uygulanır; istemci bunları
 atlayamaz. `SUPABASE_SERVICE_ROLE_KEY` tanımlı değilse bu korumalar devre dışı
@@ -292,7 +293,7 @@ mesaj kaybına yol açmaz.
 - İşletme başına günlük 500 mesaj tavanı (hatalı döngülerin faturayı şişirmesini önler)
 - Kuyruk durumu panelde **SMS Kayıtları → Kuyruk** sekmesinde görülür
 
-Kuyruk `api/sms-queue.ts` tarafından **5 dakikada bir** işlenir (Vercel Cron).
+Kuyruk `api/sms-queue.ts` tarafından **5 dakikada bir** işlenir (Cloudflare Cron Trigger).
 
 ### İYS senkronizasyonu
 
@@ -323,45 +324,57 @@ gönderilir. Kod sunucuda üretilir ve yalnızca HMAC imzası istemciye döner.
 **Yapılması gerekenler:** Netgsm'den marka başlığı (gönderici adı) onayı alın;
 ticari ileti gönderecekseniz İYS üyeliği ve entegrasyon bilgilerinizi temin edin.
 
-## Vercel'e dağıtım
+## Cloudflare'e dağıtım
 
 Adım adım kurulum için: [docs/DAGITIM-KONTROL-LISTESI.md](docs/DAGITIM-KONTROL-LISTESI.md)
 
-Depo Vercel'e bağlandığında `vercel.json` gerekli her şeyi tanımlar; ek ayar
-yapmanıza gerek yoktur.
+Tek bir Worker hem derlenmiş siteyi sunar, hem `/api/*` uç noktalarını
+karşılar, hem de zamanlanmış görevleri çalıştırır. Yapılandırma
+`wrangler.jsonc` içindedir.
 
-| Ayar | Değer |
-|------|-------|
-| Framework | Vite (otomatik algılanır) |
-| Install Command | `npm ci` |
-| Ortam değişkenleri | `.env.example` dosyasındaki tüm anahtarlar |
+```bash
+npm run cf:dev      # yerelde çalıştır (zamanlanmış görevler denenebilir)
+npm run cf:deploy   # derle ve yayınla
+```
 
-Sunucu tarafı fonksiyonlar (`api/`) Vercel tarafından otomatik yayınlanır.
-Alt çizgi ile başlayan dosyalar (`api/_guard.ts`, `api/_db.ts`) uç nokta olarak
-yayınlanmaz.
+Ortam değişkenleri iki yere girilir:
 
-Zamanlanmış görevler `vercel.json` içindeki `crons` bölümünde tanımlıdır ve
-`CRON_SECRET` ile yetkilendirilir:
+| Tür | Nasıl |
+|-----|-------|
+| Gizli olmayanlar (`VITE_*`) | Derleme sırasında okunur; CI/CD ortam değişkeni olarak verin |
+| Sunucu sırları | `wrangler secret put ADI` ya da Cloudflare panelinden Variables & Secrets |
+
+Sunucu sırları `process.env` üzerinden okunur; `wrangler.jsonc` içindeki
+`nodejs_compat` bayrağı ve 2025-04-01 sonrası uyumluluk tarihi bunu sağlar.
+
+### Zamanlanmış görevler
+
+`wrangler.jsonc` içindeki `triggers.crons` listesinde tanımlıdır; her biri
+`worker/index.ts` içindeki `CRON_GOREVLERI` eşlemesi üzerinden ilgili uç
+noktaya bağlanır ve `CRON_SECRET` ile yetkilendirilir.
 
 | Görev | Sıklık |
 |-------|--------|
 | `/api/sms-queue` — kuyruk işleme | 5 dakikada bir |
-| `/api/iys` — İYS senkronizasyonu | Her gece 03:00 |
 | `/api/invoice` — bekleyen faturaları gönder | 15 dakikada bir |
 | `/api/backup` — günlük yedek | Her gece 02:30 |
-| Build Command | `npm run build` |
-| Output Directory | `dist` |
+| `/api/iys` — İYS senkronizasyonu | Her gece 03:00 |
 
-`vercel.json` ayrıca şunları yapar:
+Listeye cron eklenip eşlemeye eklenmezse görev sessizce hiç çalışmaz;
+`worker/index.test.ts` bu tutarsızlığı yakalar.
 
-- **SPA yönlendirmesi:** bilinmeyen yollar `index.html`'e yeniden yazılır, böylece
-  `/salon/...` gibi derin bağlantılar doğrudan açıldığında da çalışır. Statik
-  dosyalar (`robots.txt`, `sitemap.xml`, `assets/*`) dosya sistemi önce
-  denendiği için bu kuraldan etkilenmez.
-- **Önbellekleme:** karma (hash) içeren `assets/*` dosyaları bir yıl `immutable`,
-  `robots.txt` / `sitemap.xml` / `favicon.svg` bir saat önbelleklenir.
-- **Güvenlik başlıkları:** `X-Content-Type-Options`, `X-Frame-Options`,
-  `Referrer-Policy`, `Permissions-Policy`.
+### Yönlendirme ve başlıklar
+
+- **SPA yönlendirmesi:** `wrangler.jsonc` içindeki
+  `not_found_handling: "single-page-application"` sayesinde bilinmeyen
+  yollar `index.html` döndürür ve `/salon/...` gibi derin bağlantılar
+  doğrudan açıldığında çalışır. Tanımsız bir `/api/*` yolu ise siteye
+  düşmez, JSON 404 döner.
+- **Önbellekleme ve güvenlik başlıkları:** `public/_headers` dosyasında
+  tanımlıdır. `assets/*` bir yıl `immutable`; `robots.txt`, `sitemap.xml`
+  ve `favicon.svg` bir saat önbelleklenir. Tüm yanıtlarda
+  `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` ve
+  `Permissions-Policy` gönderilir.
 
 Yerel önizleme için:
 
@@ -369,9 +382,10 @@ Yerel önizleme için:
 npm run build && npm run preview
 ```
 
-Not: Kalıcılık tarayıcıdaki `localStorage` üzerinde olduğu için dağıtım tamamen
-statiktir; sunucu tarafı çalışma zamanı, ortam değişkeni veya veritabanı
-gerekmez.
+Not: `npm run preview` yalnızca derlenmiş arayüzü sunar; `/api/*` uç noktaları
+ve zamanlanmış görevler için `npm run cf:dev` gerekir. Supabase değişkenleri
+tanımlı değilse uygulama demo modunda açılır ve veriler yalnızca tarayıcıdaki
+`localStorage` üzerinde tutulur.
 
 ## Salonlar, menüler ve masa düzeni
 

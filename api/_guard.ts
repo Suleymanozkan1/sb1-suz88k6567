@@ -1,7 +1,7 @@
 /**
  * Sunucu tarafı güvenlik yardımcıları.
  *
- * Alt çizgi ile başladığı için Vercel bu dosyayı bir uç nokta olarak
+ * Alt çizgi ile başladığı için yönlendiricide uç nokta olarak
  * yayınlamaz; yalnızca diğer fonksiyonlar tarafından içe aktarılır.
  */
 
@@ -43,8 +43,19 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T | nu
   }
 }
 
-/** İstemci IP adresi (Vercel proxy başlıklarından) */
+/**
+ * İstemci IP adresi.
+ *
+ * Cloudflare `cf-connecting-ip` başlığını kendisi yazar ve istemcinin
+ * gönderdiği değeri ezer; bu yüzden önce ona bakılır. `x-forwarded-for`
+ * istemci tarafından uydurulabildiği için tek başına güvenilmez: saldırgan
+ * her istekte farklı bir değer göndererek hız sınırını ve giriş kilidini
+ * atlatabilirdi.
+ */
 export function clientIp(request: Request): string {
+  const cloudflare = request.headers.get('cf-connecting-ip');
+  if (cloudflare) return cloudflare.trim();
+
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) return forwarded.split(',')[0]!.trim();
   return request.headers.get('x-real-ip') ?? 'bilinmeyen';

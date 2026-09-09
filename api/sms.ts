@@ -1,11 +1,11 @@
 /**
- * SMS gönderim uç noktası (Vercel Serverless Function).
+ * SMS gönderim uç noktası.
  *
  * Sağlayıcı anahtarı yalnızca sunucuda bulunur; tarayıcıya hiçbir zaman
  * gönderilmez. Şu an Netgsm desteklenir; başka sağlayıcı eklemek için
  * `sendViaProvider` fonksiyonunu genişletmek yeterlidir.
  *
- * Gerekli ortam değişkenleri (Vercel → Settings → Environment Variables):
+ * Gerekli ortam değişkenleri (Cloudflare → Workers → Settings → Variables):
  *   NETGSM_USER    Netgsm abone numarası
  *   NETGSM_PASS    Netgsm API şifresi
  *   NETGSM_HEADER  Onaylı marka başlığı (gönderici adı)

@@ -142,8 +142,8 @@ test.describe('İstemci tarafı güvenlik', () => {
 
   test('sunucu sırları sayfa kaynağına sızmıyor', async ({ page }) => {
     await blockExternalRequests(page);
-    // vercel.json başlıkları yalnızca Vercel'de uygulanır; burada sayfanın
-    // kendisinin çerçeveleme koruması için meta/CSP beklemiyoruz.
+    // `public/_headers` kuralları yalnızca Cloudflare'de uygulanır; burada
+    // sayfanın çerçeveleme koruması için meta/CSP beklemiyoruz.
     // Bunun yerine hassas verinin sayfa kaynağına gömülmediğini doğruluyoruz.
     await page.goto('/');
     const html = await page.content();

@@ -7,6 +7,9 @@ coverage
 test-results
 playwright-report
 .vite
+
+# Wrangler yerel çalışma durumu
+.wrangler
 .env
 .env.local
 .env.*.local

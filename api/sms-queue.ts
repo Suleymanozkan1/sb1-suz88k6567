@@ -1,11 +1,12 @@
 /**
- * SMS kuyruğu işleyicisi (Vercel Cron).
+ * SMS kuyruğu işleyicisi (zamanlanmış görev).
  *
  * Kuyruktaki mesajları sırayla gönderir. Başarısızlıkta üstel geri çekilme
  * ile yeniden denenir; azami deneme sonunda kalıcı başarısız işaretlenir.
  * Bu sayede sağlayıcı kesintisi mesaj kaybına yol açmaz.
  *
- * Zamanlama `vercel.json` içindeki crons bölümünde tanımlıdır.
+ * Zamanlama `wrangler.jsonc` içindeki triggers.crons bölümünde tanımlı,
+ * gönderim `worker/index.ts` içindeki scheduled() işleyicisinden yapılır.
  */
 import { callRpc, isAuthorizedCron, isDbConfigured } from './_db';
 import { json } from './_guard';

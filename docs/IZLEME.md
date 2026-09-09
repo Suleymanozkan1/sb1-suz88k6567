@@ -58,7 +58,7 @@ Tanımlı değilse hiçbir dış servise istek gitmez.
 
 | Alarm | İlk kontrol |
 |-------|-------------|
-| "Kuyrukta bekleyen mesaj var" | Vercel → Deployments → Cron Jobs çalışıyor mu? `CRON_SECRET` tanımlı mı? |
+| "Kuyrukta bekleyen mesaj var" | Cloudflare → Workers → Settings → Trigger Events → zamanlanmış görev çalışıyor mu? `CRON_SECRET` tanımlı mı? |
 | "Mesaj gönderilemedi" | Panel → SMS Kayıtları → Kuyruk sekmesindeki hata gerekçesi. Netgsm bakiyesi var mı? |
 | "Yedek alınamamış" | Storage'da `yedekler` kovası var mı? `SUPABASE_SERVICE_ROLE_KEY` doğru mu? |
 | "Veritabanına ulaşılamıyor" | Supabase durum sayfası; proje duraklatılmış olabilir |

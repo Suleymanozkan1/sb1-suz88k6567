@@ -3,4 +3,4 @@ Allow: /
 Disallow: /panel
 Disallow: /uye-girisi
 
-Sitemap: https://duguntakip.com/sitemap.xml
+Sitemap: https://salonajandasi.com/sitemap.xml

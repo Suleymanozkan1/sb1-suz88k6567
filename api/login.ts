@@ -1,5 +1,5 @@
 /**
- * Giriş uç noktası (Vercel Serverless Function).
+ * Giriş uç noktası.
  *
  * Girişi sunucudan geçirmenin amacı, art arda başarısız denemelerde hesabı
  * geçici olarak kilitlemektir. İstemci doğrudan Supabase'e gitseydi bu kilit
