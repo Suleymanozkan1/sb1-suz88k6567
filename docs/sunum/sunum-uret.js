@@ -232,9 +232,9 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
       ['Para', 'Tahsilat, kasa, makbuz, raporlar'],
       ['Organizasyon', 'Menü ve paketler, masa düzeni, iş emri, tedarikçiler'],
       ['Mevzuat', 'e-Arşiv / e-Fatura, İYS izin yönetimi, KVKK, denetim kaydı'],
-      ['İletişim', 'Müşteriye SMS, siteden gelen talepler'],
+      ['İletişim', 'Hatırlatma şablonları, otomatik SMS, siteden gelen talepler'],
       ['Yönetim', 'Kullanıcılar ve yetkiler, yedekleme, sistem durumu'],
-      ['Mobil', 'iOS ve Android uygulaması: ajanda, takvim, hızlı tahsilat'],
+      ['Mobil', 'iOS ve Android uygulaması: panelin bütün ekranları telefonda'],
     ],
   });
   s.addNotes('Altı başlığın kısa dökümü. Ayrıntılar sonraki slaytlarda.');
@@ -299,7 +299,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Ekrandaki örnekte 180.000 ₺ toplam, 45.000 ₺ kapora, 80.000 ₺ tahsilat ve 100.000 ₺ kalan alacak görünüyor.');
 }
 
-/* ══ 7 · Menüler ══════════════════════════════════════════════ */
+/* ══ 6 · Menüler ══════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'MENÜLER', 'Menü ve paket tanımları');
@@ -318,7 +318,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Fiyatlar kuruş cinsinden tamsayı olarak saklanır.');
 }
 
-/* ══ 8 · Belgeler ═════════════════════════════════════════════ */
+/* ══ 7 · Belgeler ═════════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'BELGELER', 'Sözleşme ve tahsilat makbuzu');
@@ -328,7 +328,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Makbuz her tahsilat satırı için ayrı ayrı üretilir ve kendi belge numarasını taşır.');
 }
 
-/* ══ 9 · İş emri ══════════════════════════════════════════════ */
+/* ══ 8 · İş emri ══════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'İŞ EMRİ', 'Etkinlik günü iş emri');
@@ -347,7 +347,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Yabancı ürünlerde BEO (banquet event order) olarak geçen belgenin karşılığıdır.');
 }
 
-/* ══ 10 · Tedarikçiler ════════════════════════════════════════ */
+/* ══ 9 · Tedarikçiler ═════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'TEDARİKÇİLER', 'Tedarikçi defteri ve atama');
@@ -367,7 +367,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Tedarikçi ücretleri organizasyonun dış gider yükünü gösterir.');
 }
 
-/* ══ 11 · Masa düzeni ═════════════════════════════════════════ */
+/* ══ 10 · Masa düzeni ═════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'MASA DÜZENİ', 'Masa oturma planı');
@@ -387,18 +387,18 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
 }
 
 
-/* ══ 12 · Mobil · ana ekranlar ════════════════════════════════ */
+/* ══ 11 · Mobil · ana ekranlar ════════════════════════════════ */
 {
   const s = slayt();
-  baslik(s, 'MOBİL', 'Telefon uygulaması: ajanda ve takvim');
+  baslik(s, 'MOBİL', 'Telefon uygulaması: ajanda, takvim, kayıtlar');
 
   // Dört telefon yan yana. Genişlik boşluklarla birlikte hesaplanıp
   // ortalanıyor; tek tek koordinat vermek slayt düzenini bozuyordu.
   const EKRAN = [
     [img('mobil-02-bugun.png'), 'Bugün'],
-    [img('mobil-03-yaklasanlar.png'), 'Yaklaşanlar'],
-    [img('mobil-04-takvim.png'), 'Ay görünümü'],
-    [img('mobil-05-takvim-gun.png'), 'Seçili gün'],
+    [img('mobil-03-takvim.png'), 'Takvim'],
+    [img('mobil-04-kayitlar.png'), 'Kayıtlar'],
+    [img('mobil-05-kasa.png'), 'Kasa'],
   ];
   const EN = 1.9, BOSLUK = 0.42;
   const SOL = KENAR + (GENIS - (EKRAN.length * EN + (EKRAN.length - 1) * BOSLUK)) / 2;
@@ -411,22 +411,22 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   mikroNotlar(s, {
     y: 6.1, ortala: true,
     items: [
-      ['Ajanda önce', 'Ana ekran kronolojik listedir: bugün, sonra yaklaşanlar. Ay ızgarası ayrı sekmede, çünkü telefon genişliğinde hücreler dokunulamayacak kadar küçülüyor.'],
-      ['Tek sayı yukarıda', 'Salon sahibinin telefona bakma sebebi genelde tek bir soru: ne kadar alacağım kaldı. Bu sayı her ekranın üstünde duruyor.'],
-      ['Gün seçimi', 'Ay ızgarasında kayıt taşıyan günler noktalıdır; gün seçilince o günün organizasyonları altta listelenir.'],
+      ['Aynı işin tamamı', 'Web panelindeki her ekranın telefonda karşılığı var: rezervasyondan faturaya, izinlerden denetim kaydına kadar.'],
+      ['Ajanda önce', 'Ana ekran kronolojik listedir ve üstünde tek bir sayı durur: toplam kalan alacak. Telefona bakma sebebi genelde bu.'],
+      ['Arama ve süzgeç', 'Kayıtlar sekmesinde ad, telefon ve rezervasyon koduyla arama; yaklaşan, geçmiş ve alacaklı süzgeçleri.'],
     ],
   });
-  s.addNotes('Ekrandaki veriler tanıtım verisidir. Renkler organizasyon türünü gösterir ve web panelindeki renk ayarlarıyla aynıdır.');
+  s.addNotes('Ekrandaki veriler tanıtım verisidir. Beş sekme kullanıldı; altıncısı etiketleri okunmaz hâle getiriyor, geri kalan ekranlar "Daha" listesinde toplandı.');
 }
 
-/* ══ 13 · Mobil · rezervasyon ve tahsilat ═════════════════════ */
+/* ══ 12 · Mobil · rezervasyon ve tahsilat ═════════════════════ */
 {
   const s = slayt(SURFACE);
-  baslik(s, 'MOBİL', 'Rezervasyon ayrıntısı ve hızlı tahsilat');
+  baslik(s, 'MOBİL', 'Rezervasyon, tahsilat ve yeni kayıt');
   const EKRAN = [
-    [img('mobil-07-rezervasyon.png'), 'Rezervasyon ayrıntısı'],
-    [img('mobil-08-hizli-tahsilat.png'), 'Hızlı tahsilat'],
-    [img('mobil-09-is-emri.png'), 'Geçmiş ve iş emri'],
+    [img('mobil-06-rezervasyon.png'), 'Rezervasyon ayrıntısı'],
+    [img('mobil-07-hizli-tahsilat.png'), 'Hızlı tahsilat'],
+    [img('mobil-10-yeni-rezervasyon.png'), 'Yeni kayıt'],
   ];
   EKRAN.forEach(([dosya, altYazi], i) => {
     gorsel(s, dosya, { x: KENAR + i * 2.4, y: UST, w: 2.15, h: 4.2, altYazi });
@@ -436,38 +436,67 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: 8.1, y: 1.9, w: 4.5, gap: 1.42,
     items: [
       ['Para durumu en üstte', 'Toplam, tahsilat ve kalan yan yana; altındaki çubuk tahsilatın hangi oranda tamamlandığını gösterir.'],
-      ['Hızlı tahsilat', 'Para alındığı an kaydedilir. Tutar kalan alacağı aşamaz; aşarsa kayıt veritabanı düzeyinde reddedilir. Bu, uygulamanın yaptığı tek yazma işlemidir.'],
-      ['Müşteriyi ara', 'Telefon numarasının yanındaki düğme doğrudan aramayı açar.'],
-      ['İş emri', 'Etkinlik günü yapılacaklar saatiyle listelenir; tamamlananlar telefondan işaretlenir.'],
+      ['Hızlı tahsilat', 'Para alındığı an kaydedilir. Tutar kalan alacağı aşamaz; aşarsa kayıt veritabanı düzeyinde reddedilir.'],
+      ['Telefondan kayıt açma', 'Menü seçilince tutar önerilir. Dolu bir salon–gün–seans birleşimine ikinci kayıt açılamaz.'],
+      ['Belgeler ve masa düzeni', 'Sözleşme ve tahsilat makbuzu telefonda okunur ve paylaşılır; masa planı koltuk sayısıyla görünür.'],
     ],
   });
-  s.addNotes('Rezervasyon oluşturma, fatura kesme ve yetki yönetimi bilinçli olarak web panelinde bırakıldı; bu işlemler daha fazla alan ve dikkat istiyor.');
+  s.addNotes('Uzun form alanları (ikinci kişi adı, adres, hizmet listesi) bilinçli olarak web panelinde bırakıldı; telefonda uzun form yarıda bırakılıp eksik kayıt üretiyor.');
 }
 
-/* ══ 14 · Mobil · kasa, hesap ve güvenlik ═════════════════════ */
+/* ══ 13 · Mobil · yönetim ekranları ═══════════════════════════ */
 {
   const s = slayt();
-  baslik(s, 'MOBİL', 'Kasa, hesap ve güvenlik');
+  baslik(s, 'MOBİL', 'Yönetim ekranları da telefonda');
   const EKRAN = [
-    [img('mobil-06-kasa.png'), 'Kasa özeti'],
-    [img('mobil-10-hesap.png'), 'Hesap'],
-    [img('mobil-01-giris.png'), 'Giriş'],
+    [img('mobil-11-daha.png'), 'Bütün ekranlar'],
+    [img('mobil-13-raporlar.png'), 'Raporlar'],
+    [img('mobil-15-sms.png'), 'SMS kayıtları'],
+    [img('mobil-22-sistem.png'), 'Sistem durumu'],
   ];
+  const EN = 1.9, BOSLUK = 0.42;
+  const SOL = KENAR + (GENIS - (EKRAN.length * EN + (EKRAN.length - 1) * BOSLUK)) / 2;
   EKRAN.forEach(([dosya, altYazi], i) => {
-    gorsel(s, dosya, { x: KENAR + i * 2.4, y: UST, w: 2.15, h: 4.2, altYazi });
+    gorsel(s, dosya, { x: SOL + i * (EN + BOSLUK), y: 1.68, w: EN, h: 3.65, altYazi });
+  });
+
+  mikroNotlar(s, {
+    y: 6.1, ortala: true,
+    items: [
+      ['On beş ekran daha', 'Müşteriler, salonlar, menüler, tedarikçiler, faturalar, raporlar, hatırlatmalar, SMS, İYS izinleri, talepler, kullanıcılar, denetim kaydı, sistem durumu, ayarlar ve hesap.'],
+      ['Aynı veri, aynı kural', 'Uygulama web ile aynı veritabanını kullanır. Hangi kaydı göreceğine sunucudaki satır bazlı güvenlik karar verir.'],
+      ['Yazma işlemi sınırlı', 'Tahsilat, gelir–gider, yeni rezervasyon ve mesaj metni telefondan yazılır. Yetki değişikliği ve fatura kesme web panelinde kalır.'],
+    ],
+  });
+  s.addNotes('Yetki değişikliği ve fatura kesme geri alınması zor işlemler; yanlış dokunuşla bir personelin kasaya erişmesi ya da düzeltilemeyen bir fatura gönderilmesi mümkün. Bilinçli olarak masaüstünde bırakıldı.');
+}
+
+/* ══ 14 · Hatırlatmalar ═══════════════════════════════════════ */
+{
+  const s = slayt(SURFACE);
+  baslik(s, 'HATIRLATMALAR', 'Taslak mesajlar ve otomatik gönderim');
+  gorsel(s, img('panel-hatirlatmalar.png'), {
+    x: KENAR, y: UST, w: 7.0, h: 3.7,
+    altYazi: 'Yedi taslak metin; her biri düzenlenebilir, işaretlenenler kendiliğinden gönderilir.',
+  });
+  gorsel(s, img('mobil-08-hatirlatma-gonder.png'), {
+    x: 8.0, y: UST, w: 1.75, h: 3.7, altYazi: 'Tek tuşla gönderim',
   });
 
   maddeler(s, {
-    x: 8.1, y: 1.9, w: 4.5, gap: 1.3,
+    // Aralık metnin en uzun maddesine göre; 1,15'te ilk maddenin gövdesi
+    // ikinci maddenin başlığının üzerine biniyordu.
+    x: 10.1, y: 1.9, w: 2.5, gap: 1.45,
     items: [
-      ['Aynı veri, aynı kural', 'Uygulama web ile aynı veritabanını kullanır. Hangi kaydı göreceğine sunucudaki satır bazlı güvenlik karar verir; istemci filtresine güvenilmez.'],
-      ['Giriş aynı kapıdan', 'Giriş, web ile aynı sunucu ucundan geçer. Hesap kilidi ve hız sınırı mobilde de uygulanır; uygulama bu korumaları atlayan bir yan kapı değildir.'],
-      ['Oturum cihazda şifreli', 'Belirteç iOS’ta Keychain, Android’de EncryptedSharedPreferences içinde saklanır. Düz metin dosyada tutulsaydı köklenmiş bir cihazda okunabilirdi.'],
-      ['Kasa yalnızca okur', 'Gelir–gider kaydı telefondan girilmez; mobilde ihtiyaç “kasada ne var” sorusudur.'],
+      ['Taslak metin', 'Yedi hazır metin. İçindeki {musteri}, {tarih}, {kalan} adları gönderim anında doldurulur.'],
+      ['Tek tuşla gönder', 'Rezervasyon ekranından seçilir, doldurulmuş hâli gösterilir, gönderilir.'],
+      ['Otomatik', 'Kaç gün önce ve hangi saatte gideceği tanımlanır; her kayda bir kez gider.'],
     ],
   });
-  dipnot(s, 'Tek kod tabanı (React Native, Expo) hem iOS hem Android için derlenir. Uygulama içinde reklam, izleme kodu ve üçüncü taraf analitiği yoktur.', 6.55, { kucuk: true });
-  s.addNotes('Sunucu bağlantısı tanımlı değilken uygulama tanıtım verisiyle açılır ve bunu ekranda açıkça yazar; sessizce boş bir liste göstermez.');
+
+  dipnot(s, 'Gönderilmeden önce metin doldurulmuş hâliyle gösterilir: yanlış yazılmış bir yer tutucu ancak müşteriye giden mesajda fark ediliyordu. Mesaj uzunluğu da yazılır — tek bir Türkçe harf sınırı 160 karakterden 70’e düşürüp ücreti ikiye katlayabiliyor.', 6.15);
+  dipnot(s, 'Ticari ileti sınıfındaki taslaklar (teşekkür, kampanya) İYS onayı olmayan numaraya gönderilmez; engellenen gönderim sessizce atılmaz, gerekçesiyle kayda geçer.', 6.85, { kucuk: true });
+  s.addNotes('Otomatik gönderim gece çalışan bir görevle yapılıyor. Varsayılan olarak iki kural açık: tarih hatırlatması 7 gün önce, ödeme hatırlatması 3 gün önce.');
 }
 
 /* ══ 15 · SMS ═════════════════════════════════════════════════ */

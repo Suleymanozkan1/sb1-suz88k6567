@@ -5,9 +5,12 @@ import { renk } from '../../src/tema';
 /**
  * Sekmeler.
  *
- * Dört sekme: mobilde beşten fazlası etiketleri kısaltıp tanınmaz hâle
- * getiriyor. Simge yerine tek harfli işaret kullanılmıyor; her sekmenin
- * kendi geometrik işareti var ve etiket her zaman görünür.
+ * Beş sekme: iOS'ta da Android'de de sınır burası; altıncısı etiketleri
+ * kısaltıp tanınmaz hâle getiriyor. Günlük kullanımda sık açılan dördü
+ * sekmede, geri kalan on beş ekran "Daha" altındaki listede toplandı.
+ *
+ * Simge yerine tek harfli işaret kullanılıyor; her sekmenin kendi geometrik
+ * işareti var ve etiket her zaman görünür.
  */
 function Isaret({ sekil, aktif }: { sekil: string; aktif: boolean }) {
   return (
@@ -40,12 +43,16 @@ export default function SekmeYerlesimi() {
         options={{ title: 'Takvim', tabBarIcon: ({ focused }) => <Isaret sekil="▦" aktif={focused} /> }}
       />
       <Tabs.Screen
+        name="kayitlar"
+        options={{ title: 'Kayıtlar', tabBarIcon: ({ focused }) => <Isaret sekil="≡" aktif={focused} /> }}
+      />
+      <Tabs.Screen
         name="kasa"
         options={{ title: 'Kasa', tabBarIcon: ({ focused }) => <Isaret sekil="₺" aktif={focused} /> }}
       />
       <Tabs.Screen
-        name="hesap"
-        options={{ title: 'Hesap', tabBarIcon: ({ focused }) => <Isaret sekil="☰" aktif={focused} /> }}
+        name="daha"
+        options={{ title: 'Daha', tabBarIcon: ({ focused }) => <Isaret sekil="⋯" aktif={focused} /> }}
       />
     </Tabs>
   );

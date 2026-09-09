@@ -211,6 +211,7 @@ for (const [ad, yol] of [
   ['panel-kasa',        '/panel/kasa'],
   ['panel-talepler',    '/panel/talepler'],
   ['panel-izin-yonetimi', '/panel/izinler'],
+  ['panel-hatirlatmalar',  '/panel/hatirlatmalar'],
   ['panel-sms-kayitlari',  '/panel/sms'],
   ['panel-rezervasyon-detay', `/panel/rezervasyonlar/${rid}`],
 ]) await ekran(page, ad, yol);

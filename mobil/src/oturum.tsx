@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_KOK, supabase, yapilandirildi } from './supabase';
 
 /**
@@ -11,7 +12,14 @@ import { API_KOK, supabase, yapilandirildi } from './supabase';
  *
  * Uç nokta ulaşılamazsa (kurulum yapılmamış) girişe izin verilmez; sessizce
  * daha zayıf bir yola düşmek, korumayı kapatmakla aynı şey olurdu.
+ *
+ * Tanıtım kipinde oturum yalnızca bellekte tutuluyordu ve uygulama her
+ * yeniden yüklendiğinde giriş ekranına düşüyordu. Gerçek oturum yeniden
+ * yüklemeye dayandığı için tanıtım oturumu da dayanmalı; bir işaret
+ * AsyncStorage'a yazılıyor. Bu bir kimlik belirteci değil, yalnızca
+ * "tanıtımda giriş yapılmıştı" bilgisi — güvenlik değeri taşımaz.
  */
+const TANITIM_ANAHTARI = 'sahratakip.tanitim.oturum';
 
 interface Kullanici {
   id: string;
@@ -40,8 +48,15 @@ export function OturumSaglayici({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!yapilandirildi || !supabase) {
-      setYukleniyor(false);
-      return;
+      let iptalTanitim = false;
+      void AsyncStorage.getItem(TANITIM_ANAHTARI)
+        .then((deger) => {
+          if (iptalTanitim) return;
+          if (deger === 'acik') setKullanici(TANITIM_KULLANICI);
+        })
+        .catch(() => { /* depo okunamazsa giriş ekranıyla başlanır */ })
+        .finally(() => { if (!iptalTanitim) setYukleniyor(false); });
+      return () => { iptalTanitim = true; };
     }
     let iptal = false;
 
@@ -75,6 +90,7 @@ export function OturumSaglayici({ children }: { children: ReactNode }) {
   const girisYap = useCallback(async (eposta: string, sifre: string) => {
     if (!yapilandirildi || !supabase) {
       setKullanici(TANITIM_KULLANICI);
+      await AsyncStorage.setItem(TANITIM_ANAHTARI, 'acik').catch(() => { /* önemsiz */ });
       return;
     }
 
@@ -98,6 +114,7 @@ export function OturumSaglayici({ children }: { children: ReactNode }) {
 
   const cikisYap = useCallback(async () => {
     if (supabase) await supabase.auth.signOut();
+    await AsyncStorage.removeItem(TANITIM_ANAHTARI).catch(() => { /* önemsiz */ });
     setKullanici(null);
   }, []);
 
