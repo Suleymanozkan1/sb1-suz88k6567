@@ -95,7 +95,7 @@ export default function MasaDuzeni({ reservationId, guestCount, canEdit }: Props
           <span className="block text-xs text-brand-muted">
             {summary.isEnough ? 'Fazla koltuk' : 'Eksik koltuk'}
           </span>
-          <span className={`font-heading text-xl font-bold ${summary.isEnough ? 'text-brand' : 'text-[#e74c3c]'}`}>
+          <span className={`font-heading text-xl font-bold ${summary.isEnough ? 'text-brand' : 'text-danger'}`}>
             {formatNumber(summary.isEnough ? summary.spareSeats : summary.missingSeats)}
           </span>
         </div>
@@ -162,7 +162,7 @@ export default function MasaDuzeni({ reservationId, guestCount, canEdit }: Props
                     <td className="py-2">
                       <button type="button" onClick={() => removeRow(i)}
                         aria-label={`${i + 1}. masayı sil`}
-                        className="rounded p-1 text-brand-muted hover:text-[#e74c3c]">
+                        className="rounded p-1 text-brand-muted hover:text-danger">
                         <IconTrash size={16} />
                       </button>
                     </td>

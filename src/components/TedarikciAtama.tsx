@@ -127,7 +127,7 @@ export default function TedarikciAtama({ reservationId, currency, canEdit }: Pro
                     <td className="py-2">
                       <button type="button" aria-label={`${i + 1}. tedarikçiyi kaldır`}
                         onClick={() => { setDirty(true); setRows((l) => l.filter((_, x) => x !== i)); }}
-                        className="rounded p-1 text-brand-muted hover:text-[#e74c3c]">
+                        className="rounded p-1 text-brand-muted hover:text-danger">
                         <IconTrash size={16} />
                       </button>
                     </td>

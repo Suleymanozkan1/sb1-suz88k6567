@@ -313,7 +313,7 @@ export default function RezervasyonForm() {
                 <label key={s} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
+                    className="h-4 w-4 rounded border-line text-accent-ink focus:ring-accent"
                     checked={form.services.includes(s)}
                     onChange={(e) =>
                       update('services', e.target.checked ? [...form.services, s] : form.services.filter((x) => x !== s))
@@ -406,10 +406,10 @@ function Field({
     <div className={className}>
       <label htmlFor={id} className="field-label">
         {label}
-        {required && <span className="ml-0.5 text-[#e74c3c]" aria-hidden="true">*</span>}
+        {required && <span className="ml-0.5 text-danger" aria-hidden="true">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-xs text-[#e74c3c]" role="alert">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
     </div>
   );
 }

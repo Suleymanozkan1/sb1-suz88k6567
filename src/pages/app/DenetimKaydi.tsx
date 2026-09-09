@@ -154,7 +154,7 @@ export default function DenetimKaydi() {
                         <>
                           <button
                             type="button"
-                            className="text-xs text-accent hover:text-accent-dark"
+                            className="text-xs text-accent-ink hover:text-accent-ink-dark"
                             aria-expanded={isOpen}
                             onClick={() => setExpanded(isOpen ? null : entry.id)}
                           >

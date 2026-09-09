@@ -274,7 +274,7 @@ export default function Faturalar() {
                     {lines.length > 1 && (
                       <button type="button" aria-label={`${index + 1}. satırı sil`}
                         onClick={() => setLines((c) => c.filter((_, i) => i !== index))}
-                        className="rounded p-1.5 text-brand-muted hover:text-[#e74c3c]">
+                        className="rounded p-1.5 text-brand-muted hover:text-danger">
                         <IconTrash size={16} />
                       </button>
                     )}

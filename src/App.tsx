@@ -93,6 +93,7 @@ export default function App() {
             <Route path="salon/:slug" element={<SalonDetay />} />
 
             <Route path="gizlilik-politikasi" element={<LegalPage />} />
+            <Route path="kvkk-aydinlatma-metni" element={<LegalPage />} />
             <Route path="iade-proseduru" element={<LegalPage />} />
             <Route path="mesafeli-hizmet-sozlesmesi" element={<LegalPage />} />
             <Route path="uyelik-sozlesmesi" element={<LegalPage />} />

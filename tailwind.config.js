@@ -5,17 +5,25 @@ export default {
     extend: {
       colors: {
         // Orijinal marka paleti
+        // Kontrast oranları WCAG 2.1 AA (1.4.3) ölçütüne göre seçildi;
+        // yorumdaki değerler beyaz zemine karşı ölçülen orandır.
         brand: {
-          DEFAULT: '#37517e',
+          DEFAULT: '#37517e',   // 7,95 — başlıklar
           dark: '#2f4770',
           light: '#4668a2',
-          muted: '#6182ba',
+          muted: '#4b6fab',     // beyazla 5,05, açık zeminle (surface) 4,63
         },
         accent: {
-          DEFAULT: '#47b2e4',
-          dark: '#209dd8',
-          light: '#73c5eb',
+          DEFAULT: '#47b2e4',   // 2,40 — YALNIZCA dekoratif: çubuk, ayraç, koyu zemin dolgusu
+          ink: '#1876a1',       // beyazla 5,07, açık zeminle 4,64 — metin ve buton zemini
+          dark: '#146485',      // 6,58 — ink'in üzerine gelme hâli
+          light: '#87cded',     // koyu marka zemininde 4,54 — koyu zeminde metin
         },
+        // Anlamsal durum renkleri. Eski #e74c3c (beyazla 3,82) ve
+        // #18d26e (2,00) AA eşiğinin altındaydı.
+        danger: '#d42c1a',    // beyazla 5,03
+        success: '#0f7f43',   // beyazla 5,08
+        warning: '#9b6208',   // beyazla 5,07
         surface: '#f3f5fa',
         ink: '#444444',
         line: '#e8edf5',

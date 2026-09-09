@@ -14,13 +14,20 @@
     @apply font-heading text-brand;
   }
   a {
-    @apply text-accent transition-colors;
+    @apply text-accent-ink transition-colors;
   }
   a:hover {
     @apply text-accent-dark;
   }
+  /* Paragraf içindeki bağlantı yalnızca renkle ayrılamaz (WCAG 1.4.1);
+     altı çizili olur. Menü ve buton bağlantıları bu kuralın dışında. */
+  p a, li a, label a {
+    @apply underline underline-offset-2;
+  }
+  /* Odak halkası bir arayüz bileşeni sınırıdır; 1.4.11 için en az 3:1 ister.
+     Açık mavi beyaz zeminde 2,40'ta kalıyordu. */
   :focus-visible {
-    @apply outline-none ring-2 ring-accent ring-offset-2;
+    @apply outline-none ring-2 ring-accent-ink ring-offset-2;
   }
 }
 
@@ -32,10 +39,10 @@
     @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-60;
   }
   .btn-primary {
-    @apply btn bg-accent text-white hover:bg-accent-dark;
+    @apply btn bg-accent-ink text-white hover:bg-accent-dark;
   }
   .btn-outline {
-    @apply btn border-2 border-accent text-accent hover:bg-accent hover:text-white;
+    @apply btn border-2 border-accent-ink text-accent-ink hover:bg-accent-ink hover:text-white;
   }
   .btn-brand {
     @apply btn bg-brand text-white hover:bg-brand-dark;
@@ -54,7 +61,7 @@
     @apply mb-1 block text-sm font-medium text-brand;
   }
   .field-input {
-    @apply w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink shadow-sm transition focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent;
+    @apply w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink shadow-sm transition focus:border-accent-ink focus:outline-none focus:ring-1 focus:ring-accent-ink;
   }
   .card {
     @apply rounded-lg border border-line bg-white shadow-sm;

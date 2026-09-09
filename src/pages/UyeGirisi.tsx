@@ -115,7 +115,7 @@ export default function UyeGirisi() {
             {challenge ? (
               <form onSubmit={(e) => { void onVerify(e); }} noValidate className="card p-6">
                 <h2 className="mb-2 flex items-center gap-2 font-heading text-xl font-bold text-brand">
-                  <IconShield size={20} className="text-accent" /> SMS Doğrulama
+                  <IconShield size={20} className="text-accent-ink" /> SMS Doğrulama
                 </h2>
                 <p className="mb-5 text-sm leading-relaxed">
                   Güvenliğiniz için <strong>{formatPhone(challenge.phone)}</strong> numarasına 6 haneli
@@ -143,7 +143,7 @@ export default function UyeGirisi() {
             ) : (
             <form onSubmit={(e) => { void onSubmit(e); }} noValidate className="card p-6">
               <h2 className="mb-5 flex items-center gap-2 font-heading text-xl font-bold text-brand">
-                <IconLock size={20} className="text-accent" /> Giriş yapın
+                <IconLock size={20} className="text-accent-ink" /> Giriş yapın
               </h2>
 
               <div className="space-y-4">
@@ -164,7 +164,7 @@ export default function UyeGirisi() {
               </button>
 
               {!isDemoMode && (
-                <button type="button" onClick={() => { void onReset(); }} className="mt-3 w-full text-sm text-accent hover:text-accent-dark">
+                <button type="button" onClick={() => { void onReset(); }} className="mt-3 w-full text-sm text-accent-ink hover:text-accent-ink-dark">
                   Şifremi unuttum
                 </button>
               )}
@@ -210,7 +210,7 @@ export default function UyeGirisi() {
 
             <div className={`card p-6 ${isDemoMode ? 'mt-4' : ''}`}>
               <h2 className="flex items-center gap-2 font-heading text-base font-bold text-brand">
-                <IconShield size={18} className="text-accent" /> Güvenlik
+                <IconShield size={18} className="text-accent-ink" /> Güvenlik
               </h2>
               <p className="mt-2 text-sm leading-relaxed">
                 {isDemoMode

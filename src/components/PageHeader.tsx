@@ -15,7 +15,7 @@ export default function PageHeader({ title, breadcrumbs = [], description }: Pro
         <nav aria-label="Sayfa yolu" className="mb-2">
           <ol className="flex flex-wrap items-center gap-1 text-sm text-brand-muted">
             <li>
-              <Link to="/" className="text-brand-muted hover:text-accent">
+              <Link to="/" className="text-brand-muted hover:text-accent-ink">
                 Anasayfa
               </Link>
             </li>
@@ -23,7 +23,7 @@ export default function PageHeader({ title, breadcrumbs = [], description }: Pro
               <li key={b.label} className="flex items-center gap-1">
                 <IconChevronRight size={14} />
                 {b.to ? (
-                  <Link to={b.to} className="text-brand-muted hover:text-accent">
+                  <Link to={b.to} className="text-brand-muted hover:text-accent-ink">
                     {b.label}
                   </Link>
                 ) : (

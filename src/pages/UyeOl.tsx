@@ -345,10 +345,10 @@ function Field({
     <div>
       <label htmlFor={id} className="field-label">
         {label}
-        {required && <span className="ml-0.5 text-[#e74c3c]" aria-hidden="true">*</span>}
+        {required && <span className="ml-0.5 text-danger" aria-hidden="true">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-xs text-[#e74c3c]" role="alert">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
     </div>
   );
 }
@@ -372,14 +372,14 @@ function Checkbox({
         <input
           id={id}
           type="checkbox"
-          className="mt-0.5 h-4 w-4 rounded border-line text-accent focus:ring-accent"
+          className="mt-0.5 h-4 w-4 rounded border-line text-accent-ink focus:ring-accent"
           checked={checked}
           onChange={(e) => onChange(e.target.checked)}
           aria-invalid={Boolean(error)}
         />
         <span>{children}</span>
       </label>
-      {error && <p className="ml-6 mt-1 text-xs text-[#e74c3c]" role="alert">{error}</p>}
+      {error && <p className="ml-6 mt-1 text-xs text-danger" role="alert">{error}</p>}
     </div>
   );
 }

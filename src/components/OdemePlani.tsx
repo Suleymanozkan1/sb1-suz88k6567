@@ -84,7 +84,7 @@ export default function OdemePlani({ reservationId, totalAmount, currency, payme
         {[
           ['Planlanan', formatMoney(plan.planned, currency), ''],
           ['Tahsil edilen', formatMoney(plan.paid, currency), ''],
-          ['Vadesi geçen', formatMoney(plan.overdue, currency), plan.overdue > 0 ? 'text-[#e74c3c]' : ''],
+          ['Vadesi geçen', formatMoney(plan.overdue, currency), plan.overdue > 0 ? 'text-danger' : ''],
           ['Plana bağlanmayan', formatMoney(plan.unplanned, currency), ''],
         ].map(([label, value, tone]) => (
           <div key={label} className="rounded border border-line bg-surface p-3">
@@ -165,7 +165,7 @@ export default function OdemePlani({ reservationId, totalAmount, currency, payme
                     <td className="py-2">
                       <button type="button" aria-label={`${row.seq}. taksiti sil`}
                         onClick={() => { setDirty(true); setRows((l) => l.filter((_, x) => x !== i)); }}
-                        className="rounded p-1 text-brand-muted hover:text-[#e74c3c]">
+                        className="rounded p-1 text-brand-muted hover:text-danger">
                         <IconTrash size={16} />
                       </button>
                     </td>

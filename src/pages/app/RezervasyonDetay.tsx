@@ -163,7 +163,7 @@ export default function RezervasyonDetay() {
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="btn btn-sm border-2 border-[#e74c3c] text-[#e74c3c] hover:bg-[#e74c3c] hover:text-white"
+              className="btn btn-sm border-2 border-danger text-danger hover:bg-danger hover:text-white"
               disabled={isPast}
               title={isPast ? 'Geçmiş tarihli kayıt silinemez' : undefined}
             >
@@ -220,7 +220,7 @@ export default function RezervasyonDetay() {
           </dl>
           <div className="mt-4 h-3 overflow-hidden rounded-full bg-surface">
             <div
-              className="h-full bg-[#18d26e]"
+              className="h-full bg-success"
               style={{ width: `${reservation.totalAmount > 0 ? Math.min(100, (paid / reservation.totalAmount) * 100) : 0}%` }}
               role="progressbar"
               aria-valuenow={reservation.totalAmount > 0 ? Math.round((paid / reservation.totalAmount) * 100) : 0}
@@ -260,7 +260,7 @@ export default function RezervasyonDetay() {
                 <IconPlus size={16} /> Ekle
               </button>
             </div>
-            {payError && <p className="sm:col-span-2 lg:col-span-5 text-xs text-[#e74c3c]" role="alert">{payError}</p>}
+            {payError && <p className="sm:col-span-2 lg:col-span-5 text-xs text-danger" role="alert">{payError}</p>}
           </form>
         )}
 
@@ -293,7 +293,7 @@ export default function RezervasyonDetay() {
                         Makbuz
                       </Link>
                       {can('kasa.duzenle') && (
-                        <button type="button" onClick={() => setPaymentToDelete(p)} aria-label="Tahsilatı sil" className="rounded p-1 text-brand-muted hover:text-[#e74c3c]">
+                        <button type="button" onClick={() => setPaymentToDelete(p)} aria-label="Tahsilatı sil" className="rounded p-1 text-brand-muted hover:text-danger">
                           <IconTrash size={15} />
                         </button>
                       )}

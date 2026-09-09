@@ -49,7 +49,7 @@ export default function AppLayout() {
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition ${
-      isActive ? 'bg-accent text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'
+      isActive ? 'bg-accent-ink text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'
     }`;
 
   return (
@@ -63,7 +63,7 @@ export default function AppLayout() {
       >
         <div className="mb-6 flex items-center justify-between">
           <Link to="/" className="font-display text-xl font-bold text-white hover:text-white">
-            Salon<span className="text-accent">Ajandası</span>
+            Salon<span className="text-accent-light">Ajandası</span>
           </Link>
           <button type="button" className="text-white lg:hidden" onClick={() => setSidebarOpen(false)} aria-label="Menüyü kapat">
             <IconClose size={22} />
@@ -72,7 +72,7 @@ export default function AppLayout() {
 
         {businesses.length > 1 && (
           <div className="mb-4">
-            <label htmlFor="active-business" className="mb-1 block text-xs text-white/60">
+            <label htmlFor="active-business" className="mb-1 block text-xs text-white/75">
               Aktif işletme
             </label>
             <select

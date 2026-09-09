@@ -47,9 +47,9 @@ export default function Haberler() {
         <div className="container-dt grid gap-6 md:grid-cols-2">
           {NEWS.map((n) => (
             <article key={n.slug} className="card flex flex-col p-6">
-              <p className="text-xs uppercase tracking-wide text-accent">{formatDateLong(n.date)}</p>
+              <p className="text-xs uppercase tracking-wide text-accent-ink">{formatDateLong(n.date)}</p>
               <h2 className="mt-2 font-heading text-xl font-bold text-brand">
-                <Link to={`/haberler/${n.slug}`} className="text-brand hover:text-accent">
+                <Link to={`/haberler/${n.slug}`} className="text-brand hover:text-accent-ink">
                   {n.title}
                 </Link>
               </h2>

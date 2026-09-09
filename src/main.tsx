@@ -5,7 +5,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { initMonitoring } from './lib/monitoring';
 import './index.css';
 
-initMonitoring();
+// İzleme başlatması render'ı bekletmez; DSN yoksa hiçbir şey indirilmez.
+void initMonitoring();
 
 const container = document.getElementById('root');
 if (!container) throw new Error('#root elemanı bulunamadı.');

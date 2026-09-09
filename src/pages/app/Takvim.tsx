@@ -4,7 +4,7 @@ import Seo from '../../components/Seo';
 import { useReservationsWithBalances } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { DAY_NAMES_SHORT, MONTH_NAMES } from '../../data/constants';
-import { formatMoney, toIso, todayIso } from '../../lib/format';
+import { formatMoney, okunakliMetinRengi, toIso, todayIso } from '../../lib/format';
 import { IconChevronLeft, IconChevronRight, IconPlus } from '../../components/Icons';
 import type { Reservation } from '../../types';
 
@@ -60,7 +60,7 @@ export default function Takvim() {
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="card p-4 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <button type="button" onClick={() => shift(-1)} aria-label="Önceki ay" className="rounded border border-line p-2 text-brand hover:border-accent hover:text-accent">
+            <button type="button" onClick={() => shift(-1)} aria-label="Önceki ay" className="rounded border border-line p-2 text-brand hover:border-accent-ink hover:text-accent-ink">
               <IconChevronLeft size={18} />
             </button>
             <div className="text-center">
@@ -69,7 +69,7 @@ export default function Takvim() {
               </h2>
               <button
                 type="button"
-                className="text-xs text-accent"
+                className="text-xs text-accent-ink"
                 onClick={() => {
                   setYear(now.getFullYear());
                   setMonth(now.getMonth());
@@ -78,7 +78,7 @@ export default function Takvim() {
                 Bugüne dön
               </button>
             </div>
-            <button type="button" onClick={() => shift(1)} aria-label="Sonraki ay" className="rounded border border-line p-2 text-brand hover:border-accent hover:text-accent">
+            <button type="button" onClick={() => shift(1)} aria-label="Sonraki ay" className="rounded border border-line p-2 text-brand hover:border-accent-ink hover:text-accent-ink">
               <IconChevronRight size={18} />
             </button>
           </div>
@@ -104,18 +104,18 @@ export default function Takvim() {
                   aria-pressed={isSelected}
                   aria-label={`${day} ${MONTH_NAMES[month]} ${year}, ${items.length} rezervasyon`}
                   className={`min-h-[74px] rounded border p-1.5 text-left transition ${
-                    isSelected ? 'border-accent bg-accent/5' : isToday ? 'border-accent/50 bg-white' : 'border-line bg-white hover:border-accent/50'
+                    isSelected ? 'border-accent-ink bg-accent-ink/5' : isToday ? 'border-accent-ink/50 bg-white' : 'border-line bg-white hover:border-accent-ink/50'
                   }`}
                 >
-                  <span className={`text-xs font-semibold ${isToday ? 'text-accent' : 'text-brand'}`}>{day}</span>
+                  <span className={`text-xs font-semibold ${isToday ? 'text-accent-ink' : 'text-brand'}`}>{day}</span>
                   <span className="mt-1 block space-y-0.5">
                     {items.slice(0, 2).map((r) => {
                       const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
                       return (
                         <span
                           key={r.id}
-                          className="block truncate rounded px-1 py-0.5 text-[9px] text-white"
-                          style={{ background: color }}
+                          className="block truncate rounded px-1 py-0.5 text-[9px]"
+                          style={{ background: color, color: okunakliMetinRengi(color) }}
                         >
                           {r.slot === 'Gündüz' ? '☀' : '☾'} {r.customerName}
                         </span>
@@ -163,7 +163,7 @@ export default function Takvim() {
                           {Number(r.date.slice(-2))} {MONTH_NAMES[Number(r.date.slice(5, 7)) - 1]} · {r.slot} · {r.guestCount} kişi
                         </p>
                       </div>
-                      <span className="shrink-0 rounded px-2 py-0.5 text-[10px] text-white" style={{ background: color }}>
+                      <span className="shrink-0 rounded px-2 py-0.5 text-[10px]" style={{ background: color, color: okunakliMetinRengi(color) }}>
                         {r.organizationType}
                       </span>
                     </div>

@@ -47,7 +47,7 @@ export default function ProgressBar({ label, value }: Props) {
         aria-label={label}
       >
         <div
-          className="h-full rounded-sm bg-accent transition-[width] duration-1000 ease-out"
+          className="h-full rounded-sm bg-accent-ink transition-[width] duration-1000 ease-out"
           style={{ width: `${width}%` }}
         />
       </div>

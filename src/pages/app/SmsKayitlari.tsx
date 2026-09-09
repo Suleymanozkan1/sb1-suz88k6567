@@ -63,14 +63,14 @@ export default function SmsKayitlari() {
         <button type="button" role="tab" aria-selected={tab === 'gonderilen'}
           onClick={() => setTab('gonderilen')}
           className={`btn-sm rounded-full px-4 py-2 text-sm transition ${
-            tab === 'gonderilen' ? 'bg-accent text-white' : 'border border-line bg-white text-brand hover:border-accent'
+            tab === 'gonderilen' ? 'bg-accent-ink text-white' : 'border border-line bg-white text-brand hover:border-accent-ink'
           }`}>
           Gönderilen mesajlar
         </button>
         <button type="button" role="tab" aria-selected={tab === 'kuyruk'}
           onClick={() => setTab('kuyruk')}
           className={`btn-sm rounded-full px-4 py-2 text-sm transition ${
-            tab === 'kuyruk' ? 'bg-accent text-white' : 'border border-line bg-white text-brand hover:border-accent'
+            tab === 'kuyruk' ? 'bg-accent-ink text-white' : 'border border-line bg-white text-brand hover:border-accent-ink'
           }`}>
           Kuyruk {queueSummary.bekleyen > 0 && `(${queueSummary.bekleyen} bekliyor)`}
         </button>

@@ -77,7 +77,7 @@ export default function Iletisim({ variant = 'iletisim' }: Props) {
         <div className="container-dt grid gap-10 lg:grid-cols-3">
           <div className="space-y-4">
             <div className="card flex items-start gap-4 p-5">
-              <span className="rounded-full bg-accent/10 p-3 text-accent"><IconMail size={22} /></span>
+              <span className="rounded-full bg-accent/10 p-3 text-accent-ink"><IconMail size={22} /></span>
               <div>
                 <h2 className="font-heading font-bold text-brand">E-Posta</h2>
                 <p className="mt-1 text-sm">
@@ -86,7 +86,7 @@ export default function Iletisim({ variant = 'iletisim' }: Props) {
               </div>
             </div>
             <div className="card flex items-start gap-4 p-5">
-              <span className="rounded-full bg-accent/10 p-3 text-accent"><IconMessage size={22} /></span>
+              <span className="rounded-full bg-accent/10 p-3 text-accent-ink"><IconMessage size={22} /></span>
               <div>
                 <h2 className="font-heading font-bold text-brand">Destek</h2>
                 <p className="mt-1 text-sm leading-relaxed">
@@ -97,10 +97,10 @@ export default function Iletisim({ variant = 'iletisim' }: Props) {
             <div className="card p-5">
               <h2 className="font-heading font-bold text-brand">Sosyal Medya</h2>
               <div className="mt-3 flex gap-2">
-                <a href={SOCIAL.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent">
+                <a href={SOCIAL.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent-ink">
                   <IconFacebook size={18} />
                 </a>
-                <a href={SOCIAL.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent">
+                <a href={SOCIAL.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent-ink">
                   <IconInstagram size={18} />
                 </a>
               </div>
@@ -165,7 +165,7 @@ function Field({
     <div className={className}>
       <label htmlFor={id} className="field-label">{label}</label>
       {children}
-      {error && <p className="mt-1 text-xs text-[#e74c3c]" role="alert">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
     </div>
   );
 }

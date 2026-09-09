@@ -88,7 +88,7 @@ export default function IzinYonetimi() {
       <Seo title="İYS İzin Yönetimi - Salon Ajandası Panel" noindex />
 
       <h1 className="mb-2 flex items-center gap-2 font-heading text-2xl font-bold text-brand">
-        <IconShield size={24} className="text-accent" /> İYS İzin Yönetimi
+        <IconShield size={24} className="text-accent-ink" /> İYS İzin Yönetimi
       </h1>
       <p className="mb-6 max-w-3xl text-sm leading-relaxed text-brand-muted">
         Kampanya, indirim ve tanıtım gibi <strong>ticari iletiler</strong> için alıcıdan İYS onayı
@@ -204,7 +204,7 @@ export default function IzinYonetimi() {
                   <td className="px-4 py-3 text-right">
                     <button type="button" onClick={() => setToDelete(c)}
                       aria-label={`${formatPhone(c.phone)} iznini sil`}
-                      className="rounded p-1 text-brand-muted hover:text-[#e74c3c]">
+                      className="rounded p-1 text-brand-muted hover:text-danger">
                       <IconTrash size={15} />
                     </button>
                   </td>

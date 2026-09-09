@@ -1,4 +1,5 @@
 import { DEFAULT_COLOR_SETTINGS, MONTH_NAMES } from '../data/constants';
+import { okunakliMetinRengi } from '../lib/format';
 
 /** Ekranlar sayfasında gösterilen, uygulama arayüzünü temsil eden statik önizlemeler */
 export default function ScreenMockup({ kind }: { kind: string }) {
@@ -54,7 +55,9 @@ function CalendarPreview() {
           <span
             key={i}
             className="flex h-7 items-center justify-center rounded text-[9px]"
-            style={booked[i] ? { background: booked[i], color: '#fff' } : { background: '#f3f5fa', color: '#9db0cc' }}
+            style={booked[i]
+              ? { background: booked[i], color: okunakliMetinRengi(booked[i]) }
+              : { background: '#f3f5fa', color: '#4b6fab' }}
           >
             {i + 1 <= 31 ? i + 1 : ''}
           </span>
@@ -82,7 +85,7 @@ function ProgramPreview() {
             <span>{total.toLocaleString('tr-TR')} ₺</span>
           </div>
           <div className="h-2 rounded bg-surface">
-            <div className="h-full rounded bg-accent" style={{ width: `${(total / max) * 100}%` }} />
+            <div className="h-full rounded bg-accent-ink" style={{ width: `${(total / max) * 100}%` }} />
           </div>
         </div>
       ))}
@@ -97,7 +100,7 @@ function MonthPreview() {
     <div className="flex h-40 items-end gap-1.5">
       {values.map((v, i) => (
         <div key={i} className="flex flex-1 flex-col items-center gap-1">
-          <div className="w-full rounded-t bg-accent" style={{ height: `${(v / max) * 120}px` }} />
+          <div className="w-full rounded-t bg-accent-ink" style={{ height: `${(v / max) * 120}px` }} />
           <span className="text-[8px] text-brand-muted">{MONTH_NAMES[i].slice(0, 3)}</span>
         </div>
       ))}
@@ -140,7 +143,7 @@ function CashFlowPreview() {
           <tr key={r[0] + r[1]} className="border-b border-line/60">
             <td className="py-1.5 text-brand">{r[0]}</td>
             <td className="py-1.5 text-brand">{r[1]}</td>
-            <td className={`py-1.5 ${r[2] === 'Gelir' ? 'text-[#18d26e]' : 'text-[#e74c3c]'}`}>{r[2]}</td>
+            <td className={`py-1.5 ${r[2] === 'Gelir' ? 'text-success' : 'text-danger'}`}>{r[2]}</td>
             <td className="py-1.5 text-right text-brand">{r[3]}</td>
           </tr>
         ))}
@@ -236,7 +239,7 @@ function BusinessPreview() {
             <div className="text-[10px] font-semibold text-brand">{r[0]}</div>
             <div className="text-[9px] text-brand-muted">{r[1]}</div>
           </div>
-          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[9px] text-accent">{r[2]}</span>
+          <span className="rounded-full bg-accent-ink/10 px-2 py-0.5 text-[9px] text-accent-dark">{r[2]}</span>
         </div>
       ))}
     </div>

@@ -51,7 +51,7 @@ export default function Dusunceler() {
               {filtered.map((t) => (
                 <li key={`${t.business}-${t.author}`}>
                   <figure className="card flex h-full flex-col p-6">
-                    <div className="mb-3 flex gap-0.5 text-accent" aria-label="5 üzerinden 5 puan">
+                    <div role="img" className="mb-3 flex gap-0.5 text-accent-ink" aria-label="5 üzerinden 5 puan">
                       {Array.from({ length: 5 }, (_, i) => (
                         <IconStar key={i} size={16} className="fill-current" />
                       ))}

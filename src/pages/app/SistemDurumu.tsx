@@ -94,7 +94,7 @@ export default function SistemDurumu() {
 
       <section className="card p-6">
         <h2 className="mb-2 flex items-center gap-2 font-heading text-lg font-bold text-brand">
-          <IconShield size={20} className="text-accent" /> Yedekleme
+          <IconShield size={20} className="text-accent-ink" /> Yedekleme
         </h2>
 
         {isDemoMode ? (

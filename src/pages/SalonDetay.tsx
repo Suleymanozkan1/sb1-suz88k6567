@@ -108,8 +108,8 @@ export default function SalonDetay() {
           <div className="lg:col-span-2">
             <div className="card p-6">
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs text-accent">{member.category}</span>
-                <span className="flex gap-0.5 text-accent" aria-label="5 üzerinden 5 puan">
+                <span className="rounded-full bg-accent-ink/10 px-3 py-1 text-xs text-accent-dark">{member.category}</span>
+                <span className="flex gap-0.5 text-accent-ink" aria-label="5 üzerinden 5 puan">
                   {Array.from({ length: 5 }, (_, i) => (
                     <IconStar key={i} size={14} className="fill-current" />
                   ))}
@@ -118,19 +118,19 @@ export default function SalonDetay() {
 
               <h2 className="mb-4 font-heading text-lg font-bold text-brand">İşletme Bilgileri</h2>
               <dl className="grid gap-4 sm:grid-cols-2">
-                <Info label="Adres" icon={<IconLocation size={16} className="text-accent" />}>
+                <Info label="Adres" icon={<IconLocation size={16} className="text-accent-ink" />}>
                   {member.address ?? '—'}
                 </Info>
-                <Info label="İl / İlçe" icon={<IconLocation size={16} className="text-accent" />}>
+                <Info label="İl / İlçe" icon={<IconLocation size={16} className="text-accent-ink" />}>
                   {member.district} / {member.city}
                 </Info>
                 {member.capacity !== undefined && (
-                  <Info label="Salon Kapasitesi" icon={<IconUsers size={16} className="text-accent" />}>
+                  <Info label="Salon Kapasitesi" icon={<IconUsers size={16} className="text-accent-ink" />}>
                     {member.capacity} kişi
                   </Info>
                 )}
                 {member.phone && (
-                  <Info label="Telefon" icon={<IconPhone size={16} className="text-accent" />}>
+                  <Info label="Telefon" icon={<IconPhone size={16} className="text-accent-ink" />}>
                     <a href={`tel:${member.phone}`}>{formatPhone(member.phone)}</a>
                   </Info>
                 )}
@@ -206,7 +206,7 @@ export default function SalonDetay() {
                 <ul className="space-y-2">
                   {nearby.map((m) => (
                     <li key={m.id}>
-                      <Link to={`/salon/${m.slug}`} className="block rounded-md border border-line px-3 py-2 text-sm hover:border-accent">
+                      <Link to={`/salon/${m.slug}`} className="block rounded-md border border-line px-3 py-2 text-sm hover:border-accent-ink">
                         <span className="block font-medium text-brand">{m.name}</span>
                         <span className="block text-xs text-brand-muted">{m.district} / {m.city}</span>
                       </Link>
@@ -247,7 +247,7 @@ function Field({
     <div className={className}>
       <label htmlFor={id} className="field-label">{label}</label>
       {children}
-      {error && <p className="mt-1 text-xs text-[#e74c3c]" role="alert">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
     </div>
   );
 }
