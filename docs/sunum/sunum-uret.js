@@ -73,7 +73,7 @@ function notes(s, x, y, items, gap, width) {
   s.addText('Salon Ajandası', { x: 0.9, y: 2.9, w: 8.4, h: 1.3, isTextBox: true, margin: 0,
     fontFace: H, fontSize: 58, bold: true, color: WHITE });
   s.addText('Rezervasyon, tahsilat, sözleşme, fatura ve organizasyon planlaması için\nweb tabanlı salon yönetim sistemi.', {
-    x: 0.9, y: 4.25, w: 8.2, h: 0.9, isTextBox: true, margin: 0,
+    x: 0.9, y: 4.25, w: 8.75, h: 0.9, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 17, color: PALE, lineSpacing: 27 });
   s.addNotes('Tanıtımın açılışı. Sistemin ne olduğu tek cümlede belirtilir.');
 }

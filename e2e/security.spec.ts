@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /** Harici kaynaklar (yazı tipleri) test ortamında erişilemez; isteği asılı bırakmamak için engellenir. */
 async function blockExternalRequests(page: Page) {
@@ -151,14 +153,17 @@ test.describe('İstemci tarafı güvenlik', () => {
     expect(html).not.toContain('OTP_SECRET');
   });
 
-  test('derlenmiş paketlerde sunucu sırları bulunmuyor', async ({ request }) => {
-    const index = await (await request.get('/')).text();
-    const scripts = [...index.matchAll(/src="(\/assets\/[^"]+\.js)"/g)].map((m) => m[1]);
-    expect(scripts.length).toBeGreaterThan(0);
+  test('derlenmiş paketlerde sunucu sırları bulunmuyor', async () => {
+    // Panel ekranları ayrı parçalara bölünüyor ve giriş sayfasından
+    // bağlanmıyor; yalnızca index.html'deki betikleri taramak parçaların
+    // çoğunu denetim dışı bırakıyordu. dist/assets altındaki tüm JS okunur.
+    const dizin = path.resolve(process.cwd(), 'dist/assets');
+    const parcalar = fs.readdirSync(dizin).filter((f) => f.endsWith('.js'));
+    expect(parcalar.length).toBeGreaterThan(1);
 
-    for (const src of scripts) {
-      const code = await (await request.get(src!)).text();
-      expect(code, `${src} sunucu sırrı içeriyor`)
+    for (const parca of parcalar) {
+      const code = fs.readFileSync(path.join(dizin, parca), 'utf-8');
+      expect(code, `${parca} sunucu sırrı içeriyor`)
         .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET|PARASUT_CLIENT_SECRET|PARASUT_PASSWORD/i);
     }
   });
