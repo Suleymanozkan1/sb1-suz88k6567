@@ -10,11 +10,11 @@ export const PRIVACY_POLICY: LegalDoc = {
   sections: [
     {
       paragraphs: [
-        'Bu gizlilik politikası duguntakip.com’la başlayan tüm URL’li sitelerde geçerlidir.',
+        'Bu gizlilik politikası salonajandasi.com’la başlayan tüm URL’li sitelerde geçerlidir.',
         'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz.',
         'Sitemizi ziyaret için herhangi bir kişisel bilginizi bize vermek zorunda değilsiniz.',
         'Ancak, hizmetlerimizden faydalanmak için üye olmanız ve bazı kişisel bilgilerinizi vermeniz gerekmektedir.',
-        'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz, şifrelerin başkasının eline geçmesi ya da çalınmasından duguntakip.com sorumlu değildir.',
+        'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz, şifrelerin başkasının eline geçmesi ya da çalınmasından salonajandasi.com sorumlu değildir.',
         'Üye ve ziyaretçilerin site ile ilgili tarafımıza ulaştırdıkları her türlü öneri, istek, soru ve şikâyetleri içeren bilgiler site performansını ölçmek açısından saklanmaktadır.',
         'Bu bilgiler kişilerin kendilerine yanıt vermek dışında herhangi bir amaç için kullanılamaz.',
       ],
@@ -89,7 +89,7 @@ export const REFUND_POLICY: LegalDoc = {
     {
       heading: 'İade Süreci',
       paragraphs: [
-        'İade talebiniz info@duguntakip.com adresine, üyelik e-posta adresiniz üzerinden iletilmelidir.',
+        'İade talebiniz info@salonajandasi.com adresine, üyelik e-posta adresiniz üzerinden iletilmelidir.',
         'Onaylanan iadeler, ödemenin yapıldığı yöntem ile ve bankanızın işlem süresi dahilinde iade edilir.',
       ],
     },
@@ -103,14 +103,14 @@ export const DISTANCE_SALES: LegalDoc = {
     {
       heading: 'Madde 1 — Taraflar',
       paragraphs: [
-        'HİZMET SAĞLAYICI: Duguntakip.com (bundan sonra "Düğün Takip" olarak anılacaktır).',
+        'HİZMET SAĞLAYICI: Salonajandasi.com (bundan sonra "Salon Ajandası" olarak anılacaktır).',
         'ALICI: Sitemize üye olarak hizmeti satın alan gerçek veya tüzel kişi.',
       ],
     },
     {
       heading: 'Madde 2 — Sözleşmenin Konusu',
       paragraphs: [
-        'İşbu sözleşmenin konusu, ALICI’nın Düğün Takip internet sitesi üzerinden elektronik ortamda siparişini verdiği online rezervasyon ve ödeme takip hizmetinin (yazılım kullanım lisansı) satışı ve ifası ile ilgili tarafların hak ve yükümlülüklerinin belirlenmesidir.',
+        'İşbu sözleşmenin konusu, ALICI’nın Salon Ajandası internet sitesi üzerinden elektronik ortamda siparişini verdiği online rezervasyon ve ödeme takip hizmetinin (yazılım kullanım lisansı) satışı ve ifası ile ilgili tarafların hak ve yükümlülüklerinin belirlenmesidir.',
       ],
     },
     {
@@ -132,8 +132,8 @@ export const DISTANCE_SALES: LegalDoc = {
       heading: 'Madde 5 — Genel Hükümler',
       paragraphs: [
         'ALICI, hizmetin temel nitelikleri, satış fiyatı ve ödeme şekli ile ifaya ilişkin ön bilgileri okuyup bilgi sahibi olduğunu ve elektronik ortamda gerekli teyidi verdiğini kabul eder.',
-        'ALICI, hesap bilgilerinin güvenliğinden kendisi sorumludur. Şifrenin üçüncü kişilerle paylaşılmasından doğacak zararlardan Düğün Takip sorumlu tutulamaz.',
-        'Düğün Takip, hizmet kalitesini artırmak amacıyla sistemde güncelleme ve geliştirme yapma hakkını saklı tutar.',
+        'ALICI, hesap bilgilerinin güvenliğinden kendisi sorumludur. Şifrenin üçüncü kişilerle paylaşılmasından doğacak zararlardan Salon Ajandası sorumlu tutulamaz.',
+        'Salon Ajandası, hizmet kalitesini artırmak amacıyla sistemde güncelleme ve geliştirme yapma hakkını saklı tutar.',
         'Üyelik süresi sona erse dahi ALICI’ya ait kayıtlar sistemde saklanmaya devam eder.',
       ],
     },
@@ -158,11 +158,11 @@ export const MEMBERSHIP_AGREEMENT: LegalDoc = {
   sections: [
     {
       paragraphs: [
-        'İşbu üyelik sözleşmesi, duguntakip.com sitesine üye olan kullanıcı ile Düğün Takip arasında akdedilmiştir.',
+        'İşbu üyelik sözleşmesi, salonajandasi.com sitesine üye olan kullanıcı ile Salon Ajandası arasında akdedilmiştir.',
         'Üye, kayıt sırasında verdiği bilgilerin doğru ve güncel olduğunu kabul eder.',
         'Üye, hesabını üçüncü kişilerle paylaşmayacağını; paylaşması hâlinde doğacak zararlardan kendisinin sorumlu olduğunu kabul eder.',
         'Üye, sisteme yüklediği tüm verilerin içeriğinden bizzat sorumludur.',
-        'Düğün Takip, üyelik kurallarına aykırı davranan üyelerin üyeliğini önceden bildirimde bulunmaksızın askıya alma veya sonlandırma hakkına sahiptir.',
+        'Salon Ajandası, üyelik kurallarına aykırı davranan üyelerin üyeliğini önceden bildirimde bulunmaksızın askıya alma veya sonlandırma hakkına sahiptir.',
         'Üyelik süresi boyunca sunulan hizmetlerin kapsamı, geliştirmeler doğrultusunda genişletilebilir.',
       ],
     },

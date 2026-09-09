@@ -151,7 +151,7 @@ export default function UyeOl() {
   if (!signupEnabled) {
     return (
       <>
-        <Seo title="Üye Ol - Düğün Takip" path="/uye-ol" noindex />
+        <Seo title="Üye Ol - Salon Ajandası" path="/uye-ol" noindex />
         <PageHeader title="Üye Ol" breadcrumbs={[{ label: 'Üye Ol' }]} />
         <section className="py-14">
           <div className="container-dt max-w-2xl">
@@ -184,8 +184,8 @@ export default function UyeOl() {
   return (
     <>
       <Seo
-        title="Üye Ol - Düğün Takip Salon Takip Programı"
-        description={`Düğün Takip sistemine üye olun, ${TRIAL_DAYS} gün boyunca ücretsiz tam sürüm kullanın.`}
+        title="Üye Ol - Salon Ajandası Salon Takip Programı"
+        description={`Salon Ajandası sistemine üye olun, ${TRIAL_DAYS} gün boyunca ücretsiz tam sürüm kullanın.`}
         path="/uye-ol"
       />
       <PageHeader

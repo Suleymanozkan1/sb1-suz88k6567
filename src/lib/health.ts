@@ -30,7 +30,7 @@ export function findIssues(health: SystemHealth, isDemoMode: boolean): HealthIss
     issues.push({
       level: 'error',
       message: `SMS kuyruğunda ${health.kuyrukEnEskiDakika} dakikadır bekleyen mesaj var.`,
-      hint: 'Kuyruk işleyici çalışmıyor olabilir. CRON_SECRET tanımlı mı kontrol edin.',
+      hint: 'Kuyruk işleyici çalışmıyor olabilir. Zamanlanmış görev ayarlarını kontrol edin.',
     });
   }
 
@@ -72,7 +72,7 @@ export function findIssues(health: SystemHealth, isDemoMode: boolean): HealthIss
       issues.push({
         level: 'error',
         message: 'Henüz başarılı bir yedek alınmamış.',
-        hint: 'CRON_SECRET ve yedek kovası (Storage) tanımlı mı kontrol edin.',
+        hint: 'Zamanlanmış yedekleme görevini ve yedek kovasını kontrol edin.',
       });
     } else if (health.sonYedek.yasSaat > BACKUP_MAX_AGE_HOURS) {
       issues.push({

@@ -11,7 +11,7 @@ import type { Business, CashFlowEntry, Hall, Menu, Payment, Reservation, User, V
 
 export { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS };
 
-export const DEMO_CREDENTIALS = { email: 'demo@duguntakip.com', password: 'demo1234' };
+export const DEMO_CREDENTIALS = { email: 'demo@salonajandasi.com', password: 'demo1234' };
 
 const DEMO_CUSTOMERS: [string, string, string][] = [
   ['Ahmet & Elif Yılmaz', '5321234567', 'Düğün'],
@@ -71,7 +71,7 @@ export function seedIfEmpty(): void {
     ...owner,
     id: 'user_staff',
     fullName: 'Ayşe Personel',
-    email: 'personel@duguntakip.com',
+    email: 'personel@salonajandasi.com',
     password: 'personel1234',
     mobile: '5320003344',
     role: 'staff',
@@ -166,7 +166,7 @@ export function seedIfEmpty(): void {
       businessId: i % 5 === 4 ? 'biz_demo2' : businessId,
       hallId: i % 5 === 4 ? 'hall_demo3' : i % 3 === 1 ? 'hall_demo2' : 'hall_demo1',
       menuId: i % 5 === 4 ? 'menu_demo4' : i % 4 === 3 ? 'menu_demo3' : 'menu_demo1',
-      code: `DT-${d.getFullYear()}-${1000 + i * 37}`,
+      code: `SA-${d.getFullYear()}-${1000 + i * 37}`,
       customerName: name, customerPhone: phone, customerEmail: '',
       date, slot: i % 3 === 0 ? 'Gündüz' : 'Gece',
       organizationType: orgType, guestCount: 120 + (i % 9) * 45,
@@ -209,7 +209,7 @@ export function seedIfEmpty(): void {
 
   write(KEYS.sms, [{
     id: 'sms_seed_0', businessId, to: '5321234567',
-    body: 'Sayin Ahmet & Elif Yilmaz, rezervasyonunuz kayit edilmistir. Kod: DT-2026-1000',
+    body: 'Sayin Ahmet & Elif Yilmaz, rezervasyonunuz kayit edilmistir. Kod: SA-2026-1000',
     kind: 'Rezervasyon' as const, sentAt: addDays(todayIso(), -30) + 'T10:00:00.000Z',
   }]);
 }

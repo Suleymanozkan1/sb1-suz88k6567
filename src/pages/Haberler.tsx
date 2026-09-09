@@ -12,7 +12,7 @@ export function HaberDetay() {
 
   return (
     <>
-      <Seo title={`${item.title} - Düğün Takip`} description={item.excerpt} path={`/haberler/${item.slug}`} />
+      <Seo title={`${item.title} - Salon Ajandası`} description={item.excerpt} path={`/haberler/${item.slug}`} />
       <PageHeader
         title={item.title}
         breadcrumbs={[{ label: 'Haberler', to: '/haberler' }, { label: item.title }]}
@@ -38,8 +38,8 @@ export default function Haberler() {
   return (
     <>
       <Seo
-        title="Düğün Takip - Düğün Salonu Takip Programı - Haberler"
-        description="Düğün Takip sisteminden haberler, yenilikler ve duyurular."
+        title="Salon Ajandası - Düğün Salonu Takip Programı - Haberler"
+        description="Salon Ajandası sisteminden haberler, yenilikler ve duyurular."
         path="/haberler"
       />
       <PageHeader title="Haberler" breadcrumbs={[{ label: 'Haberler' }]} />

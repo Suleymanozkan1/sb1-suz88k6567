@@ -205,7 +205,7 @@ describe('Yeni rezervasyon formu', () => {
     await waitFor(async () => expect(await getReservations(BIZ)).toHaveLength(before + 1), { timeout: 4000 });
     const created = (await getReservations(BIZ)).find((r: Reservation) => r.customerName === 'Yeni Çift');
     expect(created?.totalAmount).toBe(120000);
-    expect(created?.code).toMatch(/^DT-\d{4}-\d{4}$/);
+    expect(created?.code).toMatch(/^SA-\d{4}-\d{4}$/);
     const smsAfter = await getSmsLog(BIZ);
     expect(smsAfter.length).toBe(smsBefore + 1);
     expect(smsAfter[0].kind).toBe('Rezervasyon');

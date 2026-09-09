@@ -158,7 +158,7 @@ export default function Faturalar() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Faturalar - Düğün Takip Panel" noindex />
+      <Seo title="Faturalar - Salon Ajandası Panel" noindex />
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Faturalar</h1>

@@ -25,8 +25,8 @@ insert into public.reservations
   (id, business_id, code, customer_name, customer_phone, date, slot, organization_type,
    guest_count, total_amount, deposit)
 values
-  (:res, :biz, 'DT-A-0001', 'A Müşterisi', '5321110000', '2026-10-10', 'Gece', 'Düğün', 200, 100000, 20000),
-  (gen_random_uuid(), :biz, 'DT-A-0002', 'İkinci Müşteri', '5321110001', '2026-11-11', 'Gündüz', 'Nişan', 150, 60000, 10000);
+  (:res, :biz, 'SA-A-0001', 'A Müşterisi', '5321110000', '2026-10-10', 'Gece', 'Düğün', 200, 100000, 20000),
+  (gen_random_uuid(), :biz, 'SA-A-0002', 'İkinci Müşteri', '5321110001', '2026-11-11', 'Gündüz', 'Nişan', 150, 60000, 10000);
 
 insert into public.payments (reservation_id, date, amount, method)
 values (:res, '2026-09-01', 30000, 'Nakit');

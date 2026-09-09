@@ -42,7 +42,7 @@ export default function Dashboard() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Özet - Düğün Takip Panel" noindex />
+      <Seo title="Özet - Salon Ajandası Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>

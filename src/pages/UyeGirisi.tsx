@@ -99,7 +99,7 @@ export default function UyeGirisi() {
 
   return (
     <>
-      <Seo title="Üye Girişi - Düğün Takip" description="Düğün Takip üye girişi." path="/uye-girisi" noindex />
+      <Seo title="Üye Girişi - Salon Ajandası" description="Salon Ajandası üye girişi." path="/uye-girisi" noindex />
       <PageHeader title="Üye Girişi" breadcrumbs={[{ label: 'Üye Girişi' }]} />
 
       <section className="py-12">

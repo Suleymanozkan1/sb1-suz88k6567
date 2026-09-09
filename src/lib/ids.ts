@@ -4,11 +4,11 @@ export function uid(prefix = 'id'): string {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** DT-2026-4821 biçiminde rezervasyon kodu */
+/** SA-2026-4821 biçiminde rezervasyon kodu */
 export function makeReservationCode(): string {
   const year = new Date().getFullYear();
   const n = Math.floor(1000 + Math.random() * 9000);
-  return `DT-${year}-${n}`;
+  return `SA-${year}-${n}`;
 }
 
 /**

@@ -1,4 +1,4 @@
-# Düğün Takip — Audit ve QA Raporu
+# Salon Ajandası — Audit ve QA Raporu
 
 **Son güncelleme:** dördüncü tam denetim — ödeme planı, iş emri, tedarikçiler
 
@@ -226,7 +226,7 @@ doğrulanmıştır (bkz. bölüm 2.5–2.6 ve 9).
 
 `findUserByEmail`, karşılaştırma için `toLocaleLowerCase('tr-TR')` kullanıyordu.
 Türkçe kuralında ASCII `I` harfi noktasız `ı`ya dönüştüğü için
-`DEMO@DUGUNTAKIP.COM` girdisi `demo@duguntakıp.com` hâline geliyor ve kayıtlı
+`DEMO@SALONAJANDASI.COM` girdisi `demo@salonajandası.com` hâline geliyor ve kayıtlı
 kullanıcı **bulunamıyordu**.
 
 **Etkisi:** E-postasını büyük harfle veya otomatik düzelten bir klavyeyle yazan
@@ -427,7 +427,7 @@ baştan sona elle yürütüldü:
 5. **Beklenen:** toplam tahsilat 100.000 ₺, kalan alacak 150.000 ₺ —
    **gözlenen:** birebir aynı.
 6. Salon kiralama sözleşmesi çıktısı, raporlar, kasa ve SMS kayıtları görüntülendi.
-7. Oluşan rezervasyon kodu (`DT-2026-7875`) herkese açık kod doğrulama sayfasında
+7. Oluşan rezervasyon kodu (`SA-2026-7875`) herkese açık kod doğrulama sayfasında
    sorgulandı ve doğrulandı.
 8. Mobil genişlikte (390 px) menü açıldı.
 

@@ -12,7 +12,7 @@ function make(over: Partial<Reservation> = {}): Reservation {
   return {
     id: uid('res'),
     businessId: 'biz_test', hallId: 'hall_test',
-    code: 'DT-2026-0001',
+    code: 'SA-2026-0001',
     customerName: 'Müşteri',
     customerPhone: '5321112233',
     date: '2026-03-10',

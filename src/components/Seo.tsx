@@ -7,7 +7,7 @@ interface Props {
   noindex?: boolean;
 }
 
-const SITE = 'https://duguntakip.com';
+const SITE = 'https://salonajandasi.com';
 
 function setMeta(selector: string, attr: 'name' | 'property', key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(selector);

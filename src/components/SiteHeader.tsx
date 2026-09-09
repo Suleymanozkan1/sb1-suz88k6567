@@ -73,7 +73,7 @@ export default function SiteHeader() {
     >
       <div className="container-dt flex items-center justify-between gap-4">
         <Link to="/" className="font-display text-2xl font-bold text-white hover:text-white">
-          Düğün<span className="text-accent">Takip</span>
+          Salon<span className="text-accent">Ajandası</span>
         </Link>
 
         <nav aria-label="Ana menü" className="hidden lg:block">

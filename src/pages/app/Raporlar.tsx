@@ -75,7 +75,7 @@ export default function Raporlar() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Raporlar - Düğün Takip Panel" noindex />
+      <Seo title="Raporlar - Salon Ajandası Panel" noindex />
 
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Raporlar</h1>

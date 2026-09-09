@@ -98,7 +98,7 @@ export default function Isletmeler() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={loadError}>
-      <Seo title="Firmalarım - Düğün Takip Panel" noindex />
+      <Seo title="Firmalarım - Salon Ajandası Panel" noindex />
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Firmalarım / Adminler</h1>

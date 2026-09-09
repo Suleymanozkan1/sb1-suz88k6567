@@ -148,14 +148,14 @@ describe('kod doğrulama', () => {
   it('telefon numarasını maskeler ve ödeme bilgisi sızdırmaz', async () => {
     await localRepo.saveBusiness({ id: BIZ, ownerId: 'o1', name: 'Test Salonu', category: '',
       city: 'İstanbul', district: 'Kadıköy', phone: '', capacity: 0, currency: 'TL' });
-    const r = await localRepo.saveReservation(makeReservation({ code: 'DT-2026-9999', customerPhone: '5321234567' }));
+    const r = await localRepo.saveReservation(makeReservation({ code: 'SA-2026-9999', customerPhone: '5321234567' }));
 
-    const found = await localRepo.verifyCode('dt-2026-9999');
+    const found = await localRepo.verifyCode('sa-2026-9999');
     expect(found).not.toBeNull();
     expect(found!.customerPhone).toBe('532*****67');
     expect(found!.businessName).toBe('Test Salonu');
     expect(found).not.toHaveProperty('deposit');
-    expect(r.code).toBe('DT-2026-9999');
+    expect(r.code).toBe('SA-2026-9999');
   });
 
   it('bulunmayan kod için null döner', async () => {
@@ -227,12 +227,12 @@ describe('SMS kayıtları', () => {
 });
 
 describe('kimlik yardımcıları', () => {
-  it('rezervasyon kodu DT-YIL-NNNN biçimindedir', () => {
-    expect(makeReservationCode()).toMatch(/^DT-\d{4}-\d{4}$/);
+  it('rezervasyon kodu SA-YIL-NNNN biçimindedir', () => {
+    expect(makeReservationCode()).toMatch(/^SA-\d{4}-\d{4}$/);
   });
 
   it('e-postayı locale-bağımsız normalleştirir', () => {
-    expect(normalizeEmail('  DEMO@DUGUNTAKIP.COM ')).toBe('demo@duguntakip.com');
+    expect(normalizeEmail('  DEMO@SALONAJANDASI.COM ')).toBe('demo@salonajandasi.com');
   });
 
   it('benzersiz kimlik üretir', () => {

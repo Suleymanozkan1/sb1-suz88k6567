@@ -3,7 +3,7 @@ import { COPYRIGHT, CONTACT, SOCIAL } from '../data/content';
 import { IconFacebook, IconInstagram, IconMail, IconTwitter, IconYoutube } from './Icons';
 
 const CONTENT_LINKS = [
-  { label: 'Düğün Takip', to: '/nedir' },
+  { label: 'Salon Ajandası', to: '/nedir' },
   { label: 'Gizlilik Politikası', to: '/gizlilik-politikasi' },
   { label: 'İade/İptal Prosedürü', to: '/iade-proseduru' },
   { label: 'Mesafeli Hizmet Sözleşmesi', to: '/mesafeli-hizmet-sozlesmesi' },
@@ -27,10 +27,10 @@ export default function SiteFooter() {
       <div className="container-dt grid gap-10 pb-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <h3 className="mb-3 font-display text-2xl font-bold text-brand">
-            Düğün<span className="text-accent">Takip</span>
+            Salon<span className="text-accent">Ajandası</span>
           </h3>
           <p className="leading-relaxed">
-            Türkiye’nin ilk online düğün takip sistemi. Düğün salonları için özel olarak geliştirilmiş
+            Online salon yönetim sistemi. Düğün salonları için özel olarak geliştirilmiş
             rezervasyon ve ödeme takip sistemi.
           </p>
           <p className="mt-4 flex items-center gap-2">

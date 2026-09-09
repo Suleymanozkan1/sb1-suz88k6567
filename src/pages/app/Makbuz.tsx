@@ -35,7 +35,7 @@ export default function Makbuz() {
 
   return (
     <>
-      <Seo title="Tahsilat Makbuzu - Düğün Takip Panel" noindex />
+      <Seo title="Tahsilat Makbuzu - Salon Ajandası Panel" noindex />
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link to={`/panel/rezervasyonlar/${reservation.id}`} className="btn-outline btn-sm">
