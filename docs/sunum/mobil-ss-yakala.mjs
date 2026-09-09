@@ -33,7 +33,7 @@ s.on('pageerror', (e) => hatalar.push(String(e).slice(0, 160)));
 const yakalananlar = [];
 
 async function cek(ad) {
-  await s.waitForTimeout(1200);
+  await s.waitForTimeout(1100);
   const veri = await s.screenshot({ path: `${DIZIN}/${ad}.png` });
   yakalananlar.push([ad, veri]);
   console.log('  ✓', ad);
@@ -47,68 +47,107 @@ async function cek(ad) {
 async function kaydir(piksel) {
   await s.mouse.move(196, 560);
   await s.mouse.wheel(0, piksel);
-  await s.waitForTimeout(600);
+  await s.waitForTimeout(500);
+}
+
+/**
+ * Sekme geçişi. Sekme çubuğu görünmüyorsa (ayrıntı ekranı üste yığılmış)
+ * önce sekme köküne dönülür.
+ */
+async function sekme(ad) {
+  const hedef = s.getByRole('tab', { name: new RegExp(ad) });
+  const gorundu = await hedef.waitFor({ state: 'visible', timeout: 2500 })
+    .then(() => true).catch(() => false);
+  if (!gorundu) await ac('/');
+  await hedef.click();
+  // Geçiş animasyonu bitmeden yakalanınca sekme çubuğu başlığın üstüne biniyor.
+  await s.waitForTimeout(1600);
+}
+
+/**
+ * Bir ekrana doğrudan gider.
+ *
+ * Önceki sürüm tarayıcı geçmişiyle (goBack) dolaşıyordu; expo-router sekme
+ * geçişlerinde geçmişi beklendiği gibi yığmadığı için ayrıntı ekranından
+ * geri dönüş bazen giriş ekranına düşüyor ve yakalama yarıda kalıyordu.
+ * Tanıtım oturumu artık yeniden yüklemeye dayandığı için adresle gezmek
+ * güvenli ve çok daha kararlı.
+ */
+async function ac(yol) {
+  await s.goto(KOK + yol, { waitUntil: 'domcontentloaded' });
+  await s.waitForTimeout(3200);
+}
+
+/** "Daha" listesindeki bir ekranı açar ve yakalar. */
+async function dahaEkrani(yol, ad, kaydirma = 0) {
+  await ac(yol);
+  if (kaydirma) await kaydir(kaydirma);
+  await cek(ad);
 }
 
 await s.goto(KOK, { waitUntil: 'domcontentloaded' });
-await s.waitForTimeout(5000);
+await s.waitForTimeout(9000);
 await cek('01-giris');
 
 await s.getByRole('button', { name: 'Giriş Yap' }).click();
-await s.waitForTimeout(2500);
+await s.waitForTimeout(3000);
 await cek('02-bugun');
 
-// Listenin devamı: bugünün altındaki yaklaşan organizasyonlar.
-await kaydir(700);
-await cek('03-yaklasanlar');
-await kaydir(-1200);
+await sekme('Takvim');
+await cek('03-takvim');
 
-await s.getByRole('tab', { name: /Takvim/ }).click();
-await s.waitForTimeout(1200);
-await cek('04-takvim');
+await sekme('Kayıtlar');
+await cek('04-kayitlar');
 
-// Kayıt taşıyan ileri tarihli bir gün seçilir: ızgaranın altındaki
-// günlük listenin dolu hâli görünsün.
-await s.getByRole('button', { name: /kayıt$/ }).last().click();
-await cek('05-takvim-gun');
+await sekme('Kasa');
+await cek('05-kasa');
 
-await s.getByRole('tab', { name: /Kasa/ }).click();
-await cek('06-kasa');
+// Rezervasyon ayrıntısı: üst yarı (para durumu ve müşteri).
+await ac('/rezervasyon/1');
+await cek('06-rezervasyon');
 
-await s.getByRole('tab', { name: /Bugün/ }).click();
-await s.waitForTimeout(800);
-await s.getByText('Zeynep & Can Arslan').first().click();
-await s.waitForTimeout(1800);
-await cek('07-rezervasyon');
-
-// Hızlı tahsilat kartı: tutar yazılmış hâliyle yakalanır, boş bir form
-// ne işe yaradığını anlatmıyor.
-//
-// Kaydırma miktarı ölçülerek seçildi: sayfa 1253, pencere 788 piksel, yani
-// en çok 465 kaydırılabiliyor. 600 ve 900 aynı yere, sayfa sonuna
-// düşüyordu ve iki ekran görüntüsü birebir aynı çıkıyordu.
-await kaydir(250);
+// Hızlı tahsilat kartı tutar yazılmış hâliyle; boş bir form ne işe
+// yaradığını anlatmıyor.
+await kaydir(260);
 await s.getByLabel('Tahsilat tutarı').fill('25.000');
 await s.getByLabel('Tahsilat açıklaması').fill('Ara ödeme');
 await s.getByLabel('Tahsilat tutarı').blur();
-await cek('08-hizli-tahsilat');
+await cek('07-hizli-tahsilat');
 
-// Sayfanın sonu: tahsilat geçmişi ve iş emri.
+// Hatırlatma bölümü: bir taslak seçilip doldurulmuş metin gösterilir.
+await kaydir(700);
+await s.getByRole('radio', { name: 'Tarih hatırlatması' }).click();
+await s.waitForTimeout(700);
+await cek('08-hatirlatma-gonder');
+
 await kaydir(900);
 await cek('09-is-emri');
 
-// Rezervasyon ayrıntısı sekmelerin üstüne yığılan bir ekran; sekme çubuğu
-// görünmüyor, önce geri dönmek gerekiyor.
-await s.goBack();
-await s.waitForTimeout(1200);
-// Sekmeye dokunarak geçilir; goto tam sayfa yeniden yükleme yapıyor ve
-// tanıtım oturumu bellekte tutulduğu için kullanıcı giriş ekranına
-// düşüyordu — hesap ekranı yerine giriş ekranı yakalanmıştı.
-await s.getByRole('tab', { name: /Hesap/ }).click();
-// Sekme geçiş animasyonu bitmeden yakalanınca sekme çubuğu başlığın
-// üstüne biniyordu; geçişin oturması beklenir.
-await s.waitForTimeout(2500);
-await cek('10-hesap');
+// Yeni rezervasyon formu
+await ac('/rezervasyon/yeni');
+await s.getByLabel('Ad soyad').fill('Elif & Barış Yalçın');
+await s.getByLabel('Cep telefonu').fill('5327778899');
+await s.getByLabel('Davetli sayısı').fill('280');
+await s.getByLabel('Davetli sayısı').blur();
+await cek('10-yeni-rezervasyon');
+
+// "Daha" sekmesinin kendisi: bütün ekranların listesi.
+await ac('/daha');
+await cek('11-daha');
+await dahaEkrani('/hatirlatmalar', '12-hatirlatmalar');
+await dahaEkrani('/raporlar', '13-raporlar');
+await dahaEkrani('/faturalar', '14-faturalar');
+await dahaEkrani('/sms', '15-sms');
+await dahaEkrani('/izinler', '16-izinler');
+await dahaEkrani('/menuler', '17-menuler');
+await dahaEkrani('/tedarikciler', '18-tedarikciler');
+await dahaEkrani('/musteriler', '19-musteriler');
+await dahaEkrani('/talepler', '20-talepler');
+await dahaEkrani('/kullanicilar', '21-kullanicilar', 300);
+await dahaEkrani('/sistem', '22-sistem');
+await dahaEkrani('/denetim', '23-denetim');
+await dahaEkrani('/ayarlar', '24-ayarlar');
+await dahaEkrani('/hesap', '25-hesap');
 
 // Aynı ekranın iki kez yakalanması sessiz bir hatadır (yanlış gezinme,
 // beklenmeyen yönlendirme). Karşılaştırarak erken yakalanır.
@@ -131,6 +170,5 @@ for (const [ad] of yakalananlar) {
   fs.copyFileSync(`${DIZIN}/${ad}.png`, `${SUNUM_DIZIN}/mobil-${ad}.png`);
 }
 console.log(`${yakalananlar.length} görüntü ${SUNUM_DIZIN}/ dizinine kopyalandı.`);
-
 console.log('sayfa hataları:', hatalar.length ? hatalar.slice(0, 4) : 'yok');
 await t.close();

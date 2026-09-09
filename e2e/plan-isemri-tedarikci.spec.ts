@@ -29,44 +29,6 @@ async function rezervasyonAc(page: Page, ad: string, tarih: string, tutar = '100
   await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
 }
 
-test('Ödeme planı: kalan tutar taksitlere bölünür ve toplam korunur', async ({ page }) => {
-  await login(page);
-  await rezervasyonAc(page, 'Plan Testi', '2028-03-05');
-
-  await expect(page.getByRole('heading', { name: 'Ödeme Planı' })).toBeVisible();
-  await page.locator('#plan-count').fill('4');
-  await page.getByRole('button', { name: 'Kalan tutarı böl' }).click();
-
-  // 100.000 / 4 = 25.000 × 4
-  await expect(page.locator('input[aria-label="1. taksit tutarı"]')).toHaveValue('25000');
-  await expect(page.locator('input[aria-label="4. taksit tutarı"]')).toHaveValue('25000');
-  await expect(page.getByText('100.000,00 ₺').first()).toBeVisible();
-
-  await page.getByRole('button', { name: 'Ödeme planını kaydet' }).click();
-  await expect(page.getByText('Kaydedilmemiş değişiklik var.')).toBeHidden();
-});
-
-test('Ödeme planı: rezervasyon tutarını aşan plan reddedilir', async ({ page }) => {
-  await login(page);
-  await rezervasyonAc(page, 'Aşım Testi', '2028-03-06', '50000');
-
-  await page.locator('#plan-count').fill('2');
-  await page.getByRole('button', { name: 'Kalan tutarı böl' }).click();
-  await page.locator('input[aria-label="1. taksit tutarı"]').fill('40000');
-  await page.getByRole('button', { name: 'Ödeme planını kaydet' }).click();
-  await expect(page.getByText(/aşamaz/)).toBeVisible();
-});
-
-test('Ödeme planı: vadesi geçmiş taksit gecikmiş olarak işaretlenir', async ({ page }) => {
-  await login(page);
-  await rezervasyonAc(page, 'Gecikme Testi', '2028-03-07');
-
-  await page.locator('#plan-first').fill('2020-01-15');
-  await page.locator('#plan-count').fill('2');
-  await page.getByRole('button', { name: 'Kalan tutarı böl' }).click();
-  await expect(page.getByText('Gecikti').first()).toBeVisible();
-});
-
 test('İş emri: örnek akış yüklenir ve kaydedilir', async ({ page }) => {
   await login(page);
   await rezervasyonAc(page, 'İş Emri Testi', '2028-03-08');

@@ -35,6 +35,9 @@ export const IconClock = (p: IconProps) => (
 export const IconCursor = (p: IconProps) => (
   <Base {...p}><path d="M4 3l7 17 2.5-6.5L20 11z" /></Base>
 );
+export const IconBell = (p: IconProps) => (
+  <Base {...p}><path d="M18 9a6 6 0 10-12 0c0 5-2 6-2 6h16s-2-1-2-6" /><path d="M10.3 20a2 2 0 003.4 0" /></Base>
+);
 export const IconCheck = (p: IconProps) => (<Base {...p}><path d="M20 6L9 17l-5-5" /></Base>);
 export const IconChevronDown = (p: IconProps) => (<Base {...p}><path d="M6 9l6 6 6-6" /></Base>);
 export const IconChevronLeft = (p: IconProps) => (<Base {...p}><path d="M15 18l-6-6 6-6" /></Base>);

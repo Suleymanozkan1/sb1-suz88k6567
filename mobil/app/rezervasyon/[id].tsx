@@ -2,16 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BolumBasligi, Dugme, Kart, Rozet, Yazi } from '../../src/bilesenler/temel';
 import {
   gorecelıGun, okunakliMetin, tarihUzun, telefon, telefonUri, tutar,
 } from '../../src/bicim';
 import { aralik, renk, yazi, yuvarlak } from '../../src/tema';
 import {
-  isDurumu, isEmri, rezervasyon, tahsilatEkle, tahsilatlar,
-  type IsSatiri, type Rezervasyon, type Tahsilat,
+  isDurumu, isEmri, masalar, rezervasyon, tahsilatEkle, tahsilatlar,
+  type IsSatiri, type Masa, type Rezervasyon, type Tahsilat,
 } from '../../src/veri';
+import HatirlatmaGonder from '../../src/bilesenler/HatirlatmaGonder';
 
 /**
  * Rezervasyon ayrıntısı.
@@ -22,6 +23,9 @@ import {
  */
 export default function Ayrinti() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const yonlendir = useRouter();
+  const [masaAcik, setMasaAcik] = useState(false);
+  const [masaListe, setMasaListe] = useState<Masa[]>([]);
   const [kayit, setKayit] = useState<Rezervasyon | null>(null);
   const [odemeler, setOdemeler] = useState<Tahsilat[]>([]);
   const [isler, setIsler] = useState<IsSatiri[]>([]);
@@ -37,10 +41,13 @@ export default function Ayrinti() {
     if (!id) return;
     try {
       setHata('');
-      const [r, t, i] = await Promise.all([rezervasyon(id), tahsilatlar(id), isEmri(id)]);
+      const [r, t, i, m] = await Promise.all([
+        rezervasyon(id), tahsilatlar(id), isEmri(id), masalar(id),
+      ]);
       setKayit(r);
       setOdemeler(t);
       setIsler(i);
+      setMasaListe(m);
     } catch (e) {
       setHata(e instanceof Error ? e.message : 'Kayıt okunamadı.');
     } finally {
@@ -115,6 +122,11 @@ export default function Ayrinti() {
       <Yazi tur="kucuk" renkli={renk.metinSolgun} style={{ marginTop: 2 }}>
         {tarihUzun(kayit.tarih)} · {kayit.seans} · {gorecelıGun(kayit.tarih)}
       </Yazi>
+
+      <View style={s.kisayollar}>
+        <Kisayol metin="Belgeler" onPress={() => yonlendir.push(`/belge/${kayit.id}`)} />
+        <Kisayol metin="Masa düzeni" onPress={() => setMasaAcik((o) => !o)} />
+      </View>
 
       {/* Para durumu: en üstte, tek bakışta okunacak şekilde. */}
       <Kart style={{ marginTop: aralik.l }}>
@@ -233,6 +245,43 @@ export default function Ayrinti() {
         </>
       ) : null}
 
+      {masaAcik ? (
+        <>
+          <BolumBasligi
+            sag={
+              <Text style={[yazi.minik as object, { color: renk.metinSolgun }]}>
+                {masaListe.reduce((t, m) => t + m.koltuk, 0)} koltuk
+              </Text>
+            }
+          >
+            Masa düzeni
+          </BolumBasligi>
+          <Kart>
+            {masaListe.length === 0 ? (
+              <Yazi tur="kucuk" renkli={renk.metinSolgun}>
+                Bu rezervasyon için masa planı oluşturulmamış.
+              </Yazi>
+            ) : masaListe.map((m, i) => (
+              <View key={m.id} style={[s.satir, i > 0 && { marginTop: aralik.m }]}>
+                <View style={{ flex: 1 }}>
+                  <Yazi tur="kucuk" renkli={renk.metin}>{m.no}. masa</Yazi>
+                  {m.not ? <Yazi tur="minik" renkli={renk.metinSolgun}>{m.not}</Yazi> : null}
+                </View>
+                <Yazi tur="kucuk" renkli={renk.metinSolgun}>{m.koltuk} koltuk</Yazi>
+              </View>
+            ))}
+            {masaListe.length > 0 && masaListe.reduce((t, m) => t + m.koltuk, 0) < kayit.davetli ? (
+              <Yazi tur="kucuk" renkli={renk.tehlike} style={{ marginTop: aralik.m }}>
+                Koltuk sayısı davetliyi karşılamıyor: {kayit.davetli - masaListe.reduce((t, m) => t + m.koltuk, 0)} kişilik eksik.
+              </Yazi>
+            ) : null}
+          </Kart>
+        </>
+      ) : null}
+
+      <BolumBasligi>Hatırlatma gönder</BolumBasligi>
+      <HatirlatmaGonder kayit={kayit} odemeler={odemeler} />
+
       {isler.length > 0 ? (
         <>
           <BolumBasligi
@@ -275,7 +324,28 @@ export default function Ayrinti() {
   );
 }
 
+/** Ayrıntının üstündeki iki kısayol; ekranın en sık kullanılan iki çıkışı. */
+function Kisayol({ metin, onPress }: { metin: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [s.kisayol, pressed && { backgroundColor: renk.zemin }]}
+    >
+      <Text style={[yazi.kucuk as object, { color: renk.vurguKoyu, fontWeight: '600' }]}>
+        {metin}
+      </Text>
+    </Pressable>
+  );
+}
+
 const s = StyleSheet.create({
+  kisayollar: { flexDirection: 'row', gap: aralik.s, marginTop: aralik.m },
+  kisayol: {
+    minHeight: 40, paddingHorizontal: aralik.l, justifyContent: 'center',
+    borderRadius: yuvarlak.tam, borderWidth: 1.5, borderColor: renk.vurguKoyu,
+    backgroundColor: renk.kart,
+  },
   orta: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: renk.zemin },
   ustBilgi: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   paraSatir: { flexDirection: 'row', justifyContent: 'space-between' },

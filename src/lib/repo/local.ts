@@ -9,9 +9,10 @@ import { KEYS, read, remove, write } from '../storage';
 import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS, seedIfEmpty } from '../seed';
 import { normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
+import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, Invoice,
-  EventTask, Hall, Installment, Menu, MessageStatus, Payment, Reservation, ReservationVendor,
+  EventTask, Hall, Menu, MessageStatus, Payment, Reservation, ReservationVendor,
   SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   SmsQueueEntry, User,
 } from '../../types';
@@ -45,7 +46,72 @@ function currentUser(): User | null {
 const halls = () => read<Hall[]>(KEYS.halls, []);
 const menus = () => read<Menu[]>(KEYS.menus, []);
 const seating = () => read<SeatingTable[]>(KEYS.seating, []);
-const installments = () => read<Installment[]>(KEYS.installments, []);
+/**
+ * Varsayılan taslak metinler.
+ *
+ * Metinler `supabase/migrations/0010_hatirlatma_sablonlari.sql` içindeki
+ * `seed_message_templates` ile birebir aynıdır; demo ile gerçek kurulumun
+ * farklı mesaj göstermesi kullanıcı için hatadır.
+ */
+const VARSAYILAN_SABLON: Record<
+  Sablon['key'], { title: string; body: string; kind: string; category: Sablon['category'] }
+> = {
+  rezervasyon_onay: {
+    title: 'Rezervasyon onayı', kind: 'Rezervasyon', category: 'islem',
+    body: 'Sayın {musteri}, {tarih} {seans} seansı için {salon} rezervasyonunuz alınmıştır. Sorgu kodunuz: {kod}. {isletme}',
+  },
+  tarih_hatirlatma: {
+    title: 'Tarih hatırlatması', kind: 'Hatırlatma', category: 'islem',
+    body: 'Sayın {musteri}, {tarih} tarihli organizasyonunuz yaklaşıyor. {salon} - {seans} seansı. {isletme}',
+  },
+  odeme_hatirlatma: {
+    title: 'Ödeme hatırlatması', kind: 'Hatırlatma', category: 'islem',
+    body: 'Sayın {musteri}, {tarih} tarihli organizasyonunuz için kalan tutar {kalan} TL\'dir. Bilginize. {isletme}',
+  },
+  tahsilat_bildirimi: {
+    title: 'Tahsilat bildirimi', kind: 'Bilgilendirme', category: 'islem',
+    body: 'Sayın {musteri}, {odenen} TL tutarındaki ödemeniz alınmıştır. Kalan tutar {kalan} TL. {isletme}',
+  },
+  etkinlik_gunu: {
+    title: 'Etkinlik günü', kind: 'Hatırlatma', category: 'islem',
+    body: 'Sayın {musteri}, bugün {seans} seansında {salon} sizi bekliyor. İyi eğlenceler dileriz. {isletme}',
+  },
+  tesekkur: {
+    title: 'Teşekkür', kind: 'Bilgilendirme', category: 'ticari',
+    body: 'Sayın {musteri}, bizi tercih ettiğiniz için teşekkür ederiz. Görüşlerinizi bizimle paylaşabilirsiniz. {isletme}',
+  },
+  kampanya: {
+    title: 'Kampanya duyurusu', kind: 'Bilgilendirme', category: 'ticari',
+    body: 'Sayın {musteri}, sezon fiyatlarımız hakkında bilgi almak için bizi arayabilirsiniz. {isletme}',
+  },
+};
+
+function varsayilanSablonlar(businessId: string): Sablon[] {
+  return SABLON_SIRASI.map((key) => ({
+    id: `tpl-${businessId}-${key}`, businessId, key,
+    ...VARSAYILAN_SABLON[key], isActive: true,
+  }));
+}
+
+/** Açık gelen iki kural, mevzuat açısından muaf olan işlem bildirimleridir. */
+const VARSAYILAN_KURAL: Partial<
+  Record<Sablon['key'], { enabled: boolean; daysBefore: number; sendHour: number }>
+> = {
+  tarih_hatirlatma: { enabled: true, daysBefore: 7, sendHour: 10 },
+  odeme_hatirlatma: { enabled: true, daysBefore: 3, sendHour: 10 },
+  etkinlik_gunu: { enabled: false, daysBefore: 0, sendHour: 9 },
+  tesekkur: { enabled: false, daysBefore: -1, sendHour: 12 },
+};
+
+function varsayilanKurallar(businessId: string): HatirlatmaKurali[] {
+  return (Object.keys(VARSAYILAN_KURAL) as Sablon['key'][]).map((key) => ({
+    id: `rule-${businessId}-${key}`, businessId, key, ...VARSAYILAN_KURAL[key]!,
+  }));
+}
+
+const templates = () => read<Sablon[]>(KEYS.templates, []);
+const rules = () => read<HatirlatmaKurali[]>(KEYS.reminderRules, []);
+
 const tasks = () => read<EventTask[]>(KEYS.tasks, []);
 const vendors = () => read<Vendor[]>(KEYS.vendors, []);
 const resVendors = () => read<ReservationVendor[]>(KEYS.resVendors, []);
@@ -589,33 +655,50 @@ export const localRepo: Repository = {
     return wait(undefined);
   },
 
-  async listInstallments(reservationId) {
-    return wait(installments().filter((i) => i.reservationId === reservationId)
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.seq - b.seq));
+  async listTemplates(businessId) {
+    const kayitli = templates().filter((t) => t.businessId === businessId);
+    // İlk açılışta varsayılan taslaklar üretilir; boş bir liste kullanıcıya
+    // "şablon yok" dedirtip özelliği kullanılamaz gösteriyordu.
+    const liste = kayitli.length > 0 ? kayitli : varsayilanSablonlar(businessId);
+    if (kayitli.length === 0) write(KEYS.templates, [...templates(), ...liste]);
+    return wait([...liste].sort(
+      (a, b) => SABLON_SIRASI.indexOf(a.key) - SABLON_SIRASI.indexOf(b.key)));
   },
 
-  async saveInstallments(reservationId, rows) {
-    const seqs = rows.map((r) => r.seq);
-    if (new Set(seqs).size !== seqs.length) {
-      throw new RepoError('Aynı taksit sırası birden çok kez kullanılamaz.');
+  async saveTemplate(template) {
+    if (template.body.trim().length === 0) {
+      throw new RepoError('Mesaj metni boş olamaz.');
     }
-    if (rows.some((r) => r.amount <= 0)) {
-      throw new RepoError('Taksit tutarı sıfırdan büyük olmalıdır.');
+    if (template.body.length > 900) {
+      throw new RepoError('Mesaj metni 900 karakteri aşamaz.');
     }
-    // Veritabanı tetikleyicisinin karşılığı: plan rezervasyon tutarını aşamaz.
-    const reservation = reservations().find((r) => r.id === reservationId);
-    if (!reservation) throw new RepoError('Rezervasyon bulunamadı.');
-    const planned = rows.reduce((sum, r) => sum + r.amount, 0);
-    if (planned > reservation.totalAmount) {
-      throw new RepoError('Taksit toplamı rezervasyon tutarını aşamaz.');
-    }
+    const list = templates();
+    const i = list.findIndex((t) => t.id === template.id);
+    if (i >= 0) list[i] = template; else list.push(template);
+    write(KEYS.templates, list);
+    return wait(template);
+  },
 
-    const others = installments().filter((i) => i.reservationId !== reservationId);
-    write(KEYS.installments, [
-      ...others,
-      ...rows.map((r) => ({ ...r, id: uid('inst'), reservationId })),
-    ]);
-    return wait(undefined);
+  async listReminderRules(businessId) {
+    const kayitli = rules().filter((r) => r.businessId === businessId);
+    const liste = kayitli.length > 0 ? kayitli : varsayilanKurallar(businessId);
+    if (kayitli.length === 0) write(KEYS.reminderRules, [...rules(), ...liste]);
+    return wait([...liste].sort(
+      (a, b) => SABLON_SIRASI.indexOf(a.key) - SABLON_SIRASI.indexOf(b.key)));
+  },
+
+  async saveReminderRule(rule) {
+    if (rule.daysBefore < -30 || rule.daysBefore > 365) {
+      throw new RepoError('Gün sayısı -30 ile 365 arasında olmalıdır.');
+    }
+    if (rule.sendHour < 0 || rule.sendHour > 23) {
+      throw new RepoError('Gönderim saati 0 ile 23 arasında olmalıdır.');
+    }
+    const list = rules();
+    const i = list.findIndex((r) => r.id === rule.id);
+    if (i >= 0) list[i] = rule; else list.push(rule);
+    write(KEYS.reminderRules, list);
+    return wait(rule);
   },
 
   async listTasks(reservationId) {

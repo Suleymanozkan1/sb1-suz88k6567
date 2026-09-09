@@ -95,16 +95,6 @@ export interface SeatingTable {
   label: string;
 }
 
-/** Vade tarihli taksit. Tutar, payments ile aynı birimde (TL) tutulur. */
-export interface Installment {
-  id: string;
-  reservationId: string;
-  seq: number;
-  dueDate: string;
-  amount: number;
-  note: string;
-}
-
 /** Etkinlik günü iş emri satırı. */
 export interface EventTask {
   id: string;

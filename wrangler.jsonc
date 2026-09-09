@@ -21,7 +21,7 @@
   // Zamanlanmış görevler. Her ifade worker/index.ts içindeki
   // CRON_GOREVLERI ile eşleşmeli; eşleşmeyi bir birim testi doğruluyor.
   "triggers": {
-    "crons": ["*/5 * * * *", "*/15 * * * *", "30 2 * * *", "0 3 * * *"]
+    "crons": ["*/5 * * * *", "*/15 * * * *", "30 2 * * *", "0 3 * * *", "0 7 * * *"]
   },
 
   "observability": { "enabled": true }

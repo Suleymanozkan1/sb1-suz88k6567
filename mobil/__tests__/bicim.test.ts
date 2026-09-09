@@ -1,6 +1,5 @@
 import {
-  gorecelıGun, kalanGun, okunakliMetin, tarihKisa, tarihUzun,
-  telefon, telefonUri, tutar, tutarKisa, yerelIso,
+  gorecelıGun, kalanGun, okunakliMetin, tarihKisa, tarihSayisal, tarihUzun, telefon, telefonUri, tutar, tutarKisa, yerelIso,
 } from '../src/bicim';
 
 /**
@@ -77,5 +76,18 @@ describe('okunakliMetin', () => {
 
   it('bozuk değerde beyaza düşer', () => {
     expect(okunakliMetin('kırmızı')).toBe('#ffffff');
+  });
+});
+
+describe('hatırlatma tarihi', () => {
+  it('gün.ay.yıl biçiminde yazar', () => {
+    // Sunucudaki gece görevi de bu biçimi kullanıyor; iki taraf farklı
+    // yazınca kullanıcı önizlemede başka, müşteri mesajda başka tarih görüyordu.
+    expect(tarihSayisal('2026-09-09')).toBe('09.09.2026');
+    expect(tarihSayisal('2027-12-31')).toBe('31.12.2027');
+  });
+
+  it('bozuk girdiyi olduğu gibi döndürür', () => {
+    expect(tarihSayisal('')).toBe('');
   });
 });

@@ -50,6 +50,18 @@ export function yerelIso(t: Date): string {
   return `${t.getFullYear()}-${iki(t.getMonth() + 1)}-${iki(t.getDate())}`;
 }
 
+/**
+ * "26.09.2026" — hatırlatma metinlerindeki {tarih} yer tutucusu.
+ *
+ * Sunucudaki gece görevi de tarihi bu biçimde yazıyor. İki taraf farklı
+ * biçim kullanınca kullanıcı önizlemede "9 Eylül 2026" görüyor, müşteriye
+ * "09.09.2026" gidiyordu; ayrıca uzun biçim mesajı bir SMS daha uzatıyor.
+ */
+export function tarihSayisal(iso: string): string {
+  const [y, a, g] = iso.slice(0, 10).split('-');
+  return y && a && g ? `${g}.${a}.${y}` : iso;
+}
+
 /** "26 Eylül 2026" */
 export function tarihUzun(iso: string): string {
   const t = isoTarih(iso);
