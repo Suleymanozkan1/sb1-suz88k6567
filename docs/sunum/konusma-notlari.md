@@ -1,8 +1,8 @@
 # Sunuma hazırlık notları
 
 26 slayt. Rahat tempoda 30–35 dakika, soru–cevapla birlikte 45 dakika.
-Bu notlar slaytların üstünde yazmaz; slayt notları ayrıca PowerPoint'in
-konuşmacı bölümünde duruyor.
+Bu notlar slaytlarda yazmaz; PowerPoint'in konuşmacı bölümündeki notlar
+ayrıca duruyor.
 
 ---
 
@@ -13,7 +13,7 @@ konuşmacı bölümünde duruyor.
 > her şey burada."
 
 Bunu söyledikten sonra doğrudan takvim slaydına geçin. Ürünü tarif ederek
-değil, ekranı göstererek anlatın; en ikna edici slayt ekran görüntüsü olan
+değil ekranı göstererek anlatın; en ikna edici slayt ekran görüntüsü olan
 slayttır.
 
 ## 2. Tempo
@@ -21,13 +21,14 @@ slayttır.
 | Bölüm | Slayt | Süre | Ne anlatılıyor |
 | --- | --- | --- | --- |
 | Açılış ve kapsam | 1–2 | 3 dk | Sistem ne, neleri kapsıyor |
-| Çekirdek | 3–11 | 12 dk | Takvim, rezervasyon, para, belgeler, organizasyon |
-| Mobil | 12–14 | 4 dk | Telefon uygulaması |
-| İletişim ve mevzuat | 15–20 | 7 dk | SMS, İYS, fatura, talepler |
-| Yönetim ve altyapı | 21–24 | 5 dk | Yetkiler, altyapı, veri |
-| Kurulum ve maliyet | 25–26 | 4 dk | Ne gerekiyor, ne tutuyor |
+| Çekirdek | 3–10 | 10 dk | Takvim, rezervasyon, para, belgeler, organizasyon |
+| Mobil | 11–13 | 5 dk | Telefon uygulaması |
+| Hatırlatma ve iletişim | 14–16 | 6 dk | Taslak mesajlar, otomatik gönderim, SMS, İYS |
+| Para ve mevzuat | 17–19 | 5 dk | Kasa, raporlar, fatura, talepler |
+| Yönetim ve altyapı | 20–23 | 5 dk | Yetkiler, altyapı, veri |
+| Kurulum ve maliyet | 24–26 | 4 dk | Ne gerekiyor, ne tutuyor |
 
-Vakit daralırsa 10 (tedarikçiler) ve 11 (masa düzeni) atlanabilir; bunlar
+Vakit daralırsa 9 (tedarikçiler) ve 10 (masa düzeni) atlanabilir; bunlar
 "ayrıca bunu da yapıyor" slaytlarıdır, omurga değil.
 
 ## 3. Her bölümün tek cümlesi
@@ -40,25 +41,28 @@ Slayt başına ezberlenecek tek cümleler. Gerisi zaten ekranda.
   salon için ayrı hesaplanır."
 - **Rezervasyon (5):** "Kalan alacak elle girilmez, tahsilatlardan
   hesaplanır."
-- **Ödeme planı (6):** "Taksitlerin toplamı her zaman kalan tutara eşittir;
-  yuvarlama artığı ilk taksite eklenir."
-- **Menüler (7):** "Menü seçilince tutar önerilir, kullanıcı değiştirebilir."
-- **Belgeler (8):** "Sözleşme ve makbuz rezervasyondan üretilir, bilgi
+- **Menüler (6):** "Menü seçilince tutar önerilir, dayatılmaz — pazarlık
+  sonucu tutar zaten listeden farklı çıkıyor."
+- **Belgeler (7):** "Sözleşme ve makbuz rezervasyondan üretilir, bilgi
   ikinci kez girilmez."
-- **İş emri (9):** "Etkinlik günü kimin ne saatte ne yapacağı; otelde BEO
+- **İş emri (8):** "Etkinlik günü kimin ne saatte ne yapacağı; otelde BEO
   denen belgenin karşılığı."
-- **Mobil (12–14):** "Telefon görüntülemek ve para almak içindir; kayıt
-  açmak, fatura kesmek masaüstünde kalır. Bu bir eksiklik değil, karar."
-- **SMS (15):** "Sağlayıcı tanımlı değilse mesaj gitmez ama kaydı tutulur."
+- **Mobil (11–13):** "Panelde ne varsa telefonda da var. Fark yazma
+  yetkisinde: para almak ve kayıt açmak telefonda, yetki değiştirmek ve
+  fatura kesmek masaüstünde."
+- **Hatırlatmalar (14):** "Yedi hazır mesaj metni var, hepsi
+  düzenlenebilir. İşaretlediklerinizi sistem kendiliğinden gönderiyor."
+- **SMS (15):** "Sağlayıcı tanımlı değilse mesaj gitmez ama kaydı tutulur
+  ve kuyrukta bekler."
 - **İYS (16):** "Rezervasyon onayı ticari ileti değildir, onay gerekmez.
   Kampanya ticari iletidir, onaysız gönderilemez."
 - **Kod doğrulama (17):** "Müşteri kendi rezervasyonunu sorgular; ödeme
   bilgisi dışarı açılmaz, telefon maskelidir."
-- **Yetkiler (21):** "Her personelin ayrı hesabı var, kim neyi değiştirdi
+- **Yetkiler (20):** "Her personelin ayrı hesabı var, kim neyi değiştirdi
   kaydediliyor ve bu kayıt silinemiyor."
-- **Altyapı (22):** "İki şey zorunlu, gerisi isteğe bağlı. Birini
+- **Altyapı (21):** "İki şey zorunlu, gerisi isteğe bağlı. Birini
   kapatırsanız yalnızca o özellik kapanır."
-- **Neden (23):** "Kendi sunucumuz olsaydı yazılım aynı çalışırdı; fark,
+- **Neden (22):** "Kendi sunucumuz olsaydı yazılım aynı çalışırdı; fark,
   yedek ve güvenliğin kimin üzerinde kaldığında."
 - **Maliyet (26):** "Sabit gider iki abonelik, ayda yaklaşık 30 dolar.
   Gerisi kullandıkça."
@@ -79,19 +83,34 @@ Yanlış sayı söylemektense "slaytta var, birlikte bakalım" demek daha iyi.
 - Veriler **AB bölgesinde (Frankfurt)**
 
 Aylık 30 organizasyon kaydeden bir salon, onay ve hatırlatma ile yaklaşık
-**100–150 SMS** gönderir; 1.000'lik paket birkaç ay yeter. Bu örnek soru
-gelmeden söylenmeye değer, çünkü SMS maliyeti gözde büyüyor.
+**100–150 SMS** gönderir; 1.000'lik paket birkaç ay yeter. Bu örneği soru
+gelmeden söyleyin: SMS maliyeti dinleyicinin gözünde büyüyor.
 
-## 5. Gelmesi kesin sorular
+## 5. Hatırlatma slaydında dikkat çekilecek iki şey
+
+Bu slayt yeni ve en çok soru buradan gelir.
+
+1. **Metin gönderilmeden önce doldurulmuş hâliyle gösteriliyor.**
+   Söyleyin: "Yer tutucuyu yanlış yazdıysanız burada görürsünüz;
+   müşteriye giden mesajda değil."
+2. **Ekranda karakter sayısı ve SMS adedi yazıyor.** Sebebini anlatın:
+   tek bir Türkçe harf (ş, ğ, İ, ı, ç) mesajı 160 karakterden 70'e
+   düşürüyor. Yani "kısacık yazdım" denen bir mesaj üç SMS ücreti
+   çıkarabiliyor. Bu, faturayı doğrudan etkileyen bir ayrıntı.
+
+Ayrıca şunu net söyleyin: otomatik gönderim **her rezervasyona bir kez**
+gider. "Sistem her gece aynı mesajı atar mı?" sorusu kesin gelir.
+
+## 6. Gelmesi kesin sorular
 
 **"Verilerimiz nerede, başkası görebilir mi?"**
 AB bölgesinde, Frankfurt'ta. Her hesap yalnızca kendi verisini görür ve bu
-ayrım arayüzde değil sunucuda tanımlı — yani yazılımda bir hata olsa bile
-başka bir işletmenin kaydı gelmez. Gece otomatik yedek alınır.
+ayrım arayüzde değil sunucuda tanımlı — yazılımda bir hata olsa bile başka
+bir işletmenin kaydı gelmez. Gece otomatik yedek alınır.
 
 **"Neden bir sürü servise para veriyoruz? Kendi sunucumuz olsun."**
-23. slayt tam bu soru için. Yazılım kendi sunucunuzda da aynı çalışır. Fark
-şu: güvenlik yamaları, sertifika yenileme, yedek alma ve o yedeğin
+22. slayt tam bu soru için. Yazılım kendi sunucunuzda da aynı çalışır.
+Fark şu: güvenlik yamaları, sertifika yenileme, yedek alma ve o yedeğin
 gerçekten geri yüklenebildiğini denemek sizin üzerinizde kalır. Ayda 30
 dolar bu işi devretmenin bedeli. Ekleyin: veritabanı standart PostgreSQL,
 istenirse başka bir sunucuya taşınır — kilitlenme yok.
@@ -99,24 +118,25 @@ istenirse başka bir sunucuya taşınır — kilitlenme yok.
 **"Hazır programlar var, neden bu?"**
 Savunmaya geçmeyin. "Hangisine baktınız?" diye sorun, sonra somut farka
 gidin: sözleşme ve makbuzun rezervasyondan üretilmesi, çakışmanın
-veritabanında engellenmesi, İYS'nin sistemin içinde olması. Bilmediğiniz
-bir ürün hakkında yorum yapmayın.
+veritabanında engellenmesi, İYS'nin sistemin içinde olması, hatırlatmaların
+otomatik gitmesi. Bilmediğiniz bir ürün hakkında yorum yapmayın.
+
+**"Telefonda her şey var mı, yoksa sadece bakabiliyor muyum?"**
+Panelde ne varsa telefonda da var — yirmi bir ekran. Yazma tarafı bilinçli
+sınırlı: tahsilat, gelir–gider, yeni rezervasyon ve mesaj metni telefondan
+girilir; yetki değiştirme ve fatura kesme masaüstünde kalır, çünkü ikisi de
+yanlış dokunuşla geri alınması zor sonuç üretiyor.
 
 **"SMS'i biz gönderiyoruz zaten, gerek var mı?"**
-Fark, gönderimin kayda geçmesi ve iznin takip edilmesi. Ticari ileti için
-onay şart; onaysız gönderim ceza konusu. Sistem onaysız numaraya ticari
-ileti göndermeyi kayıt aşamasında reddeder.
+Fark, gönderimin kayda geçmesi, iznin takip edilmesi ve hatırlatmanın
+unutulmaması. Ticari ileti için onay şart; onaysız gönderim ceza konusu.
+Sistem onaysız numaraya ticari ileti göndermeyi kayıt aşamasında reddeder.
 
 **"e-Fatura'ya geçmek zorunda mıyız?"**
 Bunu bilmiyorsanız bilmediğinizi söyleyin. Mükellefiyet durumu ciroya ve
 sektöre göre değişir, mali müşavire sorulmalıdır. Sistemin tarafı şu:
 entegratör tanımlı değilse fatura taslak olarak kalır, sistem çalışmaya
 devam eder.
-
-**"Mobilde neden rezervasyon açılmıyor?"**
-Bilinçli karar. Rezervasyon formu çok alanlı; telefonda yanlış giriş
-ihtimali yüksek ve düzeltmesi pahalı. Telefonun asıl işi bakmak ve para
-almak. Tahsilat girişi mobilde var.
 
 **"İnternet giderse ne olur?"**
 Sistem tarayıcıdan çalışır, internet gerekir. Bunu saklamayın. Telefon
@@ -130,7 +150,7 @@ yetkisi ayrı belirlenir.
 Yazılım tarafı hazır. Bekleten tek şey Netgsm marka başlığı onayı; birkaç
 iş günü sürüyor ve en erken başlatılması gereken adım bu.
 
-## 6. Söylememeniz gerekenler
+## 7. Söylememeniz gerekenler
 
 - Rakip ürünler hakkında incelemediğiniz iddialar.
 - "Hiç hata olmaz", "kesinlikle güvenli" gibi mutlak cümleler.
@@ -138,22 +158,23 @@ iş günü sürüyor ve en erken başlatılması gereken adım bu.
 - Fiyatları yuvarlayarak. Sağlayıcı fiyatları Eylül 2026 listelerinden;
   değişebileceğini söyleyin.
 
-## 7. Demo yapacaksanız sıra
+## 8. Demo yapacaksanız sıra
 
-Sunumdan sonra canlı gösterecekseniz kısa tutun, beş adım yeter:
+Sunumdan sonra canlı gösterecekseniz kısa tutun, altı adım yeter:
 
 1. Takvimden dolu bir güne bakın, ikinci kaydın açılmadığını gösterin.
 2. Bir rezervasyon açın, menü seçin, tutarın önerildiğini gösterin.
 3. Tahsilat girin; kalan alacağın kendiliğinden düştüğünü gösterin.
-4. Sözleşmeyi ve makbuzu ekrana getirin.
-5. Telefondan aynı rezervasyona girip tahsilat ekleyin.
+4. Hatırlatma taslağı seçin, doldurulmuş metni gösterin, gönderin.
+5. Sözleşmeyi ve makbuzu ekrana getirin.
+6. Telefondan aynı rezervasyona girip tahsilat ekleyin.
 
 Demoda bir şey ters giderse üstünü örtmeyin, "buna sonra bakacağım" deyip
-devam edin. Toparlamaya çalışmak süreyi ve dikkati yiyor.
+devam edin. Toparlamaya çalışmak hem süreyi hem dikkati yiyor.
 
-## 8. Son slayttan sonra
+## 9. Son slayttan sonra
 
-Maliyet slaytında bitirip susun. Kapanış cümlesi:
+Maliyet slaydında bitirip susun. Kapanış cümlesi:
 
 > "Zorunlu olan iki kalem var, gerisi ihtiyaca göre açılıp kapanıyor.
 > Nereden başlamak istediğinize göre bir kurulum sırası çıkarabiliriz."
