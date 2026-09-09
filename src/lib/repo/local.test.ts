@@ -34,7 +34,7 @@ describe('tohumlama', () => {
   it('demo hesabı ve örnek verileri oluşturur', async () => {
     seedIfEmpty();
     const user = await localRepo.signIn(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password);
-    expect(user.companyName).toBe('Grand Yıldız Düğün Sarayı');
+    expect(user.companyName).toBe('Grand Sahra Düğün ve Davet Salonu');
     expect(await localRepo.listReservations('biz_demo')).not.toHaveLength(0);
   });
 

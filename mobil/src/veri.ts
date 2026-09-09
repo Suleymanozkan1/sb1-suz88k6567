@@ -84,10 +84,26 @@ const ORNEK: Rezervasyon[] = [
     davetli: 400, toplam: 26_000_000, tahsilat: 0, durum: 'Ön Rezervasyon' },
 ];
 
-const ORNEK_TAHSILAT: Tahsilat[] = [
-  { id: 't1', tarih: gunEkle(-32), tutar: 4_500_000, sekil: 'Havale', aciklama: 'Kapora' },
-  { id: 't2', tarih: gunEkle(-9), tutar: 3_500_000, sekil: 'Nakit', aciklama: 'Ara ödeme' },
-];
+/**
+ * Tanıtım tahsilat geçmişi rezervasyon başına üretilir.
+ *
+ * Tek bir sabit liste kullanılırken ayrıntı ekranının üstündeki "TAHSİLAT"
+ * tutarı ile alttaki geçmiş listesinin toplamı birbirini tutmuyordu. Liste
+ * artık rezervasyonun kendi tahsilatından türetiliyor: kapora üçte iki,
+ * kalanı ara ödeme, artık kuruş kaporaya bırakılır.
+ */
+function ornekTahsilatlar(r: Rezervasyon): Tahsilat[] {
+  if (r.tahsilat <= 0) return [];
+  const ara = Math.floor(r.tahsilat / 3);
+  const kapora = r.tahsilat - ara;
+  const satirlar: Tahsilat[] = [
+    { id: `${r.id}-t1`, tarih: gunEkle(-32), tutar: kapora, sekil: 'Havale', aciklama: 'Kapora' },
+  ];
+  if (ara > 0) {
+    satirlar.push({ id: `${r.id}-t2`, tarih: gunEkle(-9), tutar: ara, sekil: 'Nakit', aciklama: 'Ara ödeme' });
+  }
+  return satirlar;
+}
 
 const ORNEK_IS: IsSatiri[] = [
   { id: 'i1', saat: '15:00', is: 'Salon temizliği ve kontrol', sorumlu: 'Temizlik', tamam: true },
@@ -174,7 +190,10 @@ export async function rezervasyon(id: string): Promise<Rezervasyon | null> {
 }
 
 export async function tahsilatlar(rezervasyonId: string): Promise<Tahsilat[]> {
-  if (!yapilandirildi || !supabase) return ORNEK_TAHSILAT;
+  if (!yapilandirildi || !supabase) {
+    const r = ORNEK.find((x) => x.id === rezervasyonId);
+    return r ? ornekTahsilatlar(r) : [];
+  }
   const { data, error } = await supabase
     .from('payments').select('id, paid_at, amount, method, note')
     .eq('reservation_id', rezervasyonId).order('paid_at', { ascending: false });

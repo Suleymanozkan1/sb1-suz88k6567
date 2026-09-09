@@ -144,10 +144,15 @@ function mikroNotlar(s, { items, y, koyu = false, ortala = false }) {
   });
 }
 
-/** Koyu vurgu paneli: bir başlık ve bir paragraf. */
-function panel(s, { x, y, w, h, bas, metin }) {
+/**
+ * Koyu vurgu paneli: bir başlık ve bir paragraf.
+ *
+ * Zemin verilebilir; lacivert slaytta varsayılan lacivert panel görünmez
+ * oluyordu, orada marka mavisi kullanılır.
+ */
+function panel(s, { x, y, w, h, bas, metin, zemin = NAVY }) {
   s.addShape(pres.ShapeType.roundRect, {
-    x, y, w, h, rectRadius: 0.1, fill: { color: NAVY }, line: { color: NAVY },
+    x, y, w, h, rectRadius: 0.1, fill: { color: zemin }, line: { color: zemin },
   });
   s.addText(bas, {
     x: x + 0.35, y: y + 0.3, w: w - 0.7, h: 0.36, isTextBox: true, margin: 0,
@@ -195,7 +200,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   });
 }
 
-/* ══ 1 · Kapak ═══════════════════════════════════════════════════ */
+/* ══ 1 · Kapak ════════════════════════════════════════════════ */
 {
   const s = slayt(NAVY);
   s.addShape(pres.ShapeType.ellipse, {
@@ -216,7 +221,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Açılış. Sistemin ne olduğu tek cümlede belirtilir.');
 }
 
-/* ══ 2 · Kapsam ══════════════════════════════════════════════════ */
+/* ══ 2 · Kapsam ═══════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'KAPSAM', 'Sistem neleri kapsıyor');
@@ -235,7 +240,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Altı başlığın kısa dökümü. Ayrıntılar sonraki slaytlarda.');
 }
 
-/* ══ 3 · Takvim ══════════════════════════════════════════════════ */
+/* ══ 3 · Takvim ═══════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'TAKVİM', 'Rezervasyon takvimi');
@@ -254,7 +259,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Renk eşlemesi Renk Ayarları ekranından değiştirilebilir.');
 }
 
-/* ══ 4 · Salonlar ════════════════════════════════════════════════ */
+/* ══ 4 · Salonlar ═════════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'SALONLAR', 'Salon tanımları');
@@ -274,7 +279,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Yeni bir işletme oluşturulduğunda sistem kendiliğinden bir "Ana Salon" açar.');
 }
 
-/* ══ 5 · Rezervasyon ve tahsilat ═════════════════════════════════ */
+/* ══ 5 · Rezervasyon ve tahsilat ══════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'REZERVASYON', 'Rezervasyon kaydı ve tahsilat');
@@ -294,7 +299,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Ekrandaki örnekte 180.000 ₺ toplam, 45.000 ₺ kapora, 80.000 ₺ tahsilat ve 100.000 ₺ kalan alacak görünüyor.');
 }
 
-/* ══ 6 · Ödeme planı ═════════════════════════════════════════════ */
+/* ══ 6 · Ödeme planı ══════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'ÖDEME PLANI', 'Vade tarihli taksit planı');
@@ -314,7 +319,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Ekrandaki örnekte plan üç eşit taksite bölünmüş; ilk taksitin vadesi yaklaşıyor, diğer ikisi bekliyor. Vadesi geçen taksit gecikmiş olarak işaretlenir.');
 }
 
-/* ══ 7 · Menüler ═════════════════════════════════════════════════ */
+/* ══ 7 · Menüler ══════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'MENÜLER', 'Menü ve paket tanımları');
@@ -333,7 +338,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Fiyatlar kuruş cinsinden tamsayı olarak saklanır.');
 }
 
-/* ══ 8 · Belgeler ════════════════════════════════════════════════ */
+/* ══ 8 · Belgeler ═════════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'BELGELER', 'Sözleşme ve tahsilat makbuzu');
@@ -343,7 +348,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Makbuz her tahsilat satırı için ayrı ayrı üretilir ve kendi belge numarasını taşır.');
 }
 
-/* ══ 9 · İş emri ═════════════════════════════════════════════════ */
+/* ══ 9 · İş emri ══════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'İŞ EMRİ', 'Etkinlik günü iş emri');
@@ -362,7 +367,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Yabancı ürünlerde BEO (banquet event order) olarak geçen belgenin karşılığıdır.');
 }
 
-/* ══ 10 · Tedarikçiler ═══════════════════════════════════════════ */
+/* ══ 10 · Tedarikçiler ════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'TEDARİKÇİLER', 'Tedarikçi defteri ve atama');
@@ -382,7 +387,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Tedarikçi ücretleri organizasyonun dış gider yükünü gösterir.');
 }
 
-/* ══ 11 · Masa düzeni ════════════════════════════════════════════ */
+/* ══ 11 · Masa düzeni ═════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'MASA DÜZENİ', 'Masa oturma planı');
@@ -402,36 +407,90 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
 }
 
 
-/* ══ 12 · Mobil uygulama ═════════════════════════════════════════ */
+/* ══ 12 · Mobil · ana ekranlar ════════════════════════════════ */
 {
   const s = slayt();
-  baslik(s, 'MOBİL', 'iOS ve Android uygulaması');
+  baslik(s, 'MOBİL', 'Telefon uygulaması: ajanda ve takvim');
 
-  // Telefon görüntüleri dar ve uzun; yan yana üç tanesi slaytın solunu
-  // doldurur, açıklama sağda kalır.
+  // Dört telefon yan yana. Genişlik boşluklarla birlikte hesaplanıp
+  // ortalanıyor; tek tek koordinat vermek slayt düzenini bozuyordu.
   const EKRAN = [
-    [img('mobil-02-bugun.png'), 'Ajanda'],
-    [img('mobil-03-takvim.png'), 'Takvim'],
-    [img('mobil-05-rezervasyon.png'), 'Rezervasyon'],
+    [img('mobil-02-bugun.png'), 'Bugün'],
+    [img('mobil-03-yaklasanlar.png'), 'Yaklaşanlar'],
+    [img('mobil-04-takvim.png'), 'Ay görünümü'],
+    [img('mobil-05-takvim-gun.png'), 'Seçili gün'],
+  ];
+  const EN = 1.9, BOSLUK = 0.42;
+  const SOL = KENAR + (GENIS - (EKRAN.length * EN + (EKRAN.length - 1) * BOSLUK)) / 2;
+  // Yükseklik alt yazının bittiği yere göre seçildi: 3,9 iken görselin
+  // alt yazısı ile aşağıdaki not şeridi üst üste biniyordu.
+  EKRAN.forEach(([dosya, altYazi], i) => {
+    gorsel(s, dosya, { x: SOL + i * (EN + BOSLUK), y: 1.68, w: EN, h: 3.65, altYazi });
+  });
+
+  mikroNotlar(s, {
+    y: 6.1, ortala: true,
+    items: [
+      ['Ajanda önce', 'Ana ekran kronolojik listedir: bugün, sonra yaklaşanlar. Ay ızgarası ayrı sekmede, çünkü telefon genişliğinde hücreler dokunulamayacak kadar küçülüyor.'],
+      ['Tek sayı yukarıda', 'Salon sahibinin telefona bakma sebebi genelde tek bir soru: ne kadar alacağım kaldı. Bu sayı her ekranın üstünde duruyor.'],
+      ['Gün seçimi', 'Ay ızgarasında kayıt taşıyan günler noktalıdır; gün seçilince o günün organizasyonları altta listelenir.'],
+    ],
+  });
+  s.addNotes('Ekrandaki veriler tanıtım verisidir. Renkler organizasyon türünü gösterir ve web panelindeki renk ayarlarıyla aynıdır.');
+}
+
+/* ══ 13 · Mobil · rezervasyon ve tahsilat ═════════════════════ */
+{
+  const s = slayt(SURFACE);
+  baslik(s, 'MOBİL', 'Rezervasyon ayrıntısı ve hızlı tahsilat');
+  const EKRAN = [
+    [img('mobil-07-rezervasyon.png'), 'Rezervasyon ayrıntısı'],
+    [img('mobil-08-hizli-tahsilat.png'), 'Hızlı tahsilat'],
+    [img('mobil-09-is-emri.png'), 'Geçmiş ve iş emri'],
   ];
   EKRAN.forEach(([dosya, altYazi], i) => {
-    gorsel(s, dosya, { x: KENAR + i * 2.45, y: UST, w: 2.2, h: 4.3, altYazi });
+    gorsel(s, dosya, { x: KENAR + i * 2.4, y: UST, w: 2.15, h: 4.2, altYazi });
   });
 
   maddeler(s, {
-    x: 8.1, y: 1.9, w: 4.5, gap: 1.35,
+    x: 8.1, y: 1.9, w: 4.5, gap: 1.42,
     items: [
-      ['Ajanda önce', 'Ana ekran kronolojik listedir; üstte tek bir sayı durur: toplam kalan alacak. Ay ızgarası ayrı sekmede, çünkü telefon genişliğinde hücreler dokunulamayacak kadar küçülüyor.'],
-      ['Hızlı tahsilat', 'Para alındığı an kaydedilir; tutar kalan alacağı aşamaz. Bu, uygulamanın yaptığı tek yazma işlemidir.'],
-      ['Aynı veri, aynı kural', 'Uygulama web ile aynı veritabanını kullanır. Hangi kaydı göreceğine sunucudaki satır bazlı güvenlik karar verir.'],
+      ['Para durumu en üstte', 'Toplam, tahsilat ve kalan yan yana; altındaki çubuk tahsilatın hangi oranda tamamlandığını gösterir.'],
+      ['Hızlı tahsilat', 'Para alındığı an kaydedilir. Tutar kalan alacağı aşamaz; aşarsa kayıt veritabanı düzeyinde reddedilir. Bu, uygulamanın yaptığı tek yazma işlemidir.'],
+      ['Müşteriyi ara', 'Telefon numarasının yanındaki düğme doğrudan aramayı açar.'],
+      ['İş emri', 'Etkinlik günü yapılacaklar saatiyle listelenir; tamamlananlar telefondan işaretlenir.'],
     ],
   });
-
-  dipnot(s, 'Giriş, web ile aynı sunucu ucundan geçer: hesap kilidi ve hız sınırı mobilde de uygulanır. Oturum belirteci cihazda iOS Keychain / Android EncryptedSharedPreferences içinde saklanır.', 6.6);
-  s.addNotes('Tek kod tabanı (React Native, Expo) iki platforma da derlenir. Rezervasyon oluşturma, fatura ve yetki yönetimi bilinçli olarak web panelinde bırakıldı.');
+  s.addNotes('Rezervasyon oluşturma, fatura kesme ve yetki yönetimi bilinçli olarak web panelinde bırakıldı; bu işlemler daha fazla alan ve dikkat istiyor.');
 }
 
-/* ══ 13 · SMS ════════════════════════════════════════════════════ */
+/* ══ 14 · Mobil · kasa, hesap ve güvenlik ═════════════════════ */
+{
+  const s = slayt();
+  baslik(s, 'MOBİL', 'Kasa, hesap ve güvenlik');
+  const EKRAN = [
+    [img('mobil-06-kasa.png'), 'Kasa özeti'],
+    [img('mobil-10-hesap.png'), 'Hesap'],
+    [img('mobil-01-giris.png'), 'Giriş'],
+  ];
+  EKRAN.forEach(([dosya, altYazi], i) => {
+    gorsel(s, dosya, { x: KENAR + i * 2.4, y: UST, w: 2.15, h: 4.2, altYazi });
+  });
+
+  maddeler(s, {
+    x: 8.1, y: 1.9, w: 4.5, gap: 1.3,
+    items: [
+      ['Aynı veri, aynı kural', 'Uygulama web ile aynı veritabanını kullanır. Hangi kaydı göreceğine sunucudaki satır bazlı güvenlik karar verir; istemci filtresine güvenilmez.'],
+      ['Giriş aynı kapıdan', 'Giriş, web ile aynı sunucu ucundan geçer. Hesap kilidi ve hız sınırı mobilde de uygulanır; uygulama bu korumaları atlayan bir yan kapı değildir.'],
+      ['Oturum cihazda şifreli', 'Belirteç iOS’ta Keychain, Android’de EncryptedSharedPreferences içinde saklanır. Düz metin dosyada tutulsaydı köklenmiş bir cihazda okunabilirdi.'],
+      ['Kasa yalnızca okur', 'Gelir–gider kaydı telefondan girilmez; mobilde ihtiyaç “kasada ne var” sorusudur.'],
+    ],
+  });
+  dipnot(s, 'Tek kod tabanı (React Native, Expo) hem iOS hem Android için derlenir. Uygulama içinde reklam, izleme kodu ve üçüncü taraf analitiği yoktur.', 6.55, { kucuk: true });
+  s.addNotes('Sunucu bağlantısı tanımlı değilken uygulama tanıtım verisiyle açılır ve bunu ekranda açıkça yazar; sessizce boş bir liste göstermez.');
+}
+
+/* ══ 15 · SMS ═════════════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'SMS', 'Müşteriye SMS gönderimi');
@@ -452,7 +511,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Marka başlığı onayı birkaç iş günü sürer; kurulumda en erken başlatılması gereken adımdır.');
 }
 
-/* ══ 14 · İYS ════════════════════════════════════════════════════ */
+/* ══ 16 · İYS ═════════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'İYS', 'Ticari ileti izin yönetimi');
@@ -472,7 +531,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('İYS bilgileri tanımlı değilse aktarım yapılmaz; ticari ileti gönderimi yerel onay kayıtlarına göre yine de engellenir. Bazı firmalar İYS’ye doğrudan değil, SMS sağlayıcısı üzerinden bağlanır.');
 }
 
-/* ══ 15 · Kod doğrulama ══════════════════════════════════════════ */
+/* ══ 17 · Kod doğrulama ═══════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'KOD DOĞRULAMA', 'Müşterinin rezervasyon sorgusu');
@@ -495,7 +554,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Kod, rezervasyon onayı SMS’inde müşteriye gönderilir.');
 }
 
-/* ══ 16 · Kasa ve raporlar ═══════════════════════════════════════ */
+/* ══ 18 · Kasa ve raporlar ════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'KASA VE RAPORLAR', 'Gelir gider ve raporlama');
@@ -514,7 +573,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Raporlar tarih aralığına göre filtrelenebilir.');
 }
 
-/* ══ 17 · e-Arşiv / e-Fatura ═════════════════════════════════════ */
+/* ══ 19 · e-Arşiv / e-Fatura ══════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'e-ARŞİV / e-FATURA', 'Fatura düzenleme');
@@ -555,7 +614,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Gönderim Paraşüt üzerinden yapılır. Mükellefiyet durumu mali müşavire sorulmalıdır.');
 }
 
-/* ══ 18 · Talepler ═══════════════════════════════════════════════ */
+/* ══ 20 · Talepler ════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'TALEPLER', 'Siteden gelen müşteri talepleri');
@@ -574,7 +633,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Talep geldiğinde işleyen kullanıcı ve zaman damgası kaydedilir.');
 }
 
-/* ══ 19 · Yetkiler ═══════════════════════════════════════════════ */
+/* ══ 21 · Yetkiler ════════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'YETKİLER', 'Kullanıcı yetkileri');
@@ -608,7 +667,94 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Yedi ayrı yetki tanımlıdır; tablo bunlardan bir dağılım örneğidir.');
 }
 
-/* ══ 20 · Veri ═══════════════════════════════════════════════════ */
+/* ══ 22 · Altyapı ═════════════════════════════════════════════ */
+{
+  const s = slayt(SURFACE);
+  baslik(s, 'ALTYAPI', 'Sistem neyin üzerinde çalışıyor');
+  s.addText('Sistem üç parçadan oluşur: kullanıcının gördüğü arayüz, arayüzü dağıtan sunucu ve verinin durduğu veritabanı. Yanlarındaki servisler yalnızca ilgili özellik açıksa devreye girer.', {
+    x: KENAR, y: 1.66, w: GENIS, h: 0.36, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 13.5, color: MUTED,
+  });
+
+  // Akış kutuları: e-Fatura slaydındaki düzenin aynısı, üç adımlı.
+  [['Tarayıcı / mobil', 'Kullanıcının ekranı'],
+   ['Cloudflare', 'Arayüzü dağıtır, gece görevlerini çalıştırır'],
+   ['Supabase', 'Veriyi tutar, kim neyi görecek ona karar verir'],
+  ].forEach(([bas, ack], i) => {
+    const w = 3.8, x = KENAR + i * (w + 0.26);
+    const son = i === 2;
+    s.addShape(pres.ShapeType.roundRect, {
+      x, y: 2.2, w, h: 1.15, rectRadius: 0.1,
+      fill: { color: son ? NAVY : WHITE }, line: { color: son ? NAVY : KART_LINE, width: 1 },
+    });
+    s.addText(bas, {
+      x: x + 0.28, y: 2.42, w: w - 0.56, h: 0.32, isTextBox: true, margin: 0,
+      fontFace: H, fontSize: 15, bold: true, color: son ? WHITE : NAVY,
+    });
+    s.addText(ack, {
+      x: x + 0.28, y: 2.76, w: w - 0.56, h: 0.42, isTextBox: true, margin: 0,
+      fontFace: B, fontSize: 11.5, color: son ? PALE : INK, lineSpacing: 15,
+    });
+    if (!son) {
+      s.addShape(pres.ShapeType.rightArrow, {
+        x: x + w + 0.02, y: 2.62, w: 0.2, h: 0.3, fill: { color: ACCENT }, line: { color: ACCENT },
+      });
+    }
+  });
+
+  tablo(s, {
+    // 7 satır (başlık + 6 gövde) × 0,42 = 2,94; tablo 6,54'te biter,
+    // dipnot 6,7'den başlar. 0,46'da başlık satırı hesaba katılmadığı için
+    // son satır dipnotun üzerine biniyordu.
+    x: KENAR, y: 3.6, w: GENIS, colW: [2.6, 5.2, 4.13], rowH: 0.42,
+    basliklar: ['BİLEŞEN', 'NE İŞE YARIYOR', 'TANIMLI DEĞİLSE'],
+    satirlar: [
+      ['Supabase', 'Veritabanı, kullanıcı girişi, dosya deposu ve gecelik yedek', { text: 'Sistem çalışmaz', color: '9B2C1C', bold: true }],
+      ['Cloudflare Workers', 'Siteyi yayınlar, gece yedek ve İYS aktarımını tetikler', { text: 'Sistem çalışmaz', color: '9B2C1C', bold: true }],
+      ['Netgsm', 'Müşteriye SMS gönderir', 'Mesaj gönderilmez, kaydı tutulur'],
+      ['İYS', 'Ticari ileti onaylarını devletin sistemiyle eşler', 'Onaylar aktarılmaz, yerel kayıt işler'],
+      ['Paraşüt', 'e-Arşiv / e-Fatura’yı GİB’e gönderir', 'Fatura taslak olarak kalır'],
+      ['Sentry', 'Hataları toplar', 'Dış servise istek gitmez'],
+    ],
+  });
+  dipnot(s, 'İlk iki satır zorunludur; geri kalanı isteğe bağlıdır ve biri kapatıldığında yalnızca o özellik kapanır.', 6.7, { kucuk: true });
+  s.addNotes('Supabase yönetilen bir PostgreSQL servisidir. Cloudflare Workers hem statik dosyaları dağıtır hem de zamanlanmış görevleri çalıştırır.');
+}
+
+/* ══ 23 · Neden hazır servis ══════════════════════════════════ */
+{
+  const s = slayt(NAVY);
+  baslik(s, 'NEDEN', 'Neden kendi sunucumuz yok', { koyu: true });
+  s.addText('Kendi sunucumuzu kiralasak yazılım aynı çalışırdı; fark, aşağıdaki işlerin kimin üzerinde kaldığında.', {
+    x: KENAR, y: 1.66, w: GENIS, h: 0.34, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 13.5, color: PALE,
+  });
+  kartlar(s, {
+    // Kart yüksekliği metnin en uzun hâline göre seçildi: gövde kutuya
+    // sığmayınca yukarı taşıp başlığın üzerine biniyordu.
+    y: 2.15, h: 2.15, sutun: 3, koyu: true,
+    items: [
+      ['Kendi sunucumuz', 'Güvenlik yamaları, sertifika yenileme ve yedeğin gerçekten geri yüklenebildiğinin denenmesi bize kalırdı. Sunucuyu kiralamak ucuz, ona bakmak pahalıdır.'],
+      ['Supabase ne veriyor', 'PostgreSQL veritabanı, satır bazlı erişim kuralları, kullanıcı girişi, dosya deposu ve gecelik yedek — tek abonelikte, ayrı ayrı kurulmadan.'],
+      ['Cloudflare ne veriyor', 'Site dünya çapında dağıtılır, HTTPS ve saldırı koruması hazır gelir, gecelik görevler ayrı bir sunucu olmadan çalışır.'],
+    ],
+  });
+  panel(s, {
+    x: KENAR, y: 4.4, w: 5.85, h: 2.05, zemin: BRAND, bas: 'Kilitlenme var mı',
+    metin: 'Yok. Veritabanı standart PostgreSQL’dir, tabloların tanımı depoda SQL dosyası olarak durur. Supabase’ten çıkılmak istenirse veriler olduğu gibi başka bir PostgreSQL sunucusuna taşınır; yazılımın yeniden yazılması gerekmez.',
+  });
+  panel(s, {
+    x: 6.78, y: 4.4, w: 5.85, h: 2.05, zemin: BRAND, bas: 'Yedek kimin sorumluluğunda',
+    metin: 'İki katman var. Supabase kendi gecelik yedeğini alır; buna ek olarak sistem her gece kendi yedeğini üretip dışarıya kapalı bir alana yazar. İkinci katmanın sebebi, sağlayıcıya ait yedeğin sağlayıcıyla birlikte erişilemez hâle gelebilmesidir.',
+  });
+  s.addText('İki abonelik toplamı ayda yaklaşık 30 dolardır. Bu tutar veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar.', {
+    x: KENAR, y: 6.75, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 12, color: PALE,
+  });
+  s.addNotes('Bu slayt “neden bir sürü servise para veriyoruz” sorusunun cevabıdır. Asıl gerekçe maliyet değil, bakım yükünün ve yedek sorumluluğunun kimde olduğudur.');
+}
+
+/* ══ 24 · Veri ════════════════════════════════════════════════ */
 {
   const s = slayt(NAVY);
   baslik(s, 'VERİ', 'Veri saklama ve yedekleme', { koyu: true });
@@ -635,7 +781,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Veriler Supabase (PostgreSQL) üzerinde tutulur.');
 }
 
-/* ══ 21 · Kurulum ════════════════════════════════════════════════ */
+/* ══ 25 · Kurulum ═════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'KURULUM', 'Kurulum ve gereksinimler');
@@ -657,7 +803,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Netgsm marka başlığı onayı birkaç iş günü sürer; en erken başvurulması gereken adımdır.');
 }
 
-/* ══ 22 · Maliyet ════════════════════════════════════════════════ */
+/* ══ 26 · Maliyet ═════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'MALİYET', 'Aylık ve tek seferlik giderler');
