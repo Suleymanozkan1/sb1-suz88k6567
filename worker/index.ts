@@ -14,6 +14,7 @@ import invoice from '../api/invoice';
 import iys from '../api/iys';
 import login from '../api/login';
 import otp from '../api/otp';
+import reminders from '../api/reminders';
 import smsQueue from '../api/sms-queue';
 import sms from '../api/sms';
 
@@ -33,6 +34,7 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/otp': otp,
   '/api/sms': sms,
   '/api/sms-queue': smsQueue,
+  '/api/reminders': reminders,
 };
 
 /**
@@ -44,6 +46,9 @@ export const CRON_GOREVLERI: Record<string, keyof typeof ROTALAR> = {
   '*/15 * * * *': '/api/invoice',
   '30 2 * * *': '/api/backup',
   '0 3 * * *': '/api/iys',
+  // Hatırlatmalar sabah taranır; kuralın kendi saat alanı gün içinde
+  // hangi saatten sonra gönderileceğine karar verir.
+  '0 7 * * *': '/api/reminders',
 };
 
 /**

@@ -615,56 +615,6 @@ describe('masa düzeni', () => {
   });
 });
 
-describe('ödeme planı', () => {
-  async function rezervasyon(total = 100000) {
-    seedIfEmpty();
-    return localRepo.saveReservation(makeReservation({
-      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'P1',
-      date: '2027-10-10', totalAmount: total, deposit: 0,
-    }));
-  }
-
-  it('plan kaydedilir ve vadeye göre sıralı okunur', async () => {
-    const r = await rezervasyon();
-    await localRepo.saveInstallments(r.id, [
-      { seq: 2, dueDate: '2027-05-01', amount: 40000, note: '' },
-      { seq: 1, dueDate: '2027-02-01', amount: 30000, note: '' },
-    ]);
-    expect((await localRepo.listInstallments(r.id)).map((i) => i.seq)).toEqual([1, 2]);
-  });
-
-  it('taksit toplamı rezervasyon tutarını aşamaz', async () => {
-    const r = await rezervasyon(50000);
-    await expect(localRepo.saveInstallments(r.id, [
-      { seq: 1, dueDate: '2027-02-01', amount: 30000, note: '' },
-      { seq: 2, dueDate: '2027-03-01', amount: 30000, note: '' },
-    ])).rejects.toThrow(/aşamaz/);
-  });
-
-  it('tam tutara eşit plan kabul edilir', async () => {
-    const r = await rezervasyon(50000);
-    await expect(localRepo.saveInstallments(r.id, [
-      { seq: 1, dueDate: '2027-02-01', amount: 25000, note: '' },
-      { seq: 2, dueDate: '2027-03-01', amount: 25000, note: '' },
-    ])).resolves.toBeUndefined();
-  });
-
-  it('mükerrer taksit sırası reddedilir', async () => {
-    const r = await rezervasyon();
-    await expect(localRepo.saveInstallments(r.id, [
-      { seq: 1, dueDate: '2027-02-01', amount: 1000, note: '' },
-      { seq: 1, dueDate: '2027-03-01', amount: 1000, note: '' },
-    ])).rejects.toThrow(/aynı taksit sırası/i);
-  });
-
-  it('sıfır tutarlı taksit reddedilir', async () => {
-    const r = await rezervasyon();
-    await expect(localRepo.saveInstallments(r.id, [
-      { seq: 1, dueDate: '2027-02-01', amount: 0, note: '' },
-    ])).rejects.toThrow(/sıfırdan büyük/);
-  });
-});
-
 describe('iş emri', () => {
   it('satırlar saate göre okunur ve boş başlık reddedilir', async () => {
     seedIfEmpty();

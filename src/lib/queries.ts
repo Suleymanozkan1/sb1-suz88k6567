@@ -34,7 +34,8 @@ export const keys = {
   halls: (businessId: string) => ['halls', businessId] as const,
   menus: (businessId: string) => ['menus', businessId] as const,
   seating: (reservationId: string) => ['seating', reservationId] as const,
-  installments: (reservationId: string) => ['installments', reservationId] as const,
+  templates: (businessId: string) => ['templates', businessId] as const,
+  reminderRules: (businessId: string) => ['reminder-rules', businessId] as const,
   tasks: (reservationId: string) => ['tasks', reservationId] as const,
   vendors: (businessId: string) => ['vendors', businessId] as const,
   resVendors: (reservationId: string) => ['resVendors', reservationId] as const,
@@ -196,20 +197,35 @@ export function useSaveSeating(reservationId: string | undefined) {
   });
 }
 
-export function useInstallments(reservationId: string | undefined) {
+export function useTemplates(businessId: string | undefined) {
   return useQuery({
-    queryKey: keys.installments(reservationId ?? ''),
-    queryFn: () => repo.listInstallments(reservationId!),
-    enabled: Boolean(reservationId),
+    queryKey: keys.templates(businessId ?? ''),
+    queryFn: () => repo.listTemplates(businessId!),
+    enabled: Boolean(businessId),
   });
 }
 
-export function useSaveInstallments(reservationId: string | undefined) {
+export function useSaveTemplate(businessId: string | undefined) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (rows: Parameters<typeof repo.saveInstallments>[1]) =>
-      repo.saveInstallments(reservationId!, rows),
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.installments(reservationId ?? '') }),
+    mutationFn: (template: Parameters<typeof repo.saveTemplate>[0]) => repo.saveTemplate(template),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.templates(businessId ?? '') }),
+  });
+}
+
+export function useReminderRules(businessId: string | undefined) {
+  return useQuery({
+    queryKey: keys.reminderRules(businessId ?? ''),
+    queryFn: () => repo.listReminderRules(businessId!),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveReminderRule(businessId: string | undefined) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (rule: Parameters<typeof repo.saveReminderRule>[0]) => repo.saveReminderRule(rule),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.reminderRules(businessId ?? '') }),
   });
 }
 

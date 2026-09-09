@@ -268,20 +268,36 @@ describe('Rezervasyon detayı', () => {
     expect(screen.getByText(/Geçmiş tarihli düğünü silemezsiniz/)).toBeInTheDocument();
   });
 
-  it('SMS gönder düğmesi kaydı işler ve gönderilemediğinde yanlış bilgi vermez', async () => {
+  it('hatırlatma taslağı seçilince metin rezervasyonun bilgisiyle doldurulur', async () => {
+    seedIfEmpty();
+    const target = (await getReservations(BIZ))[0];
+    const user = userEvent.setup();
+    renderPanel(`/panel/rezervasyonlar/${target.id}`);
+
+    await user.click(await screen.findByRole('button', { name: 'Tarih hatırlatması' }));
+
+    // Önizleme zorunlu: taslakta yanlış yazılmış bir yer tutucu ancak
+    // müşteriye giden mesajda fark ediliyordu.
+    const onizleme = await screen.findByText(new RegExp(`Sayın ${target.customerName}`));
+    expect(onizleme).toBeInTheDocument();
+    expect(onizleme.textContent).not.toContain('{musteri}');
+  });
+
+  it('hatırlatma gönderimi kaydı işler ve gönderilemediğinde yanlış bilgi vermez', async () => {
     seedIfEmpty();
     const target = (await getReservations(BIZ))[0];
     const before = (await getSmsLog(target.businessId)).length;
     const user = userEvent.setup();
     renderPanel(`/panel/rezervasyonlar/${target.id}`);
 
-    await user.click(await screen.findByRole('button', { name: /SMS Gönder/ }));
+    await user.click(await screen.findByRole('button', { name: 'Tarih hatırlatması' }));
+    await user.click(await screen.findByRole('button', { name: /Bu mesajı gönder/ }));
 
     // Test ortamında SMS sağlayıcısı yok: mesaj kayda geçer, ancak
     // kullanıcıya "gönderildi" denmez — durum açıkça bildirilir.
     await waitFor(async () => expect((await getSmsLog(target.businessId)).length).toBe(before + 1), { timeout: 4000 });
     expect(await screen.findByText(/gönderilemedi|ulaşılamadı/)).toBeInTheDocument();
-    expect(screen.queryByText(/SMS gönderildi/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Mesaj kuyruğa alındı ve kayıtlara işlendi/)).not.toBeInTheDocument();
   });
 });
 

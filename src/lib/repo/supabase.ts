@@ -2,9 +2,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants';
 import { RepoError, type PublicReservation, type Repository } from './types';
+import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, MessageStatus,
-  Hall, Menu, SeatingTable, Installment, EventTask, Vendor, ReservationVendor,
+  Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
 } from '../../types';
@@ -230,11 +231,20 @@ function toSeating(row: Row): SeatingTable {
   };
 }
 
-function toInstallment(row: Row): Installment {
+function toTemplate(row: Row): Sablon {
   return {
-    id: String(row.id), reservationId: String(row.reservation_id),
-    seq: Number(row.seq ?? 0), dueDate: (row.due_date as string) ?? '',
-    amount: Number(row.amount ?? 0), note: (row.note as string) ?? '',
+    id: String(row.id), businessId: String(row.business_id),
+    key: row.key as Sablon['key'], title: (row.title as string) ?? '',
+    body: (row.body as string) ?? '', kind: (row.kind as string) ?? 'Bilgilendirme',
+    category: row.category as Sablon['category'], isActive: row.is_active !== false,
+  };
+}
+
+function toRule(row: Row): HatirlatmaKurali {
+  return {
+    id: String(row.id), businessId: String(row.business_id),
+    key: row.key as Sablon['key'], enabled: row.enabled === true,
+    daysBefore: Number(row.days_before ?? 0), sendHour: Number(row.send_hour ?? 10),
   };
 }
 
@@ -932,27 +942,38 @@ export const supabaseRepo: Repository = {
     if (error) fail('Masa düzeni kaydedilemedi.', error);
   },
 
-  async listInstallments(reservationId) {
-    const { data, error } = await db().from('payment_installments')
-      .select('*').eq('reservation_id', reservationId).order('due_date');
-    if (error) fail('Ödeme planı okunamadı.', error);
-    return (data ?? []).map(toInstallment);
+  async listTemplates(businessId) {
+    const { data, error } = await db().from('message_templates')
+      .select('*').eq('business_id', businessId);
+    if (error) fail('Mesaj şablonları okunamadı.', error);
+    const liste = (data ?? []).map(toTemplate);
+    return liste.sort((a, b) => SABLON_SIRASI.indexOf(a.key) - SABLON_SIRASI.indexOf(b.key));
   },
 
-  async saveInstallments(reservationId, rows) {
-    // Plan bir bütün olarak değişir; tutar kontrolü veritabanı tetikleyicisinde.
-    const { error: delError } = await db().from('payment_installments')
-      .delete().eq('reservation_id', reservationId);
-    if (delError) fail('Ödeme planı güncellenemedi.', delError);
-    if (rows.length === 0) return;
+  async saveTemplate(template) {
+    // Sınıf (işlem / ticari) istemciden değiştirilemez: ticari bir metnin
+    // işlem bildirimi diye gönderilmesi İYS onayı kontrolünü atlatırdı.
+    const { data, error } = await db().from('message_templates').update({
+      title: template.title, body: template.body, is_active: template.isActive,
+    }).eq('id', template.id).select().single();
+    if (error) fail('Mesaj şablonu kaydedilemedi.', error);
+    return toTemplate(data as Row);
+  },
 
-    const { error } = await db().from('payment_installments').insert(
-      rows.map((r) => ({
-        reservation_id: reservationId, seq: r.seq,
-        due_date: r.dueDate, amount: r.amount, note: r.note,
-      })),
-    );
-    if (error) fail('Ödeme planı kaydedilemedi.', error);
+  async listReminderRules(businessId) {
+    const { data, error } = await db().from('reminder_rules')
+      .select('*').eq('business_id', businessId);
+    if (error) fail('Hatırlatma kuralları okunamadı.', error);
+    const liste = (data ?? []).map(toRule);
+    return liste.sort((a, b) => SABLON_SIRASI.indexOf(a.key) - SABLON_SIRASI.indexOf(b.key));
+  },
+
+  async saveReminderRule(rule) {
+    const { data, error } = await db().from('reminder_rules').update({
+      enabled: rule.enabled, days_before: rule.daysBefore, send_hour: rule.sendHour,
+    }).eq('id', rule.id).select().single();
+    if (error) fail('Hatırlatma kuralı kaydedilemedi.', error);
+    return toRule(data as Row);
   },
 
   async listTasks(reservationId) {

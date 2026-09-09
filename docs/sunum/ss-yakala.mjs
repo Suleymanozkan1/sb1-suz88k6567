@@ -101,7 +101,7 @@ not('Örnek veriler hazırlanıyor…');
 await rezervasyon(page, { ad: 'Zeynep & Can Arslan', tarih: buAy(11), kisi: 320, tutar: 210000, kapora: 60000, tur: 'Düğün' });
 await rezervasyon(page, { ad: 'Deniz & Kaan Şen',    tarih: buAy(19), kisi: 150, tutar: 95000,  kapora: 25000, tur: 'Nikâh' });
 await rezervasyon(page, { ad: 'Melis Ailesi',        tarih: buAy(24), kisi: 200, tutar: 120000, kapora: 30000, tur: 'Kına' });
-// Ayrıntı, ödeme planı, sözleşme, makbuz ve masa düzeni bu kayıt üzerinden gösterilir.
+// Ayrıntı, sözleşme, makbuz ve masa düzeni bu kayıt üzerinden gösterilir.
 const rid = await rezervasyon(page, { ad: 'Ayşe & Mert Yıldız', tarih: buAy(26), kisi: 280, tutar: 180000, kapora: 45000, tur: 'Düğün' });
 // Masa düzeni slaytı 80 davetlilik planı anlatıyor; 280 kişilik kaydın
 // 28 satırlık tablosu slayta sığmıyor.
@@ -123,18 +123,12 @@ for (const [ad, tel, mesaj] of [
   await page.waitForTimeout(250);
 }
 
-// Ödeme planı, iş emri, tedarikçi ve masa düzeni bölümleri boş görünmesin
-// diye örnek kayıt üzerinde gerçekten doldurulur.
+// İş emri, tedarikçi ve masa düzeni bölümleri boş görünmesin diye örnek
+// kayıt üzerinde gerçekten doldurulur.
 not('Örnek rezervasyon dolduruluyor…');
 await page.goto(`${KOK}/panel/rezervasyonlar/${rid}`);
 await page.waitForLoadState('domcontentloaded');
 await page.waitForTimeout(900);
-
-await page.locator('#plan-count').fill('3');
-await page.getByRole('button', { name: 'Kalan tutarı böl' }).click();
-await page.getByRole('button', { name: 'Ödeme planını kaydet' }).click();
-await page.waitForTimeout(600);
-not('  · ödeme planı');
 
 await page.locator('#pay-amount').fill('35000');
 await page.locator('#pay-note').fill('Ara ödeme');
@@ -231,7 +225,6 @@ await page.goto(`${KOK}/panel/rezervasyonlar/${rid}`);
 await page.waitForLoadState('domcontentloaded');
 await page.waitForTimeout(900);
 for (const [ad, baslik] of [
-  ['panel-odeme-plani',      'Ödeme Planı'],
   ['panel-is-emri',          'Etkinlik İş Emri'],
   ['panel-tedarikci-atama',  'Tedarikçiler'],
 ]) {

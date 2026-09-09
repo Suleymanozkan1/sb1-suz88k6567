@@ -229,7 +229,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     y: 1.8, h: 1.5, sutun: 3, satirBosluk: 0.22,
     items: [
       ['Rezervasyon', 'Takvim, salon tanımları, rezervasyon kaydı, sözleşme, kod doğrulama'],
-      ['Para', 'Tahsilat, ödeme planı, kasa, makbuz, raporlar'],
+      ['Para', 'Tahsilat, kasa, makbuz, raporlar'],
       ['Organizasyon', 'Menü ve paketler, masa düzeni, iş emri, tedarikçiler'],
       ['Mevzuat', 'e-Arşiv / e-Fatura, İYS izin yönetimi, KVKK, denetim kaydı'],
       ['İletişim', 'Müşteriye SMS, siteden gelen talepler'],
@@ -297,26 +297,6 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     ],
   });
   s.addNotes('Ekrandaki örnekte 180.000 ₺ toplam, 45.000 ₺ kapora, 80.000 ₺ tahsilat ve 100.000 ₺ kalan alacak görünüyor.');
-}
-
-/* ══ 6 · Ödeme planı ══════════════════════════════════════════ */
-{
-  const s = slayt(SURFACE);
-  baslik(s, 'ÖDEME PLANI', 'Vade tarihli taksit planı');
-  gorsel(s, img('panel-odeme-plani.png'), {
-    x: KENAR, y: UST, w: 7.6, h: 3.6,
-    altYazi: 'Taksitler, vadeleri ve durumları; üstte planlanan, tahsil edilen ve vadesi geçen tutarlar.',
-  });
-  maddeler(s, {
-    x: 8.7, y: 1.9, w: 3.9, gap: 1.55,
-    items: [
-      ['Otomatik bölme', 'Kalan tutar istenen sayıda taksite bölünür. Yuvarlama artığı ilk taksite eklenir; toplam daima kalan tutara eşittir.'],
-      ['Tahsilat eşleştirme', 'Toplam tahsilat, vadesi önce gelen taksitten başlayarak düşülür.'],
-      ['Durum', 'Ödendi, gecikti, yaklaşıyor, bekliyor.'],
-    ],
-  });
-  dipnot(s, 'Taksit toplamının rezervasyon tutarını aşması veritabanı düzeyinde engellenir.', 5.85);
-  s.addNotes('Ekrandaki örnekte plan üç eşit taksite bölünmüş; ilk taksitin vadesi yaklaşıyor, diğer ikisi bekliyor. Vadesi geçen taksit gecikmiş olarak işaretlenir.');
 }
 
 /* ══ 7 · Menüler ══════════════════════════════════════════════ */
@@ -774,7 +754,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
       ['Sistem durumu ekranı', 'Yedek, SMS kuyruğu ve İYS durumu panelden izlenir.'],
     ],
   });
-  s.addText('Kuralların çoğu arayüzde değil veritabanı düzeyinde tanımlıdır: çifte rezervasyon, kapora aşımı, onaysız ticari SMS, gönderilmiş faturanın değiştirilmesi ve taksit toplamının rezervasyon tutarını aşması kayıt aşamasında reddedilir.', {
+  s.addText('Kuralların çoğu arayüzde değil veritabanı düzeyinde tanımlıdır: çifte rezervasyon, kapora aşımı, onaysız ticari SMS ve gönderilmiş faturanın değiştirilmesi kayıt aşamasında reddedilir.', {
     x: KENAR, y: 5.7, w: GENIS, h: 0.9, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 18,
   });

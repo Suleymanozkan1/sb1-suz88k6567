@@ -5,11 +5,12 @@
  *  - `supabase`: gerçek Postgres (ortam değişkenleri tanımlıysa)
  *  - `local`   : tarayıcı belleği (demo ve testler için)
  */
+import type { HatirlatmaKurali, Sablon } from '../sablon';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage,
   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
   Invoice, InvoiceKind, BuyerKind, MessageStatus, Hall, Menu, SeatingTable,
-  Installment, EventTask, Vendor, ReservationVendor,
+  EventTask, Vendor, ReservationVendor,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
@@ -86,10 +87,11 @@ export interface Repository {
   saveMenu(menu: Omit<Menu, 'createdAt'> & { createdAt?: string }): Promise<Menu>;
   deleteMenu(id: string): Promise<void>;
 
-  /* -- ödeme planı -------------------------------------------------- */
-  listInstallments(reservationId: string): Promise<Installment[]>;
-  /** Planın tamamını değiştirir; taksitler bir bütün olarak yönetilir. */
-  saveInstallments(reservationId: string, rows: Omit<Installment, 'id' | 'reservationId'>[]): Promise<void>;
+  /* -- hatırlatma şablonları ve otomatik kurallar -------------------- */
+  listTemplates(businessId: string): Promise<Sablon[]>;
+  saveTemplate(template: Sablon): Promise<Sablon>;
+  listReminderRules(businessId: string): Promise<HatirlatmaKurali[]>;
+  saveReminderRule(rule: HatirlatmaKurali): Promise<HatirlatmaKurali>;
 
   /* -- etkinlik iş emri --------------------------------------------- */
   listTasks(reservationId: string): Promise<EventTask[]>;

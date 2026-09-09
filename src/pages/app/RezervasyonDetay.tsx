@@ -4,20 +4,20 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import MasaDuzeni from '../../components/MasaDuzeni';
-import OdemePlani from '../../components/OdemePlani';
 import IsEmri from '../../components/IsEmri';
 import TedarikciAtama from '../../components/TedarikciAtama';
+import HatirlatmaGonder from '../../components/HatirlatmaGonder';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
-  useAddPayment, useDeletePayment, useDeleteReservation, useSendSms,
+  useAddPayment, useDeletePayment, useDeleteReservation,
   useReservation, useReservationsWithBalances,
 } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
 import { formatDate, formatDateLong, formatMoney, formatPhone, todayIso } from '../../lib/format';
 import { PAYMENT_METHODS } from '../../data/constants';
-import { IconEdit, IconMessage, IconPlus, IconPrint, IconReport, IconTrash } from '../../components/Icons';
+import { IconEdit, IconPlus, IconPrint, IconReport, IconTrash } from '../../components/Icons';
 import type { Payment } from '../../types';
 
 export default function RezervasyonDetay() {
@@ -29,11 +29,9 @@ export default function RezervasyonDetay() {
   const addPaymentMutation = useAddPayment();
   const deletePaymentMutation = useDeletePayment();
   const deleteReservationMutation = useDeleteReservation();
-  const sendSmsMutation = useSendSms();
   const [actionError, setActionError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
-  const [smsSent, setSmsSent] = useState(false);
 
   const [payForm, setPayForm] = useState({ date: todayIso(), amount: '', method: 'Nakit', note: '' });
   const [payError, setPayError] = useState('');
@@ -108,29 +106,6 @@ export default function RezervasyonDetay() {
     }
   }
 
-  async function sendReminder() {
-    const result = await sendSmsMutation.mutateAsync({
-      to: reservation!.customerPhone,
-      body: `Sayin ${reservation!.customerName}, ${formatDate(reservation!.date)} tarihli rezervasyonunuz icin hatirlatma. Kalan bakiye: ${remaining.toLocaleString('tr-TR')} TL. Kod: ${reservation!.code}`,
-      kind: 'Hatırlatma',
-      // Randevu hatırlatma işlem bildirimidir: İYS onayı gerekmez.
-      category: 'islem',
-      reservationId: reservation!.id,
-    });
-    if (result.sent) {
-      setSmsSent(true);
-      window.setTimeout(() => setSmsSent(false), 4000);
-    } else if (result.blocked) {
-      setActionError(result.error ?? 'Mesaj gönderilemedi.');
-    } else {
-      setActionError(
-        result.notConfigured
-          ? 'SMS sağlayıcısı tanımlı olmadığı için mesaj şu an gönderilemedi; kuyrukta bekliyor ve otomatik olarak yeniden denenecek.'
-          : result.error ?? 'Mesaj kuyruğa alındı, gönderim yeniden denenecek.',
-      );
-    }
-  }
-
   return (
     <>
       <Seo title={`${reservation.customerName} - Rezervasyon Detayı`} noindex />
@@ -151,9 +126,6 @@ export default function RezervasyonDetay() {
               <IconReport size={16} /> Fatura Kes
             </Link>
           )}
-          <button type="button" onClick={() => { void sendReminder(); }} className="btn-outline btn-sm">
-            <IconMessage size={16} /> SMS Gönder
-          </button>
           {can('rezervasyon.duzenle') && (
             <Link to={`/panel/rezervasyonlar/${reservation.id}/duzenle`} className="btn-primary btn-sm text-white hover:text-white">
               <IconEdit size={16} /> Düzenle
@@ -173,7 +145,6 @@ export default function RezervasyonDetay() {
         </div>
       </div>
 
-      {smsSent && <Alert kind="success" className="mb-5">SMS gönderildi ve kayıtlara işlendi.</Alert>}
       {actionError && <Alert kind="error" className="mb-5">{actionError}</Alert>}
       {isPast && can('rezervasyon.sil') && (
         <Alert kind="info" className="mb-5">
@@ -306,20 +277,7 @@ export default function RezervasyonDetay() {
         )}
       </section>
 
-      <section className="card mb-6 p-5">
-        <h2 className="mb-1 font-heading text-lg font-bold text-brand">Ödeme Planı</h2>
-        <p className="mb-4 text-sm text-brand-muted">
-          Vade tarihli taksitler tanımlayın. Tahsilatlar vadesi önce gelen taksitten
-          düşülür; vadesi geçmiş ve karşılanmamış tutar ayrıca gösterilir.
-        </p>
-        <OdemePlani
-          reservationId={reservation.id}
-          totalAmount={reservation.totalAmount}
-          currency={reservation.currency}
-          payments={payments}
-          canEdit={can('kasa.duzenle')}
-        />
-      </section>
+      <HatirlatmaGonder reservation={reservation} payments={payments} />
 
       <section className="card mb-6 p-5">
         <h2 className="mb-1 font-heading text-lg font-bold text-brand">Etkinlik İş Emri</h2>
