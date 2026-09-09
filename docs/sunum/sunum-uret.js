@@ -1,6 +1,9 @@
-const pptxgen = require('pptxgenjs');
-const path = require('path');
-const SS = path.resolve(__dirname, '../ss');
+import pptxgen from 'pptxgenjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const SS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../ss');
 const img = (n) => path.join(SS, n);
 
 const NAVY='25365A', BRAND='37517E', SKY='47B2E4', ACCENT='C9A227';
@@ -12,15 +15,32 @@ pres.layout = 'LAYOUT_WIDE';
 pres.author = 'Düğün Takip';
 pres.title = 'Düğün Takip — Salon Yönetim Sistemi';
 
+/** PNG başlığından gerçek en/boy okunur; görsel esnetilmeden yerleştirilir. */
+function pngBoyut(file) {
+  const b = fs.readFileSync(file).subarray(16, 24);
+  return { w: b.readUInt32BE(0), h: b.readUInt32BE(4) };
+}
+
+/**
+ * Görseli verilen kutuya oranını bozmadan sığdırır ve ortalar. Ekran
+ * görüntülerinin boyu içeriğe göre değiştiği için sabit en/boy vermek
+ * görselleri eziyordu.
+ */
 function shot(s, file, x, y, w, h, caption) {
+  const boyut = pngBoyut(file);
+  const oran = boyut.w / boyut.h;
+  let gw = w, gh = w / oran;
+  if (gh > h) { gh = h; gw = h * oran; }
+  const gx = x + (w - gw) / 2, gy = y + (h - gh) / 2;
+
   s.addShape(pres.ShapeType.roundRect, {
-    x: x-0.08, y: y-0.08, w: w+0.16, h: h+0.16, rectRadius: 0.08,
+    x: gx-0.08, y: gy-0.08, w: gw+0.16, h: gh+0.16, rectRadius: 0.08,
     fill: { color: WHITE }, line: { color: LINE, width: 1 },
     shadow: { type:'outer', color:'1B2A4A', opacity:0.16, blur:12, offset:3, angle:90 },
   });
-  s.addImage({ path: file, x, y, w, h });
+  s.addImage({ path: file, x: gx, y: gy, w: gw, h: gh });
   if (caption) {
-    s.addText(caption, { x, y: y+h+0.14, w, h: 0.28, isTextBox: true, margin: 0,
+    s.addText(caption, { x: gx, y: gy+gh+0.14, w: gw, h: 0.28, isTextBox: true, margin: 0,
       fontFace: B, fontSize: 10.5, color: MUTED });
   }
 }
@@ -216,8 +236,7 @@ function notes(s, x, y, items, gap, width) {
   const s = pres.addSlide();
   s.background = { color: WHITE };
   head(s, 'MASA DÜZENİ', 'Masa oturma planı');
-  shot(s, img('panel-masa-duzeni.png'), 3.1, 1.8, 7.1, 3.45,
-       null);
+  shot(s, img('panel-masa-duzeni.png'), 4.0, 1.7, 5.3, 3.7, null);
   s.addText('80 davetli için önerilen plan; masa sayısı, koltuk toplamı ve fazlalık üstte özetlenir.', {
     x: 3.1, y: 5.4, w: 7.1, h: 0.3, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 10.5, color: MUTED });

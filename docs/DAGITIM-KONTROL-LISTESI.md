@@ -13,7 +13,8 @@ değişkene koymayın. Hepsi Vercel'in Environment Variables ekranına girilir.
 - [ ] [supabase.com](https://supabase.com) → New project, **bölge: Frankfurt (EU Central)**
 - [ ] SQL Editor'da göçleri **sırayla** çalıştırın:
       `0001_init` → `0002_security` → `0003_iys_queue` → `0004_backup_health`
-      → `0005_invoices` → `0006_talepler`
+      → `0005_invoices` → `0006_talepler` → `0007_salon_menu_masa`
+      → `0008_odeme_plani_is_emri_tedarikci` → `0009_nikah_yazimi`
 - [ ] README'deki doğrulama sorgusunu çalıştırın (ilk altı sütun `t` olmalı)
 - [ ] Storage → New bucket → adı `yedekler`, **Public bucket KAPALI**
 - [ ] Authentication → Users → kendi hesabınızı oluşturun
