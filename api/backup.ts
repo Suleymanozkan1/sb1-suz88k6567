@@ -1,5 +1,5 @@
 /**
- * Günlük yedekleme (Vercel Cron).
+ * Günlük yedekleme (zamanlanmış görev).
  *
  * Supabase'in kendi otomatik yedeği vardır; bu iş onun YERİNE değil YANINA
  * çalışır. Amaç, tek bir sağlayıcıya bağlı kalmamaktır: hesaba erişimin

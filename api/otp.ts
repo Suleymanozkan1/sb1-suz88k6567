@@ -1,5 +1,5 @@
 /**
- * Giriş SMS doğrulaması (Vercel Serverless Function).
+ * Giriş SMS doğrulaması.
  *
  * Kod sunucuda üretilir, SMS ile gönderilir ve yalnızca imzalı özeti
  * (HMAC) istemciye döner. Kodun kendisi hiçbir zaman yanıt gövdesine

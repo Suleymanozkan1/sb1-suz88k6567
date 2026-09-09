@@ -107,7 +107,8 @@ export async function uploadToStorage(
 
 /**
  * Zamanlanmış görevlerin yetkilendirmesi.
- * Vercel Cron isteklerinde `authorization: Bearer <CRON_SECRET>` başlığı bulunur.
+ * Zamanlanmış görev Worker içinden çağrılırken bu başlık üretilir
+ * (worker/index.ts); dışarıdan gelen isteklerde de aynı kural geçerlidir.
  */
 export function isAuthorizedCron(request: Request): boolean {
   const secret = process.env.CRON_SECRET;

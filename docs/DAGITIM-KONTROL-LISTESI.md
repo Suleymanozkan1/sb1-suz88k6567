@@ -1,10 +1,11 @@
 # Dağıtım Kontrol Listesi
 
-Seçilen kurulum: **Supabase + Vercel Pro + Netgsm + Paraşüt**, İYS'siz
+Seçilen kurulum: **Supabase + Cloudflare Workers + Netgsm + Paraşüt**, İYS'siz
 (yalnızca işlem bildirimi SMS'i).
 
 Anahtarları **hiçbir zaman** depoya, sohbete veya `VITE_` önekli bir
-değişkene koymayın. Hepsi Vercel'in Environment Variables ekranına girilir.
+değişkene koymayın. Sunucu sırları Cloudflare'de `wrangler secret put` ile
+ya da Workers → Settings → Variables and Secrets ekranından girilir.
 
 ---
 
@@ -24,13 +25,18 @@ değişkene koymayın. Hepsi Vercel'in Environment Variables ekranına girilir.
 > `service_role` anahtarı RLS'yi tamamen atlar. Yalnızca sunucu tarafı
 > değişken olarak kullanılır; `VITE_` öneki **asla** verilmez.
 
-## 2. Vercel
+## 2. Cloudflare
 
-- [ ] GitHub deposunu içe aktarın
-- [ ] Settings → Billing → **Pro** planına geçin
-      (Hobby ticari kullanıma kapalıdır ve cron'u günde bir ile sınırlar)
-- [ ] Settings → Environment Variables → aşağıdaki tabloyu doldurun
-- [ ] Deploy
+- [ ] [dash.cloudflare.com](https://dash.cloudflare.com) hesabı açın
+- [ ] Workers & Pages → **Workers Paid** ($5/ay) planına geçin
+      (ücretsiz plan da çalışır: 100.000 istek/gün ve hesap başına 5 cron;
+      bu proje 4 cron kullanıyor. Ücretli plan CPU sınırını kaldırır.)
+- [ ] `npm i` sonrası `npx wrangler login`
+- [ ] Sunucu sırlarını girin: her biri için `npx wrangler secret put ADI`
+- [ ] `VITE_*` değişkenlerini derleme ortamına verin (bunlar tarayıcıya gider,
+      sır değildir)
+- [ ] `npm run cf:deploy`
+- [ ] Workers → Settings → Domains & Routes → kendi alan adınızı bağlayın
 
 ### Ortam değişkenleri
 
@@ -64,7 +70,7 @@ göndermeye kalkışılırsa veritabanı bunu zaten `iptal` durumuyla engeller.
 - [ ] Kurumsal abonelik açın
 - [ ] Vergi levhanızla **başlık (marka) başvurusu** yapın — birkaç iş günü sürer
 - [ ] Başlık onaylandıktan sonra SMS paketi satın alın
-- [ ] API kullanıcı adı ve şifresini panelden alıp Vercel'e girin
+- [ ] API kullanıcı adı ve şifresini panelden alıp Cloudflare'e sır olarak girin
 
 > Başlık onaylanmadan gönderim yapılamaz. Onay beklerken sistem çalışır;
 > mesajlar kuyruğa girer ve arayüzde "gönderilemedi" olarak görünür.
@@ -90,7 +96,7 @@ göndermeye kalkışılırsa veritabanı bunu zaten `iptal` durumuyla engeller.
 
 ## 6. Bir şey çalışmazsa
 
-Vercel → Deployments → ilgili dağıtım → **Runtime Logs**. Hata metnini
+Cloudflare → Workers → ilgili Worker → **Logs**. Hata metnini
 kopyalarken anahtarları maskeleyin. Fatura hataları ayrıca Faturalar
 ekranındaki `provider_error` alanında Türkçe olarak görünür.
 

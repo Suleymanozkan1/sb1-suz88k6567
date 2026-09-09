@@ -446,8 +446,9 @@ Bunlar kusur değil, demo dağıtımının bilinçli sınırlarıdır:
    ödeme adımı süreyi doğrudan uzatır. Sağlayıcı entegrasyonu gerekir.
 4. **Referans listesi örnek veridir.** 240 işletme deterministik olarak üretilir;
    gerçek üye verisiyle değiştirilmelidir.
-5. **Dağıtım.** Vercel için `vercel.json` hazırdır: SPA yönlendirmesi, varlık
-   önbellekleme ve güvenlik başlıkları tanımlıdır. Uygulama tamamen statiktir;
-   sunucu tarafı çalışma zamanı gerekmez.
+5. **Dağıtım.** Cloudflare Workers için `wrangler.jsonc` hazırdır: statik varlık
+   sunumu, SPA yönlendirmesi ve zamanlanmış görevler tanımlıdır. Önbellek ve
+   güvenlik başlıkları `public/_headers` dosyasındadır. Uygulama arayüzü
+   statiktir; `/api/*` uçları ve cron görevleri Worker üzerinde çalışır.
 6. **Marka varlıkları.** Logo, sosyal medya hesapları ve mağaza bağlantıları yer
    tutucudur; yayına almadan önce kendi marka varlıklarınızla değiştirilmelidir.

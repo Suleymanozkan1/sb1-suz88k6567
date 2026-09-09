@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Orijinal duguntakip.com paleti
+        // Orijinal marka paleti
         brand: {
           DEFAULT: '#37517e',
           dark: '#2f4770',

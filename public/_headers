@@ -1,0 +1,19 @@
+# Cloudflare statik varlık başlıkları: güvenlik ve önbellek kuralları.
+# Vite bu dosyayı dist/ altına kopyalar; Workers varlık sunumu uygular.
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Dosya adında karma bulunduğu için içerik değişince ad da değişir.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/favicon.svg
+  Cache-Control: public, max-age=3600
+/robots.txt
+  Cache-Control: public, max-age=3600
+/sitemap.xml
+  Cache-Control: public, max-age=3600

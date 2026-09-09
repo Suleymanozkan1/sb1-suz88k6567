@@ -19,6 +19,7 @@
   "include": [
     "vite.config.ts",
     "playwright.config.ts",
-    "api/**/*.ts"
+    "api/**/*.ts",
+    "worker/**/*.ts"
   ]
 }

@@ -516,8 +516,8 @@ function notes(s, x, y, items, gap, width) {
 
   sutun(0.7, 'Zorunlu — her ay', [
     ['Supabase Pro', '$25'],
-    ['Vercel Pro', '$20'],
-  ], 'Veritabanı, gecelik yedek, barındırma ve zamanlanmış görevler. Vercel’in ücretsiz planı ticari kullanıma kapalıdır ve zamanlanmış görevi günde bire indirir.');
+    ['Cloudflare Workers', '$5'],
+  ], 'Veritabanı, gecelik yedek, barındırma ve zamanlanmış görevler. Cloudflare’in ücretsiz planı ticari kullanıma açıktır; günde 100.000 istek yetiyorsa aylık gider $25’te kalır.');
 
   sutun(4.75, 'SMS — kullandıkça', [
     ['1.000 SMS', '370 ₺'],
@@ -535,7 +535,7 @@ function notes(s, x, y, items, gap, width) {
   s.addText('Bir sağlayıcı tanımlanmazsa yalnızca o özellik kapanır: SMS sağlayıcısı yoksa mesajlar kuyrukta bekler, e-Fatura entegratörü yoksa faturalar taslak olarak kaydedilir. Sistemin geri kalanı çalışmaya devam eder.', {
     x: 0.7, y: 5.9, w: 11.95, h: 0.55, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17 });
-  s.addText('Fiyatlar Eylül 2026’da sağlayıcıların yayımlanmış listelerinden alınmıştır. Supabase ve Vercel dolar üzerinden faturalandırır.', {
+  s.addText('Fiyatlar Eylül 2026’da sağlayıcıların yayımlanmış listelerinden alınmıştır. Supabase ve Cloudflare dolar üzerinden faturalandırır.', {
     x: 0.7, y: 6.55, w: 11.95, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 11, color: MUTED });
   s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100–150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider iki abonelikten ibarettir.');

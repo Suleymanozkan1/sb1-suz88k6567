@@ -22,7 +22,7 @@ ya da proje yanlışlıkla silinirse o yedeklere de ulaşamazsınız. Bu yüzden
 1. Supabase → **Storage** → **New bucket**
    - İsim: `yedekler`
    - **Public bucket: KAPALI** (yedekler herkese açık olmamalı)
-2. Vercel → Settings → Environment Variables:
+2. Cloudflare sırları (`npx wrangler secret put ADI`):
    ```
    CRON_SECRET=<openssl rand -hex 32 çıktısı>
    BACKUP_BUCKET=yedekler

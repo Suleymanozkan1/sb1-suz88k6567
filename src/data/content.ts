@@ -107,12 +107,12 @@ export const TESTIMONIALS: Testimonial[] = [
   {
     business: 'Bizim Ora Kır Düğün Bahçesi',
     author: 'ahmet yaz',
-    text: 'düğün takip programı severek kullandığım bir program oldu ve tek programda müşterilerin planlamalarını hesabını takip edebiliyorum işimi okadar kolaylaştırıyor ki her yerden rezervasyon takibi yapabiliyorum, sms ile her şeyi bana bildirdiği için personellerimin de yapmış olduğu anlık rezervasyonları takip edebildim kesinlikle her meslektaşımın kullanması gereken bir program',
+    text: 'salon takip programı severek kullandığım bir program oldu ve tek programda müşterilerin planlamalarını hesabını takip edebiliyorum işimi okadar kolaylaştırıyor ki her yerden rezervasyon takibi yapabiliyorum, sms ile her şeyi bana bildirdiği için personellerimin de yapmış olduğu anlık rezervasyonları takip edebildim kesinlikle her meslektaşımın kullanması gereken bir program',
   },
   {
     business: 'Florya Wedding',
     author: 'AHMET YAZ',
-    text: 'takriben 5 yıl dır üyeliğim var bu süre zarfı içinde düğün takip programı iş yükümü çok hafifletti, bütün rezervasyonlarımı tek ekrandan takip edebiliyorum.',
+    text: 'takriben 5 yıl dır üyeliğim var bu süre zarfı içinde salon takip programı iş yükümü çok hafifletti, bütün rezervasyonlarımı tek ekrandan takip edebiliyorum.',
   },
   {
     business: 'Sevill Concept Organizasyon',
