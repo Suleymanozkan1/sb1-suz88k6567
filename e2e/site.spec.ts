@@ -31,14 +31,14 @@ function collectAppErrors(page: Page): string[] {
 }
 
 const PUBLIC_ROUTES = [
-  { path: '/', heading: 'Salon Ajandası' },
-  { path: '/nedir', heading: 'Salon Ajandası Salon Takip Programı Nedir?' },
+  { path: '/', heading: 'Sahra Takip' },
+  { path: '/nedir', heading: 'Sahra Takip Salon Takip Programı Nedir?' },
   { path: '/haberler', heading: 'Haberler' },
   { path: '/ekranlar', heading: 'Ekranlar' },
   { path: '/uyeler', heading: 'Referanslarımız / Üyeler / İşletmeler' },
   { path: '/dusunceler', heading: 'Üyelerimizin Düşünceleri' },
   { path: '/sss', heading: 'Sık Sorulan Sorular' },
-  { path: '/iletisim', heading: 'Salon Ajandası Salon Takip Programı İletişim' },
+  { path: '/iletisim', heading: 'Sahra Takip Salon Takip Programı İletişim' },
   { path: '/demo-talebi', heading: 'Demo Talebi' },
   { path: '/kod-dogrulama', heading: 'Rezervasyon Kod Doğrulama' },
   { path: '/uye-ol', heading: 'Üye Ol' },
@@ -167,7 +167,7 @@ test.describe('SEO ve erişilebilirlik', () => {
   test('sayfa başlığı ve meta açıklaması sayfaya göre değişir', async ({ page }) => {
     await page.goto('/');
     const homeTitle = await page.title();
-    expect(homeTitle).toContain('Salon Ajandası');
+    expect(homeTitle).toContain('Sahra Takip');
 
     await page.goto('/sss');
     expect(await page.title()).toContain('Sık Sorulan Sorular');

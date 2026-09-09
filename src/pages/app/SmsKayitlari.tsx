@@ -41,7 +41,7 @@ export default function SmsKayitlari() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="SMS Kayıtları - Salon Ajandası Panel" noindex />
+      <Seo title="SMS Kayıtları - Sahra Takip Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">SMS Kayıtları</h1>
       <p className="mb-6 text-sm text-brand-muted">

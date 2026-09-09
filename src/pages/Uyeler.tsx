@@ -56,8 +56,8 @@ export default function Uyeler({ restrictCategories, title, intro, path, breadcr
   return (
     <>
       <Seo
-        title={`${heading} - Salon Ajandası`}
-        description={intro ?? 'Salon Ajandası sistemini kullanan düğün salonları, organizasyon firmaları, oteller ve daha fazlası.'}
+        title={`${heading} - Sahra Takip`}
+        description={intro ?? 'Sahra Takip sistemini kullanan düğün salonları, organizasyon firmaları, oteller ve daha fazlası.'}
         path={path ?? '/uyeler'}
       />
       <PageHeader

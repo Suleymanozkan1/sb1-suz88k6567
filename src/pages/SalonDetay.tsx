@@ -97,7 +97,7 @@ export default function SalonDetay() {
   return (
     <>
       <Seo
-        title={`${member.name} - ${member.district} / ${member.city} - Salon Ajandası`}
+        title={`${member.name} - ${member.district} / ${member.city} - Sahra Takip`}
         description={`${member.name}, ${member.district} / ${member.city}. ${member.about}`}
         path={`/salon/${member.slug}`}
       />
@@ -189,7 +189,7 @@ export default function SalonDetay() {
 
           <aside>
             <div className="card p-6">
-              <h2 className="mb-3 font-heading text-base font-bold text-brand">Bu işletme Salon Ajandası üyesidir</h2>
+              <h2 className="mb-3 font-heading text-base font-bold text-brand">Bu işletme Sahra Takip üyesidir</h2>
               <p className="text-sm leading-relaxed">
                 Siz de işletmenizi buraya ekleyip rezervasyon ve ödeme takibinizi tek ekrandan yönetebilirsiniz.
               </p>

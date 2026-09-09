@@ -234,7 +234,7 @@ export default function RezervasyonForm() {
 
   return (
     <QueryBoundary isLoading={Boolean(id) && existingQuery.isLoading} error={existingQuery.error}>
-      <Seo title={`${existing ? 'Rezervasyon Düzenle' : 'Yeni Rezervasyon'} - Salon Ajandası Panel`} noindex />
+      <Seo title={`${existing ? 'Rezervasyon Düzenle' : 'Yeni Rezervasyon'} - Sahra Takip Panel`} noindex />
       {saveError && <Alert kind="error" className="mb-5">{saveError}</Alert>}
 
       <div className="mb-6">

@@ -1,6 +1,6 @@
-# Salon Ajandası
+# Sahra Takip
 
-Düğün salonları için rezervasyon ve ödeme takip sistemi. `salonajandasi.com` sitesinin
+Düğün salonları için rezervasyon ve ödeme takip sistemi. `sahratakip.com` sitesinin
 tüm herkese açık sayfaları ve üye panelinin tüm ekranları React + TypeScript ile
 yeniden inşa edilmiştir.
 
@@ -23,10 +23,10 @@ npm run dev                  # http://localhost:5173
 
 | Alan    | Değer                  |
 |---------|------------------------|
-| E-posta | `demo@salonajandasi.com`  |
+| E-posta | `demo@sahratakip.com`  |
 | Şifre   | `demo1234`             |
 
-Personel (kısıtlı yetki) hesabı: `personel@salonajandasi.com` / `personel1234`
+Personel (kısıtlı yetki) hesabı: `personel@sahratakip.com` / `personel1234`
 
 Demo hesapları yalnızca demo modunda vardır.
 

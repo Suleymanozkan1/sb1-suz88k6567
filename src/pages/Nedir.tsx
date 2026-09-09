@@ -21,17 +21,17 @@ export default function Nedir() {
   return (
     <>
       <Seo
-        title="Salon Ajandası Salon Takip Programı Nedir? - Salon Ajandası"
-        description="Salon Ajandası Programı Düğün Salonları için özel olarak geliştirilmiş Rezervasyon ve Ödeme Takip sistemidir."
+        title="Sahra Takip Salon Takip Programı Nedir? - Sahra Takip"
+        description="Sahra Takip Programı Düğün Salonları için özel olarak geliştirilmiş Rezervasyon ve Ödeme Takip sistemidir."
         path="/nedir"
       />
-      <PageHeader title="Salon Ajandası Salon Takip Programı Nedir?" breadcrumbs={[{ label: 'Nedir' }]} />
+      <PageHeader title="Sahra Takip Salon Takip Programı Nedir?" breadcrumbs={[{ label: 'Nedir' }]} />
 
       <section className="py-14">
         <div className="container-dt grid gap-10 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <p className="text-lg leading-relaxed">
-              Salon Ajandası Programı Düğün Salonları için özel olarak geliştirilmiş{' '}
+              Sahra Takip Programı Düğün Salonları için özel olarak geliştirilmiş{' '}
               <strong className="text-brand">Rezervasyon ve Ödeme Takip</strong> sistemidir.
             </p>
             <p className="mt-4 leading-relaxed">{WHY_US.description}</p>

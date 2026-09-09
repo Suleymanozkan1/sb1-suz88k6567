@@ -94,7 +94,7 @@ export default function Ayarlar() {
 
   return (
     <>
-      <Seo title="Ayarlar - Salon Ajandası Panel" noindex />
+      <Seo title="Ayarlar - Sahra Takip Panel" noindex />
 
       <h1 className="mb-6 font-heading text-2xl font-bold text-brand">Ayarlar</h1>
 

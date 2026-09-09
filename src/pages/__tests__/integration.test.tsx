@@ -61,7 +61,7 @@ beforeEach(() => clearAll());
 describe('Anasayfa', () => {
   it('hero başlığını ve sloganı gösterir', () => {
     renderAt('/', <Home />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Salon Ajandası' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Sahra Takip' })).toBeInTheDocument();
     expect(screen.getByText("Online salon yönetim sistemi")).toBeInTheDocument();
   });
 
@@ -260,7 +260,7 @@ describe('Üye Ol', () => {
     await user.selectOptions(screen.getByLabelText(/Kategori/), 'Düğün Salonu');
     await user.selectOptions(screen.getByLabelText(/Şehir/), 'Ankara');
     await user.selectOptions(screen.getByLabelText(/İlçe/), 'Çankaya');
-    await user.type(screen.getByLabelText(/E-posta Adresiniz/), 'demo@salonajandasi.com');
+    await user.type(screen.getByLabelText(/E-posta Adresiniz/), 'demo@sahratakip.com');
     await user.type(passwordField(), 'sifre123');
     await user.type(passwordRepeatField(), 'sifre123');
     await user.click(screen.getByLabelText(/Gizlilik Politikası/));
@@ -276,7 +276,7 @@ describe('Üye Girişi', () => {
     seedIfEmpty();
     const user = userEvent.setup();
     renderAt('/uye-girisi', <UyeGirisi />);
-    await user.type(screen.getByLabelText('E-posta Adresiniz'), 'demo@salonajandasi.com');
+    await user.type(screen.getByLabelText('E-posta Adresiniz'), 'demo@sahratakip.com');
     await user.type(screen.getByLabelText('Şifreniz'), 'yanlis');
     await user.click(screen.getByRole('button', { name: 'Giriş Yap' }));
     expect(await screen.findByText('E-posta veya şifreniz hatalı.', {}, { timeout: 3000 })).toBeInTheDocument();

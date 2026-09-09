@@ -48,7 +48,7 @@ export default function Takvim() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Rezervasyon Takvimi - Salon Ajandası Panel" noindex />
+      <Seo title="Rezervasyon Takvimi - Sahra Takip Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Rezervasyon Takvimi</h1>

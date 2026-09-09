@@ -17,8 +17,8 @@ export default function Home() {
   return (
     <>
       <Seo
-        title="Salon Ajandası - Salon Takip - Düğün Salonu Takip Programı - Salon Yönetim Sistemi"
-        description="Salon Ajandası, düğün salonları için özel olarak geliştirilmiş rezervasyon ve ödeme takip sistemidir."
+        title="Sahra Takip - Salon Takip - Düğün Salonu Takip Programı - Salon Yönetim Sistemi"
+        description="Sahra Takip, düğün salonları için özel olarak geliştirilmiş rezervasyon ve ödeme takip sistemidir."
         path="/"
       />
 
@@ -55,7 +55,7 @@ export default function Home() {
 
       <VideoModal open={videoOpen} onClose={() => setVideoOpen(false)} youtubeId={YOUTUBE_ID} />
 
-      {/* Salon Ajandası Ne İşe Yarar? */}
+      {/* Sahra Takip Ne İşe Yarar? */}
       <section className="bg-surface py-16" aria-labelledby="why-us-title">
         <div className="container-dt grid gap-10 lg:grid-cols-2">
           <div className="rounded-lg bg-brand p-8 text-white lg:p-10">
@@ -175,7 +175,7 @@ export default function Home() {
               Üyelerimizin Düşünceleri
               <span className="absolute bottom-0 left-1/2 block h-1 w-14 -translate-x-1/2 bg-accent" />
             </h2>
-            <p className="mx-auto mt-3 max-w-3xl">Salon Ajandası sistemini kullanan üyelerimizin düşünceleri...</p>
+            <p className="mx-auto mt-3 max-w-3xl">Sahra Takip sistemini kullanan üyelerimizin düşünceleri...</p>
           </div>
           <TestimonialSlider items={TESTIMONIALS} />
           <div className="mt-10 text-center">

@@ -117,7 +117,7 @@ test.describe('İstemci tarafı güvenlik', () => {
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: /Yedeği indir/ }).click();
     const file = await download;
-    expect(file.suggestedFilename()).toMatch(/^salonajandasi-yedek-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(file.suggestedFilename()).toMatch(/^sahratakip-yedek-\d{4}-\d{2}-\d{2}\.json$/);
   });
 
   test('fatura tutarları arayüzde doğru hesaplanır', async ({ page }) => {

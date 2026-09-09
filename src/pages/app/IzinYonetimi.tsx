@@ -85,7 +85,7 @@ export default function IzinYonetimi() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="İYS İzin Yönetimi - Salon Ajandası Panel" noindex />
+      <Seo title="İYS İzin Yönetimi - Sahra Takip Panel" noindex />
 
       <h1 className="mb-2 flex items-center gap-2 font-heading text-2xl font-bold text-brand">
         <IconShield size={24} className="text-accent-ink" /> İYS İzin Yönetimi

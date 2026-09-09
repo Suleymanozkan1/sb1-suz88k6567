@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "salon-ajandasi",
+  "name": "sahra-takip",
   "main": "worker/index.ts",
 
   // nodejs_compat: api/otp.ts node:crypto kullanıyor.

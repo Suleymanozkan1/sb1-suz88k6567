@@ -1,8 +1,8 @@
 /**
- * Salon Ajandası tanıtım sunumunu üretir.
+ * Sahra Takip tanıtım sunumunu üretir.
  *
  *   node docs/sunum/ss-yakala.mjs   # ekran görüntülerini docs/ss/ altına yazar
- *   node docs/sunum/sunum-uret.js   # Salon-Ajandasi-Tanitim.pptx üretir
+ *   node docs/sunum/sunum-uret.js   # Sahra-Takip-Tanitim.pptx üretir
  *
  * Slaytlar aşağıdaki düzen kitaplığı üzerine kurulur; her slayt yalnızca
  * kendi içeriğini tarif eder. Koordinatlar tek tek elle verilmediği için
@@ -30,8 +30,8 @@ const UST = 1.75;
 
 const pres = new pptxgen();
 pres.layout = 'LAYOUT_WIDE';
-pres.author = 'Salon Ajandası';
-pres.title = 'Salon Ajandası — Salon Yönetim Sistemi';
+pres.author = 'Sahra Takip';
+pres.title = 'Sahra Takip — Salon Yönetim Sistemi';
 
 /* ── Düzen ───────────────────────────────────────────────────────── */
 
@@ -205,7 +205,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: 0.9, y: 2.5, w: 8, h: 0.32, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 13, bold: true, color: SKY, charSpacing: 3,
   });
-  s.addText('Salon Ajandası', {
+  s.addText('Sahra Takip', {
     x: 0.9, y: 2.9, w: 8.4, h: 1.3, isTextBox: true, margin: 0,
     fontFace: H, fontSize: 58, bold: true, color: WHITE,
   });
@@ -696,4 +696,4 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100–150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider iki abonelikten ibarettir. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
 }
 
-pres.writeFile({ fileName: 'Salon-Ajandasi-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));
+pres.writeFile({ fileName: 'Sahra-Takip-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));

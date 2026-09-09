@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Sahra Takip",
+    "slug": "sahra-takip",
+    "scheme": "sahratakip",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "backgroundColor": "#f3f5fa",
+    "ios": {
+      "bundleIdentifier": "com.sahratakip.mobil",
+      "supportsTablet": true,
+      "infoPlist": {
+        "CFBundleDisplayName": "Sahra Takip",
+        "NSAllowsArbitraryLoads": false
+      }
+    },
+    "android": {
+      "package": "com.sahratakip.mobil",
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": { "backgroundColor": "#25365a" },
+      "permissions": ["android.permission.INTERNET"],
+      "usesCleartextTraffic": false
+    },
+    "web": { "bundler": "metro", "output": "static" },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "extra": {
+      "supabaseUrl": null,
+      "supabaseAnonKey": null,
+      "apiKok": "https://sahratakip.com"
+    }
+  }
+}

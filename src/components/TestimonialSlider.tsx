@@ -56,12 +56,14 @@ export default function TestimonialSlider({ items }: { items: Testimonial[] }) {
         ))}
       </div>
 
+      {/* Dokunma hedefleri 24 piksele çıkınca on sayfa noktası 375 piksellik
+          ekrana sığmadı ve okları dışarı itti; bu yüzden satır sarabiliyor. */}
       {pages > 1 && (
-        <div className="mt-8 flex items-center justify-center gap-4">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 px-4">
           <button type="button" onClick={prev} aria-label="Önceki yorumlar" className="rounded-full border border-line p-2 text-brand hover:border-accent-ink hover:text-accent-ink">
             <IconChevronLeft size={18} />
           </button>
-          <div className="flex gap-2">
+          <div className="flex max-w-full flex-wrap justify-center gap-1">
             {Array.from({ length: pages }, (_, i) => (
               <button
                 key={i}

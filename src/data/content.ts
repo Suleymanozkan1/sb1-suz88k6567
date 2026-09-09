@@ -3,19 +3,19 @@ import type { NewsItem, Testimonial } from '../types';
 /** Anasayfa hero bölümü */
 export const HERO = {
   tagline: 'Online salon yönetim sistemi',
-  title: 'Salon Ajandası',
+  title: 'Sahra Takip',
   description:
-    'Salon Ajandası Programı Düğün Salonları için özel olarak geliştirilmiş Rezervasyon ve Ödeme Takip sistemidir.',
+    'Sahra Takip Programı Düğün Salonları için özel olarak geliştirilmiş Rezervasyon ve Ödeme Takip sistemidir.',
   primaryCta: '7 gün ücretsiz deneyin',
   videoCta: 'Tanıtım videosu',
   videoUrl: 'https://www.youtube.com/watch?v=qLCvjL0LbDg',
 };
 
-/** "Salon Ajandası Ne İşe Yarar?" bölümü */
+/** "Sahra Takip Ne İşe Yarar?" bölümü */
 export const WHY_US = {
-  title: 'Salon Ajandası Ne İşe Yarar?',
+  title: 'Sahra Takip Ne İşe Yarar?',
   description:
-    'Salon Ajandası Programı ile; Düğün Salonunuzun, gündüz ve gece olmak üzere bütün yıl boyunca rezervasyonlarının takibi, Detaylı rezervasyon kaydı, Salon kiralama sözleşmesi oluşturma, Kapora ve kalan alacak kaydı, Düğün, Sünnet, Nişan, Kına, Konferans, Kokteyl vs. organizasyonları ayrı ayrı kaydetme istenilen tarih aralığında rezervasyon ve alacak bakiyesi raporu alma, isim ve telefon no bazında detaylı kayıt arama, işlemlerini yapabilirsiniz.',
+    'Sahra Takip Programı ile; Düğün Salonunuzun, gündüz ve gece olmak üzere bütün yıl boyunca rezervasyonlarının takibi, Detaylı rezervasyon kaydı, Salon kiralama sözleşmesi oluşturma, Kapora ve kalan alacak kaydı, Düğün, Sünnet, Nişan, Kına, Konferans, Kokteyl vs. organizasyonları ayrı ayrı kaydetme istenilen tarih aralığında rezervasyon ve alacak bakiyesi raporu alma, isim ve telefon no bazında detaylı kayıt arama, işlemlerini yapabilirsiniz.',
   bullets: [
     '%100 Yerli sermaye',
     'Sürekli güncelleme ve geliştirme',
@@ -29,14 +29,14 @@ export const WHY_US = {
 export const HOME_ACCORDION: { no: string; question: string; answer: string; linkText?: string; linkTo?: string }[] = [
   {
     no: '01',
-    question: 'Salon Ajandası Programını satın almadan önce kullanıp test etme imkânı var mı?',
+    question: 'Sahra Takip Programını satın almadan önce kullanıp test etme imkânı var mı?',
     answer: 'Evet sitemizden üye olarak 7 gün boyunca ücretsiz tam sürüm kullanabilirsiniz. Hemen üye olmak için ',
     linkText: 'tıklayınız',
     linkTo: '/uye-ol',
   },
   {
     no: '02',
-    question: 'Salon Ajandası Programını nasıl satın alırım?',
+    question: 'Sahra Takip Programını nasıl satın alırım?',
     answer:
       'Sisteme üye olup login olduktan sonra size özel yönetim sayfasından güvenli bir şekilde ödemenizi yapabilirsiniz.',
   },
@@ -48,7 +48,7 @@ export const HOME_ACCORDION: { no: string; question: string; answer: string; lin
   },
   {
     no: '04',
-    question: 'Salon Ajandası Programı tarafından sakladığınız bilgilerimi başka birileri görebilir mi?',
+    question: 'Sahra Takip Programı tarafından sakladığınız bilgilerimi başka birileri görebilir mi?',
     answer:
       'Sistemimizde saklamış olduğunuz bilgileri şifrenizi kimseye söylemediğiniz sürece başkaları tarafından görülemez ve görüntülenemez.',
   },
@@ -57,7 +57,7 @@ export const HOME_ACCORDION: { no: string; question: string; answer: string; lin
 /** "Bizi tercih eden sektörler" */
 export const SECTORS = {
   title: 'Bizi tercih eden sektörler',
-  description: 'Salonajandasi.com rezervasyon sistemimizi tercih eden sektör dağılımları aşağıdaki gibidir.',
+  description: 'Sahratakip.com rezervasyon sistemimizi tercih eden sektör dağılımları aşağıdaki gibidir.',
   items: [
     { label: 'Düğün Salonları', value: 100 },
     { label: 'Organizasyon Firmaları', value: 90 },
@@ -69,7 +69,7 @@ export const SECTORS = {
 /** "Hizmetlerimiz" */
 export const SERVICES = {
   title: 'Hizmetlerimiz',
-  description: 'Neden salonajandasi.com salon yönetim sistemini ve takvim programını seçmelisiniz?',
+  description: 'Neden sahratakip.com salon yönetim sistemini ve takvim programını seçmelisiniz?',
   items: [
     { icon: 'globe', title: 'Online', text: 'Yer, zaman ve cihazdan bağımsız, işletmenizi dilediğiniz yerden yönetin.' },
     { icon: 'chart', title: 'Raporlama', text: 'Geçmiş datalarınıza istinaden müthiş raporlama ve analiz yeteneği kazanın.' },
@@ -87,7 +87,7 @@ export const SERVICES = {
 export const COMPLIANCE = {
   title: 'İYS uyumlu SMS gönderimi',
   description:
-    'Türkiye’de kampanya ve tanıtım SMS’i göndermek için alıcının İYS onayı zorunludur; rezervasyon onayı, hatırlatma ve doğrulama kodu gibi işlem bildirimleri bu kapsamın dışındadır. Salon Ajandası her mesajı bu iki sınıftan birine ayırır ve kuralı veritabanı seviyesinde uygular.',
+    'Türkiye’de kampanya ve tanıtım SMS’i göndermek için alıcının İYS onayı zorunludur; rezervasyon onayı, hatırlatma ve doğrulama kodu gibi işlem bildirimleri bu kapsamın dışındadır. Sahra Takip her mesajı bu iki sınıftan birine ayırır ve kuralı veritabanı seviyesinde uygular.',
   items: [
     {
       title: 'Onay ve ret kaydı',
@@ -178,7 +178,7 @@ export const FAQ: { question: string; answer: string }[] = [
   },
   {
     question: 'Stüdyo Takip’in iOS ve Android uygulaması var mı?',
-    answer: 'Markette Stüdyo Takip ya da Salon Ajandası yazdığınızda uygulamamızı indirebilirsiniz.',
+    answer: 'Markette Stüdyo Takip ya da Sahra Takip yazdığınızda uygulamamızı indirebilirsiniz.',
   },
   {
     question: 'Rezervasyon kayıtlarını müşteriye SMS ile atabilir miyiz?',
@@ -197,12 +197,12 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: 'İYS için ayrıca ücret ödüyor muyum?',
     answer:
-      'İYS ücretlendirmesi İleti Yönetim Sistemi tarafında yapılır ve Salon Ajandası’ndan bağımsızdır. İzinlerinizi İYS panelinden elle yönetirseniz Temel Hizmetler paketi ücretsizdir; otomatik aktarım için adres sayınıza uygun bir İYS paketi almanız gerekir.',
+      'İYS ücretlendirmesi İleti Yönetim Sistemi tarafında yapılır ve Sahra Takip’ndan bağımsızdır. İzinlerinizi İYS panelinden elle yönetirseniz Temel Hizmetler paketi ücretsizdir; otomatik aktarım için adres sayınıza uygun bir İYS paketi almanız gerekir.',
   },
   {
     question: 'Çıktı alamıyorum',
     answer:
-      "Chrome kullanıyorsanız pop-up engellemiş olabilir. AYARLAR - GELİŞMİŞ - İÇERİK AYARLARI - POP-UP’lar - İZİN VER - EKLE kısmına www.salonajandasi.com yazmanız yeterlidir.",
+      "Chrome kullanıyorsanız pop-up engellemiş olabilir. AYARLAR - GELİŞMİŞ - İÇERİK AYARLARI - POP-UP’lar - İZİN VER - EKLE kısmına www.sahratakip.com yazmanız yeterlidir.",
   },
   {
     question: 'Rezervasyon kaydı sınırı var mı?',
@@ -211,7 +211,7 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: 'PC’ye kurulan program var mı?',
     answer:
-      'PC’ye kurulan program mevcut değildir. PC göçmesi, PC bozulması, PC çalınması gibi durumlarda veri kaybı yaşamamanız için iptal edilmiştir. www.salonajandasi.com sadece internet üzerinden kontrol imkânı sağlamaktadır.',
+      'PC’ye kurulan program mevcut değildir. PC göçmesi, PC bozulması, PC çalınması gibi durumlarda veri kaybı yaşamamanız için iptal edilmiştir. www.sahratakip.com sadece internet üzerinden kontrol imkânı sağlamaktadır.',
   },
   {
     question: 'Birden fazla düğün salonu sahibiyim, ne yapmam gerekir?',
@@ -219,8 +219,8 @@ export const FAQ: { question: string; answer: string }[] = [
       'Her salonunuz için 1 üyelik açıp FİRMALARIM / ADMİNLER - YENİ İŞLETME EKLE kısmından yeni işletme ekleyebilirsiniz.',
   },
   {
-    question: 'Salonajandasi.com ne kadar güvenilir?',
-    answer: 'SSL Güvenlik Paketi salonajandasi.com’a eklenmiştir, verileriniz artık daha güvende.',
+    question: 'Sahratakip.com ne kadar güvenilir?',
+    answer: 'SSL Güvenlik Paketi sahratakip.com’a eklenmiştir, verileriniz artık daha güvende.',
   },
   {
     question: 'Geçmiş tarihli düğünleri silemiyorum',
@@ -230,7 +230,7 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: 'Kullanım süresi bitti, bilgilerim silinir mi?',
     answer:
-      'Kullanım süreniz bittiğinde satış ve pazarlama departmanımız tarafından bilgilendirilirsiniz. Süreniz bitse de bilgileriniz salonajandasi.com sitesinde saklanmaktadır.',
+      'Kullanım süreniz bittiğinde satış ve pazarlama departmanımız tarafından bilgilendirilirsiniz. Süreniz bitse de bilgileriniz sahratakip.com sitesinde saklanmaktadır.',
   },
   {
     question: 'Programı masaüstüne nasıl alabilirim?',
@@ -243,7 +243,7 @@ export const FAQ: { question: string; answer: string }[] = [
 export const NEWS: NewsItem[] = [
   {
     slug: 'guvenlik-seviyesi-artirildi',
-    title: "SalonAjandasi.com'da Güvenlik Seviyesi Artırıldı",
+    title: "SahraTakip.com'da Güvenlik Seviyesi Artırıldı",
     date: '2026-02-14',
     excerpt:
       'Platforma giriş işlemlerinde tüm kullanıcılar için SMS doğrulama zorunlu hâle getirilmiştir.',
@@ -251,16 +251,16 @@ export const NEWS: NewsItem[] = [
       'Platforma giriş işlemlerinde tüm kullanıcılar için SMS doğrulama zorunlu hâle getirilmiştir.',
       'Bu sayede e-posta adresi ve şifrenizi bilen üçüncü şahıslar sisteminize giriş yapamayacak.',
       'Alt kullanıcılar için kişiye özel giriş yöntemi oluşturulabilmektedir. Dilerseniz personellerinizin yalnızca belirli ekranlara erişmesini sağlayabilirsiniz.',
-      'SSL Güvenlik Paketi salonajandasi.com’a eklenmiştir, verileriniz artık daha güvende.',
+      'SSL Güvenlik Paketi sahratakip.com’a eklenmiştir, verileriniz artık daha güvende.',
     ],
   },
   {
     slug: 'basari',
     title: 'BAŞARI',
     date: '2026-01-08',
-    excerpt: "2000'den fazla firma Salon Ajandası'i kullanmaktadır.",
+    excerpt: "2000'den fazla firma Sahra Takip'i kullanmaktadır.",
     body: [
-      "2000'den fazla firma Salon Ajandası'i kullanmaktadır.",
+      "2000'den fazla firma Sahra Takip'i kullanmaktadır.",
       'Bize duyduğunuz güven için teşekkür ederiz. Sistemimizi her gün geliştirmeye, sizden gelen talepleri hızlıca hayata geçirmeye devam ediyoruz.',
       '"Ödüllerin en büyüğü, yaptığımız işleri başarmış olmamızdır." — Montaigne',
     ],
@@ -282,11 +282,11 @@ export const NEWS: NewsItem[] = [
     title: 'Ajandadan Dijitale Geçiş İndirimi',
     date: '2025-09-05',
     excerpt:
-      "Mevcut ajanda sisteminizi bırakıp SalonAjandası'i tercih eden tüm firmalara özel geçiş indirimi.",
+      "Mevcut ajanda sisteminizi bırakıp SahraTakip'i tercih eden tüm firmalara özel geçiş indirimi.",
     body: [
-      "Mevcut ajanda sisteminizi bırakıp SalonAjandası'i tercih eden tüm firmalara özel geçiş indirimi sunuyoruz.",
+      "Mevcut ajanda sisteminizi bırakıp SahraTakip'i tercih eden tüm firmalara özel geçiş indirimi sunuyoruz.",
       'Geçiş sürecinde mevcut rezervasyon kayıtlarınızın sisteme aktarılması ve personelinizin eğitimi ücretsizdir.',
-      'Detaylı bilgi için demo talebinde bulunabilir ya da info@salonajandasi.com adresinden bize ulaşabilirsiniz.',
+      'Detaylı bilgi için demo talebinde bulunabilir ya da info@sahratakip.com adresinden bize ulaşabilirsiniz.',
     ],
   },
 ];
@@ -345,8 +345,8 @@ export const SCREENS: { title: string; description: string; kind: string }[] = [
 ];
 
 export const CONTACT = {
-  email: 'info@salonajandasi.com',
-  title: 'Salon Ajandası Salon Takip Programı İletişim',
+  email: 'info@sahratakip.com',
+  title: 'Sahra Takip Salon Takip Programı İletişim',
   formFields: {
     name: 'Adınız Soyadınız',
     email: 'E-posta',
@@ -358,10 +358,10 @@ export const CONTACT = {
 };
 
 export const SOCIAL = {
-  twitter: 'https://twitter.com/salonajandasi',
-  facebook: 'https://facebook.com/salonajandasi',
-  instagram: 'https://instagram.com/salonajandasi',
+  twitter: 'https://twitter.com/sahratakip',
+  facebook: 'https://facebook.com/sahratakip',
+  instagram: 'https://instagram.com/sahratakip',
   youtube: 'https://www.youtube.com/watch?v=qLCvjL0LbDg',
 };
 
-export const COPYRIGHT = '© 2009-2026 Salonajandasi.com';
+export const COPYRIGHT = '© 2009-2026 Sahratakip.com';

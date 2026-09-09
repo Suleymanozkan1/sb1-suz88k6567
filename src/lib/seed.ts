@@ -11,7 +11,7 @@ import type { Business, CashFlowEntry, Hall, Menu, Payment, Reservation, User, V
 
 export { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS };
 
-export const DEMO_CREDENTIALS = { email: 'demo@salonajandasi.com', password: 'demo1234' };
+export const DEMO_CREDENTIALS = { email: 'demo@sahratakip.com', password: 'demo1234' };
 
 const DEMO_CUSTOMERS: [string, string, string][] = [
   ['Ahmet & Elif Yılmaz', '5321234567', 'Düğün'],
@@ -71,7 +71,7 @@ export function seedIfEmpty(): void {
     ...owner,
     id: 'user_staff',
     fullName: 'Ayşe Personel',
-    email: 'personel@salonajandasi.com',
+    email: 'personel@sahratakip.com',
     password: 'personel1234',
     mobile: '5320003344',
     role: 'staff',

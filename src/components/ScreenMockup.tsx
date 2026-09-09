@@ -9,7 +9,7 @@ export default function ScreenMockup({ kind }: { kind: string }) {
         <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-        <span className="ml-3 truncate text-[10px] text-brand-muted">salonajandasi.com/panel</span>
+        <span className="ml-3 truncate text-[10px] text-brand-muted">sahratakip.com/panel</span>
       </div>
       <div className="p-4">{renderBody(kind)}</div>
     </div>

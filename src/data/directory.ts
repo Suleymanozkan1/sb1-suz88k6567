@@ -133,7 +133,7 @@ export const VENUE_PAGES: {
     title: 'Düğün Salonları',
     heading: 'Düğün Salonları',
     intro:
-      'Türkiye genelinde Salon Ajandası sistemini kullanan düğün salonları. Şehir ve ilçe seçerek size en yakın salonu bulabilir, kapasite bilgisine göre karşılaştırma yapabilirsiniz.',
+      'Türkiye genelinde Sahra Takip sistemini kullanan düğün salonları. Şehir ve ilçe seçerek size en yakın salonu bulabilir, kapasite bilgisine göre karşılaştırma yapabilirsiniz.',
     categories: ['Düğün Salonu'],
   },
   {
@@ -141,7 +141,7 @@ export const VENUE_PAGES: {
     title: 'Kına Salonları',
     heading: 'Kına Salonları',
     intro:
-      'Kına gecesi organizasyonu için tercih edebileceğiniz, Salon Ajandası üyesi kına salonları ve kına evleri.',
+      'Kına gecesi organizasyonu için tercih edebileceğiniz, Sahra Takip üyesi kına salonları ve kına evleri.',
     categories: ['Kına Salonu'],
   },
   {
@@ -149,7 +149,7 @@ export const VENUE_PAGES: {
     title: 'Düğün Otelleri',
     heading: 'Düğün Otelleri',
     intro:
-      'Konaklamalı düğün organizasyonu düzenleyebileceğiniz, Salon Ajandası üyesi düğün otelleri ve resortlar.',
+      'Konaklamalı düğün organizasyonu düzenleyebileceğiniz, Sahra Takip üyesi düğün otelleri ve resortlar.',
     categories: ['Düğün Oteli', 'Otel'],
   },
   {

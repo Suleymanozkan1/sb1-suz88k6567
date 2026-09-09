@@ -17,14 +17,14 @@ export default function Dusunceler() {
   return (
     <>
       <Seo
-        title="Üyelerimizin Düşünceleri - Salon Ajandası"
-        description="Salon Ajandası sistemini kullanan üyelerimizin düşünceleri ve yorumları."
+        title="Üyelerimizin Düşünceleri - Sahra Takip"
+        description="Sahra Takip sistemini kullanan üyelerimizin düşünceleri ve yorumları."
         path="/dusunceler"
       />
       <PageHeader
         title="Üyelerimizin Düşünceleri"
         breadcrumbs={[{ label: 'Üyelerimizin Düşünceleri' }]}
-        description="Salon Ajandası sistemini kullanan üyelerimizin düşünceleri..."
+        description="Sahra Takip sistemini kullanan üyelerimizin düşünceleri..."
       />
 
       <section className="py-12">

@@ -3,7 +3,7 @@ import { COPYRIGHT, CONTACT, SOCIAL } from '../data/content';
 import { IconFacebook, IconInstagram, IconMail, IconTwitter, IconYoutube } from './Icons';
 
 const CONTENT_LINKS = [
-  { label: 'Salon Ajandası', to: '/nedir' },
+  { label: 'Sahra Takip', to: '/nedir' },
   { label: 'Gizlilik Politikası', to: '/gizlilik-politikasi' },
   { label: 'KVKK Aydınlatma Metni', to: '/kvkk-aydinlatma-metni' },
   { label: 'İade/İptal Prosedürü', to: '/iade-proseduru' },
@@ -28,7 +28,7 @@ export default function SiteFooter() {
       <div className="container-dt grid gap-10 pb-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <h3 className="mb-3 font-display text-2xl font-bold text-brand">
-            Salon<span className="text-accent-ink">Ajandası</span>
+            Sahra<span className="text-accent-ink">Takip</span>
           </h3>
           <p className="leading-relaxed">
             Online salon yönetim sistemi. Düğün salonları için özel olarak geliştirilmiş

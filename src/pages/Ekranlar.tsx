@@ -8,14 +8,14 @@ export default function Ekranlar() {
   return (
     <>
       <Seo
-        title="Ekranlar - Salon Ajandası Salon Takip Programı"
-        description="Salon Ajandası programının rezervasyon takvimi, raporlar, renk ayarları, gelir gider ve İYS izin yönetimi ekranları."
+        title="Ekranlar - Sahra Takip Salon Takip Programı"
+        description="Sahra Takip programının rezervasyon takvimi, raporlar, renk ayarları, gelir gider ve İYS izin yönetimi ekranları."
         path="/ekranlar"
       />
       <PageHeader
         title="Ekranlar"
         breadcrumbs={[{ label: 'Ekranlar' }]}
-        description="Salon Ajandası programının başlıca ekranları. Tüm ekranlara 7 gün ücretsiz deneme ile hemen erişebilirsiniz."
+        description="Sahra Takip programının başlıca ekranları. Tüm ekranlara 7 gün ücretsiz deneme ile hemen erişebilirsiniz."
       />
 
       <section className="py-14">

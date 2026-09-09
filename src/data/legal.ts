@@ -10,11 +10,11 @@ export const PRIVACY_POLICY: LegalDoc = {
   sections: [
     {
       paragraphs: [
-        'Bu gizlilik politikası salonajandasi.com’la başlayan tüm URL’li sitelerde geçerlidir.',
+        'Bu gizlilik politikası sahratakip.com’la başlayan tüm URL’li sitelerde geçerlidir.',
         'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz.',
         'Sitemizi ziyaret için herhangi bir kişisel bilginizi bize vermek zorunda değilsiniz.',
         'Ancak, hizmetlerimizden faydalanmak için üye olmanız ve bazı kişisel bilgilerinizi vermeniz gerekmektedir.',
-        'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz, şifrelerin başkasının eline geçmesi ya da çalınmasından salonajandasi.com sorumlu değildir.',
+        'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz, şifrelerin başkasının eline geçmesi ya da çalınmasından sahratakip.com sorumlu değildir.',
         'Üye ve ziyaretçilerin site ile ilgili tarafımıza ulaştırdıkları her türlü öneri, istek, soru ve şikâyetleri içeren bilgiler site performansını ölçmek açısından saklanmaktadır.',
         'Bu bilgiler kişilerin kendilerine yanıt vermek dışında herhangi bir amaç için kullanılamaz.',
       ],
@@ -89,7 +89,7 @@ export const REFUND_POLICY: LegalDoc = {
     {
       heading: 'İade Süreci',
       paragraphs: [
-        'İade talebiniz info@salonajandasi.com adresine, üyelik e-posta adresiniz üzerinden iletilmelidir.',
+        'İade talebiniz info@sahratakip.com adresine, üyelik e-posta adresiniz üzerinden iletilmelidir.',
         'Onaylanan iadeler, ödemenin yapıldığı yöntem ile ve bankanızın işlem süresi dahilinde iade edilir.',
       ],
     },
@@ -103,15 +103,15 @@ export const DISTANCE_SALES: LegalDoc = {
     {
       heading: 'Madde 1 — Taraflar',
       paragraphs: [
-        'HİZMET SAĞLAYICI: [Ticaret unvanı] ("Salon Ajandası") — MERSİS No: [MERSİS numarası], Vergi Dairesi/No: [vergi dairesi ve numarası].',
-        'Adres: [merkez adresi]. Telefon: [telefon]. E-posta: info@salonajandasi.com. KEP: [kayıtlı elektronik posta adresi].',
+        'HİZMET SAĞLAYICI: [Ticaret unvanı] ("Sahra Takip") — MERSİS No: [MERSİS numarası], Vergi Dairesi/No: [vergi dairesi ve numarası].',
+        'Adres: [merkez adresi]. Telefon: [telefon]. E-posta: info@sahratakip.com. KEP: [kayıtlı elektronik posta adresi].',
         'ALICI: Sitemize üye olarak hizmeti satın alan gerçek veya tüzel kişi.',
       ],
     },
     {
       heading: 'Madde 2 — Sözleşmenin Konusu',
       paragraphs: [
-        'İşbu sözleşmenin konusu, ALICI’nın Salon Ajandası internet sitesi üzerinden elektronik ortamda siparişini verdiği online rezervasyon ve ödeme takip hizmetinin (yazılım kullanım lisansı) satışı ve ifası ile ilgili tarafların hak ve yükümlülüklerinin belirlenmesidir.',
+        'İşbu sözleşmenin konusu, ALICI’nın Sahra Takip internet sitesi üzerinden elektronik ortamda siparişini verdiği online rezervasyon ve ödeme takip hizmetinin (yazılım kullanım lisansı) satışı ve ifası ile ilgili tarafların hak ve yükümlülüklerinin belirlenmesidir.',
       ],
     },
     {
@@ -133,8 +133,8 @@ export const DISTANCE_SALES: LegalDoc = {
       heading: 'Madde 5 — Genel Hükümler',
       paragraphs: [
         'ALICI, hizmetin temel nitelikleri, satış fiyatı ve ödeme şekli ile ifaya ilişkin ön bilgileri okuyup bilgi sahibi olduğunu ve elektronik ortamda gerekli teyidi verdiğini kabul eder.',
-        'ALICI, hesap bilgilerinin güvenliğinden kendisi sorumludur. Şifrenin üçüncü kişilerle paylaşılmasından doğacak zararlardan Salon Ajandası sorumlu tutulamaz.',
-        'Salon Ajandası, hizmet kalitesini artırmak amacıyla sistemde güncelleme ve geliştirme yapma hakkını saklı tutar.',
+        'ALICI, hesap bilgilerinin güvenliğinden kendisi sorumludur. Şifrenin üçüncü kişilerle paylaşılmasından doğacak zararlardan Sahra Takip sorumlu tutulamaz.',
+        'Sahra Takip, hizmet kalitesini artırmak amacıyla sistemde güncelleme ve geliştirme yapma hakkını saklı tutar.',
         'Üyelik süresi sona erse dahi ALICI’ya ait kayıtlar sistemde saklanmaya devam eder.',
       ],
     },
@@ -142,7 +142,7 @@ export const DISTANCE_SALES: LegalDoc = {
       heading: 'Madde 6 — Cayma Hakkı',
       paragraphs: [
         'ALICI, sözleşmenin kurulduğu tarihten itibaren 14 (on dört) gün içinde hiçbir gerekçe göstermeksizin ve cezai şart ödemeksizin cayma hakkına sahiptir.',
-        'Cayma bildirimi info@salonajandasi.com adresine ya da [merkez adresi] adresine yazılı olarak iletilir. Bildirimin süresi içinde gönderilmiş olması yeterlidir.',
+        'Cayma bildirimi info@sahratakip.com adresine ya da [merkez adresi] adresine yazılı olarak iletilir. Bildirimin süresi içinde gönderilmiş olması yeterlidir.',
         'Mesafeli Sözleşmeler Yönetmeliği m.15/1-(ğ) uyarınca, ALICI’nın onayıyla ifasına başlanan ve elektronik ortamda anında ifa edilen hizmetlerde cayma hakkı kullanılamaz. Yeni üyelere tanınan 7 günlük ücretsiz deneme, ALICI’nın hizmeti ödeme yapmadan önce değerlendirmesine imkân verir.',
         'İade koşullarının ayrıntısı İade/İptal Prosedürü sayfasında düzenlenmiştir ve işbu sözleşmenin ayrılmaz parçasıdır.',
       ],
@@ -163,11 +163,11 @@ export const MEMBERSHIP_AGREEMENT: LegalDoc = {
   sections: [
     {
       paragraphs: [
-        'İşbu üyelik sözleşmesi, salonajandasi.com sitesine üye olan kullanıcı ile Salon Ajandası arasında akdedilmiştir.',
+        'İşbu üyelik sözleşmesi, sahratakip.com sitesine üye olan kullanıcı ile Sahra Takip arasında akdedilmiştir.',
         'Üye, kayıt sırasında verdiği bilgilerin doğru ve güncel olduğunu kabul eder.',
         'Üye, hesabını üçüncü kişilerle paylaşmayacağını; paylaşması hâlinde doğacak zararlardan kendisinin sorumlu olduğunu kabul eder.',
         'Üye, sisteme yüklediği tüm verilerin içeriğinden bizzat sorumludur.',
-        'Salon Ajandası, üyelik kurallarına aykırı davranan üyelerin üyeliğini önceden bildirimde bulunmaksızın askıya alma veya sonlandırma hakkına sahiptir.',
+        'Sahra Takip, üyelik kurallarına aykırı davranan üyelerin üyeliğini önceden bildirimde bulunmaksızın askıya alma veya sonlandırma hakkına sahiptir.',
         'Üyelik süresi boyunca sunulan hizmetlerin kapsamı, geliştirmeler doğrultusunda genişletilebilir.',
       ],
     },
@@ -197,7 +197,7 @@ export const KVKK_NOTICE: LegalDoc = {
       heading: 'Veri Sorumlusunun Kimliği',
       paragraphs: [
         'Veri sorumlusu: [Ticaret unvanı] — MERSİS No: [MERSİS numarası], Vergi Dairesi/No: [vergi dairesi ve numarası].',
-        'Adres: [merkez adresi]. Telefon: [telefon]. E-posta: info@salonajandasi.com. KEP: [kayıtlı elektronik posta adresi].',
+        'Adres: [merkez adresi]. Telefon: [telefon]. E-posta: info@sahratakip.com. KEP: [kayıtlı elektronik posta adresi].',
       ],
     },
     {
@@ -205,7 +205,7 @@ export const KVKK_NOTICE: LegalDoc = {
       paragraphs: [
         'Üyelik verileri: ad soyad, e-posta adresi, cep telefonu, işletme unvanı ve fatura bilgileri.',
         'İşlem güvenliği verileri: IP adresi, giriş denemeleri ve oturum kayıtları.',
-        'Müşteri kayıtları: üyenin kendi müşterilerine ait olarak sisteme girdiği ad, telefon ve organizasyon bilgileri. Bu verilerde veri sorumlusu üyenin kendisidir; Salon Ajandası veri işleyen sıfatıyla hareket eder.',
+        'Müşteri kayıtları: üyenin kendi müşterilerine ait olarak sisteme girdiği ad, telefon ve organizasyon bilgileri. Bu verilerde veri sorumlusu üyenin kendisidir; Sahra Takip veri işleyen sıfatıyla hareket eder.',
       ],
     },
     {
@@ -244,7 +244,7 @@ export const KVKK_NOTICE: LegalDoc = {
         'Yurt içinde veya yurt dışında verilerin aktarıldığı üçüncü kişileri bilme, eksik veya yanlış işlenmişse düzeltilmesini isteme.',
         'KVKK m.7 çerçevesinde silinmesini veya yok edilmesini isteme, bu işlemlerin verilerin aktarıldığı üçüncü kişilere bildirilmesini isteme.',
         'Münhasıran otomatik sistemlerle analiz edilmesi suretiyle aleyhinize bir sonuç doğmasına itiraz etme ve kanuna aykırı işleme sebebiyle zarara uğramanız hâlinde zararın giderilmesini talep etme.',
-        'Başvurularınızı info@salonajandasi.com adresine ya da [merkez adresi] adresine yazılı olarak iletebilirsiniz. Başvurular en geç 30 gün içinde sonuçlandırılır.',
+        'Başvurularınızı info@sahratakip.com adresine ya da [merkez adresi] adresine yazılı olarak iletebilirsiniz. Başvurular en geç 30 gün içinde sonuçlandırılır.',
       ],
     },
   ],

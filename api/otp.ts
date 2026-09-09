@@ -80,7 +80,7 @@ export default async function handler(request: Request): Promise<Response> {
         headers: JSON_HEADERS,
         body: JSON.stringify({
           to: phone,
-          body: `salonajandasi.com giris dogrulama kodunuz: ${code}`,
+          body: `sahratakip.com giris dogrulama kodunuz: ${code}`,
         }),
       });
       const smsResult = (await smsResponse.json()) as { sent?: boolean; error?: string };

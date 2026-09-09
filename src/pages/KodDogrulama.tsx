@@ -41,8 +41,8 @@ export default function KodDogrulama() {
   return (
     <>
       <Seo
-        title="Rezervasyon Kod Doğrulama - Salon Ajandası"
-        description="Salon Ajandası sistemindeki rezervasyon kodunuzu doğrulayın."
+        title="Rezervasyon Kod Doğrulama - Sahra Takip"
+        description="Sahra Takip sistemindeki rezervasyon kodunuzu doğrulayın."
         path="/kod-dogrulama"
       />
       <PageHeader
