@@ -31,6 +31,8 @@ function renderBody(kind: string) {
       return <ReservationPreview />;
     case 'contract':
       return <ContractPreview />;
+    case 'permissions':
+      return <PermissionsPreview />;
     default:
       return <BusinessPreview />;
   }
@@ -183,6 +185,40 @@ function ContractPreview() {
         <div className="text-[8px] text-brand-muted">KİRAYA VEREN</div>
         <div className="text-[8px] text-brand-muted">KİRACI</div>
       </div>
+    </div>
+  );
+}
+
+function PermissionsPreview() {
+  // Panel ekranındaki ONAY/RET rozet renkleriyle aynı; önizleme ile
+  // gerçek ekran arasında renk kodu farkı olmasın.
+  const rows = [
+    ['0532 *** ** 41', 'ONAY', 'Rezervasyon formu'],
+    ['0505 *** ** 08', 'ONAY', 'Web sitesi'],
+    ['0542 *** ** 73', 'RET', 'Alıcı talebi'],
+    ['0533 *** ** 19', 'ONAY', 'Sözleşme'],
+  ] as const;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between rounded bg-[#fff8e6] px-2.5 py-1.5 text-[9px] text-[#92400e]">
+        <span>Ticari ileti yalnızca onaylı numaralara gider.</span>
+        <span className="font-semibold">1 kayıt aktarılacak</span>
+      </div>
+      {rows.map(([phone, status, source]) => (
+        <div key={phone} className="flex items-center justify-between rounded border border-line px-3 py-2">
+          <div>
+            <div className="text-[10px] font-semibold text-brand">{phone}</div>
+            <div className="text-[9px] text-brand-muted">{source}</div>
+          </div>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${
+              status === 'ONAY' ? 'bg-[#e8f8ef] text-[#15803d]' : 'bg-[#fdecea] text-[#b91c1c]'
+            }`}
+          >
+            {status}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

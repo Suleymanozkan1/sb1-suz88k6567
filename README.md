@@ -312,6 +312,12 @@ sayısı uyarı olarak gösterilir.
 > bağlanır. O durumda `IYS_*` değişkenlerini boş bırakıp onay aktarımını sağlayıcı
 > panelinden yapabilirsiniz.
 
+İYS ücretlendirmesi İleti Yönetim Sistemi tarafındadır. Onayları İYS panelinden
+elle yönetirseniz **Temel Hizmetler** paketi ücretsizdir; buradaki otomatik
+aktarım için adres sayınıza uygun bir paket gerekir (5.000 izin 4.601 ₺, KDV
+dahil). Paket listesi:
+[docs/DAGITIM-KONTROL-LISTESI.md](docs/DAGITIM-KONTROL-LISTESI.md#5-i̇ys--yalnızca-ticari-ileti-gönderecekseniz)
+
 ### Sağlayıcı
 
 Tüm gönderimler `api/sms.ts` üzerinden yapılır — sağlayıcı şifresi tarayıcıya

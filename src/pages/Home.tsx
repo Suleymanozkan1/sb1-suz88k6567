@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CTA, HERO, HOME_ACCORDION, SECTORS, SERVICES, TESTIMONIALS, WHY_US } from '../data/content';
-import { ICON_MAP, IconCheck, IconPlay } from '../components/Icons';
+import { COMPLIANCE, CTA, HERO, HOME_ACCORDION, SECTORS, SERVICES, TESTIMONIALS, WHY_US } from '../data/content';
+import { ICON_MAP, IconCheck, IconPlay, IconShield } from '../components/Icons';
 import ProgressBar from '../components/ProgressBar';
 import Accordion from '../components/Accordion';
 import TestimonialSlider from '../components/TestimonialSlider';
@@ -124,6 +124,31 @@ export default function Home() {
               );
             })}
           </div>
+        </div>
+      </section>
+
+      {/* İYS uyumu */}
+      <section className="py-16" aria-labelledby="compliance-title">
+        <div className="container-dt">
+          <div className="mb-10 text-center">
+            <h2 id="compliance-title" className="relative inline-block pb-4 font-heading text-[32px] font-bold uppercase tracking-wide text-brand">
+              {COMPLIANCE.title}
+              <span className="absolute bottom-0 left-1/2 block h-1 w-14 -translate-x-1/2 bg-accent" />
+            </h2>
+            <p className="mx-auto mt-3 max-w-3xl">{COMPLIANCE.description}</p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {COMPLIANCE.items.map((c) => (
+              <article key={c.title} className="card p-6">
+                <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-accent/10 text-accent">
+                  <IconShield size={22} />
+                </span>
+                <h3 className="mb-2 font-heading text-lg font-bold text-brand">{c.title}</h3>
+                <p className="text-sm leading-relaxed">{c.text}</p>
+              </article>
+            ))}
+          </div>
+          <p className="mx-auto mt-6 max-w-3xl text-center text-sm text-brand-muted">{COMPLIANCE.note}</p>
         </div>
       </section>
 

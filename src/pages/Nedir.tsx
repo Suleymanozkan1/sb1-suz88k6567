@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Seo from '../components/Seo';
 import Accordion from '../components/Accordion';
-import { HOME_ACCORDION, WHY_US } from '../data/content';
+import { COMPLIANCE, HOME_ACCORDION, WHY_US } from '../data/content';
 import { SCREENS } from '../data/content';
-import { IconCheck } from '../components/Icons';
+import { IconCheck, IconShield } from '../components/Icons';
 
 const CAPABILITIES = [
   'Gündüz ve gece olmak üzere bütün yıl boyunca rezervasyon takibi',
@@ -14,6 +14,7 @@ const CAPABILITIES = [
   'Düğün, Sünnet, Nişan, Kına, Konferans, Kokteyl vs. organizasyonları ayrı ayrı kaydetme',
   'İstenilen tarih aralığında rezervasyon ve alacak bakiyesi raporu alma',
   'İsim ve telefon no bazında detaylı kayıt arama',
+  'İYS onay ve ret kayıtlarının tutulması, ticari ileti gönderiminin mevzuata göre sınırlanması',
 ];
 
 export default function Nedir() {
@@ -57,6 +58,23 @@ export default function Nedir() {
             <p className="mt-4">
               <Link to="/ekranlar">Tüm ekran görüntülerini inceleyin →</Link>
             </p>
+
+            <h2 className="mt-10 font-heading text-xl font-bold text-brand">{COMPLIANCE.title}</h2>
+            <p className="mt-4 leading-relaxed">{COMPLIANCE.description}</p>
+            <div className="mt-4 space-y-4">
+              {COMPLIANCE.items.map((c) => (
+                <article key={c.title} className="card flex items-start gap-4 p-5">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+                    <IconShield size={18} />
+                  </span>
+                  <div>
+                    <h3 className="font-heading font-semibold text-brand">{c.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed">{c.text}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <p className="mt-4 text-sm text-brand-muted">{COMPLIANCE.note}</p>
 
             <h2 className="mt-10 font-heading text-xl font-bold text-brand">Sık sorulan sorular</h2>
             <div className="mt-4">

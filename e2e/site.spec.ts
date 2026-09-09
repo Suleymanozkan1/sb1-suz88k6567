@@ -85,6 +85,25 @@ test.describe('Herkese açık sayfalar', () => {
     await expect(page.getByRole('heading', { name: 'Aradığınız sayfa bulunamadı' })).toBeVisible();
   });
 
+  test('İYS uyumu anasayfada, /nedir ve /sss sayfalarında anlatılır', async ({ page }) => {
+    await blockExternalRequests(page);
+
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'İYS uyumlu SMS gönderimi' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Otomatik İYS aktarımı' })).toBeVisible();
+
+    await page.goto('/nedir');
+    await expect(page.getByRole('heading', { name: 'İYS uyumlu SMS gönderimi' })).toBeVisible();
+
+    // Ticari ileti / işlem bildirimi ayrımı SSS'de de anlatılmalı: satış
+    // görüşmesinde en sık gelen soru bu.
+    await page.goto('/sss');
+    await expect(page.getByText('Müşterilerime kampanya SMS’i gönderebilir miyim?')).toBeVisible();
+
+    await page.goto('/ekranlar');
+    await expect(page.getByRole('heading', { name: 'İYS İzin Yönetimi' })).toBeVisible();
+  });
+
   test('bilinmeyen adres 404 sayfası gösterir', async ({ page }) => {
     await page.goto('/boyle-bir-sayfa-yok');
     await expect(page.getByRole('heading', { name: 'Aradığınız sayfa bulunamadı' })).toBeVisible();
