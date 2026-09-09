@@ -94,7 +94,7 @@ export default function Ayarlar() {
 
   return (
     <>
-      <Seo title="Ayarlar - Salon Ajandası Panel" noindex />
+      <Seo title="Ayarlar - Sahra Takip Panel" noindex />
 
       <h1 className="mb-6 font-heading text-2xl font-bold text-brand">Ayarlar</h1>
 
@@ -219,7 +219,7 @@ export default function Ayarlar() {
             <button
               type="button"
               onClick={() => setConfirmReset(true)}
-              className="btn btn-sm w-full border-2 border-[#e74c3c] text-[#e74c3c] hover:bg-[#e74c3c] hover:text-white"
+              className="btn btn-sm w-full border-2 border-[#b3261e] text-[#b3261e] hover:bg-[#b3261e] hover:text-white"
             >
               Verileri sıfırla
             </button>

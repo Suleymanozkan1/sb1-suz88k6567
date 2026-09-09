@@ -232,7 +232,7 @@ describe('kimlik yardımcıları', () => {
   });
 
   it('e-postayı locale-bağımsız normalleştirir', () => {
-    expect(normalizeEmail('  DEMO@SALONAJANDASI.COM ')).toBe('demo@salonajandasi.com');
+    expect(normalizeEmail('  DEMO@SAHRATAKIP.COM ')).toBe('demo@sahratakip.com');
   });
 
   it('benzersiz kimlik üretir', () => {

@@ -75,7 +75,7 @@ export default function Raporlar() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Raporlar - Salon Ajandası Panel" noindex />
+      <Seo title="Raporlar - Sahra Takip Panel" noindex />
 
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Raporlar</h1>
@@ -122,7 +122,7 @@ export default function Raporlar() {
             aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
             className={`btn-sm rounded-full px-4 py-2 text-sm transition ${
-              tab === t.key ? 'bg-accent text-white' : 'border border-line bg-white text-brand hover:border-accent'
+              tab === t.key ? 'bg-accent-ink text-white' : 'border border-line bg-white text-brand hover:border-accent-ink'
             }`}
           >
             {t.label}
@@ -165,7 +165,7 @@ export default function Raporlar() {
               {months.map((m) => (
                 <div key={m.label} className="flex min-w-[52px] flex-1 flex-col items-center gap-1.5">
                   <span className="text-xs font-medium text-brand">{m.count}</span>
-                  <div className="w-full rounded-t bg-accent" style={{ height: `${Math.max(4, (m.count / maxMonth) * 150)}px` }} title={`${m.label}: ${m.count}`} />
+                  <div className="w-full rounded-t bg-accent-ink" style={{ height: `${Math.max(4, (m.count / maxMonth) * 150)}px` }} title={`${m.label}: ${m.count}`} />
                   <span className="text-center text-[10px] leading-tight text-brand-muted">{m.label}</span>
                 </div>
               ))}

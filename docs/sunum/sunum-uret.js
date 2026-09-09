@@ -1,8 +1,8 @@
 /**
- * Salon Ajandası tanıtım sunumunu üretir.
+ * Sahra Takip tanıtım sunumunu üretir.
  *
  *   node docs/sunum/ss-yakala.mjs   # ekran görüntülerini docs/ss/ altına yazar
- *   node docs/sunum/sunum-uret.js   # Salon-Ajandasi-Tanitim.pptx üretir
+ *   node docs/sunum/sunum-uret.js   # Sahra-Takip-Tanitim.pptx üretir
  *
  * Slaytlar aşağıdaki düzen kitaplığı üzerine kurulur; her slayt yalnızca
  * kendi içeriğini tarif eder. Koordinatlar tek tek elle verilmediği için
@@ -30,8 +30,8 @@ const UST = 1.75;
 
 const pres = new pptxgen();
 pres.layout = 'LAYOUT_WIDE';
-pres.author = 'Salon Ajandası';
-pres.title = 'Salon Ajandası — Salon Yönetim Sistemi';
+pres.author = 'Sahra Takip';
+pres.title = 'Sahra Takip — Salon Yönetim Sistemi';
 
 /* ── Düzen ───────────────────────────────────────────────────────── */
 
@@ -205,7 +205,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: 0.9, y: 2.5, w: 8, h: 0.32, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 13, bold: true, color: SKY, charSpacing: 3,
   });
-  s.addText('Salon Ajandası', {
+  s.addText('Sahra Takip', {
     x: 0.9, y: 2.9, w: 8.4, h: 1.3, isTextBox: true, margin: 0,
     fontFace: H, fontSize: 58, bold: true, color: WHITE,
   });
@@ -221,7 +221,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   const s = slayt();
   baslik(s, 'KAPSAM', 'Sistem neleri kapsıyor');
   kartlar(s, {
-    y: 1.85, h: 2.0, sutun: 3,
+    y: 1.8, h: 1.5, sutun: 3, satirBosluk: 0.22,
     items: [
       ['Rezervasyon', 'Takvim, salon tanımları, rezervasyon kaydı, sözleşme, kod doğrulama'],
       ['Para', 'Tahsilat, ödeme planı, kasa, makbuz, raporlar'],
@@ -229,6 +229,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
       ['Mevzuat', 'e-Arşiv / e-Fatura, İYS izin yönetimi, KVKK, denetim kaydı'],
       ['İletişim', 'Müşteriye SMS, siteden gelen talepler'],
       ['Yönetim', 'Kullanıcılar ve yetkiler, yedekleme, sistem durumu'],
+      ['Mobil', 'iOS ve Android uygulaması: ajanda, takvim, hızlı tahsilat'],
     ],
   });
   s.addNotes('Altı başlığın kısa dökümü. Ayrıntılar sonraki slaytlarda.');
@@ -400,7 +401,37 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Önerilen planın koltuk toplamı her zaman davetli sayısına eşittir.');
 }
 
-/* ══ 12 · SMS ════════════════════════════════════════════════════ */
+
+/* ══ 12 · Mobil uygulama ═════════════════════════════════════════ */
+{
+  const s = slayt();
+  baslik(s, 'MOBİL', 'iOS ve Android uygulaması');
+
+  // Telefon görüntüleri dar ve uzun; yan yana üç tanesi slaytın solunu
+  // doldurur, açıklama sağda kalır.
+  const EKRAN = [
+    [img('mobil-02-bugun.png'), 'Ajanda'],
+    [img('mobil-03-takvim.png'), 'Takvim'],
+    [img('mobil-05-rezervasyon.png'), 'Rezervasyon'],
+  ];
+  EKRAN.forEach(([dosya, altYazi], i) => {
+    gorsel(s, dosya, { x: KENAR + i * 2.45, y: UST, w: 2.2, h: 4.3, altYazi });
+  });
+
+  maddeler(s, {
+    x: 8.1, y: 1.9, w: 4.5, gap: 1.35,
+    items: [
+      ['Ajanda önce', 'Ana ekran kronolojik listedir; üstte tek bir sayı durur: toplam kalan alacak. Ay ızgarası ayrı sekmede, çünkü telefon genişliğinde hücreler dokunulamayacak kadar küçülüyor.'],
+      ['Hızlı tahsilat', 'Para alındığı an kaydedilir; tutar kalan alacağı aşamaz. Bu, uygulamanın yaptığı tek yazma işlemidir.'],
+      ['Aynı veri, aynı kural', 'Uygulama web ile aynı veritabanını kullanır. Hangi kaydı göreceğine sunucudaki satır bazlı güvenlik karar verir.'],
+    ],
+  });
+
+  dipnot(s, 'Giriş, web ile aynı sunucu ucundan geçer: hesap kilidi ve hız sınırı mobilde de uygulanır. Oturum belirteci cihazda iOS Keychain / Android EncryptedSharedPreferences içinde saklanır.', 6.6);
+  s.addNotes('Tek kod tabanı (React Native, Expo) iki platforma da derlenir. Rezervasyon oluşturma, fatura ve yetki yönetimi bilinçli olarak web panelinde bırakıldı.');
+}
+
+/* ══ 13 · SMS ════════════════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'SMS', 'Müşteriye SMS gönderimi');
@@ -421,7 +452,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Marka başlığı onayı birkaç iş günü sürer; kurulumda en erken başlatılması gereken adımdır.');
 }
 
-/* ══ 13 · İYS ════════════════════════════════════════════════════ */
+/* ══ 14 · İYS ════════════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'İYS', 'Ticari ileti izin yönetimi');
@@ -441,7 +472,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('İYS bilgileri tanımlı değilse aktarım yapılmaz; ticari ileti gönderimi yerel onay kayıtlarına göre yine de engellenir. Bazı firmalar İYS’ye doğrudan değil, SMS sağlayıcısı üzerinden bağlanır.');
 }
 
-/* ══ 14 · Kod doğrulama ══════════════════════════════════════════ */
+/* ══ 15 · Kod doğrulama ══════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'KOD DOĞRULAMA', 'Müşterinin rezervasyon sorgusu');
@@ -464,7 +495,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Kod, rezervasyon onayı SMS’inde müşteriye gönderilir.');
 }
 
-/* ══ 15 · Kasa ve raporlar ═══════════════════════════════════════ */
+/* ══ 16 · Kasa ve raporlar ═══════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'KASA VE RAPORLAR', 'Gelir gider ve raporlama');
@@ -483,7 +514,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Raporlar tarih aralığına göre filtrelenebilir.');
 }
 
-/* ══ 16 · e-Arşiv / e-Fatura ═════════════════════════════════════ */
+/* ══ 17 · e-Arşiv / e-Fatura ═════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'e-ARŞİV / e-FATURA', 'Fatura düzenleme');
@@ -524,7 +555,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Gönderim Paraşüt üzerinden yapılır. Mükellefiyet durumu mali müşavire sorulmalıdır.');
 }
 
-/* ══ 17 · Talepler ═══════════════════════════════════════════════ */
+/* ══ 18 · Talepler ═══════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'TALEPLER', 'Siteden gelen müşteri talepleri');
@@ -543,7 +574,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Talep geldiğinde işleyen kullanıcı ve zaman damgası kaydedilir.');
 }
 
-/* ══ 18 · Yetkiler ═══════════════════════════════════════════════ */
+/* ══ 19 · Yetkiler ═══════════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'YETKİLER', 'Kullanıcı yetkileri');
@@ -577,7 +608,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Yedi ayrı yetki tanımlıdır; tablo bunlardan bir dağılım örneğidir.');
 }
 
-/* ══ 19 · Veri ═══════════════════════════════════════════════════ */
+/* ══ 20 · Veri ═══════════════════════════════════════════════════ */
 {
   const s = slayt(NAVY);
   baslik(s, 'VERİ', 'Veri saklama ve yedekleme', { koyu: true });
@@ -604,7 +635,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Veriler Supabase (PostgreSQL) üzerinde tutulur.');
 }
 
-/* ══ 20 · Kurulum ════════════════════════════════════════════════ */
+/* ══ 21 · Kurulum ════════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'KURULUM', 'Kurulum ve gereksinimler');
@@ -626,7 +657,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Netgsm marka başlığı onayı birkaç iş günü sürer; en erken başvurulması gereken adımdır.');
 }
 
-/* ══ 21 · Maliyet ════════════════════════════════════════════════ */
+/* ══ 22 · Maliyet ════════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'MALİYET', 'Aylık ve tek seferlik giderler');
@@ -660,10 +691,12 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     });
   }
 
-  sutun(0, 'Zorunlu — her ay', [
+  sutun(0, 'Altyapı ve mağaza', [
     ['Supabase Pro', '$25'],
     ['Cloudflare Workers', '$5'],
-  ], 'Veritabanı, gecelik yedek, barındırma ve zamanlanmış görevler. Cloudflare’in ücretsiz planı ticari kullanıma açıktır; günde 100.000 istek yetiyorsa aylık gider $25’te kalır.');
+    ['Apple Developer', '$99/yıl'],
+    ['Google Play (tek sefer)', '$25'],
+  ], 'İlk ikisi veritabanı, gecelik yedek, barındırma ve zamanlanmış görevler içindir; Cloudflare’in ücretsiz planı ticari kullanıma açıktır. Son ikisi yalnızca mobil uygulama mağazalarda yayınlanacaksa gerekir.');
 
   sutun(1, 'SMS — kullandıkça', [
     ['1.000 SMS', '370 ₺'],
@@ -685,7 +718,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     ['100 e-kontör', '400 ₺'],
   ], 'Paraşüt tutarları KDV hariç. Bir fatura bir kontördür; kontör paketi 12 ay geçerlidir. Mali mühür tüzel kişi tutarıdır.');
 
-  s.addText('Bir sağlayıcı tanımlanmazsa yalnızca o özellik kapanır: SMS sağlayıcısı yoksa mesajlar kuyrukta bekler, İYS tanımlı değilse onaylar aktarılmaz, e-Fatura entegratörü yoksa faturalar taslak olarak kaydedilir. Sistemin geri kalanı çalışmaya devam eder.', {
+  s.addText('Bir sağlayıcı tanımlanmazsa yalnızca o özellik kapanır: SMS sağlayıcısı yoksa mesajlar kuyrukta bekler, İYS tanımlı değilse onaylar aktarılmaz, e-Fatura entegratörü yoksa faturalar taslak olarak kaydedilir. Mobil uygulama yayınlanmazsa sistem yalnızca tarayıcıdan kullanılır. Sistemin geri kalanı çalışmaya devam eder.', {
     x: KENAR, y: 6.2, w: GENIS, h: 0.6, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17,
   });
@@ -696,4 +729,4 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100–150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider iki abonelikten ibarettir. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
 }
 
-pres.writeFile({ fileName: 'Salon-Ajandasi-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));
+pres.writeFile({ fileName: 'Sahra-Takip-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));

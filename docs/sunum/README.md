@@ -12,7 +12,7 @@ npm install                                        # tek seferlik
 npm run build                                      # önizleme sunucusu derlenmiş sürümü sunar
 npm run preview -- --port 4173 --host 127.0.0.1 &  # ayrı terminalde bırakılabilir
 node docs/sunum/ss-yakala.mjs                      # docs/ss/ altına 16 ekran görüntüsü
-node docs/sunum/sunum-uret.js                      # Salon-Ajandasi-Tanitim.pptx
+node docs/sunum/sunum-uret.js                      # Sahra-Takip-Tanitim.pptx
 ```
 
 `ss-yakala.mjs` demo hesabıyla giriş yapar, sunumda görünen örnek kayıtları

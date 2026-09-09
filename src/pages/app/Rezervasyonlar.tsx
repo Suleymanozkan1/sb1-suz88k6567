@@ -102,7 +102,7 @@ export default function Rezervasyonlar() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Rezervasyonlar - Salon Ajandası Panel" noindex />
+      <Seo title="Rezervasyonlar - Sahra Takip Panel" noindex />
       {deleteError && <Alert kind="error" className="mb-5">{deleteError}</Alert>}
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -215,12 +215,12 @@ export default function Rezervasyonlar() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         {can('rezervasyon.duzenle') && (
-                          <Link to={`/panel/rezervasyonlar/${r.id}/duzenle`} aria-label={`${r.customerName} kaydını düzenle`} className="rounded p-1.5 text-brand-muted hover:bg-surface hover:text-accent">
+                          <Link to={`/panel/rezervasyonlar/${r.id}/duzenle`} aria-label={`${r.customerName} kaydını düzenle`} className="rounded p-1.5 text-brand-muted hover:bg-surface hover:text-accent-ink">
                             <IconEdit size={16} />
                           </Link>
                         )}
                         {can('rezervasyon.sil') && (
-                          <button type="button" onClick={() => setPendingDelete(r)} aria-label={`${r.customerName} kaydını sil`} className="rounded p-1.5 text-brand-muted hover:bg-surface hover:text-[#e74c3c]">
+                          <button type="button" onClick={() => setPendingDelete(r)} aria-label={`${r.customerName} kaydını sil`} className="rounded p-1.5 text-brand-muted hover:bg-surface hover:text-danger">
                             <IconTrash size={16} />
                           </button>
                         )}

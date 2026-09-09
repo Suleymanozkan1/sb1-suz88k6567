@@ -61,7 +61,7 @@ export default function SiteHeader() {
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `block whitespace-nowrap px-3 py-2 text-[15px] font-medium transition-colors ${
-      isActive ? 'text-accent' : 'text-white hover:text-accent'
+      isActive ? 'text-accent-light' : 'text-white hover:text-accent-light'
     }`;
 
   return (
@@ -73,7 +73,7 @@ export default function SiteHeader() {
     >
       <div className="container-dt flex items-center justify-between gap-4">
         <Link to="/" className="font-display text-2xl font-bold text-white hover:text-white">
-          Salon<span className="text-accent">Ajandası</span>
+          Sahra<span className="text-accent-light">Takip</span>
         </Link>
 
         <nav aria-label="Ana menü" className="hidden lg:block">
@@ -83,7 +83,7 @@ export default function SiteHeader() {
                 <li key={item.label} className="relative" ref={dropdownRef}>
                   <button
                     type="button"
-                    className="flex items-center gap-1 px-3 py-2 text-[15px] font-medium text-white transition-colors hover:text-accent"
+                    className="flex items-center gap-1 px-3 py-2 text-[15px] font-medium text-white transition-colors hover:text-accent-light"
                     aria-expanded={openDropdown === item.label}
                     aria-haspopup="true"
                     onClick={() => setOpenDropdown((v) => (v === item.label ? null : item.label))}
@@ -97,7 +97,7 @@ export default function SiteHeader() {
                         <li key={`${child.to}-${i}`}>
                           <Link
                             to={child.to}
-                            className="block px-4 py-2 text-sm text-brand hover:bg-surface hover:text-accent"
+                            className="block px-4 py-2 text-sm text-brand hover:bg-surface hover:text-accent-ink"
                           >
                             {child.label}
                           </Link>
@@ -129,7 +129,7 @@ export default function SiteHeader() {
               </Link>
               <Link
                 to="/uye-girisi"
-                className="btn-sm rounded-full border border-white/40 px-5 py-2 text-sm font-medium text-white transition hover:border-accent hover:text-accent"
+                className="btn-sm rounded-full border border-white/40 px-5 py-2 text-sm font-medium text-white transition hover:border-accent-light hover:text-accent-light"
               >
                 Üye Girişi
               </Link>

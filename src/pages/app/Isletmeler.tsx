@@ -98,7 +98,7 @@ export default function Isletmeler() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={loadError}>
-      <Seo title="Firmalarım - Salon Ajandası Panel" noindex />
+      <Seo title="Firmalarım - Sahra Takip Panel" noindex />
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Firmalarım / Adminler</h1>
@@ -185,7 +185,7 @@ export default function Isletmeler() {
             <li key={b.id} className={`card p-5 ${isActive ? 'ring-2 ring-accent' : ''}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <span className="rounded-lg bg-accent/10 p-3 text-accent"><IconBuilding size={22} /></span>
+                  <span className="rounded-lg bg-accent-ink/10 p-3 text-accent-dark"><IconBuilding size={22} /></span>
                   <div>
                     <h2 className="font-heading font-bold text-brand">{b.name}</h2>
                     <p className="text-xs text-brand-muted">{b.district} / {b.city} · {b.category}</p>
@@ -194,7 +194,7 @@ export default function Isletmeler() {
                     </p>
                   </div>
                 </div>
-                {isActive && <span className="rounded-full bg-accent px-2.5 py-1 text-[10px] text-white">Aktif</span>}
+                {isActive && <span className="rounded-full bg-accent-ink px-2.5 py-1 text-[10px] text-white">Aktif</span>}
               </div>
 
 
@@ -210,7 +210,7 @@ export default function Isletmeler() {
                 {businesses.length > 1 && (
                   <button
                     type="button"
-                    className="btn btn-sm border-2 border-[#e74c3c] text-[#e74c3c] hover:bg-[#e74c3c] hover:text-white"
+                    className="btn btn-sm border-2 border-danger text-danger hover:bg-danger hover:text-white"
                     onClick={() => setToDelete(b)}
                   >
                     <IconTrash size={14} /> Sil

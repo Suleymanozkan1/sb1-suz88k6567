@@ -114,3 +114,24 @@ export function slugify(value: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
+
+/**
+ * Bir zemin rengi üzerinde okunabilir metin rengini seçer.
+ *
+ * Organizasyon türü renklerini kullanıcı kendisi belirliyor; hepsinin
+ * üstüne beyaz yazmak WCAG 1.4.3'ün istediği 4,5:1 oranını tutturmuyordu
+ * (ör. #18d26e üzerinde beyaz 2,00). Bu yüzden metin rengi, zeminin
+ * bağıl parlaklığına göre koyu ya da açık seçilir.
+ */
+export function okunakliMetinRengi(zemin: string): '#111827' | '#ffffff' {
+  const hex = zemin.replace('#', '');
+  if (hex.length !== 6) return '#ffffff';
+  const kanal = (i: number) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const parlaklik = 0.2126 * kanal(0) + 0.7152 * kanal(2) + 0.0722 * kanal(4);
+  const koyuIle = (parlaklik + 0.05) / (0.0111 + 0.05);
+  const acikIle = 1.05 / (parlaklik + 0.05);
+  return koyuIle >= acikIle ? '#111827' : '#ffffff';
+}

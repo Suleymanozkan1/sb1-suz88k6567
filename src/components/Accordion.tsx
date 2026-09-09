@@ -30,13 +30,13 @@ export default function Accordion({ items, defaultOpen = 0 }: { items: Item[]; d
                 onClick={() => setOpen(isOpen ? null : i)}
                 className="flex w-full items-start gap-3 px-4 py-4 text-left"
               >
-                {item.no && <span className="font-heading font-bold text-accent">{item.no}</span>}
-                <span className={`flex-1 font-heading font-semibold ${isOpen ? 'text-accent' : 'text-brand'}`}>
+                {item.no && <span className="font-heading font-bold text-accent-ink">{item.no}</span>}
+                <span className={`flex-1 font-heading font-semibold ${isOpen ? 'text-accent-ink' : 'text-brand'}`}>
                   {item.question}
                 </span>
                 <IconChevronDown
                   size={20}
-                  className={`mt-0.5 shrink-0 text-accent transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  className={`mt-0.5 shrink-0 text-accent-ink transition-transform ${isOpen ? 'rotate-180' : ''}`}
                 />
               </button>
             </h3>

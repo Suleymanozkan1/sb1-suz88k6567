@@ -17,14 +17,14 @@ export default function Dusunceler() {
   return (
     <>
       <Seo
-        title="Üyelerimizin Düşünceleri - Salon Ajandası"
-        description="Salon Ajandası sistemini kullanan üyelerimizin düşünceleri ve yorumları."
+        title="Üyelerimizin Düşünceleri - Sahra Takip"
+        description="Sahra Takip sistemini kullanan üyelerimizin düşünceleri ve yorumları."
         path="/dusunceler"
       />
       <PageHeader
         title="Üyelerimizin Düşünceleri"
         breadcrumbs={[{ label: 'Üyelerimizin Düşünceleri' }]}
-        description="Salon Ajandası sistemini kullanan üyelerimizin düşünceleri..."
+        description="Sahra Takip sistemini kullanan üyelerimizin düşünceleri..."
       />
 
       <section className="py-12">
@@ -51,7 +51,7 @@ export default function Dusunceler() {
               {filtered.map((t) => (
                 <li key={`${t.business}-${t.author}`}>
                   <figure className="card flex h-full flex-col p-6">
-                    <div className="mb-3 flex gap-0.5 text-accent" aria-label="5 üzerinden 5 puan">
+                    <div role="img" className="mb-3 flex gap-0.5 text-accent-ink" aria-label="5 üzerinden 5 puan">
                       {Array.from({ length: 5 }, (_, i) => (
                         <IconStar key={i} size={16} className="fill-current" />
                       ))}

@@ -6,6 +6,7 @@ import { useColorSettings, useSaveColorSettings } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { errorMessage } from '../../lib/authHelpers';
 import { DEFAULT_COLOR_SETTINGS } from '../../data/constants';
+import { okunakliMetinRengi } from '../../lib/format';
 import type { ColorSetting } from '../../types';
 
 export default function RenkAyarlari() {
@@ -46,7 +47,7 @@ export default function RenkAyarlari() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Rezervasyon Renk Ayarları - Salon Ajandası Panel" noindex />
+      <Seo title="Rezervasyon Renk Ayarları - Sahra Takip Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">Rezervasyon Renk Ayarları</h1>
       <p className="mb-6 text-sm text-brand-muted">
@@ -88,7 +89,7 @@ export default function RenkAyarlari() {
         <h2 className="mb-4 font-heading text-lg font-bold text-brand">Önizleme</h2>
         <div className="grid grid-cols-7 gap-1.5">
           {draft.slice(0, 7).map((c, i) => (
-            <div key={c.key} className="rounded p-2 text-center text-[10px] text-white" style={{ background: c.color }}>
+            <div key={c.key} className="rounded p-2 text-center text-[10px]" style={{ background: c.color, color: okunakliMetinRengi(c.color) }}>
               {i + 1}
               <span className="mt-1 block truncate">{c.label}</span>
             </div>

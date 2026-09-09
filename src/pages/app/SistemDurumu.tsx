@@ -23,7 +23,7 @@ export default function SistemDurumu() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `salonajandasi-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `sahratakip-yedek-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -43,7 +43,7 @@ export default function SistemDurumu() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Sistem Durumu - Salon Ajandası Panel" noindex />
+      <Seo title="Sistem Durumu - Sahra Takip Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">Sistem Durumu</h1>
       <p className="mb-6 text-sm text-brand-muted">
@@ -94,7 +94,7 @@ export default function SistemDurumu() {
 
       <section className="card p-6">
         <h2 className="mb-2 flex items-center gap-2 font-heading text-lg font-bold text-brand">
-          <IconShield size={20} className="text-accent" /> Yedekleme
+          <IconShield size={20} className="text-accent-ink" /> Yedekleme
         </h2>
 
         {isDemoMode ? (

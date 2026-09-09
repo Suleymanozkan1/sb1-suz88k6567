@@ -18,7 +18,7 @@ export default function BackToTop() {
       type="button"
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       aria-label="Sayfanın başına dön"
-      className="no-print fixed bottom-6 right-6 z-40 rounded-full bg-accent p-3 text-white shadow-lg transition hover:bg-accent-dark"
+      className="no-print fixed bottom-6 right-6 z-40 rounded-full bg-accent-ink p-3 text-white shadow-lg transition hover:bg-accent-ink-dark"
     >
       <IconChevronDown size={20} className="rotate-180" />
     </button>

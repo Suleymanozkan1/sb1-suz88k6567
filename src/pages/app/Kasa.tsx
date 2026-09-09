@@ -114,7 +114,7 @@ export default function Kasa() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={loadError}>
-      <Seo title="Gelir Gider Kayıtları - Salon Ajandası Panel" noindex />
+      <Seo title="Gelir Gider Kayıtları - Sahra Takip Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Gelir Gider Kayıtları</h1>
@@ -174,7 +174,7 @@ export default function Kasa() {
               <IconPlus size={16} /> Kaydet
             </button>
           </div>
-          {error && <p className="text-xs text-[#e74c3c] md:col-span-2 lg:col-span-6" role="alert">{error}</p>}
+          {error && <p className="text-xs text-danger md:col-span-2 lg:col-span-6" role="alert">{error}</p>}
         </form>
       )}
 
@@ -228,7 +228,7 @@ export default function Kasa() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {can('kasa.duzenle') && (
-                      <button type="button" onClick={() => setToDelete(e)} aria-label="Kaydı sil" className="rounded p-1 text-brand-muted hover:text-[#e74c3c]">
+                      <button type="button" onClick={() => setToDelete(e)} aria-label="Kaydı sil" className="rounded p-1 text-brand-muted hover:text-danger">
                         <IconTrash size={15} />
                       </button>
                     )}

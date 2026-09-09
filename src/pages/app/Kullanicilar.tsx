@@ -86,7 +86,7 @@ export default function Kullanicilar() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={loadError}>
-      <Seo title="Kullanıcılar - Salon Ajandası Panel" noindex />
+      <Seo title="Kullanıcılar - Sahra Takip Panel" noindex />
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Kullanıcılar</h1>
@@ -141,7 +141,7 @@ export default function Kullanicilar() {
                 <label key={p.key} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
+                    className="h-4 w-4 rounded border-line text-accent-ink focus:ring-accent"
                     checked={form.permissions.includes(p.key)}
                     onChange={(e) => togglePermission(p.key, e.target.checked)}
                   />
@@ -185,10 +185,10 @@ export default function Kullanicilar() {
                   <td className="px-4 py-3 text-xs text-brand-muted">{u.permissions.length} yetki</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
-                      <button type="button" onClick={() => openEdit(u)} aria-label={`${u.fullName} düzenle`} className="rounded p-1.5 text-brand-muted hover:text-accent">
+                      <button type="button" onClick={() => openEdit(u)} aria-label={`${u.fullName} düzenle`} className="rounded p-1.5 text-brand-muted hover:text-accent-ink">
                         <IconEdit size={16} />
                       </button>
-                      <button type="button" onClick={() => setToDelete(u)} aria-label={`${u.fullName} sil`} className="rounded p-1.5 text-brand-muted hover:text-[#e74c3c]">
+                      <button type="button" onClick={() => setToDelete(u)} aria-label={`${u.fullName} sil`} className="rounded p-1.5 text-brand-muted hover:text-danger">
                         <IconTrash size={16} />
                       </button>
                     </div>

@@ -68,7 +68,7 @@ export default function Musteriler() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Müşteriler - Salon Ajandası Panel" noindex />
+      <Seo title="Müşteriler - Sahra Takip Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Müşteriler</h1>

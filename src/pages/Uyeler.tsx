@@ -56,8 +56,8 @@ export default function Uyeler({ restrictCategories, title, intro, path, breadcr
   return (
     <>
       <Seo
-        title={`${heading} - Salon Ajandası`}
-        description={intro ?? 'Salon Ajandası sistemini kullanan düğün salonları, organizasyon firmaları, oteller ve daha fazlası.'}
+        title={`${heading} - Sahra Takip`}
+        description={intro ?? 'Sahra Takip sistemini kullanan düğün salonları, organizasyon firmaları, oteller ve daha fazlası.'}
         path={path ?? '/uyeler'}
       />
       <PageHeader
@@ -145,7 +145,7 @@ export default function Uyeler({ restrictCategories, title, intro, path, breadcr
                     onClick={() => setPage(p as number)}
                     aria-current={p === currentPage ? 'page' : undefined}
                     className={`btn-sm rounded border px-3 py-1.5 ${
-                      p === currentPage ? 'border-accent bg-accent text-white' : 'border-line text-brand'
+                      p === currentPage ? 'border-accent-ink bg-accent-ink text-white' : 'border-line text-brand'
                     }`}
                   >
                     {p}
@@ -172,17 +172,17 @@ function MemberCard({ member }: { member: DirectoryMember }) {
   return (
     <article className="card flex h-full flex-col p-5">
       <h2 className="font-heading text-base font-bold text-brand">
-        <Link to={`/salon/${member.slug}`} className="text-brand hover:text-accent">
+        <Link to={`/salon/${member.slug}`} className="text-brand hover:text-accent-ink">
           {member.name}
         </Link>
       </h2>
       <p className="mt-1 flex items-center gap-1.5 text-sm text-brand-muted">
-        <IconLocation size={15} className="text-accent" />
+        <IconLocation size={15} className="text-accent-ink" />
         {member.district} / {member.city}
       </p>
       {member.capacity !== undefined && (
         <p className="mt-1 flex items-center gap-1.5 text-sm text-brand-muted">
-          <IconUsers size={15} className="text-accent" />
+          <IconUsers size={15} className="text-accent-ink" />
           Salon kapasitesi : {member.capacity}
         </p>
       )}

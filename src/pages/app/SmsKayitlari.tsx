@@ -41,7 +41,7 @@ export default function SmsKayitlari() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="SMS Kayıtları - Salon Ajandası Panel" noindex />
+      <Seo title="SMS Kayıtları - Sahra Takip Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">SMS Kayıtları</h1>
       <p className="mb-6 text-sm text-brand-muted">
@@ -63,14 +63,14 @@ export default function SmsKayitlari() {
         <button type="button" role="tab" aria-selected={tab === 'gonderilen'}
           onClick={() => setTab('gonderilen')}
           className={`btn-sm rounded-full px-4 py-2 text-sm transition ${
-            tab === 'gonderilen' ? 'bg-accent text-white' : 'border border-line bg-white text-brand hover:border-accent'
+            tab === 'gonderilen' ? 'bg-accent-ink text-white' : 'border border-line bg-white text-brand hover:border-accent-ink'
           }`}>
           Gönderilen mesajlar
         </button>
         <button type="button" role="tab" aria-selected={tab === 'kuyruk'}
           onClick={() => setTab('kuyruk')}
           className={`btn-sm rounded-full px-4 py-2 text-sm transition ${
-            tab === 'kuyruk' ? 'bg-accent text-white' : 'border border-line bg-white text-brand hover:border-accent'
+            tab === 'kuyruk' ? 'bg-accent-ink text-white' : 'border border-line bg-white text-brand hover:border-accent-ink'
           }`}>
           Kuyruk {queueSummary.bekleyen > 0 && `(${queueSummary.bekleyen} bekliyor)`}
         </button>

@@ -10,9 +10,9 @@ interface Props {
 
 const TONES = {
   brand: 'bg-brand/10 text-brand',
-  accent: 'bg-accent/10 text-accent',
-  success: 'bg-[#18d26e]/10 text-[#15803d]',
-  danger: 'bg-[#e74c3c]/10 text-[#b91c1c]',
+  accent: 'bg-accent/10 text-accent-ink',
+  success: 'bg-success/10 text-[#15803d]',
+  danger: 'bg-danger/10 text-[#b91c1c]',
 };
 
 export default function StatCard({ label, value, hint, icon: Icon, tone = 'accent' }: Props) {

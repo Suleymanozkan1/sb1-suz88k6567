@@ -42,7 +42,7 @@ export default function Dashboard() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Özet - Salon Ajandası Panel" noindex />
+      <Seo title="Özet - Sahra Takip Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -155,7 +155,7 @@ export default function Dashboard() {
               <div key={m.label} className="flex flex-1 flex-col items-center gap-2">
                 <span className="text-xs font-medium text-brand">{m.count}</span>
                 <div
-                  className="w-full rounded-t bg-accent transition-all"
+                  className="w-full rounded-t bg-accent-ink transition-all"
                   style={{ height: `${Math.max(4, (m.count / maxMonth) * 130)}px` }}
                   title={`${m.label}: ${m.count} rezervasyon`}
                 />
@@ -175,7 +175,7 @@ export default function Dashboard() {
         </div>
         <div className="mt-4 h-3 overflow-hidden rounded-full bg-surface">
           <div
-            className="h-full bg-[#18d26e]"
+            className="h-full bg-success"
             style={{ width: `${totals.total > 0 ? (totals.collected / totals.total) * 100 : 0}%` }}
             role="progressbar"
             aria-valuenow={totals.total > 0 ? Math.round((totals.collected / totals.total) * 100) : 0}

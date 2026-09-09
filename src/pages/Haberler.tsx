@@ -12,7 +12,7 @@ export function HaberDetay() {
 
   return (
     <>
-      <Seo title={`${item.title} - Salon Ajandası`} description={item.excerpt} path={`/haberler/${item.slug}`} />
+      <Seo title={`${item.title} - Sahra Takip`} description={item.excerpt} path={`/haberler/${item.slug}`} />
       <PageHeader
         title={item.title}
         breadcrumbs={[{ label: 'Haberler', to: '/haberler' }, { label: item.title }]}
@@ -38,8 +38,8 @@ export default function Haberler() {
   return (
     <>
       <Seo
-        title="Salon Ajandası - Düğün Salonu Takip Programı - Haberler"
-        description="Salon Ajandası sisteminden haberler, yenilikler ve duyurular."
+        title="Sahra Takip - Düğün Salonu Takip Programı - Haberler"
+        description="Sahra Takip sisteminden haberler, yenilikler ve duyurular."
         path="/haberler"
       />
       <PageHeader title="Haberler" breadcrumbs={[{ label: 'Haberler' }]} />
@@ -47,9 +47,9 @@ export default function Haberler() {
         <div className="container-dt grid gap-6 md:grid-cols-2">
           {NEWS.map((n) => (
             <article key={n.slug} className="card flex flex-col p-6">
-              <p className="text-xs uppercase tracking-wide text-accent">{formatDateLong(n.date)}</p>
+              <p className="text-xs uppercase tracking-wide text-accent-ink">{formatDateLong(n.date)}</p>
               <h2 className="mt-2 font-heading text-xl font-bold text-brand">
-                <Link to={`/haberler/${n.slug}`} className="text-brand hover:text-accent">
+                <Link to={`/haberler/${n.slug}`} className="text-brand hover:text-accent-ink">
                   {n.title}
                 </Link>
               </h2>

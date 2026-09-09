@@ -50,7 +50,7 @@ export default function ConfirmDialog({
           <button
             ref={confirmRef}
             type="button"
-            className="btn btn-sm bg-[#e74c3c] text-white hover:bg-[#c0392b]"
+            className="btn btn-sm bg-danger text-white hover:bg-[#c0392b]"
             onClick={onConfirm}
           >
             {confirmLabel}

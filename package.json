@@ -1,9 +1,9 @@
 {
-  "name": "salonajandasi",
+  "name": "sahratakip",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Salon Ajandası - Düğün Salonu Rezervasyon ve Ödeme Takip Sistemi",
+  "description": "Sahra Takip - Düğün Salonu Rezervasyon ve Ödeme Takip Sistemi",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -25,6 +25,7 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^9.9.1",
     "@playwright/test": "^1.47.2",
     "@testing-library/jest-dom": "^6.5.0",

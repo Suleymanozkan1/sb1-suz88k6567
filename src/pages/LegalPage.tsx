@@ -13,8 +13,8 @@ export default function LegalPage() {
   return (
     <>
       <Seo
-        title={`${doc.title} - Salon Ajandası`}
-        description={`Salon Ajandası ${doc.title.toLocaleLowerCase('tr-TR')} metni.`}
+        title={`${doc.title} - Sahra Takip`}
+        description={`Sahra Takip ${doc.title.toLocaleLowerCase('tr-TR')} metni.`}
         path={`/${doc.slug}`}
       />
       <PageHeader title={doc.title} breadcrumbs={[{ label: doc.title }]} />

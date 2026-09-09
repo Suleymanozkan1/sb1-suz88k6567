@@ -17,8 +17,8 @@ export default function Home() {
   return (
     <>
       <Seo
-        title="Salon Ajandası - Salon Takip - Düğün Salonu Takip Programı - Salon Yönetim Sistemi"
-        description="Salon Ajandası, düğün salonları için özel olarak geliştirilmiş rezervasyon ve ödeme takip sistemidir."
+        title="Sahra Takip - Salon Takip - Düğün Salonu Takip Programı - Salon Yönetim Sistemi"
+        description="Sahra Takip, düğün salonları için özel olarak geliştirilmiş rezervasyon ve ödeme takip sistemidir."
         path="/"
       />
 
@@ -26,7 +26,7 @@ export default function Home() {
       <section id="hero" className="relative flex min-h-[92vh] items-center bg-brand pt-24">
         <div className="container-dt grid items-center gap-10 py-12 lg:grid-cols-2">
           <div className="animate-fade-up">
-            <p className="mb-2 font-heading text-lg text-accent">{HERO.tagline}</p>
+            <p className="mb-2 font-heading text-lg text-accent-light">{HERO.tagline}</p>
             <h1 className="font-display text-4xl font-bold leading-tight text-white md:text-6xl">
               {HERO.title}
             </h1>
@@ -38,7 +38,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setVideoOpen(true)}
-                className="inline-flex items-center gap-3 text-white transition hover:text-accent"
+                className="inline-flex items-center gap-3 text-white transition hover:text-accent-light"
               >
                 <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-accent">
                   <IconPlay size={20} className="ml-0.5 fill-current" />
@@ -55,7 +55,7 @@ export default function Home() {
 
       <VideoModal open={videoOpen} onClose={() => setVideoOpen(false)} youtubeId={YOUTUBE_ID} />
 
-      {/* Salon Ajandası Ne İşe Yarar? */}
+      {/* Sahra Takip Ne İşe Yarar? */}
       <section className="bg-surface py-16" aria-labelledby="why-us-title">
         <div className="container-dt grid gap-10 lg:grid-cols-2">
           <div className="rounded-lg bg-brand p-8 text-white lg:p-10">
@@ -66,7 +66,7 @@ export default function Home() {
             <ul className="mt-6 space-y-3">
               {WHY_US.bullets.map((b) => (
                 <li key={b} className="flex items-start gap-3">
-                  <IconCheck size={20} className="mt-0.5 shrink-0 text-accent" />
+                  <IconCheck size={20} className="mt-0.5 shrink-0 text-accent-light" />
                   <span>{b}</span>
                 </li>
               ))}
@@ -115,7 +115,7 @@ export default function Home() {
               const Icon = ICON_MAP[s.icon as keyof typeof ICON_MAP];
               return (
                 <article key={s.title} className="card group p-8 text-center transition hover:-translate-y-1 hover:shadow-lg">
-                  <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-accent transition group-hover:bg-accent group-hover:text-white">
+                  <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-accent-ink transition group-hover:bg-accent-ink group-hover:text-white">
                     <Icon size={30} />
                   </span>
                   <h3 className="mb-2 font-heading text-lg font-bold text-brand">{s.title}</h3>
@@ -140,7 +140,7 @@ export default function Home() {
           <div className="grid gap-6 md:grid-cols-3">
             {COMPLIANCE.items.map((c) => (
               <article key={c.title} className="card p-6">
-                <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-accent/10 text-accent">
+                <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-accent/10 text-accent-ink">
                   <IconShield size={22} />
                 </span>
                 <h3 className="mb-2 font-heading text-lg font-bold text-brand">{c.title}</h3>
@@ -161,7 +161,7 @@ export default function Home() {
             </h2>
             <p className="mt-2 text-white/90">{CTA.description}</p>
           </div>
-          <Link to="/demo-talebi" className="btn !px-8 !py-3 border-2 border-white text-white hover:bg-accent hover:border-accent hover:text-white">
+          <Link to="/demo-talebi" className="btn !px-8 !py-3 border-2 border-white text-white hover:bg-accent-ink hover:border-accent-ink hover:text-white">
             {CTA.button}
           </Link>
         </div>
@@ -175,7 +175,7 @@ export default function Home() {
               Üyelerimizin Düşünceleri
               <span className="absolute bottom-0 left-1/2 block h-1 w-14 -translate-x-1/2 bg-accent" />
             </h2>
-            <p className="mx-auto mt-3 max-w-3xl">Salon Ajandası sistemini kullanan üyelerimizin düşünceleri...</p>
+            <p className="mx-auto mt-3 max-w-3xl">Sahra Takip sistemini kullanan üyelerimizin düşünceleri...</p>
           </div>
           <TestimonialSlider items={TESTIMONIALS} />
           <div className="mt-10 text-center">

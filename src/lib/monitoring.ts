@@ -5,9 +5,18 @@
  * gitmez. Kullanıcı verisinin kazara sızmaması için gönderilen olaylar
  * temizlenir: e-posta, telefon ve müşteri adı gibi alanlar maskelenir.
  */
-import * as Sentry from '@sentry/react';
-
 const DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+
+/**
+ * Sentry paketi yalnızca DSN tanımlıysa indirilir.
+ *
+ * Statik `import` olduğu sürece SDK, DSN tanımlı olmasa bile giriş paketine
+ * giriyordu; bu dosyanın kendi açıklaması ("tanımlı değilse hiçbir şey
+ * yüklenmez") gerçeği anlatmıyordu. Dinamik içe aktarma Vite'ın ayrı bir
+ * parça üretmesini sağlıyor.
+ */
+type SentryModulu = typeof import('@sentry/react');
+let sentry: SentryModulu | null = null;
 
 /** Metin içindeki e-posta ve telefon numaralarını maskeler */
 export function scrub(value: string): string {
@@ -16,10 +25,11 @@ export function scrub(value: string): string {
     .replace(/(?:\+?90|0)?5\d{9}(?!\d)/g, '[telefon]');
 }
 
-export function initMonitoring(): void {
+export async function initMonitoring(): Promise<void> {
   if (!DSN) return;
 
-  Sentry.init({
+  sentry = await import('@sentry/react');
+  sentry.init({
     dsn: DSN,
     environment: import.meta.env.MODE,
     // Kullanıcıyı tanımlayan varsayılan verileri gönderme
@@ -40,6 +50,8 @@ export function initMonitoring(): void {
 
 /** Beklenmeyen bir hatayı bildirir (izleme kapalıysa sessizce yok sayar) */
 export function reportError(error: unknown, context?: Record<string, unknown>): void {
-  if (!DSN) return;
-  Sentry.captureException(error, context ? { extra: context } : undefined);
+  // Sentry henüz yüklenmemişse (init tamamlanmadıysa) hata sessizce düşer;
+  // izlemenin kendisi uygulamayı durdurmamalı.
+  if (!DSN || !sentry) return;
+  sentry.captureException(error, context ? { extra: context } : undefined);
 }

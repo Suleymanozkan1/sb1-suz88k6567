@@ -1,4 +1,5 @@
 import { MONTH_NAMES } from '../data/constants';
+import { okunakliMetinRengi } from '../lib/format';
 
 /** Hero bölümündeki takvim/uygulama görseli (saf SVG, dış görsel bağımlılığı yok) */
 export default function HeroIllustration() {
@@ -14,7 +15,7 @@ export default function HeroIllustration() {
     <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl" role="img" aria-label="Rezervasyon takvimi önizlemesi">
       <div className="mb-4 flex items-center justify-between">
         <span className="font-heading font-bold text-brand">{monthLabel}</span>
-        <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+        <span className="rounded-full bg-accent-ink/10 px-3 py-1 text-xs font-medium text-accent-dark">
           Rezervasyon Takvimi
         </span>
       </div>
@@ -32,8 +33,8 @@ export default function HeroIllustration() {
               className="flex h-9 items-center justify-center rounded text-[11px] font-medium"
               style={
                 color
-                  ? { backgroundColor: color, color: '#fff' }
-                  : { backgroundColor: '#f3f5fa', color: '#8fa2c0' }
+                  ? { backgroundColor: color, color: okunakliMetinRengi(color) }
+                  : { backgroundColor: '#f3f5fa', color: '#4b6fab' }
               }
             >
               {i + 1 <= 31 ? i + 1 : ''}

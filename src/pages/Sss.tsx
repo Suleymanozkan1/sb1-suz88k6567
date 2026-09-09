@@ -8,8 +8,8 @@ export default function Sss() {
   return (
     <>
       <Seo
-        title="Sık Sorulan Sorular - Salon Ajandası"
-        description="Salon Ajandası salon takip programı hakkında sık sorulan sorular ve cevapları."
+        title="Sık Sorulan Sorular - Sahra Takip"
+        description="Sahra Takip salon takip programı hakkında sık sorulan sorular ve cevapları."
         path="/sss"
       />
       <PageHeader title="Sık Sorulan Sorular" breadcrumbs={[{ label: 'Sık Sorulan Sorular' }]} />

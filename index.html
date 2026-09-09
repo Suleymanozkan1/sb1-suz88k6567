@@ -3,23 +3,68 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Salon Ajandası - Salon Takip - Düğün Salonu Takip Programı - Salon Yönetim Sistemi</title>
-    <meta name="description" content="Salon Ajandası, düğün salonları için özel olarak geliştirilmiş rezervasyon ve ödeme takip sistemidir. 7 gün ücretsiz deneyin." />
+    <title>Sahra Takip - Salon Takip - Düğün Salonu Takip Programı - Salon Yönetim Sistemi</title>
+    <meta name="description" content="Sahra Takip, düğün salonları için özel olarak geliştirilmiş rezervasyon ve ödeme takip sistemidir. 7 gün ücretsiz deneyin." />
     <meta name="keywords" content="salon takip, düğün salonu takip programı, salon yönetim sistemi, rezervasyon takip, takvim programı, kına salonu, organizasyon" />
-    <meta name="author" content="Salonajandasi.com" />
+    <meta name="author" content="Sahratakip.com" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://salonajandasi.com/" />
+    <link rel="canonical" href="https://sahratakip.com/" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Salon Ajandası" />
+    <meta property="og:site_name" content="Sahra Takip" />
     <meta property="og:locale" content="tr_TR" />
-    <meta property="og:title" content="Salon Ajandası - Düğün Salonu Takip Programı" />
+    <meta property="og:title" content="Sahra Takip - Düğün Salonu Takip Programı" />
     <meta property="og:description" content="Düğün Salonları için özel olarak geliştirilmiş Rezervasyon ve Ödeme Takip sistemi. 7 gün ücretsiz deneyin." />
+    <meta property="og:image" content="https://sahratakip.com/og-gorsel.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Sahra Takip — salon yönetim sistemi" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://sahratakip.com/og-gorsel.png" />
     <meta name="theme-color" content="#37517e" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Yazı tipleri kendi sunucumuzdan gelir; Google Fonts'a istek gitmez.
+         Böylece ziyaretçinin IP adresi üçüncü tarafa aktarılmıyor ve sayfa
+         dış bir alan adının yanıt süresine bağlı kalmıyor. -->
+    <link rel="preload" href="/fonts/open-sans-400-700-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/open-sans-400-700-latin-ext.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/poppins-700-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+    <!-- Yapılandırılmış veri statik HTML'de duruyor: arama motoru sayfayı
+         JavaScript çalıştırmadan da doğru sınıflandırabilsin. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://sahratakip.com/#kurulus",
+            "name": "Sahra Takip",
+            "url": "https://sahratakip.com/",
+            "logo": "https://sahratakip.com/og-gorsel.png",
+            "email": "info@sahratakip.com",
+            "areaServed": "TR"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://sahratakip.com/#site",
+            "url": "https://sahratakip.com/",
+            "name": "Sahra Takip",
+            "inLanguage": "tr-TR",
+            "publisher": { "@id": "https://sahratakip.com/#kurulus" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Sahra Takip",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "tr-TR",
+            "url": "https://sahratakip.com/",
+            "description": "Düğün salonları için rezervasyon, tahsilat, sözleşme ve fatura takip sistemi.",
+            "publisher": { "@id": "https://sahratakip.com/#kurulus" }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

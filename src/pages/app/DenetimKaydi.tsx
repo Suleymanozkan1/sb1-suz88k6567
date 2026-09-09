@@ -77,7 +77,7 @@ export default function DenetimKaydi() {
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
-      <Seo title="Denetim Kaydı - Salon Ajandası Panel" noindex />
+      <Seo title="Denetim Kaydı - Sahra Takip Panel" noindex />
 
       <h1 className="mb-2 font-heading text-2xl font-bold text-brand">Denetim Kaydı</h1>
       <p className="mb-6 text-sm text-brand-muted">
@@ -154,7 +154,7 @@ export default function DenetimKaydi() {
                         <>
                           <button
                             type="button"
-                            className="text-xs text-accent hover:text-accent-dark"
+                            className="text-xs text-accent-ink hover:text-accent-ink-dark"
                             aria-expanded={isOpen}
                             onClick={() => setExpanded(isOpen ? null : entry.id)}
                           >

@@ -1,4 +1,4 @@
-# Salon Ajandası — Audit ve QA Raporu
+# Sahra Takip — Audit ve QA Raporu
 
 **Son güncelleme:** dördüncü tam denetim — ödeme planı, iş emri, tedarikçiler
 
@@ -226,7 +226,7 @@ doğrulanmıştır (bkz. bölüm 2.5–2.6 ve 9).
 
 `findUserByEmail`, karşılaştırma için `toLocaleLowerCase('tr-TR')` kullanıyordu.
 Türkçe kuralında ASCII `I` harfi noktasız `ı`ya dönüştüğü için
-`DEMO@SALONAJANDASI.COM` girdisi `demo@salonajandası.com` hâline geliyor ve kayıtlı
+`DEMO@SAHRATAKIP.COM` girdisi `demo@sahratakip.com` hâline geliyor ve kayıtlı
 kullanıcı **bulunamıyordu**.
 
 **Etkisi:** E-postasını büyük harfle veya otomatik düzelten bir klavyeyle yazan

@@ -3,8 +3,9 @@ import { COPYRIGHT, CONTACT, SOCIAL } from '../data/content';
 import { IconFacebook, IconInstagram, IconMail, IconTwitter, IconYoutube } from './Icons';
 
 const CONTENT_LINKS = [
-  { label: 'Salon Ajandası', to: '/nedir' },
+  { label: 'Sahra Takip', to: '/nedir' },
   { label: 'Gizlilik Politikası', to: '/gizlilik-politikasi' },
+  { label: 'KVKK Aydınlatma Metni', to: '/kvkk-aydinlatma-metni' },
   { label: 'İade/İptal Prosedürü', to: '/iade-proseduru' },
   { label: 'Mesafeli Hizmet Sözleşmesi', to: '/mesafeli-hizmet-sozlesmesi' },
   { label: 'Salon Yönetim Sistemi', to: '/' },
@@ -27,14 +28,14 @@ export default function SiteFooter() {
       <div className="container-dt grid gap-10 pb-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <h3 className="mb-3 font-display text-2xl font-bold text-brand">
-            Salon<span className="text-accent">Ajandası</span>
+            Sahra<span className="text-accent-ink">Takip</span>
           </h3>
           <p className="leading-relaxed">
             Online salon yönetim sistemi. Düğün salonları için özel olarak geliştirilmiş
             rezervasyon ve ödeme takip sistemi.
           </p>
           <p className="mt-4 flex items-center gap-2">
-            <IconMail size={18} className="text-accent" />
+            <IconMail size={18} className="text-accent-ink" />
             <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
           </p>
         </div>
@@ -46,7 +47,7 @@ export default function SiteFooter() {
           <ul className="space-y-2">
             {CONTENT_LINKS.map((l, i) => (
               <li key={`${l.to}-${i}`}>
-                <Link to={l.to} className="text-ink hover:text-accent">
+                <Link to={l.to} className="text-ink hover:text-accent-ink">
                   {l.label}
                 </Link>
               </li>
@@ -61,7 +62,7 @@ export default function SiteFooter() {
           <ul className="space-y-2">
             {VENUE_LINKS.map((l) => (
               <li key={l.to}>
-                <Link to={l.to} className="text-ink hover:text-accent">
+                <Link to={l.to} className="text-ink hover:text-accent-ink">
                   {l.label}
                 </Link>
               </li>
@@ -73,16 +74,16 @@ export default function SiteFooter() {
           <h4 className="mb-4 text-base font-bold text-brand">Sosyal Medya</h4>
           <p className="mb-4">Bizi aşağıdaki sosyal medya hesaplarımızdan takip edebilirsiniz</p>
           <div className="flex gap-2">
-            <a href={SOCIAL.twitter} aria-label="Twitter" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent" target="_blank" rel="noopener noreferrer">
+            <a href={SOCIAL.twitter} aria-label="Twitter" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent-ink" target="_blank" rel="noopener noreferrer">
               <IconTwitter size={18} />
             </a>
-            <a href={SOCIAL.facebook} aria-label="Facebook" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent" target="_blank" rel="noopener noreferrer">
+            <a href={SOCIAL.facebook} aria-label="Facebook" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent-ink" target="_blank" rel="noopener noreferrer">
               <IconFacebook size={18} />
             </a>
-            <a href={SOCIAL.instagram} aria-label="Instagram" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent" target="_blank" rel="noopener noreferrer">
+            <a href={SOCIAL.instagram} aria-label="Instagram" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent-ink" target="_blank" rel="noopener noreferrer">
               <IconInstagram size={18} />
             </a>
-            <a href={SOCIAL.youtube} aria-label="YouTube" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent" target="_blank" rel="noopener noreferrer">
+            <a href={SOCIAL.youtube} aria-label="YouTube" className="rounded-full bg-brand p-2.5 text-white hover:bg-accent-ink" target="_blank" rel="noopener noreferrer">
               <IconYoutube size={18} />
             </a>
           </div>

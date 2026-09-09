@@ -56,12 +56,14 @@ export default function TestimonialSlider({ items }: { items: Testimonial[] }) {
         ))}
       </div>
 
+      {/* Dokunma hedefleri 24 piksele çıkınca on sayfa noktası 375 piksellik
+          ekrana sığmadı ve okları dışarı itti; bu yüzden satır sarabiliyor. */}
       {pages > 1 && (
-        <div className="mt-8 flex items-center justify-center gap-4">
-          <button type="button" onClick={prev} aria-label="Önceki yorumlar" className="rounded-full border border-line p-2 text-brand hover:border-accent hover:text-accent">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 px-4">
+          <button type="button" onClick={prev} aria-label="Önceki yorumlar" className="rounded-full border border-line p-2 text-brand hover:border-accent-ink hover:text-accent-ink">
             <IconChevronLeft size={18} />
           </button>
-          <div className="flex gap-2">
+          <div className="flex max-w-full flex-wrap justify-center gap-1">
             {Array.from({ length: pages }, (_, i) => (
               <button
                 key={i}
@@ -69,11 +71,20 @@ export default function TestimonialSlider({ items }: { items: Testimonial[] }) {
                 onClick={() => setIndex(i)}
                 aria-label={`${i + 1}. sayfa`}
                 aria-current={i === index}
-                className={`h-2.5 rounded-full transition-all ${i === index ? 'w-6 bg-accent' : 'w-2.5 bg-line'}`}
-              />
+                // Görünen nokta küçük kalır ama dokunma hedefi 24×24 CSS
+                // pikseldir; WCAG 2.2'nin 2.5.8 ölçütü bunu istiyor.
+                className="flex h-6 min-w-[24px] items-center justify-center"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`block h-2.5 rounded-full transition-all ${
+                    i === index ? 'w-6 bg-accent-ink' : 'w-2.5 bg-brand-muted'
+                  }`}
+                />
+              </button>
             ))}
           </div>
-          <button type="button" onClick={next} aria-label="Sonraki yorumlar" className="rounded-full border border-line p-2 text-brand hover:border-accent hover:text-accent">
+          <button type="button" onClick={next} aria-label="Sonraki yorumlar" className="rounded-full border border-line p-2 text-brand hover:border-accent-ink hover:text-accent-ink">
             <IconChevronRight size={18} />
           </button>
         </div>

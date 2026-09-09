@@ -21,17 +21,17 @@ export default function Nedir() {
   return (
     <>
       <Seo
-        title="Salon Ajandası Salon Takip Programı Nedir? - Salon Ajandası"
-        description="Salon Ajandası Programı Düğün Salonları için özel olarak geliştirilmiş Rezervasyon ve Ödeme Takip sistemidir."
+        title="Sahra Takip Salon Takip Programı Nedir? - Sahra Takip"
+        description="Sahra Takip Programı Düğün Salonları için özel olarak geliştirilmiş Rezervasyon ve Ödeme Takip sistemidir."
         path="/nedir"
       />
-      <PageHeader title="Salon Ajandası Salon Takip Programı Nedir?" breadcrumbs={[{ label: 'Nedir' }]} />
+      <PageHeader title="Sahra Takip Salon Takip Programı Nedir?" breadcrumbs={[{ label: 'Nedir' }]} />
 
       <section className="py-14">
         <div className="container-dt grid gap-10 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <p className="text-lg leading-relaxed">
-              Salon Ajandası Programı Düğün Salonları için özel olarak geliştirilmiş{' '}
+              Sahra Takip Programı Düğün Salonları için özel olarak geliştirilmiş{' '}
               <strong className="text-brand">Rezervasyon ve Ödeme Takip</strong> sistemidir.
             </p>
             <p className="mt-4 leading-relaxed">{WHY_US.description}</p>
@@ -40,7 +40,7 @@ export default function Nedir() {
             <ul className="mt-4 space-y-3">
               {CAPABILITIES.map((c) => (
                 <li key={c} className="flex items-start gap-3">
-                  <IconCheck size={20} className="mt-0.5 shrink-0 text-accent" />
+                  <IconCheck size={20} className="mt-0.5 shrink-0 text-accent-ink" />
                   <span>{c}</span>
                 </li>
               ))}
@@ -64,7 +64,7 @@ export default function Nedir() {
             <div className="mt-4 space-y-4">
               {COMPLIANCE.items.map((c) => (
                 <article key={c.title} className="card flex items-start gap-4 p-5">
-                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent-ink">
                     <IconShield size={18} />
                   </span>
                   <div>
@@ -91,7 +91,7 @@ export default function Nedir() {
               <ul className="mt-4 space-y-3">
                 {WHY_US.bullets.map((b) => (
                   <li key={b} className="flex items-start gap-3">
-                    <IconCheck size={18} className="mt-0.5 shrink-0 text-accent" />
+                    <IconCheck size={18} className="mt-0.5 shrink-0 text-accent-light" />
                     <span className="text-sm">{b}</span>
                   </li>
                 ))}
@@ -99,7 +99,7 @@ export default function Nedir() {
               <Link to="/uye-ol" className="btn-primary mt-6 w-full text-white hover:text-white">
                 7 gün ücretsiz deneyin
               </Link>
-              <Link to="/demo-talebi" className="btn mt-2 w-full border-2 border-white text-white hover:border-accent hover:bg-accent hover:text-white">
+              <Link to="/demo-talebi" className="btn mt-2 w-full border-2 border-white text-white hover:border-accent-light hover:bg-accent-ink hover:text-white">
                 Demo talebinde bulun
               </Link>
             </div>
