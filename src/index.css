@@ -20,8 +20,10 @@
     @apply text-accent-dark;
   }
   /* Paragraf içindeki bağlantı yalnızca renkle ayrılamaz (WCAG 1.4.1);
-     altı çizili olur. Menü ve buton bağlantıları bu kuralın dışında. */
-  p a, li a, label a {
+     altı çizili olur. Gezinme bağlantıları bir metin bloğunun içinde
+     durmadığı için bu kuralın dışında: `li a` de eklemek panel menüsünün
+     tamamını altı çizili yapıyordu. */
+  p a, label a {
     @apply underline underline-offset-2;
   }
   /* Odak halkası bir arayüz bileşeni sınırıdır; 1.4.11 için en az 3:1 ister.
