@@ -78,6 +78,33 @@ export const SERVICES = {
   ],
 };
 
+/**
+ * İYS (İleti Yönetim Sistemi) ve ticari ileti uyumu.
+ *
+ * Anasayfada ve /nedir sayfasında aynı içerik gösterilir; metin tek yerde
+ * durur ki mevzuat değiştiğinde iki sayfa birbirinden ayrı düşmesin.
+ */
+export const COMPLIANCE = {
+  title: 'İYS uyumlu SMS gönderimi',
+  description:
+    'Türkiye’de kampanya ve tanıtım SMS’i göndermek için alıcının İYS onayı zorunludur; rezervasyon onayı, hatırlatma ve doğrulama kodu gibi işlem bildirimleri bu kapsamın dışındadır. Salon Ajandası her mesajı bu iki sınıftan birine ayırır ve kuralı veritabanı seviyesinde uygular.',
+  items: [
+    {
+      title: 'Onay ve ret kaydı',
+      text: 'Her numaranın onay ya da ret durumu, kaynağı ve tarihiyle birlikte tutulur. Ret kaydı bulunan numaraya ticari ileti anında engellenir; işlem bildirimleri bundan etkilenmez.',
+    },
+    {
+      title: 'Otomatik İYS aktarımı',
+      text: 'Aldığınız yeni onaylar her gece İYS’ye aktarılır, İYS’de verilen retler sisteme çekilir. Mevzuat her ikisi için de üç iş günü sınırı koyar.',
+    },
+    {
+      title: 'Denetlenebilir kayıt',
+      text: 'Engellenen gönderim sessizce atılmaz; gerekçesiyle kuyruğa yazılır. Bir şikâyet hâlinde hangi mesajın neden gönderilmediğini gösterebilirsiniz.',
+    },
+  ],
+  note: 'İYS bilgilerinizi tanımlamazsanız aktarım yapılmaz; ticari ileti gönderimi yine de kendi onay kayıtlarınıza göre engellenir.',
+};
+
 /** Demo talebi CTA bandı */
 export const CTA = {
   title: 'Demo Talebi',
@@ -156,6 +183,21 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: 'Rezervasyon kayıtlarını müşteriye SMS ile atabilir miyiz?',
     answer: 'Rezervasyon kaydettiğinizde SMS otomatik olarak gider.',
+  },
+  {
+    question: 'Müşterilerime kampanya SMS’i gönderebilir miyim?',
+    answer:
+      'Gönderebilirsiniz, ancak kampanya, indirim ve tanıtım mesajları ticari iletidir; alıcının İYS onayı olmadan gönderilemez. Sistem onayı olmayan numaraya ticari ileti göndermeyi engeller. Rezervasyon onayı, hatırlatma ve doğrulama kodu ise işlem bildirimidir ve onay gerektirmez.',
+  },
+  {
+    question: 'İYS onaylarını ayrıca bir yerde tutmam gerekiyor mu?',
+    answer:
+      'Hayır. Panelde İzin Yönetimi ekranından onay ve ret kayıtlarını girersiniz. Yeni onaylar her gece otomatik olarak İYS’ye aktarılır, İYS’de verilen retler de sisteme çekilir.',
+  },
+  {
+    question: 'İYS için ayrıca ücret ödüyor muyum?',
+    answer:
+      'İYS ücretlendirmesi İleti Yönetim Sistemi tarafında yapılır ve Salon Ajandası’ndan bağımsızdır. İzinlerinizi İYS panelinden elle yönetirseniz Temel Hizmetler paketi ücretsizdir; otomatik aktarım için adres sayınıza uygun bir İYS paketi almanız gerekir.',
   },
   {
     question: 'Çıktı alamıyorum',
@@ -288,6 +330,12 @@ export const SCREENS: { title: string; description: string; kind: string }[] = [
     title: 'Salon Kiralama Sözleşmesi',
     kind: 'contract',
     description: 'Rezervasyon kaydından tek tıkla yazdırılabilir salon kiralama sözleşmesi oluşturun.',
+  },
+  {
+    title: 'İYS İzin Yönetimi',
+    kind: 'permissions',
+    description:
+      'Numara bazında onay ve ret kayıtları, kaynağı ve tarihiyle. Ticari ileti yalnızca onaylı numaralara gider; İYS aktarımı her gece otomatik yapılır.',
   },
   {
     title: 'Firmalarım / Adminler',

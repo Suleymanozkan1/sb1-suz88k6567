@@ -142,4 +142,5 @@ export const ICON_MAP = {
   chart: IconChart,
   clock: IconClock,
   cursor: IconCursor,
+  shield: IconShield,
 } as const;

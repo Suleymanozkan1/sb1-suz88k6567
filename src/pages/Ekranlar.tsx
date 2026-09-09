@@ -9,7 +9,7 @@ export default function Ekranlar() {
     <>
       <Seo
         title="Ekranlar - Salon Ajandası Salon Takip Programı"
-        description="Salon Ajandası programının rezervasyon takvimi, raporlar, renk ayarları ve gelir gider ekranları."
+        description="Salon Ajandası programının rezervasyon takvimi, raporlar, renk ayarları, gelir gider ve İYS izin yönetimi ekranları."
         path="/ekranlar"
       />
       <PageHeader

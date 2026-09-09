@@ -187,6 +187,26 @@ await page.getByRole('button', { name: 'Faturayı oluştur ve gönder' }).click(
 await page.waitForTimeout(1000);
 not('  · fatura');
 
+// İzin Yönetimi ekranı boş görünmesin diye örnek onay ve ret kayıtları girilir.
+not('İYS izin kayıtları giriliyor…');
+await page.goto(`${KOK}/panel/izinler`);
+await page.waitForLoadState('domcontentloaded');
+await page.waitForTimeout(700);
+for (const [tel, durum, kaynak, notMetni] of [
+  ['5321234567', 'ONAY', 'HS_FIZIKSEL_ORTAM', 'Salon kiralama sözleşmesi eki'],
+  ['5321110011', 'ONAY', 'HS_WEB',            'Siteden demo talebi'],
+  ['5321110022', 'RET',  'HS_CAGRI_MERKEZI',  'Alıcı telefonla ret bildirdi'],
+  ['5321110033', 'ONAY', 'HS_SMS',            'Onay SMS’ine yanıt'],
+]) {
+  await page.locator('#cs-phone').fill(tel);
+  await page.locator('#cs-status').selectOption(durum);
+  await page.locator('#cs-source').selectOption(kaynak);
+  await page.locator('#cs-note').fill(notMetni);
+  await page.getByRole('button', { name: /^Kaydet$/ }).click();
+  await page.waitForTimeout(400);
+  not('  · izin: ' + tel);
+}
+
 not('Tam ekranlar yakalanıyor…');
 for (const [ad, yol] of [
   ['panel-takvim',      '/panel/takvim'],
@@ -196,6 +216,8 @@ for (const [ad, yol] of [
   ['panel-raporlar',    '/panel/raporlar'],
   ['panel-kasa',        '/panel/kasa'],
   ['panel-talepler',    '/panel/talepler'],
+  ['panel-izin-yonetimi', '/panel/izinler'],
+  ['panel-sms-kayitlari',  '/panel/sms'],
   ['panel-rezervasyon-detay', `/panel/rezervasyonlar/${rid}`],
 ]) await ekran(page, ad, yol);
 
