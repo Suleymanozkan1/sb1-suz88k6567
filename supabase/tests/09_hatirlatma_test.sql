@@ -40,10 +40,31 @@ select count(*) as acik_kural_IKI_OLMALI
   from public.reminder_rules where business_id = :biz and enabled;
 
 \echo '=== 2) Yer tutucular doldurulmali, bilinmeyen olan oldugu gibi kalmali ==='
+-- Gövde sadelestirilmis donmeli: s/g/i/c harfleri GSM-7'de yok ve biri
+-- bile gecerse mesaj 160 yerine 70 karaktere dusuyor.
 select public.render_template(
   'Sayın {musteri}, {tarih} tarihinde {salon}. Kalan {kalan} TL. {yok}',
   jsonb_build_object('musteri','Ayşe Yılmaz','tarih','12.06.2027','salon','Kristal Salon','kalan','25.000,00')
 ) as doldurulmus_metin;
+
+\echo '=== 2b) Varsayilan metinlerin hepsi TEK SMSe sigmali ==='
+-- Uzun ve Turkce harfli bir ad en kotu durumu temsil ediyor.
+select
+  t.key,
+  length(public.render_template(t.body, jsonb_build_object(
+    'musteri','Şeyma Nur & Muhammed Çağatay Yıldırım', 'tarih','16.09.2026',
+    'seans','Gündüz', 'salon','Zümrüt Balo Salonu', 'kod','SA-2026-4141',
+    'tutar','210.000,00', 'odenen','60.000,00', 'kalan','150.000,00'))) as karakter,
+  -- GSM-7 disi harf kalmamali; kalirsa sinir 70'e duser
+  public.render_template(t.body, jsonb_build_object(
+    'musteri','Şeyma Nur & Muhammed Çağatay Yıldırım')) !~ '[şŞğĞıİç]' as gsm7_TRUE_OLMALI,
+  length(public.render_template(t.body, jsonb_build_object(
+    'musteri','Şeyma Nur & Muhammed Çağatay Yıldırım', 'tarih','16.09.2026',
+    'seans','Gündüz', 'salon','Zümrüt Balo Salonu', 'kod','SA-2026-4141',
+    'tutar','210.000,00', 'odenen','60.000,00', 'kalan','150.000,00'))) <= 160 as tek_sms_TRUE_OLMALI
+from public.message_templates t
+where t.business_id = :biz
+order by t.key;
 
 -- Yedi gün sonrası: tarih_hatirlatma kuralı (days_before = 7) tetiklenmeli.
 insert into public.reservations

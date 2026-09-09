@@ -3,7 +3,7 @@
  *
  * Gönderim her zaman sunucu tarafındaki /api/sms üzerinden yapılır; sağlayıcı
  * anahtarı tarayıcıya hiçbir zaman inmez. Sağlayıcı tanımlı değilse gönderim
- * yapılmaz ve bu durum çağırana bildirilir — "gönderildi" denmez.
+ * yapılmaz ve bu durum çağırana bildirilir, "gönderildi" denmez.
  */
 
 export interface SendResult {

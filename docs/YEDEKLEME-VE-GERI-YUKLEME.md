@@ -57,7 +57,7 @@ SMS izinleri, SMS kayıtları, renk ayarları ve kullanıcı profilleri.
 
 Yeni bir Supabase projesi açtıktan sonra:
 
-**Adım 1 — Şemayı kur**
+**Adım 1, Şemayı kur**
 
 ```bash
 psql "$DATABASE_URL" -f supabase/migrations/0001_init.sql
@@ -66,13 +66,13 @@ psql "$DATABASE_URL" -f supabase/migrations/0003_iys_queue.sql
 psql "$DATABASE_URL" -f supabase/migrations/0004_backup_health.sql
 ```
 
-**Adım 2 — Kullanıcı hesaplarını yeniden oluştur**
+**Adım 2, Kullanıcı hesaplarını yeniden oluştur**
 
 Kimlik doğrulama kayıtları (`auth.users`) yedeğe dahil değildir; şifreler
 yedeğe konmaz. Supabase → Authentication → Users bölümünden hesapları
 yeniden açın. **Yeni kullanıcı kimliklerini (UUID) not edin.**
 
-**Adım 3 — Veriyi yükle**
+**Adım 3, Veriyi yükle**
 
 Yedek dosyasını sunucuya kopyalayın ve aşağıdaki betiği çalıştırın.
 `<ESKI_ID>` / `<YENI_ID>` ile eski kullanıcı kimliğini yenisiyle eşleyin.
@@ -119,7 +119,7 @@ select * from jsonb_populate_recordset(null::public.color_settings,
 commit;
 ```
 
-**Adım 4 — Doğrula**
+**Adım 4, Doğrula**
 
 ```sql
 -- Satır sayıları yedektekiyle aynı olmalı
@@ -136,7 +136,7 @@ where not exists (select 1 from public.reservations r where r.id = p.reservation
 
 Son sorgu **0** dönmelidir.
 
-**Adım 5 — Profilleri güncelle**
+**Adım 5, Profilleri güncelle**
 
 ```sql
 update public.profiles

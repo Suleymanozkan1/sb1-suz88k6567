@@ -17,7 +17,7 @@ const SUBJECTS = [
   'Salon Hakkında Yorum',
 ];
 
-/** /salon/<slug> — işletme detay sayfası ve fiyat teklifi formu */
+/** /salon/<slug>: işletme detay sayfası ve fiyat teklifi formu */
 export default function SalonDetay() {
   const slug = useLocation().pathname.replace(/^\/salon\/?/, '').replace(/\/+$/, '');
   const member = findMemberBySlug(slug);
@@ -119,7 +119,7 @@ export default function SalonDetay() {
               <h2 className="mb-4 font-heading text-lg font-bold text-brand">İşletme Bilgileri</h2>
               <dl className="grid gap-4 sm:grid-cols-2">
                 <Info label="Adres" icon={<IconLocation size={16} className="text-accent-ink" />}>
-                  {member.address ?? '—'}
+                  {member.address ?? '-'}
                 </Info>
                 <Info label="İl / İlçe" icon={<IconLocation size={16} className="text-accent-ink" />}>
                   {member.district} / {member.city}

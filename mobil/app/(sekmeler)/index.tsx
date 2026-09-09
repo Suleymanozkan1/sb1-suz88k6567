@@ -63,14 +63,14 @@ export default function Bugun() {
           <View style={{ flex: 1 }}>
             <Text style={[yazi.minik as object, { color: '#a9bcd8' }]}>TOPLAM KALAN ALACAK</Text>
             <Text style={[yazi.tutarDev as object, { color: renk.beyaz, marginTop: 2 }]}>
-              {kayitlar ? tutarKisa(kalanToplam) : '—'}
+              {kayitlar ? tutarKisa(kalanToplam) : '-'}
             </Text>
           </View>
           <View style={s.ayirac} />
           <View style={{ width: 96 }}>
             <Text style={[yazi.minik as object, { color: '#a9bcd8' }]}>YAKLAŞAN</Text>
             <Text style={[yazi.tutarDev as object, { color: renk.beyaz, marginTop: 2 }]}>
-              {kayitlar ? String(kayitlar.length) : '—'}
+              {kayitlar ? String(kayitlar.length) : '-'}
             </Text>
           </View>
         </View>

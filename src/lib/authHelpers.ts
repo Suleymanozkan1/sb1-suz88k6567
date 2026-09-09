@@ -1,4 +1,4 @@
-/** Kimlik doğrulama yardımcıları — bileşen içermez, hızlı yenileme uyumlu. */
+/** Kimlik doğrulama yardımcıları: bileşen içermez, hızlı yenileme uyumlu. */
 import { isDemoMode } from './repo';
 import { RepoError } from './repo';
 

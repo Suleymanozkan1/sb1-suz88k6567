@@ -8,16 +8,16 @@ export default {
         // Kontrast oranları WCAG 2.1 AA (1.4.3) ölçütüne göre seçildi;
         // yorumdaki değerler beyaz zemine karşı ölçülen orandır.
         brand: {
-          DEFAULT: '#37517e',   // 7,95 — başlıklar
+          DEFAULT: '#37517e',   // 7,95, başlıklar
           dark: '#2f4770',
           light: '#4668a2',
           muted: '#4b6fab',     // beyazla 5,05, açık zeminle (surface) 4,63
         },
         accent: {
-          DEFAULT: '#47b2e4',   // 2,40 — YALNIZCA dekoratif: çubuk, ayraç, koyu zemin dolgusu
-          ink: '#1876a1',       // beyazla 5,07, açık zeminle 4,64 — metin ve buton zemini
-          dark: '#146485',      // 6,58 — ink'in üzerine gelme hâli
-          light: '#87cded',     // koyu marka zemininde 4,54 — koyu zeminde metin
+          DEFAULT: '#47b2e4',   // 2,40, YALNIZCA dekoratif: çubuk, ayraç, koyu zemin dolgusu
+          ink: '#1876a1',       // beyazla 5,07, açık zeminle 4,64, metin ve buton zemini
+          dark: '#146485',      // 6,58, ink'in üzerine gelme hâli
+          light: '#87cded',     // koyu marka zemininde 4,54, koyu zeminde metin
         },
         // Anlamsal durum renkleri. Eski #e74c3c (beyazla 3,82) ve
         // #18d26e (2,00) AA eşiğinin altındaydı.

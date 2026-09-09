@@ -262,7 +262,7 @@ export const NEWS: NewsItem[] = [
     body: [
       "2000'den fazla firma Sahra Takip'i kullanmaktadır.",
       'Bize duyduğunuz güven için teşekkür ederiz. Sistemimizi her gün geliştirmeye, sizden gelen talepleri hızlıca hayata geçirmeye devam ediyoruz.',
-      '"Ödüllerin en büyüğü, yaptığımız işleri başarmış olmamızdır." — Montaigne',
+      '"Ödüllerin en büyüğü, yaptığımız işleri başarmış olmamızdır." (Montaigne)',
     ],
   },
   {

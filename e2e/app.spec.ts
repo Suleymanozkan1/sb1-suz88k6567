@@ -83,7 +83,7 @@ test.describe('Üye paneli', () => {
     await expect(page.getByLabel('Kalan Alacak')).toHaveValue('150.000');
     await page.getByRole('button', { name: 'Kaydet' }).click();
 
-    // Detay sayfası — "Kalan Alacak" satırını etiketiyle birlikte hedefliyoruz,
+    // Detay sayfası, "Kalan Alacak" satırını etiketiyle birlikte hedefliyoruz,
     // aynı tutar birden fazla satırda görünebildiği için.
     const remaining = page.locator('dt', { hasText: 'Kalan Alacak' }).locator('+ dd');
     const collected = page.locator('dt', { hasText: 'Toplam Tahsilat' }).locator('+ dd');

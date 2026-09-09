@@ -12,7 +12,7 @@ import { tumKayitlar, type Rezervasyon } from '../../src/veri';
  * Rezervasyon listesi.
  *
  * Panelde bu ekran tablodur; telefonda tablo okunmuyor, satır listesi
- * kullanıldı. Arama ad, telefon ve rezervasyon kodu üzerinden yapılır —
+ * kullanıldı. Arama ad, telefon ve rezervasyon kodu üzerinden yapılır,
  * salon sahibi genelde müşterinin adını değil, elindeki kodu biliyor.
  */
 const SUZGECLER = ['Tümü', 'Yaklaşan', 'Geçmiş', 'Alacaklı'] as const;

@@ -7,7 +7,7 @@ import { useBusinesses, usePayments, useReservation } from '../../lib/queries';
 import { formatDateLong, formatMoney, formatPhone } from '../../lib/format';
 import { IconPrint } from '../../components/Icons';
 
-/** Tahsilat Makbuzu — tek bir ödeme için yazdırılabilir belge. */
+/** Tahsilat Makbuzu: tek bir ödeme için yazdırılabilir belge. */
 export default function Makbuz() {
   const { id } = useParams();
   const [params] = useSearchParams();

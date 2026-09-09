@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0009 — "Nikah" yazımının "Nikâh" olarak düzeltilmesi
+-- 0009, "Nikah" yazımının "Nikâh" olarak düzeltilmesi
 --
 -- TDK yazımı "nikâh" olduğu için arayüzdeki tüm etiketler düzeltildi.
 -- Bu değer yalnızca ekranda görünmüyor; rezervasyonun organizasyon türü,
@@ -65,7 +65,7 @@ update public.color_settings
 commit;
 
 -- =====================================================================
--- Doğrulama — göçten sonra çalıştırın, sekiz sütun da 0 dönmelidir.
+-- Doğrulama, göçten sonra çalıştırın, sekiz sütun da 0 dönmelidir.
 -- =====================================================================
 -- select
 --   (select count(*) from public.reservations where organization_type = 'Nikah')      as kalan_tur,

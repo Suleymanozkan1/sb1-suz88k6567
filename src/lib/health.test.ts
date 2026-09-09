@@ -11,7 +11,7 @@ function health(over: Partial<SystemHealth> = {}): SystemHealth {
   };
 }
 
-describe('findIssues — sistem sağlığı değerlendirmesi', () => {
+describe('findIssues: sistem sağlığı değerlendirmesi', () => {
   it('her şey yolundayken sorun bildirmez', () => {
     expect(findIssues(health(), false)).toEqual([]);
   });

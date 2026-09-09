@@ -12,7 +12,7 @@ export default function Hesap() {
     <View style={{ flex: 1, backgroundColor: renk.zemin }}>
       <ScrollView contentContainerStyle={{ padding: aralik.l, paddingBottom: aralik.xxl }}>
         <Kart>
-          <Yazi tur="baslik" renkli={renk.lacivert}>{kullanici?.ad ?? '—'}</Yazi>
+          <Yazi tur="baslik" renkli={renk.lacivert}>{kullanici?.ad ?? '-'}</Yazi>
           <Yazi tur="kucuk" renkli={renk.metinSolgun} style={{ marginTop: 2 }}>
             {kullanici?.eposta ?? ''} · {kullanici?.rol ?? ''}
           </Yazi>

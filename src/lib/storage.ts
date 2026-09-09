@@ -26,7 +26,7 @@ export function write<T>(key: string, value: T): void {
   try {
     window.localStorage.setItem(PREFIX + key, JSON.stringify(value));
   } catch {
-    /* kota dolu veya özel mod — sessizce yoksay */
+    /* kota dolu veya özel mod, sessizce yoksay */
   }
 }
 

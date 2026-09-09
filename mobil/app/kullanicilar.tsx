@@ -9,7 +9,7 @@ const YETKILER: [string, boolean, boolean][] = [
   ['Rezervasyon görüntüleme', true, true],
   ['Rezervasyon ekleme / düzenleme', true, true],
   ['Rezervasyon silme', true, false],
-  ['Gelir – gider (kasa)', true, false],
+  ['Gelir-gider (kasa)', true, false],
   ['Raporlar ve ciro', true, false],
   ['Müşteri talepleri', true, false],
   ['Kullanıcı ve yetki yönetimi', true, false],
@@ -51,10 +51,10 @@ export default function Kullanicilar() {
               <View key={ad} style={st.satir}>
                 <Yazi tur="kucuk" renkli={renk.metin} style={{ flex: 1 }}>{ad}</Yazi>
                 <Yazi tur="kucuk" renkli={yonetici ? renk.basari : renk.metinSolgun} style={st.sutun}>
-                  {yonetici ? '✓' : '—'}
+                  {yonetici ? '✓' : '-'}
                 </Yazi>
                 <Yazi tur="kucuk" renkli={personel ? renk.basari : renk.metinSolgun} style={st.sutun}>
-                  {personel ? '✓' : '—'}
+                  {personel ? '✓' : '-'}
                 </Yazi>
               </View>
             ))}

@@ -7,7 +7,7 @@ import { denetimKaydi, type DenetimSatiri } from '../src/veri';
 /**
  * Denetim kaydı.
  *
- * Yalnızca okunur — kayıtların silinememesi bu özelliğin varlık sebebi.
+ * Yalnızca okunur: kayıtların silinememesi bu özelliğin varlık sebebi.
  * Silinebilir bir denetim kaydı, denetim kaydı değildir.
  */
 export default function Denetim() {

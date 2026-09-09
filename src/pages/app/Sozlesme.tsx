@@ -8,7 +8,7 @@ import { remainingBalance, totalPaid } from '../../lib/money';
 import { formatDateLong, formatMoney, formatPhone } from '../../lib/format';
 import { IconPrint } from '../../components/Icons';
 
-/** Salon Kiralama Sözleşmesi — yazdırılabilir çıktı */
+/** Salon Kiralama Sözleşmesi: yazdırılabilir çıktı */
 export default function Sozlesme() {
   const { id } = useParams();
   const reservationQuery = useReservation(id);
@@ -62,15 +62,15 @@ export default function Sozlesme() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="font-semibold">KİRAYA VEREN</p>
-              <p>{business?.name ?? '—'}</p>
+              <p>{business?.name ?? '-'}</p>
               <p>{business?.address ?? `${business?.district ?? ''} / ${business?.city ?? ''}`}</p>
-              <p>Tel: {business ? formatPhone(business.phone) : '—'}</p>
+              <p>Tel: {business ? formatPhone(business.phone) : '-'}</p>
             </div>
             <div>
               <p className="font-semibold">KİRACI</p>
               <p>{reservation.customerName}</p>
               {reservation.secondPersonName && <p>{reservation.secondPersonName}</p>}
-              <p>{reservation.address ?? '—'}</p>
+              <p>{reservation.address ?? '-'}</p>
               <p>Tel: {formatPhone(reservation.customerPhone)}</p>
             </div>
           </div>
@@ -84,7 +84,7 @@ export default function Sozlesme() {
               <Row label="Tarih" value={formatDateLong(reservation.date)} />
               <Row label="Seans" value={reservation.slot} />
               <Row label="Davetli Sayısı" value={`${reservation.guestCount} kişi`} />
-              <Row label="Salon" value={business?.name ?? '—'} />
+              <Row label="Salon" value={business?.name ?? '-'} />
               {reservation.services.length > 0 && <Row label="Dahil Hizmetler" value={reservation.services.join(', ')} />}
             </tbody>
           </table>
@@ -114,7 +114,7 @@ export default function Sozlesme() {
             <li>Davetli sayısının sözleşmede belirtilen sayıyı aşması hâlinde kişi başı ek ücret uygulanır.</li>
             <li>Salona ve demirbaşlara verilecek zararlardan kiracı sorumludur.</li>
             <li>Kiraya veren, mücbir sebep hâlinde tarihi karşılıklı mutabakat ile değiştirebilir.</li>
-            <li>Taraflar arasında doğacak uyuşmazlıklarda {business?.city ?? '—'} Mahkemeleri ve İcra Daireleri yetkilidir.</li>
+            <li>Taraflar arasında doğacak uyuşmazlıklarda {business?.city ?? '-'} Mahkemeleri ve İcra Daireleri yetkilidir.</li>
             <li>İşbu sözleşme iki nüsha olarak düzenlenmiş ve taraflarca imzalanmıştır.</li>
           </ol>
         </section>

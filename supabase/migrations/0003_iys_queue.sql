@@ -152,7 +152,7 @@ $$;
 /**
  * Mesajı kuyruğa alır.
  *
- * Ticari iletide İYS onayı yoksa kayıt 'iptal' olarak yazılır — sessizce
+ * Ticari iletide İYS onayı yoksa kayıt 'iptal' olarak yazılır, sessizce
  * atılmaz, böylece neden gönderilmediği denetlenebilir kalır.
  * İşlem bildirimleri muaftır ve her zaman kuyruğa girer.
  */
@@ -255,7 +255,7 @@ $$;
 /**
  * Gönderim sonucunu işler.
  * Başarısızlıkta üstel geri çekilme ile yeniden denenir:
- * 1dk, 5dk, 15dk, 1sa, 4sa — ardından kalıcı başarısız.
+ * 1dk, 5dk, 15dk, 1sa, 4sa, ardından kalıcı başarısız.
  */
 create or replace function public.complete_sms(
   p_id uuid, p_success boolean, p_error text default null, p_ref text default null

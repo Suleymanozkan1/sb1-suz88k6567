@@ -50,7 +50,7 @@ test('DENETIM: panel ekranlarında uygulama hatası ve kırık değer yok', asyn
   expect(problems, problems.join('\n')).toEqual([]);
 });
 
-test('DENETIM: rezervasyon yaşam döngüsü — oluştur, tahsilat, bakiye, sözleşme', async ({ page }) => {
+test('DENETIM: rezervasyon yaşam döngüsü, oluştur, tahsilat, bakiye, sözleşme', async ({ page }) => {
   await login(page);
 
   await page.goto('/panel/rezervasyonlar/yeni');

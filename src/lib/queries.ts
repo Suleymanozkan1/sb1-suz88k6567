@@ -566,7 +566,7 @@ export function useAddMessage() {
   });
 }
 
-/** Talep kutusu — RLS gereği yalnızca yönetici hesabında dolu döner. */
+/** Talep kutusu, RLS gereği yalnızca yönetici hesabında dolu döner. */
 export function useMessages() {
   return useQuery({
     queryKey: keys.messages(),

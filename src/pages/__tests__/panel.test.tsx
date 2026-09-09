@@ -278,9 +278,17 @@ describe('Rezervasyon detayı', () => {
 
     // Önizleme zorunlu: taslakta yanlış yazılmış bir yer tutucu ancak
     // müşteriye giden mesajda fark ediliyordu.
-    const onizleme = await screen.findByText(new RegExp(`Sayın ${target.customerName}`));
+    //
+    // Metin sadeleştirilmiş hâliyle geliyor ("Sayın" değil "Sayin"):
+    // ş, ğ, ı, İ, ç harfleri GSM-7'de olmadığı için biri bile geçtiğinde
+    // mesaj 160 yerine 70 karaktere düşüyor ve tek SMS'e sığmıyor.
+    const onizleme = await screen.findByText(new RegExp(`Sayin ${target.customerName}`));
     expect(onizleme).toBeInTheDocument();
     expect(onizleme.textContent).not.toContain('{musteri}');
+    expect(onizleme.textContent).not.toMatch(/[şŞğĞıİç]/);
+
+    // Hatırlatmanın tek SMS'e sığması bu ekranın vaadi.
+    expect(await screen.findByText(/· 1 SMS/)).toBeInTheDocument();
   });
 
   it('hatırlatma gönderimi kaydı işler ve gönderilemediğinde yanlış bilgi vermez', async () => {
@@ -294,7 +302,7 @@ describe('Rezervasyon detayı', () => {
     await user.click(await screen.findByRole('button', { name: /Bu mesajı gönder/ }));
 
     // Test ortamında SMS sağlayıcısı yok: mesaj kayda geçer, ancak
-    // kullanıcıya "gönderildi" denmez — durum açıkça bildirilir.
+    // kullanıcıya "gönderildi" denmez, durum açıkça bildirilir.
     await waitFor(async () => expect((await getSmsLog(target.businessId)).length).toBe(before + 1), { timeout: 4000 });
     expect(await screen.findByText(/gönderilemedi|ulaşılamadı/)).toBeInTheDocument();
     expect(screen.queryByText(/Mesaj kuyruğa alındı ve kayıtlara işlendi/)).not.toBeInTheDocument();

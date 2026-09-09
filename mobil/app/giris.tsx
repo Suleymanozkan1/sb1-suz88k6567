@@ -39,7 +39,7 @@ export default function Giris() {
       <ScrollView
         contentContainerStyle={[s.kaydir, { paddingTop: kenar.top + aralik.xxl, paddingBottom: kenar.bottom + aralik.xxl }]}
       >
-        {/* Marka: logoda "Sahra" beyaz, "Takip" açık mavi — web ile aynı. */}
+        {/* Marka: logoda "Sahra" beyaz, "Takip" açık mavi, web ile aynı. */}
         <Text style={s.logo}>
           Sahra<Text style={{ color: renk.vurguAcik }}>Takip</Text>
         </Text>

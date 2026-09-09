@@ -70,7 +70,7 @@ export interface RateLimitRule {
 /**
  * Hız sınırı denetimi.
  *
- * Güvenlik altyapısı yapılandırılmamışsa `allowed: true` döner — sınır
+ * Güvenlik altyapısı yapılandırılmamışsa `allowed: true` döner, sınır
  * uygulanamadığı için isteği engellemek yerine geçirir, ancak bu durum
  * `enforced: false` ile bildirilir.
  */

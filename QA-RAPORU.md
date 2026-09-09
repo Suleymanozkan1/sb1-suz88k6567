@@ -1,6 +1,6 @@
-# Sahra Takip — Audit ve QA Raporu
+# Sahra Takip, Audit ve QA Raporu
 
-**Son güncelleme:** dördüncü tam denetim — ödeme planı, iş emri, tedarikçiler
+**Son güncelleme:** dördüncü tam denetim, ödeme planı, iş emri, tedarikçiler
 
 ---
 
@@ -37,7 +37,7 @@ veriyordu. Senaryo boş bir rezervasyon üzerinde izole edildi.
 
 ---
 
-**Önceki güncelleme:** üçüncü tam denetim — salon, menü, masa düzeni
+**Önceki güncelleme:** üçüncü tam denetim, salon, menü, masa düzeni
 
 ---
 
@@ -73,25 +73,25 @@ Abonelik, plan ve ücretlendirme **bilinçli olarak yapılmadı**.
 
 ### 0.2 Bu turda bulunan ve düzeltilen hatalar
 
-**A. Göçten sonra açılan işletmelerin hiç salonu olmuyordu — *yüksek***
+**A. Göçten sonra açılan işletmelerin hiç salonu olmuyordu, *yüksek***
 
 Göç, var olan işletmelere "Ana Salon" açıyordu; sonradan oluşturulan
 işletmeler salonsuz kalıyor ve rezervasyon açılamıyordu.
 *Düzeltme:* `businesses` üzerinde AFTER INSERT tetikleyicisi.
 
-**B. Tohumlama salon ve menüleri koşulsuz eziyordu — *orta***
+**B. Tohumlama salon ve menüleri koşulsuz eziyordu, *orta***
 
 Daha önce rezervasyonlarda düzeltilen hatanın aynısı: demo verisi yazılırken
 başka işletmelerin salon ve menüleri siliniyordu.
 *Düzeltme:* Yalnızca demo kimlikleri değiştirilir, diğerleri korunur.
 
-**C. Masa düzeni politikası çağıranın tablo yetkisine bağlıydı — *orta***
+**C. Masa düzeni politikası çağıranın tablo yetkisine bağlıydı, *orta***
 
 `seating_tables` politikası doğrudan `reservations` tablosunu sorguluyordu;
 çağıranın o tabloda yetkisi yoksa kendi masa düzenini de göremiyordu.
 *Düzeltme:* Kontrol `owns_reservation()` SECURITY DEFINER fonksiyonuna alındı.
 
-**D. Salon belirtilmeyen rezervasyonda sessiz tahmin riski — *orta***
+**D. Salon belirtilmeyen rezervasyonda sessiz tahmin riski, *orta***
 
 Çok salonlu bir işletmede salon verilmezse hangisine yazılacağı belirsizdi.
 *Düzeltme:* Tek salon varsa o seçilir; birden çoksa kayıt reddedilir.
@@ -128,7 +128,7 @@ Toplam **351 otomatik senaryo**.
 
 ### 0.1 Bu denetimde bulunan ve düzeltilen sorunlar
 
-**A. Siteden gelen talepler hiçbir yerden okunamıyordu — *yüksek***
+**A. Siteden gelen talepler hiçbir yerden okunamıyordu, *yüksek***
 
 İletişim formu, demo talebi ve salon teklif formu `contact_messages` tablosuna
 yazıyordu; ancak veri erişim sözleşmesinde okuma yöntemi, panelde de bir ekran
@@ -138,7 +138,7 @@ yoktu. Gelen her müşteri talebi fiilen kayboluyordu.
 ve `0006_talepler.sql` göçü eklendi. Talepler durum (yeni / işlemde /
 kapatıldı), not ve işleyen damgasıyla yönetilir.
 
-**B. Talepleri her oturum açan kullanıcı okuyabiliyordu — *yüksek***
+**B. Talepleri her oturum açan kullanıcı okuyabiliyordu, *yüksek***
 
 `0001`deki politika `contact_messages` için `to authenticated using (true)`
 idi: yalnızca rezervasyon görüntüleme yetkisi olan bir personel bile, siteye
@@ -148,7 +148,7 @@ gelen tüm taleplerin adını, e-postasını ve telefonunu okuyabiliyordu.
 kapatıldı; silme yetkisi tamamen kaldırıldı. `06_talepler_test.sql` bu kuralı
 personel kimliğiyle doğrular.
 
-**C. `/api/health` yetkisiz çağrıya işletim ayrıntısı veriyordu — *orta***
+**C. `/api/health` yetkisiz çağrıya işletim ayrıntısı veriyordu, *orta***
 
 Uç nokta, kimlik doğrulaması olmadan "Henüz başarılı bir yedek alınmamış",
 "SMS sağlayıcısı yapılandırılmamış", "N mesaj kalıcı olarak gönderilemedi"
@@ -158,14 +158,14 @@ açık ediyordu.
 *Düzeltme:* Sorun metinleri ve özet yalnızca `CRON_SECRET` ile çağrıldığında
 döner; yetkisiz çağrı sadece `status` alanını görür.
 
-**D. Aynı milisaniyedeki talepler kararsız sıralanıyordu — *düşük***
+**D. Aynı milisaniyedeki talepler kararsız sıralanıyordu, *düşük***
 
 `localeCompare` eşit zaman damgalarında 0 döndüğü için sıralama girdi sırasına
 kalıyordu. SMS kayıtlarında daha önce düzeltilen hatanın aynısı.
 
 *Düzeltme:* Ekleme sırasını eşitlik bozucu olarak kullanan kararlı sıralama.
 
-**E. README'deki veritabanı testi yönergesi çalışmıyordu — *düşük***
+**E. README'deki veritabanı testi yönergesi çalışmıyordu, *düşük***
 
 Komutlar tüm paketleri aynı veritabanında art arda çalıştırıyordu; her paket
 kendi kimliklerini kurduğu için ikinci paket birincil anahtar çakışmasıyla
@@ -222,7 +222,7 @@ doğrulanmıştır (bkz. bölüm 2.5–2.6 ve 9).
 
 ## 2. Audit sırasında bulunan ve düzeltilen hatalar
 
-### 2.1 Türkçe locale ile küçültme, e-posta eşleşmesini bozuyordu — *kritik*
+### 2.1 Türkçe locale ile küçültme, e-posta eşleşmesini bozuyordu, *kritik*
 
 `findUserByEmail`, karşılaştırma için `toLocaleLowerCase('tr-TR')` kullanıyordu.
 Türkçe kuralında ASCII `I` harfi noktasız `ı`ya dönüştüğü için
@@ -240,7 +240,7 @@ karşılaştırmaları locale-bağımsız `toLowerCase()` / `toUpperCase()` ile 
 
 ---
 
-### 2.2 Tohum (seed) verisi mevcut kullanıcı kayıtlarının üzerine yazıyordu — *kritik*
+### 2.2 Tohum (seed) verisi mevcut kullanıcı kayıtlarının üzerine yazıyordu, *kritik*
 
 `seedIfEmpty()` yalnızca `seeded` bayrağına bakıyordu. Bayrak silinir de veriler
 kalırsa (kısmi depolama temizliği, sürüm geçişi, kota hatası) tüm üyelikler,
@@ -254,7 +254,7 @@ denetler; herhangi bir kullanıcı/işletme/rezervasyon kaydı varsa hiçbir şe
 
 ---
 
-### 2.3 Salon ve yasal sayfalar her zaman 404 veriyordu — *kritik*
+### 2.3 Salon ve yasal sayfalar her zaman 404 veriyordu, *kritik*
 
 `VenueCategory` ve `LegalPage` bileşenleri `useParams().slug` okuyordu, ancak bu
 rotalar `/dugun-salonlari` gibi **sabit yollarla** tanımlıydı; `:slug` parametresi
@@ -270,7 +270,7 @@ bağlantıları çalışır" senaryosunda doğrulanır.
 
 ---
 
-### 2.4 Aynı milisaniyede yazılan SMS kayıtları yanlış sıralanıyordu — *düşük*
+### 2.4 Aynı milisaniyede yazılan SMS kayıtları yanlış sıralanıyordu, *düşük*
 
 SMS listesi yalnızca zaman damgasına göre sıralanıyordu. Rezervasyon kaydı gibi
 arka arkaya iki mesaj üreten işlemlerde damgalar eşit olduğunda sıralama
@@ -283,7 +283,7 @@ arka arkaya iki mesaj üreten işlemlerde damgalar eşit olduğunda sıralama
 
 ---
 
-### 2.5 Özet ekranında tutarlar okunamıyordu — *orta*
+### 2.5 Özet ekranında tutarlar okunamıyordu, *orta*
 
 İstatistik kartlarındaki değerler `truncate` ile kısaltılıyordu. Altı haneli
 tutarlar kart genişliğine sığmadığı için `962.500,...` şeklinde kesiliyor ve
@@ -297,7 +297,7 @@ yalnızca görsel olan bu kusuru yakalayamamıştı).
 
 ---
 
-### 2.6 "Son 6 ay" grafiği gelecekteki ayları gösteriyordu — *orta*
+### 2.6 "Son 6 ay" grafiği gelecekteki ayları gösteriyordu, *orta*
 
 Grafik, kaydı bulunan ayları kronolojik sıralayıp son altısını alıyordu. Gelecek
 tarihli rezervasyonlar da listeye girdiği için 1 Eylül 2026'da grafik
@@ -317,7 +317,7 @@ sınırı, ay içi toplama)
 
 ## 3. Test kapsamı
 
-### 3.1 Birim testleri — 65 test
+### 3.1 Birim testleri, 65 test
 
 | Dosya | Test | Kapsam |
 |-------|------|--------|
@@ -329,14 +329,14 @@ Sınır durumları özellikle kapsandı: negatife düşmeyen bakiye, fazla tahsi
 iptal edilmiş kayıtların raporlardan dışlanması, yıl geçişli ay sıralaması,
 CSV içindeki ayraç ve tırnak karakterleri.
 
-### 3.2 Entegrasyon testleri — 64 test
+### 3.2 Entegrasyon testleri, 64 test
 
 | Dosya | Test | Kapsam |
 |-------|------|--------|
 | `integration.test.tsx` | 31 | Anasayfa bölümleri, video lightbox, SSS akordeonu, kod doğrulama (boş/geçersiz/geçerli), iletişim ve demo formları, üyelik formu doğrulamaları, giriş + SMS doğrulama, referans listesi filtreleri, salon detay sayfası ve teklif formu, 404 |
 | `panel.test.tsx` | 33 | Erişim kontrolü, özet ekranı, takvim gezinme, rezervasyon filtreleri, form doğrulamaları, otomatik SMS, çakışma uyarısı, tahsilat ekleme/limit, geçmiş kayıt kilidi, sözleşme, kasa, raporlar, renk ayarları, müşteriler, tavsiye kodu |
 
-### 3.3 Uçtan uca testler — 44 test (Chromium)
+### 3.3 Uçtan uca testler, 44 test (Chromium)
 
 - **21 herkese açık sayfa** ayrı ayrı açılır; HTTP 200, doğru `h1` ve **sıfır konsol hatası** doğrulanır.
 - Her sayfada tek bir `h1` bulunduğu doğrulanır.
@@ -424,7 +424,7 @@ baştan sona elle yürütüldü:
 3. Yeni rezervasyon oluşturuldu: 250.000 ₺ toplam, 60.000 ₺ kapora, 420 davetli,
    iki hizmet seçili.
 4. 40.000 ₺ tahsilat eklendi.
-5. **Beklenen:** toplam tahsilat 100.000 ₺, kalan alacak 150.000 ₺ —
+5. **Beklenen:** toplam tahsilat 100.000 ₺, kalan alacak 150.000 ₺,
    **gözlenen:** birebir aynı.
 6. Salon kiralama sözleşmesi çıktısı, raporlar, kasa ve SMS kayıtları görüntülendi.
 7. Oluşan rezervasyon kodu (`SA-2026-7875`) herkese açık kod doğrulama sayfasında

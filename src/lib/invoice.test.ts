@@ -41,7 +41,7 @@ describe('roundHalfUp', () => {
   });
 });
 
-describe('computeLine — satır hesabı', () => {
+describe('computeLine: satır hesabı', () => {
   it("KDV'siz basit satırı hesaplar", () => {
     const line = computeLine({
       description: 'Salon kiralama', quantity: 1, unit: 'Adet',
@@ -115,7 +115,7 @@ describe('computeLine — satır hesabı', () => {
   });
 });
 
-describe('computeInvoice — fatura toplamı', () => {
+describe('computeInvoice: fatura toplamı', () => {
   it('satır toplamları ile fatura toplamı birebir tutar', () => {
     const invoice = computeInvoice([
       { description: 'Salon kiralama', quantity: 1, unit: 'Adet', unitPrice: 100000, vatRate: 20 },

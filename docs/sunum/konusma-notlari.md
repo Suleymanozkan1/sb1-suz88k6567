@@ -1,6 +1,6 @@
 # Sunuma hazırlık notları
 
-26 slayt. Rahat tempoda 30–35 dakika, soru–cevapla birlikte 45 dakika.
+26 slayt. Rahat tempoda 30-35 dakika, soru-cevapla birlikte 45 dakika.
 Bu notlar slaytlarda yazmaz; PowerPoint'in konuşmacı bölümündeki notlar
 ayrıca duruyor.
 
@@ -20,13 +20,13 @@ slayttır.
 
 | Bölüm | Slayt | Süre | Ne anlatılıyor |
 | --- | --- | --- | --- |
-| Açılış ve kapsam | 1–2 | 3 dk | Sistem ne, neleri kapsıyor |
-| Çekirdek | 3–10 | 10 dk | Takvim, rezervasyon, para, belgeler, organizasyon |
-| Mobil | 11–13 | 5 dk | Telefon uygulaması |
-| Hatırlatma ve iletişim | 14–16 | 6 dk | Taslak mesajlar, otomatik gönderim, SMS, İYS |
-| Para ve mevzuat | 17–19 | 5 dk | Kasa, raporlar, fatura, talepler |
-| Yönetim ve altyapı | 20–23 | 5 dk | Yetkiler, altyapı, veri |
-| Kurulum ve maliyet | 24–26 | 4 dk | Ne gerekiyor, ne tutuyor |
+| Açılış ve kapsam | 1-2 | 3 dk | Sistem ne, neleri kapsıyor |
+| Çekirdek | 3-10 | 10 dk | Takvim, rezervasyon, para, belgeler, organizasyon |
+| Mobil | 11-13 | 5 dk | Telefon uygulaması |
+| Hatırlatma ve iletişim | 14-16 | 6 dk | Taslak mesajlar, otomatik gönderim, SMS, İYS |
+| Para ve mevzuat | 17-19 | 5 dk | Kasa, raporlar, fatura, talepler |
+| Yönetim ve altyapı | 20-23 | 5 dk | Yetkiler, altyapı, veri |
+| Kurulum ve maliyet | 24-26 | 4 dk | Ne gerekiyor, ne tutuyor |
 
 Vakit daralırsa 9 (tedarikçiler) ve 10 (masa düzeni) atlanabilir; bunlar
 "ayrıca bunu da yapıyor" slaytlarıdır, omurga değil.
@@ -41,13 +41,13 @@ Slayt başına ezberlenecek tek cümleler. Gerisi zaten ekranda.
   salon için ayrı hesaplanır."
 - **Rezervasyon (5):** "Kalan alacak elle girilmez, tahsilatlardan
   hesaplanır."
-- **Menüler (6):** "Menü seçilince tutar önerilir, dayatılmaz — pazarlık
+- **Menüler (6):** "Menü seçilince tutar önerilir, dayatılmaz; pazarlık
   sonucu tutar zaten listeden farklı çıkıyor."
 - **Belgeler (7):** "Sözleşme ve makbuz rezervasyondan üretilir, bilgi
   ikinci kez girilmez."
 - **İş emri (8):** "Etkinlik günü kimin ne saatte ne yapacağı; otelde BEO
   denen belgenin karşılığı."
-- **Mobil (11–13):** "Panelde ne varsa telefonda da var. Fark yazma
+- **Mobil (11-13):** "Panelde ne varsa telefonda da var. Fark yazma
   yetkisinde: para almak ve kayıt açmak telefonda, yetki değiştirmek ve
   fatura kesmek masaüstünde."
 - **Hatırlatmalar (14):** "Yedi hazır mesaj metni var, hepsi
@@ -83,7 +83,7 @@ Yanlış sayı söylemektense "slaytta var, birlikte bakalım" demek daha iyi.
 - Veriler **AB bölgesinde (Frankfurt)**
 
 Aylık 30 organizasyon kaydeden bir salon, onay ve hatırlatma ile yaklaşık
-**100–150 SMS** gönderir; 1.000'lik paket birkaç ay yeter. Bu örneği soru
+**100-150 SMS** gönderir; 1.000'lik paket birkaç ay yeter. Bu örneği soru
 gelmeden söyleyin: SMS maliyeti dinleyicinin gözünde büyüyor.
 
 ## 5. Hatırlatma slaydında dikkat çekilecek iki şey
@@ -105,7 +105,7 @@ gider. "Sistem her gece aynı mesajı atar mı?" sorusu kesin gelir.
 
 **"Verilerimiz nerede, başkası görebilir mi?"**
 AB bölgesinde, Frankfurt'ta. Her hesap yalnızca kendi verisini görür ve bu
-ayrım arayüzde değil sunucuda tanımlı — yazılımda bir hata olsa bile başka
+ayrım arayüzde değil sunucuda tanımlı, yani yazılımda bir hata olsa bile başka
 bir işletmenin kaydı gelmez. Gece otomatik yedek alınır.
 
 **"Neden bir sürü servise para veriyoruz? Kendi sunucumuz olsun."**
@@ -113,7 +113,7 @@ bir işletmenin kaydı gelmez. Gece otomatik yedek alınır.
 Fark şu: güvenlik yamaları, sertifika yenileme, yedek alma ve o yedeğin
 gerçekten geri yüklenebildiğini denemek sizin üzerinizde kalır. Ayda 30
 dolar bu işi devretmenin bedeli. Ekleyin: veritabanı standart PostgreSQL,
-istenirse başka bir sunucuya taşınır — kilitlenme yok.
+istenirse başka bir sunucuya taşınır, kilitlenme yok.
 
 **"Hazır programlar var, neden bu?"**
 Savunmaya geçmeyin. "Hangisine baktınız?" diye sorun, sonra somut farka
@@ -122,8 +122,8 @@ veritabanında engellenmesi, İYS'nin sistemin içinde olması, hatırlatmaları
 otomatik gitmesi. Bilmediğiniz bir ürün hakkında yorum yapmayın.
 
 **"Telefonda her şey var mı, yoksa sadece bakabiliyor muyum?"**
-Panelde ne varsa telefonda da var — yirmi bir ekran. Yazma tarafı bilinçli
-sınırlı: tahsilat, gelir–gider, yeni rezervasyon ve mesaj metni telefondan
+Panelde ne varsa telefonda da var, yirmi bir ekran. Yazma tarafı bilinçli
+sınırlı: tahsilat, gelir-gider, yeni rezervasyon ve mesaj metni telefondan
 girilir; yetki değiştirme ve fatura kesme masaüstünde kalır, çünkü ikisi de
 yanlış dokunuşla geri alınması zor sonuç üretiyor.
 

@@ -5,7 +5,7 @@ import { IconBell, IconCheck, IconMessage } from './Icons';
 import { useAuth } from '../context/AuthContext';
 import { errorMessage } from '../lib/authHelpers';
 import { useBusinesses, useHalls, useSendSms, useTemplates } from '../lib/queries';
-import { SABLON_ADI, degerler, doldur, olc } from '../lib/sablon';
+import { SABLON_ADI, degerler, hazirla, olc } from '../lib/sablon';
 import type { Payment, Reservation, SmsLogEntry } from '../types';
 
 /**
@@ -46,7 +46,7 @@ export default function HatirlatmaGonder({
 
   const aktif = sablonlar.filter((s) => s.isActive);
   const sablon = aktif.find((s) => s.id === secili);
-  const metin = sablon ? doldur(sablon.body, dolu) : '';
+  const metin = sablon ? hazirla(sablon.body, dolu) : '';
   const olcum = olc(metin);
 
   async function gonderilsin() {

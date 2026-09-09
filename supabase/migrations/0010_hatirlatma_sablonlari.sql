@@ -9,7 +9,7 @@
 -- tarih ve ödeme hatırlatması işlem bildirimidir (6563 sayılı Kanun
 -- kapsamında onay aranmaz); teşekkür ve kampanya ticari iletidir ve
 -- İYS onayı olmadan gönderilemez. Kural burada değil, enqueue_sms
--- içinde uygulanır — tek kapıdan geçmesi denetlenebilirliği korur.
+-- içinde uygulanır, tek kapıdan geçmesi denetlenebilirliği korur.
 -- =====================================================================
 
 do $$ begin

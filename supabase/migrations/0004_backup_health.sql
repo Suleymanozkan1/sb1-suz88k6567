@@ -91,7 +91,7 @@ begin
 end;
 $$;
 
-/** Yedeğin içerdiği satır sayıları — bütünlük doğrulaması için */
+/** Yedeğin içerdiği satır sayıları, bütünlük doğrulaması için */
 create or replace function public.backup_row_counts(p_owner_id uuid)
 returns jsonb
 language sql

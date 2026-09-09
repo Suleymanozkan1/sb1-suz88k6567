@@ -113,7 +113,7 @@ describe('giriş akışı', () => {
  *
  * Kaynak temiz olsa bile bir bağımlılık ya da yanlış bir ortam değişkeni
  * sırrı pakete taşıyabilir. Bu yüzden `npm run paket` ile üretilen iOS ve
- * Android paketleri de taranır. Paket yoksa test atlanır — CI'da
+ * Android paketleri de taranır. Paket yoksa test atlanır, CI'da
  * "npm run paket && npm test" sırasıyla çalıştırılmalı.
  */
 const PAKET = path.join(KOK, 'dist-paket');

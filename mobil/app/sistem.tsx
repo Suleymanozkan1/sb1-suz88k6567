@@ -8,7 +8,7 @@ import { sistemDurumu, type SistemDurumu } from '../src/veri';
  * Sistem durumu.
  *
  * Üç soruyu cevaplıyor: yedek alındı mı, bekleyen mesaj var mı, İYS
- * aktarımı gecikti mi. Sorun varsa renk değil metin söylüyor — durum
+ * aktarımı gecikti mi. Sorun varsa renk değil metin söylüyor, durum
  * bildirimi renge bağlanamaz.
  */
 export default function Sistem() {
@@ -21,7 +21,7 @@ export default function Sistem() {
             <BolumBasligi>Yedekleme</BolumBasligi>
             <Satir
               baslik="Son yedek"
-              alt={d.sonYedek === '—' ? 'Henüz yedek alınmamış' : tarihUzun(d.sonYedek)}
+              alt={d.sonYedek === '-' ? 'Henüz yedek alınmamış' : tarihUzun(d.sonYedek)}
               deger={d.yedekDurum}
               degerRengi={yedekIyi ? renk.basari : renk.tehlike}
               solRenk={yedekIyi ? renk.basari : renk.tehlike}

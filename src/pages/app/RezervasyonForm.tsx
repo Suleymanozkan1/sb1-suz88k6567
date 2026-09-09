@@ -335,7 +335,7 @@ export default function RezervasyonForm() {
                 <option value="">Menü seçilmedi</option>
                 {menus.filter((m) => m.isActive || m.id === form.menuId).map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name} — {formatMoney(kurusToLira(m.priceKurus), 'TL')}
+                    {m.name} · {formatMoney(kurusToLira(m.priceKurus), 'TL')}
                     {m.pricing === 'kisi_basi' ? ' / kişi' : ' sabit'}
                   </option>
                 ))}

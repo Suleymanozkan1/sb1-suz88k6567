@@ -74,7 +74,7 @@ const ekstra = (Constants.expoConfig?.extra ?? {}) as {
 
 /**
  * Değerler üç yerden gelebilir: ortam değişkeni, app.json'daki `extra` ve
- * varsayılan. Hepsi metne indirgenir — app.json'da `null` yazınca
+ * varsayılan. Hepsi metne indirgenir: app.json'da `null` yazınca
  * createClient "trim is not a function" ile patlıyordu.
  */
 function metin(...adaylar: unknown[]): string {

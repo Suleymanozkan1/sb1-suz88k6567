@@ -2,9 +2,9 @@
  * İYS (İleti Yönetim Sistemi) senkronizasyonu.
  *
  * İki yönlü çalışır:
- *   push — sistemde alınmış yeni onayları İYS'ye aktarır
+ *   push: sistemde alınmış yeni onayları İYS'ye aktarır
  *          (mevzuat: yeni onaylar 3 iş günü içinde aktarılmalıdır)
- *   pull — İYS'de verilen ret kayıtlarını sisteme çeker
+ *   pull, İYS'de verilen ret kayıtlarını sisteme çeker
  *          (mevzuat: ret en geç 3 iş günü içinde uygulanmalıdır)
  *
  * Gerekli ortam değişkenleri:

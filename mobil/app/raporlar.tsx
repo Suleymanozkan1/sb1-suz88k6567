@@ -12,7 +12,7 @@ interface Rapor { ciro: AyCiro[]; dagilim: TurDagilim[] }
  *
  * Grafik kütüphanesi yerine oranlı çubuklar kullanılıyor: telefonda eksenli
  * bir grafik ya okunamıyor ya da yatay kaydırma gerektiriyor. Çubuk, en
- * yüksek değere göre ölçekleniyor ve sayının kendisi yanında yazılı —
+ * yüksek değere göre ölçekleniyor ve sayının kendisi yanında yazılı,
  * uzunluk tek başına anlam taşımıyor.
  */
 export default function Raporlar() {

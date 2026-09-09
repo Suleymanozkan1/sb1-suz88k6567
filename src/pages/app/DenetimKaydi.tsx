@@ -45,8 +45,8 @@ function fieldLabel(key: string): string {
 }
 
 function formatValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
-  if (Array.isArray(value)) return value.length > 0 ? value.join(', ') : '—';
+  if (value === null || value === undefined || value === '') return '-';
+  if (Array.isArray(value)) return value.length > 0 ? value.join(', ') : '-';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
@@ -149,7 +149,7 @@ export default function DenetimKaydi() {
                     </td>
                     <td className="px-4 py-3">
                       {changedKeys.length === 0 ? (
-                        <span className="text-xs text-brand-muted">—</span>
+                        <span className="text-xs text-brand-muted">-</span>
                       ) : (
                         <>
                           <button

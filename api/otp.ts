@@ -3,7 +3,7 @@
  *
  * Kod sunucuda üretilir, SMS ile gönderilir ve yalnızca imzalı özeti
  * (HMAC) istemciye döner. Kodun kendisi hiçbir zaman yanıt gövdesine
- * konmaz — sağlayıcı tanımlı değilken bile.
+ * konmaz: sağlayıcı tanımlı değilken bile.
  *
  * Gerekli ortam değişkeni:
  *   OTP_SECRET  Rastgele, en az 32 karakterlik gizli anahtar

@@ -240,7 +240,7 @@ describe('kimlik yardımcıları', () => {
   });
 });
 
-describe('İYS kuralları — kuyruğa alma', () => {
+describe('İYS kuralları: kuyruğa alma', () => {
   const BIZ2 = 'biz_iys';
 
   it('işlem bildirimi onay olmadan da kuyruğa girer (muaf)', async () => {

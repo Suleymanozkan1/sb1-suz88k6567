@@ -128,8 +128,8 @@ export default function IzinYonetimi() {
             <label htmlFor="cs-status" className="field-label">Durum</label>
             <select id="cs-status" className="field-input" value={form.status}
               onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as SmsConsent['status'] }))}>
-              <option value="ONAY">ONAY — ticari ileti gönderilebilir</option>
-              <option value="RET">RET — ticari ileti gönderilemez</option>
+              <option value="ONAY">ONAY: ticari ileti gönderilebilir</option>
+              <option value="RET">RET: ticari ileti gönderilemez</option>
             </select>
           </div>
           <div>
@@ -200,7 +200,7 @@ export default function IzinYonetimi() {
                       <span className="text-[#92600e]">Bekliyor</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-brand-muted">{c.note || '—'}</td>
+                  <td className="px-4 py-3 text-brand-muted">{c.note || '-'}</td>
                   <td className="px-4 py-3 text-right">
                     <button type="button" onClick={() => setToDelete(c)}
                       aria-label={`${formatPhone(c.phone)} iznini sil`}

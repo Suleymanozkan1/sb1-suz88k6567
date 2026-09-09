@@ -1,4 +1,4 @@
-/** Kimlik ve kod üreticileri — depolamadan bağımsız saf fonksiyonlar */
+/** Kimlik ve kod üreticileri: depolamadan bağımsız saf fonksiyonlar */
 
 export function uid(prefix = 'id'): string {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;

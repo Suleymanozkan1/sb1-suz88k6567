@@ -31,7 +31,7 @@ const UST = 1.75;
 const pres = new pptxgen();
 pres.layout = 'LAYOUT_WIDE';
 pres.author = 'Sahra Takip';
-pres.title = 'Sahra Takip — Salon Yönetim Sistemi';
+pres.title = 'Sahra Takip: Salon Yönetim Sistemi';
 
 /* ── Düzen ───────────────────────────────────────────────────────── */
 
@@ -54,7 +54,7 @@ function baslik(s, ustluk, metin, { koyu = false } = {}) {
   });
 }
 
-/** PNG başlığından gerçek en/boy okunur (IHDR alanı, 16.–24. baytlar). */
+/** PNG başlığından gerçek en/boy okunur (IHDR alanı, 16-24. baytlar). */
 function pngBoyut(dosya) {
   const b = fs.readFileSync(dosya).subarray(16, 24);
   return { w: b.readUInt32BE(0), h: b.readUInt32BE(4) };
@@ -88,7 +88,7 @@ function gorsel(s, dosya, { x, y, w, h, altYazi, koyu = false }) {
   }
 }
 
-/** Başlıklı madde listesi — genellikle bir görselin yanında. */
+/** Başlıklı madde listesi: genellikle bir görselin yanında. */
 function maddeler(s, { x, y, w, gap, items, koyu = false }) {
   items.forEach(([bas, ack], i) => {
     const yy = y + i * gap;
@@ -253,7 +253,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     items: [
       ['Gün başına iki seans', 'Gündüz ve gece ayrı tutulur; yarım gün satışları da izlenir.'],
       ['Renk kodu', 'Düğün, nişan, kına, sünnet gibi türler ayrı renkte gösterilir.'],
-      ['Çakışma engeli', 'Dolu bir salon–seans birleşimine ikinci kayıt açılamaz. Kural veritabanında tanımlıdır.'],
+      ['Çakışma engeli', 'Dolu bir salon-seans birleşimine ikinci kayıt açılamaz. Kural veritabanında tanımlıdır.'],
     ],
   });
   s.addNotes('Renk eşlemesi Renk Ayarları ekranından değiştirilebilir.');
@@ -437,7 +437,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     items: [
       ['Para durumu en üstte', 'Toplam, tahsilat ve kalan yan yana; altındaki çubuk tahsilatın hangi oranda tamamlandığını gösterir.'],
       ['Hızlı tahsilat', 'Para alındığı an kaydedilir. Tutar kalan alacağı aşamaz; aşarsa kayıt veritabanı düzeyinde reddedilir.'],
-      ['Telefondan kayıt açma', 'Menü seçilince tutar önerilir. Dolu bir salon–gün–seans birleşimine ikinci kayıt açılamaz.'],
+      ['Telefondan kayıt açma', 'Menü seçilince tutar önerilir. Dolu bir salon-gün-seans birleşimine ikinci kayıt açılamaz.'],
       ['Belgeler ve masa düzeni', 'Sözleşme ve tahsilat makbuzu telefonda okunur ve paylaşılır; masa planı koltuk sayısıyla görünür.'],
     ],
   });
@@ -465,7 +465,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     items: [
       ['On beş ekran daha', 'Müşteriler, salonlar, menüler, tedarikçiler, faturalar, raporlar, hatırlatmalar, SMS, İYS izinleri, talepler, kullanıcılar, denetim kaydı, sistem durumu, ayarlar ve hesap.'],
       ['Aynı veri, aynı kural', 'Uygulama web ile aynı veritabanını kullanır. Hangi kaydı göreceğine sunucudaki satır bazlı güvenlik karar verir.'],
-      ['Yazma işlemi sınırlı', 'Tahsilat, gelir–gider, yeni rezervasyon ve mesaj metni telefondan yazılır. Yetki değişikliği ve fatura kesme web panelinde kalır.'],
+      ['Yazma işlemi sınırlı', 'Tahsilat, gelir-gider, yeni rezervasyon ve mesaj metni telefondan yazılır. Yetki değişikliği ve fatura kesme web panelinde kalır.'],
     ],
   });
   s.addNotes('Yetki değişikliği ve fatura kesme geri alınması zor işlemler; yanlış dokunuşla bir personelin kasaya erişmesi ya da düzeltilemeyen bir fatura gönderilmesi mümkün. Bilinçli olarak masaüstünde bırakıldı.');
@@ -494,8 +494,8 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     ],
   });
 
-  dipnot(s, 'Gönderilmeden önce metin doldurulmuş hâliyle gösterilir: yanlış yazılmış bir yer tutucu ancak müşteriye giden mesajda fark ediliyordu. Mesaj uzunluğu da yazılır — tek bir Türkçe harf sınırı 160 karakterden 70’e düşürüp ücreti ikiye katlayabiliyor.', 6.15);
-  dipnot(s, 'Ticari ileti sınıfındaki taslaklar (teşekkür, kampanya) İYS onayı olmayan numaraya gönderilmez; engellenen gönderim sessizce atılmaz, gerekçesiyle kayda geçer.', 6.85, { kucuk: true });
+  dipnot(s, 'Metinler tek SMS’e sığacak şekilde yazıldı. Sebebi görünmüyor ama pahalı: ş, ğ, ı, İ, ç harfleri operatörün temel alfabesinde yok; biri bile geçse mesaj 160 yerine 70 karakter sayılıyor. Bu harfler çoğunlukla müşterinin adından geldiği için gönderim anında sadeleştiriliyor.', 6.2);
+  dipnot(s, 'Gönderilecek metin ekranda aynen gösteriliyor, gizli bir dönüşüm değil. Ticari ileti sınıfındaki taslaklar (teşekkür, kampanya) İYS onayı olmayan numaraya gönderilmez.', 6.95, { kucuk: true });
   s.addNotes('Otomatik gönderim gece çalışan bir görevle yapılıyor. Varsayılan olarak iki kural açık: tarih hatırlatması 7 gün önce, ödeme hatırlatması 3 gün önce.');
 }
 
@@ -569,7 +569,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   baslik(s, 'KASA VE RAPORLAR', 'Gelir gider ve raporlama');
   gorsel(s, img('panel-raporlar.png'), { x: KENAR, y: UST, w: 6.05, h: 3.78 });
   gorsel(s, img('panel-kasa.png'), { x: 7.15, y: UST, w: 5.45, h: 3.4 });
-  dipnot(s, 'Solda aylık ciro ve organizasyon dağılımı, sağda gelir–gider kasası ve anlık bakiye.', 5.65, { kucuk: true });
+  dipnot(s, 'Solda aylık ciro ve organizasyon dağılımı, sağda gelir-gider kasası ve anlık bakiye.', 5.65, { kucuk: true });
   mikroNotlar(s, {
     y: 6.15,
     items: [
@@ -658,11 +658,11 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     satirlar: [
       ['Rezervasyon görüntüleme', isaret('✓'), isaret('✓')],
       ['Rezervasyon ekleme / düzenleme', isaret('✓'), isaret('✓')],
-      ['Rezervasyon silme', isaret('✓'), isaret('—')],
-      ['Gelir – gider (kasa)', isaret('✓'), isaret('—')],
-      ['Raporlar ve ciro', isaret('✓'), isaret('—')],
-      ['Müşteri talepleri', isaret('✓'), isaret('—')],
-      ['Kullanıcı ve yetki yönetimi', isaret('✓'), isaret('—')],
+      ['Rezervasyon silme', isaret('✓'), isaret('-')],
+      ['Gelir-gider (kasa)', isaret('✓'), isaret('-')],
+      ['Raporlar ve ciro', isaret('✓'), isaret('-')],
+      ['Müşteri talepleri', isaret('✓'), isaret('-')],
+      ['Kullanıcı ve yetki yönetimi', isaret('✓'), isaret('-')],
     ],
   });
   panel(s, {
@@ -744,7 +744,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     y: 2.15, h: 2.15, sutun: 3, koyu: true,
     items: [
       ['Kendi sunucumuz', 'Güvenlik yamaları, sertifika yenileme ve yedeğin gerçekten geri yüklenebildiğinin denenmesi bize kalırdı. Sunucuyu kiralamak ucuz, ona bakmak pahalıdır.'],
-      ['Supabase ne veriyor', 'PostgreSQL veritabanı, satır bazlı erişim kuralları, kullanıcı girişi, dosya deposu ve gecelik yedek — tek abonelikte, ayrı ayrı kurulmadan.'],
+      ['Supabase ne veriyor', 'PostgreSQL veritabanı, satır bazlı erişim kuralları, kullanıcı girişi, dosya deposu ve gecelik yedek; tek abonelikte, ayrı ayrı kurulmadan.'],
       ['Cloudflare ne veriyor', 'Site dünya çapında dağıtılır, HTTPS ve saldırı koruması hazır gelir, gecelik görevler ayrı bir sunucu olmadan çalışır.'],
     ],
   });
@@ -853,21 +853,21 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     ['Google Play (tek sefer)', '$25'],
   ], 'İlk ikisi veritabanı, gecelik yedek, barındırma ve zamanlanmış görevler içindir; Cloudflare’in ücretsiz planı ticari kullanıma açıktır. Son ikisi yalnızca mobil uygulama mağazalarda yayınlanacaksa gerekir.');
 
-  sutun(1, 'SMS — kullandıkça', [
+  sutun(1, 'SMS (kullandıkça)', [
     ['1.000 SMS', '370 ₺'],
     ['5.000 SMS', '1.089 ₺'],
     ['10.000 SMS', '1.699 ₺'],
     ['25.000 SMS', '4.179 ₺'],
   ], 'Netgsm paket fiyatları, KDV ve ÖİV dahil. Paketsiz tarife adet başına 0,42 ₺. Marka başlığı onayı gönderimden önce alınır.');
 
-  sutun(2, 'İYS — ticari ileti için', [
+  sutun(2, 'İYS (ticari ileti için)', [
     ['Temel Hizmetler', 'Ücretsiz'],
     ['5.000 izin', '4.601 ₺'],
     ['25.000 izin', '8.313 ₺'],
     ['75.000 izin', '14.921 ₺'],
   ], 'Yalnızca kampanya ve tanıtım gönderecekseniz gerekir. Onayları İYS panelinden elle yönetirseniz Temel Hizmetler ücretsizdir; otomatik aktarım için paket alınır. İzin adedinin süre sınırı yoktur, yüklendikçe düşer. KDV dahil.');
 
-  sutun(3, 'e-Fatura — isteğe bağlı', [
+  sutun(3, 'e-Fatura (isteğe bağlı)', [
     ['Paraşüt e-Portal', '150 ₺/ay'],
     ['Mali mühür (3 yıl)', '1.620 ₺'],
     ['100 e-kontör', '400 ₺'],
@@ -881,7 +881,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: KENAR, y: 6.85, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 11, color: MUTED,
   });
-  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100–150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider iki abonelikten ibarettir. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
+  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100-150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider iki abonelikten ibarettir. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
 }
 
 pres.writeFile({ fileName: 'Sahra-Takip-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));

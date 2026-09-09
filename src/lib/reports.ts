@@ -1,4 +1,4 @@
-/** Rapor hesaplamaları — program bazlı, ay bazlı, tarih aralığı, alacak bakiyesi */
+/** Rapor hesaplamaları: program bazlı, ay bazlı, tarih aralığı, alacak bakiyesi */
 import { MONTH_NAMES } from '../data/constants';
 import type { OrganizationType, Reservation } from '../types';
 
@@ -94,7 +94,7 @@ export interface BalanceRow {
   remaining: number;
 }
 
-/** Alacak bakiyesi raporu — yalnızca borcu kalan kayıtlar */
+/** Alacak bakiyesi raporu: yalnızca borcu kalan kayıtlar */
 export function balanceReport(reservations: Reservation[], balance: BalanceLookup): BalanceRow[] {
   return reservations
     .filter((r) => r.status !== 'İptal')

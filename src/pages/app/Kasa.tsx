@@ -222,7 +222,7 @@ export default function Kasa() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-brand">{e.category}</td>
-                  <td className="px-4 py-3 text-brand-muted">{e.description || '—'}</td>
+                  <td className="px-4 py-3 text-brand-muted">{e.description || '-'}</td>
                   <td className={`px-4 py-3 text-right font-medium ${e.kind === 'Gelir' ? 'text-[#15803d]' : 'text-[#b91c1c]'}`}>
                     {e.kind === 'Gelir' ? '+' : '−'} {formatMoney(e.amount, currency)}
                   </td>

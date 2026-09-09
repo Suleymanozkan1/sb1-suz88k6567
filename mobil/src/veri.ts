@@ -10,7 +10,7 @@ import { bugunIso, yerelIso } from './bicim';
  *
  * Dosya alanlara göre bölünmüştür; her bölümün başında önce tipler, sonra
  * tanıtım verisi, sonra sorgular gelir. Web panelindeki her ekranın buradaki
- * bir karşılığı vardır — mobil uygulama panelin bir özeti değil, tamamıdır.
+ * bir karşılığı vardır: mobil uygulama panelin bir özeti değil, tamamıdır.
  */
 
 /* ═══ Ortak ═══════════════════════════════════════════════════════ */
@@ -154,7 +154,7 @@ function esle(r: SatirDb, tahsilat: number): Rezervasyon {
     id: r.id, kod: r.code, musteri: r.customer_name, telefon: r.customer_phone ?? '',
     tarih: r.date, seans: r.slot, tur: r.organization_type,
     renk: TUR_RENK[r.organization_type] ?? '#47b2e4',
-    salon: r.halls?.name ?? '—', davetli: r.guest_count ?? 0,
+    salon: r.halls?.name ?? '-', davetli: r.guest_count ?? 0,
     toplam: r.total_amount ?? 0, tahsilat, durum: r.status,
   };
 }
@@ -187,7 +187,7 @@ export function yaklasanlar(limit = 40): Promise<Rezervasyon[]> {
       .order('date', { ascending: true }).limit(limit)));
 }
 
-/** Geçmiş dahil bütün kayıtlar — Kayıtlar sekmesi için. */
+/** Geçmiş dahil bütün kayıtlar, Kayıtlar sekmesi için. */
 export function tumKayitlar(limit = 200): Promise<Rezervasyon[]> {
   return sorgu([...ORNEK].sort((a, b) => b.tarih.localeCompare(a.tarih)), () =>
     rezervasyonlariGetir((q) =>
@@ -485,7 +485,7 @@ const ORNEK_FATURA: Fatura[] = [
     matrah: 13_750_000, kdv: 2_750_000, toplam: 16_500_000, durum: 'Gönderildi', tur: 'e-Arşiv' },
   { id: 'f2', no: 'SHR2026000000011', musteri: 'Deniz & Kaan Şen', tarih: gunEkle(-3),
     matrah: 7_916_667, kdv: 1_583_333, toplam: 9_500_000, durum: 'Gönderildi', tur: 'e-Arşiv' },
-  { id: 'f3', no: '—', musteri: 'Melis Ailesi', tarih: gunEkle(-1),
+  { id: 'f3', no: '-', musteri: 'Melis Ailesi', tarih: gunEkle(-1),
     matrah: 2_500_000, kdv: 500_000, toplam: 3_000_000, durum: 'Taslak', tur: 'e-Arşiv' },
 ];
 
@@ -499,7 +499,7 @@ export function faturalar(limit = 50): Promise<Fatura[]> {
         id: string; invoice_no: string | null; buyer_name: string; issued_at: string;
         base_amount: number; vat_amount: number; total_amount: number; status: string; kind: string;
       };
-      return { id: f.id, no: f.invoice_no ?? '—', musteri: f.buyer_name, tarih: f.issued_at,
+      return { id: f.id, no: f.invoice_no ?? '-', musteri: f.buyer_name, tarih: f.issued_at,
         matrah: f.base_amount, kdv: f.vat_amount, toplam: f.total_amount, durum: f.status, tur: f.kind };
     });
   });
@@ -601,21 +601,29 @@ const ORNEK_IZIN: Izin[] = [
 ];
 
 const ORNEK_SABLON: Sablon[] = [
-  { id: 'tp1', anahtar: 'rezervasyon_onay', baslik: 'Rezervasyon onayı', sinif: 'islem', otomatik: false, gunOnce: 0, saat: 10,
-    metin: 'Sayın {musteri}, {tarih} {seans} seansı için {salon} rezervasyonunuz alınmıştır. Sorgu kodunuz: {kod}. {isletme}' },
-  { id: 'tp2', anahtar: 'tarih_hatirlatma', baslik: 'Tarih hatırlatması', sinif: 'islem', otomatik: true, gunOnce: 7, saat: 10,
-    metin: 'Sayın {musteri}, {tarih} tarihli organizasyonunuz yaklaşıyor. {salon} - {seans} seansı. {isletme}' },
-  { id: 'tp3', anahtar: 'odeme_hatirlatma', baslik: 'Ödeme hatırlatması', sinif: 'islem', otomatik: true, gunOnce: 3, saat: 10,
-    metin: 'Sayın {musteri}, {tarih} tarihli organizasyonunuz için kalan tutar {kalan} TL\'dir. Bilginize. {isletme}' },
-  { id: 'tp4', anahtar: 'tahsilat_bildirimi', baslik: 'Tahsilat bildirimi', sinif: 'islem', otomatik: false, gunOnce: 0, saat: 10,
-    metin: 'Sayın {musteri}, {odenen} TL tutarındaki ödemeniz alınmıştır. Kalan tutar {kalan} TL. {isletme}' },
-  { id: 'tp5', anahtar: 'etkinlik_gunu', baslik: 'Etkinlik günü', sinif: 'islem', otomatik: false, gunOnce: 0, saat: 9,
-    metin: 'Sayın {musteri}, bugün {seans} seansında {salon} sizi bekliyor. İyi eğlenceler dileriz. {isletme}' },
-  { id: 'tp6', anahtar: 'tesekkur', baslik: 'Teşekkür', sinif: 'ticari', otomatik: false, gunOnce: -1, saat: 12,
-    metin: 'Sayın {musteri}, bizi tercih ettiğiniz için teşekkür ederiz. Görüşlerinizi bizimle paylaşabilirsiniz. {isletme}' },
-  { id: 'tp7', anahtar: 'kampanya', baslik: 'Kampanya duyurusu', sinif: 'ticari', otomatik: false, gunOnce: 0, saat: 12,
-    metin: 'Sayın {musteri}, sezon fiyatlarımız hakkında bilgi almak için bizi arayabilirsiniz. {isletme}' },
+  { id: 'tp1', anahtar: 'rezervasyon_onay', baslik: 'Rezervasyon onayı', sinif: 'islem',
+    otomatik: false, gunOnce: 0, saat: 10,
+    metin: 'Sayin {musteri}, {tarih} {seans} rezervasyonunuz alinmistir. Sorgu kodu: {kod}' },
+  { id: 'tp2', anahtar: 'tarih_hatirlatma', baslik: 'Tarih hatırlatması', sinif: 'islem',
+    otomatik: true, gunOnce: 7, saat: 10,
+    metin: 'Sayin {musteri}, {tarih} tarihli organizasyonunuz yaklasiyor. {salon}' },
+  { id: 'tp3', anahtar: 'odeme_hatirlatma', baslik: 'Ödeme hatırlatması', sinif: 'islem',
+    otomatik: true, gunOnce: 3, saat: 10,
+    metin: 'Sayin {musteri}, {tarih} organizasyonunuz icin kalan tutar {kalan} TL' },
+  { id: 'tp4', anahtar: 'tahsilat_bildirimi', baslik: 'Tahsilat bildirimi', sinif: 'islem',
+    otomatik: false, gunOnce: 0, saat: 10,
+    metin: 'Sayin {musteri}, {odenen} TL odemeniz alinmistir. Kalan {kalan} TL' },
+  { id: 'tp5', anahtar: 'etkinlik_gunu', baslik: 'Etkinlik günü', sinif: 'islem',
+    otomatik: false, gunOnce: 0, saat: 9,
+    metin: 'Sayin {musteri}, bugun {seans} seansinda {salon} sizi bekliyor' },
+  { id: 'tp6', anahtar: 'tesekkur', baslik: 'Teşekkür', sinif: 'ticari',
+    otomatik: false, gunOnce: -1, saat: 12,
+    metin: 'Sayin {musteri}, bizi tercih ettiginiz icin tesekkur ederiz' },
+  { id: 'tp7', anahtar: 'kampanya', baslik: 'Kampanya duyurusu', sinif: 'ticari',
+    otomatik: false, gunOnce: 0, saat: 10,
+    metin: 'Sayin {musteri}, sezon fiyatlarimiz icin bizi arayabilirsiniz' },
 ];
+
 
 export function smsKayitlari(limit = 50): Promise<SmsKaydi[]> {
   return sorgu(ORNEK_SMS, async () => {
@@ -753,7 +761,7 @@ export function denetimKaydi(limit = 50): Promise<DenetimSatiri[]> {
         id: string; created_at: string; actor_name: string | null;
         action: string; table_name: string; record_label: string | null;
       };
-      return { id: a.id, tarih: a.created_at.slice(0, 10), kullanici: a.actor_name ?? '—',
+      return { id: a.id, tarih: a.created_at.slice(0, 10), kullanici: a.actor_name ?? '-',
         islem: a.action, tablo: a.table_name, kayit: a.record_label ?? '' };
     });
   });
@@ -770,12 +778,12 @@ export function sistemDurumu(): Promise<SistemDurumu> {
     const k = (kuyruk ?? []) as unknown as { status: string }[];
     const i = (izin ?? []) as unknown as { iys_synced_at: string | null }[];
     return {
-      sonYedek: y?.created_at?.slice(0, 10) ?? '—',
-      yedekDurum: y?.status ?? '—',
+      sonYedek: y?.created_at?.slice(0, 10) ?? '-',
+      yedekDurum: y?.status ?? '-',
       kuyrukBekleyen: k.filter((x) => x.status === 'bekliyor').length,
       kuyrukBasarisiz: k.filter((x) => x.status === 'basarisiz').length,
       iysBekleyen: i.filter((x) => x.iys_synced_at === null).length,
-      sonIysAktarim: '—',
+      sonIysAktarim: '-',
     };
   });
 }

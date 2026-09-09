@@ -47,12 +47,12 @@ Demo hesapları yalnızca demo modunda vardır.
 
 | Yol | Açıklama |
 |-----|----------|
-| `/` | Anasayfa — hero, "Ne İşe Yarar?", sektör dağılımı, hizmetler, demo talebi, üye yorumları |
+| `/` | Anasayfa, hero, "Ne İşe Yarar?", sektör dağılımı, hizmetler, demo talebi, üye yorumları |
 | `/nedir` | Programın tanıtımı, yetenek listesi, ekran özetleri |
 | `/haberler`, `/haberler/:slug` | Haberler listesi ve detay sayfaları |
 | `/ekranlar` | Uygulama ekranlarının önizlemeleri |
-| `/uyeler` | Referanslarımız — kategori/il filtreleri, arama, sayfalama |
-| `/salon/:slug` | İşletme detay sayfası — bilgiler, fiyat teklifi/rezervasyon formu, aynı ildeki diğer işletmeler |
+| `/uyeler` | Referanslarımız, kategori/il filtreleri, arama, sayfalama |
+| `/salon/:slug` | İşletme detay sayfası, bilgiler, fiyat teklifi/rezervasyon formu, aynı ildeki diğer işletmeler |
 | `/dugun-salonlari`, `/kina-salonlari`, `/dugun-otelleri`, `/kir-dugunu-mekanlari` | Kategoriye göre daraltılmış salon listeleri |
 | `/dusunceler` | Üye yorumları (aranabilir) |
 | `/sss` | Sık sorulan sorular (akordeon) |
@@ -66,27 +66,27 @@ Demo hesapları yalnızca demo modunda vardır.
 
 | Yol | Açıklama |
 |-----|----------|
-| `/panel` | Özet — istatistik kartları, yaklaşan organizasyonlar, program ve ay dağılımı, tahsilat oranı |
-| `/panel/takvim` | Rezervasyon takvimi — gündüz/gece seansları, organizasyon türüne göre renklendirme |
-| `/panel/rezervasyonlar` | Liste — isim/telefon/kod araması, tür, durum, tarih aralığı, sıralama, CSV dışa aktarım |
+| `/panel` | Özet, istatistik kartları, yaklaşan organizasyonlar, program ve ay dağılımı, tahsilat oranı |
+| `/panel/takvim` | Rezervasyon takvimi, gündüz/gece seansları, organizasyon türüne göre renklendirme |
+| `/panel/rezervasyonlar` | Liste, isim/telefon/kod araması, tür, durum, tarih aralığı, sıralama, CSV dışa aktarım |
 | `/panel/rezervasyonlar/yeni`, `/:id`, `/:id/duzenle` | Detaylı rezervasyon kaydı, tahsilat yönetimi |
 | `/panel/rezervasyonlar/:id/sozlesme` | Yazdırılabilir salon kiralama sözleşmesi |
 | `/panel/musteriler` | Rezervasyonlardan türetilen müşteri listesi |
 | `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi |
 | `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
 | `/panel/raporlar` | Program bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
-| `/panel/salonlar` | Salon tanımları — bir işletmede birden çok salon |
-| `/panel/menuler` | Menü ve paket tanımları — kişi başı veya sabit fiyat |
-| `/panel/tedarikciler` | Tedarikçi defteri — orkestra, fotoğrafçı, çiçekçi |
+| `/panel/salonlar` | Salon tanımları, bir işletmede birden çok salon |
+| `/panel/menuler` | Menü ve paket tanımları, kişi başı veya sabit fiyat |
+| `/panel/tedarikciler` | Tedarikçi defteri, orkestra, fotoğrafçı, çiçekçi |
 | `/panel/rezervasyonlar/:id/makbuz` | Yazdırılabilir tahsilat makbuzu |
 | `/panel/renk-ayarlari` | Organizasyon türü başına takvim rengi |
-| `/panel/isletmeler` | Firmalarım / Adminler — çok işletmeli kullanım |
+| `/panel/isletmeler` | Firmalarım / Adminler, çok işletmeli kullanım |
 | `/panel/kullanicilar` | Alt kullanıcılar ve yetkileri *(yalnızca yönetici)* |
-| `/panel/talepler` | Talep kutusu — siteden gelen iletişim, demo ve salon teklifi formları *(yalnızca yönetici)* |
+| `/panel/talepler` | Talep kutusu, siteden gelen iletişim, demo ve salon teklifi formları *(yalnızca yönetici)* |
 | `/panel/sms` | Gönderilen SMS kayıtları |
-| `/panel/izinler` | İYS izin yönetimi — ticari ileti onay/ret kayıtları |
-| `/panel/denetim` | Denetim kaydı — kim, neyi, ne zaman değiştirdi |
-| `/panel/sistem` | Sistem durumu — yedek, kuyruk ve İYS sağlığı; elle yedek indirme |
+| `/panel/izinler` | İYS izin yönetimi, ticari ileti onay/ret kayıtları |
+| `/panel/denetim` | Denetim kaydı, kim, neyi, ne zaman değiştirdi |
+| `/panel/sistem` | Sistem durumu, yedek, kuyruk ve İYS sağlığı; elle yedek indirme |
 | `/panel/ayarlar` | Profil, şifre değiştirme, veri sıfırlama |
 
 ## Mimari
@@ -94,27 +94,27 @@ Demo hesapları yalnızca demo modunda vardır.
 ```
 api/            Sunucu tarafı uç noktalar
 worker/         Cloudflare Worker giriş noktası (yönlendirici + zamanlanmış görevler)
-  sms.ts        SMS gönderimi — sağlayıcı anahtarı yalnızca burada
+  sms.ts        SMS gönderimi, sağlayıcı anahtarı yalnızca burada
   otp.ts        Giriş SMS doğrulaması (HMAC imzalı, 5 dk geçerli)
-  login.ts      Korumalı giriş — hesap kilidi ve hız sınırı
+  login.ts      Korumalı giriş, hesap kilidi ve hız sınırı
   sms-queue.ts  Kuyruk işleyici (cron, üstel geri çekilme)
   iys.ts        İYS onay aktarımı ve ret çekimi (cron)
-  backup.ts     Günlük yedek — Storage'a JSON anlık görüntü (cron)
-  health.ts     Sağlık kontrolü — uptime izleme için
+  backup.ts     Günlük yedek, Storage'a JSON anlık görüntü (cron)
+  health.ts     Sağlık kontrolü, uptime izleme için
   invoice.ts    e-Arşiv / e-Fatura entegratör gönderimi (cron)
 supabase/
   migrations/   Veritabanı şeması ve RLS politikaları
   tests/        RLS izolasyon testleri (yerel Postgres ile çalıştırılır)
 src/
   components/   Paylaşılan arayüz bileşenleri
-  context/      AuthContext — oturum ve yetkiler
+  context/      AuthContext, oturum ve yetkiler
   data/         Site içeriği, sabitler, yasal metinler, referans listesi
   layouts/      PublicLayout (site) ve AppLayout (panel)
   lib/
     repo/       Veri erişim sözleşmesi + Supabase ve yerel uygulamaları
     queries.ts  TanStack Query kancaları
     money.ts    Tahsilat / bakiye hesapları (saf)
-    invoice.ts  Fatura tutar hesapları — kuruş tabanlı tamsayı aritmetiği (saf)
+    invoice.ts  Fatura tutar hesapları, kuruş tabanlı tamsayı aritmetiği (saf)
     reports.ts  Rapor hesapları (saf)
     sms.ts      SMS istemcisi
   pages/        Herkese açık sayfalar
@@ -136,7 +136,7 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 
 ## Veritabanı kurulumu
 
-1. [supabase.com](https://supabase.com) üzerinde proje açın (**bölge: Frankfurt** — KVKK açısından AB tercih edilir).
+1. [supabase.com](https://supabase.com) üzerinde proje açın (**bölge: Frankfurt**, KVKK açısından AB tercih edilir).
 2. SQL Editor'da migration dosyalarını **sırayla** çalıştırın:
    `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` →
    `0004_backup_health.sql` → `0005_invoices.sql` → `0006_talepler.sql` →
@@ -320,7 +320,7 @@ dahil). Paket listesi:
 
 ### Sağlayıcı
 
-Tüm gönderimler `api/sms.ts` üzerinden yapılır — sağlayıcı şifresi tarayıcıya
+Tüm gönderimler `api/sms.ts` üzerinden yapılır, sağlayıcı şifresi tarayıcıya
 hiçbir zaman inmez. `NETGSM_*` tanımlı değilse mesaj kuyrukta bekler ve arayüzde
 **gönderilemediği açıkça belirtilir**; "gönderildi" denmez.
 
@@ -361,10 +361,10 @@ noktaya bağlanır ve `CRON_SECRET` ile yetkilendirilir.
 
 | Görev | Sıklık |
 |-------|--------|
-| `/api/sms-queue` — kuyruk işleme | 5 dakikada bir |
-| `/api/invoice` — bekleyen faturaları gönder | 15 dakikada bir |
-| `/api/backup` — günlük yedek | Her gece 02:30 |
-| `/api/iys` — İYS senkronizasyonu | Her gece 03:00 |
+| `/api/sms-queue`, kuyruk işleme | 5 dakikada bir |
+| `/api/invoice`, bekleyen faturaları gönder | 15 dakikada bir |
+| `/api/backup`, günlük yedek | Her gece 02:30 |
+| `/api/iys`, İYS senkronizasyonu | Her gece 03:00 |
 
 Listeye cron eklenip eşlemeye eklenmezse görev sessizce hiç çalışmaz;
 `worker/index.test.ts` bu tutarsızlığı yakalar.
@@ -404,12 +404,12 @@ Yeni bir işletme oluşturulduğunda veritabanı ona kendiliğinden bir "Ana Sal
 açar; salonsuz bir işletmede rezervasyon oluşturulamayacağı için bu şarttır.
 Rezervasyonda salon belirtilmezse ve işletmenin tek salonu varsa o seçilir;
 birden çok salon varsa hangisine yazılacağı belirsiz olduğu için kayıt
-reddedilir — tahmin edilmez.
+reddedilir, tahmin edilmez.
 
 **Menüler ve paketler.** Menü kişi başı ya da sabit tutarlı tanımlanır. Fiyat
 kuruş cinsinden tamsayı olarak saklanır. Rezervasyona menü seçildiğinde toplam
 tutar önerilir (kişi başı menüde `fiyat × davetli`), kullanıcı elle
-değiştirebilir — öneri dayatma değildir.
+değiştirebilir, öneri dayatma değildir.
 
 **Masa oturma düzeni.** Rezervasyon başına masa planı tutulur. "Davetliye göre
 plan öner" düğmesi, masa başına koltuk sayısından planı üretir ve toplam koltuk
@@ -449,7 +449,7 @@ Tüm aritmetik **kuruş cinsinden tamsayı** ile yapılır. Ondalıklı sayılar
 vergi belgesinde bu kabul edilemez.
 
 Yuvarlama kuralı: her satır kendi içinde yuvarlanır, sonra toplanır. Toplam
-üzerinden yuvarlama yapılmaz — aksi hâlde satır toplamları ile fatura toplamı
+üzerinden yuvarlama yapılmaz, aksi hâlde satır toplamları ile fatura toplamı
 tutmaz. KDV dökümü oran bazında gruplanır ve dökümün toplamı fatura KDV'sine
 birebir eşittir.
 
@@ -457,9 +457,9 @@ birebir eşittir.
 
 Fatura bir vergi belgesidir; veritabanı bunu zorlar:
 
-- **Gönderilmiş fatura değiştirilemez** — tutar, alıcı ve tarih kilitlidir; yalnızca iptal edilebilir
+- **Gönderilmiş fatura değiştirilemez**, tutar, alıcı ve tarih kilitlidir; yalnızca iptal edilebilir
 - **Gönderilmiş faturanın satırları değiştirilemez**
-- **Fatura silinemez** — iptal kaydı olarak saklanır
+- **Fatura silinemez**, iptal kaydı olarak saklanır
 - Fatura numarası boşluksuz ve sıralıdır; seri sayacı elle değiştirilemez
 - Numara biçimi: 3 karakter ön ek + 4 haneli yıl + 9 haneli sıra (`DGT2026000000001`)
 - Toplam tutarlar kendi içinde tutarlı olmak zorundadır (`matrah + KDV = toplam`)
@@ -487,7 +487,7 @@ sözleşmesini karşılayan yeni bir modül yazmak yeterlidir.
 alınana kadar iki saniye aralıkla yoklanır (azami 30 saniye).
 
 Kimlik doğrulama OAuth2 *password* akışıdır. Jeton iki saat geçerlidir, modül
-düzeyinde önbelleğe alınır ve süresi dolmadan `refresh_token` ile tazelenir —
+düzeyinde önbelleğe alınır ve süresi dolmadan `refresh_token` ile tazelenir,
 her fatura için yeniden oturum açılmaz.
 
 **Fatura numarasını biz veririz.** Veritabanındaki 16 haneli numara
@@ -527,8 +527,8 @@ Aynı kontroller panelde **Sistem Durumu** ekranında Türkçe açıklamalarla v
 "ne yapmalı" ipuçlarıyla gösterilir.
 
 **Ayrıntılı prosedürler:**
-- [`docs/YEDEKLEME-VE-GERI-YUKLEME.md`](docs/YEDEKLEME-VE-GERI-YUKLEME.md) — kurulum, geri yükleme adımları, tatbikat takvimi
-- [`docs/IZLEME.md`](docs/IZLEME.md) — uptime izleme kurulumu, alarm yanıt rehberi
+- [`docs/YEDEKLEME-VE-GERI-YUKLEME.md`](docs/YEDEKLEME-VE-GERI-YUKLEME.md), kurulum, geri yükleme adımları, tatbikat takvimi
+- [`docs/IZLEME.md`](docs/IZLEME.md), uptime izleme kurulumu, alarm yanıt rehberi
 
 > Yedeğinizi yılda en az iki kez gerçekten geri yükleyerek test edin.
 > Test edilmemiş yedek, yedek değildir.
