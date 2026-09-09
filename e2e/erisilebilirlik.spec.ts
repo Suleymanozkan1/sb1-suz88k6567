@@ -44,7 +44,7 @@ async function denetle(page: Page, yol: string) {
   expect(ozet, `${yol} erişilebilirlik ihlali`).toEqual([]);
 }
 
-test.describe('Erişilebilirlik — herkese açık sayfalar', () => {
+test.describe('Erişilebilirlik, herkese açık sayfalar', () => {
   for (const yol of HERKESE_ACIK) {
     test(`${yol} WCAG 2.2 AA ihlali içermiyor`, async ({ page }) => {
       await disKaynaklariEngelle(page);
@@ -53,7 +53,7 @@ test.describe('Erişilebilirlik — herkese açık sayfalar', () => {
   }
 });
 
-test.describe('Erişilebilirlik — üye paneli', () => {
+test.describe('Erişilebilirlik, üye paneli', () => {
   test.beforeEach(async ({ page }) => {
     await disKaynaklariEngelle(page);
     await page.goto('/uye-girisi');

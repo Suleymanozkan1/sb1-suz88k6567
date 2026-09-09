@@ -3,7 +3,7 @@
 --
 -- Rakip ürünlerde standart olup bizde bulunmayan üç eksik:
 --   * Vade tarihli taksit planı (payment schedule)
---   * Etkinlik günü iş emri / gün planı (BEO — banquet event order)
+--   * Etkinlik günü iş emri / gün planı (BEO, banquet event order)
 --   * Tedarikçi defteri ve rezervasyona atama
 --
 -- Para birimi, ilişkili olduğu payments tablosuyla aynı tipte tutulur

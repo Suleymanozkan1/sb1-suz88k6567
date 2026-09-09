@@ -11,9 +11,9 @@ export const renk = {
   marka: '#37517e',
   markaKoyu: '#2f4770',
   markaSolgun: '#4b6fab', // 5,05
-  vurgu: '#47b2e4', // 2,40 — yalnızca dekoratif
-  vurguKoyu: '#1876a1', // 5,07 — metin ve buton
-  vurguDaha: '#146485', // 6,58 — basılı hâl
+  vurgu: '#47b2e4', // 2,40, yalnızca dekoratif
+  vurguKoyu: '#1876a1', // 5,07, metin ve buton
+  vurguDaha: '#146485', // 6,58, basılı hâl
   vurguAcik: '#87cded', // koyu zeminde metin, 4,54
   zemin: '#f3f5fa',
   kart: '#ffffff',

@@ -85,7 +85,7 @@ export default function KodDogrulama() {
               </p>
               <dl className="card divide-y divide-line">
                 <Row label="Rezervasyon Kodu" value={result.code} />
-                <Row label="İşletme" value={result.businessName || '—'} />
+                <Row label="İşletme" value={result.businessName || '-'} />
                 <Row label="Müşteri" value={result.customerName} />
                 <Row label="Telefon" value={result.customerPhone} />
                 <Row label="Tarih" value={`${formatDateLong(result.date)} · ${result.slot}`} />

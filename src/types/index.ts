@@ -14,7 +14,7 @@ export type OrganizationType =
   | 'Toplantı'
   | 'Diğer';
 
-/** Gündüz / Gece seans ayrımı — orijinal sistemdeki "gündüz ve gece" takibi */
+/** Gündüz / Gece seans ayrımı: orijinal sistemdeki "gündüz ve gece" takibi */
 export type SessionSlot = 'Gündüz' | 'Gece';
 
 export type ReservationStatus = 'Ön Rezervasyon' | 'Kesin Rezervasyon' | 'Tamamlandı' | 'İptal';
@@ -211,7 +211,7 @@ export interface ColorSetting {
 }
 
 /**
- * Mesaj sınıflandırması — İYS yükümlülüğünü belirler.
+ * Mesaj sınıflandırması, İYS yükümlülüğünü belirler.
  *   islem : rezervasyon onayı, hatırlatma, doğrulama kodu, ödeme bildirimi
  *           -> İYS onayı GEREKMEZ (muaf)
  *   ticari: kampanya, indirim, tanıtım

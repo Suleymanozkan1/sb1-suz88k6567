@@ -5,7 +5,7 @@ interface Props {
   value: number;
 }
 
-/** Sektör dağılımı çubuğu — görünür olduğunda animasyonla dolar */
+/** Sektör dağılımı çubuğu: görünür olduğunda animasyonla dolar */
 export default function ProgressBar({ label, value }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);

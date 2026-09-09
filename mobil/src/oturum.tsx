@@ -17,7 +17,7 @@ import { API_KOK, supabase, yapilandirildi } from './supabase';
  * yeniden yüklendiğinde giriş ekranına düşüyordu. Gerçek oturum yeniden
  * yüklemeye dayandığı için tanıtım oturumu da dayanmalı; bir işaret
  * AsyncStorage'a yazılıyor. Bu bir kimlik belirteci değil, yalnızca
- * "tanıtımda giriş yapılmıştı" bilgisi — güvenlik değeri taşımaz.
+ * "tanıtımda giriş yapılmıştı" bilgisi: güvenlik değeri taşımaz.
  */
 const TANITIM_ANAHTARI = 'sahratakip.tanitim.oturum';
 

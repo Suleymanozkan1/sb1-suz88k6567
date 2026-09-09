@@ -38,7 +38,7 @@ döküm yalnızca `Authorization: Bearer <CRON_SECRET>` başlığıyla eklenir.
 5. **Bildirim:** e-posta + cep telefonu
 
 Ayrıca ana sayfa için ikinci bir izleyici ekleyin:
-`https://<alan-adiniz>/` — sitenin kendisi ayakta mı?
+`https://<alan-adiniz>/`, sitenin kendisi ayakta mı?
 
 ## 3. Panelden izleme
 

@@ -51,7 +51,7 @@ export function yerelIso(t: Date): string {
 }
 
 /**
- * "26.09.2026" — hatırlatma metinlerindeki {tarih} yer tutucusu.
+ * "26.09.2026": hatırlatma metinlerindeki {tarih} yer tutucusu.
  *
  * Sunucudaki gece görevi de tarihi bu biçimde yazıyor. İki taraf farklı
  * biçim kullanınca kullanıcı önizlemede "9 Eylül 2026" görüyor, müşteriye

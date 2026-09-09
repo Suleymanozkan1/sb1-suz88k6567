@@ -8,7 +8,7 @@
  * dizinine "mobil-" önekiyle kopyalanır. Kopyalama elle yapılırken bir
  * yakalama unutuluyor ve sunum eski görüntüyle üretiliyordu.
  *
- * Ölçü iPhone 14 Pro'nun mantıksal genişliği (393×852), ölçek 3× —
+ * Ölçü iPhone 14 Pro'nun mantıksal genişliği (393×852), ölçek 3×,
  * sunumda büyütüldüğünde bulanıklaşmasın diye.
  */
 import { chromium } from 'playwright';

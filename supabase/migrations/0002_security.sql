@@ -1,8 +1,8 @@
 -- =====================================================================
 -- Güvenlik sertleştirme
---   1) Hız sınırı  — uç noktalara aşırı istek engeli
---   2) Giriş kilidi — art arda başarısız denemede geçici kilit
---   3) Denetim kaydı — kim, neyi, ne zaman değiştirdi
+--   1) Hız sınırı, uç noktalara aşırı istek engeli
+--   2) Giriş kilidi, art arda başarısız denemede geçici kilit
+--   3) Denetim kaydı, kim, neyi, ne zaman değiştirdi
 --
 -- Bu tabloların tamamına yalnızca sunucu tarafı (service_role) yazar;
 -- denetim kaydını ilgili yönetici okuyabilir.

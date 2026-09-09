@@ -58,31 +58,31 @@ const VARSAYILAN_SABLON: Record<
 > = {
   rezervasyon_onay: {
     title: 'Rezervasyon onayı', kind: 'Rezervasyon', category: 'islem',
-    body: 'Sayın {musteri}, {tarih} {seans} seansı için {salon} rezervasyonunuz alınmıştır. Sorgu kodunuz: {kod}. {isletme}',
+    body: 'Sayin {musteri}, {tarih} {seans} rezervasyonunuz alinmistir. Sorgu kodu: {kod}',
   },
   tarih_hatirlatma: {
     title: 'Tarih hatırlatması', kind: 'Hatırlatma', category: 'islem',
-    body: 'Sayın {musteri}, {tarih} tarihli organizasyonunuz yaklaşıyor. {salon} - {seans} seansı. {isletme}',
+    body: 'Sayin {musteri}, {tarih} tarihli organizasyonunuz yaklasiyor. {salon}',
   },
   odeme_hatirlatma: {
     title: 'Ödeme hatırlatması', kind: 'Hatırlatma', category: 'islem',
-    body: 'Sayın {musteri}, {tarih} tarihli organizasyonunuz için kalan tutar {kalan} TL\'dir. Bilginize. {isletme}',
+    body: 'Sayin {musteri}, {tarih} organizasyonunuz icin kalan tutar {kalan} TL',
   },
   tahsilat_bildirimi: {
     title: 'Tahsilat bildirimi', kind: 'Bilgilendirme', category: 'islem',
-    body: 'Sayın {musteri}, {odenen} TL tutarındaki ödemeniz alınmıştır. Kalan tutar {kalan} TL. {isletme}',
+    body: 'Sayin {musteri}, {odenen} TL odemeniz alinmistir. Kalan {kalan} TL',
   },
   etkinlik_gunu: {
     title: 'Etkinlik günü', kind: 'Hatırlatma', category: 'islem',
-    body: 'Sayın {musteri}, bugün {seans} seansında {salon} sizi bekliyor. İyi eğlenceler dileriz. {isletme}',
+    body: 'Sayin {musteri}, bugun {seans} seansinda {salon} sizi bekliyor',
   },
   tesekkur: {
     title: 'Teşekkür', kind: 'Bilgilendirme', category: 'ticari',
-    body: 'Sayın {musteri}, bizi tercih ettiğiniz için teşekkür ederiz. Görüşlerinizi bizimle paylaşabilirsiniz. {isletme}',
+    body: 'Sayin {musteri}, bizi tercih ettiginiz icin tesekkur ederiz',
   },
   kampanya: {
     title: 'Kampanya duyurusu', kind: 'Bilgilendirme', category: 'ticari',
-    body: 'Sayın {musteri}, sezon fiyatlarımız hakkında bilgi almak için bizi arayabilirsiniz. {isletme}',
+    body: 'Sayin {musteri}, sezon fiyatlarimiz icin bizi arayabilirsiniz',
   },
 };
 

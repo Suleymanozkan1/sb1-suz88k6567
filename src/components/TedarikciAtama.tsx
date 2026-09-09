@@ -104,7 +104,7 @@ export default function TedarikciAtama({ reservationId, currency, canEdit }: Pro
                       onChange={(e) => update(i, { vendorId: e.target.value })}>
                       <option value="">Seçiniz</option>
                       {available.map((v) => (
-                        <option key={v.id} value={v.id}>{v.name} — {v.category}</option>
+                        <option key={v.id} value={v.id}>{v.name} · {v.category}</option>
                       ))}
                     </select>
                   </td>

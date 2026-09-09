@@ -158,15 +158,15 @@ export default function RezervasyonDetay() {
           <h2 className="mb-4 font-heading text-lg font-bold text-brand">Rezervasyon Bilgileri</h2>
           <dl className="grid gap-4 sm:grid-cols-2">
             <Info label="Müşteri" value={reservation.customerName} />
-            <Info label="İkinci Kişi" value={reservation.secondPersonName || '—'} />
+            <Info label="İkinci Kişi" value={reservation.secondPersonName || '-'} />
             <Info label="Telefon" value={formatPhone(reservation.customerPhone)} />
-            <Info label="E-Posta" value={reservation.customerEmail || '—'} />
+            <Info label="E-Posta" value={reservation.customerEmail || '-'} />
             <Info label="Tarih / Seans" value={`${formatDateLong(reservation.date)} · ${reservation.slot}`} />
             <Info label="Organizasyon" value={reservation.organizationType} />
             <Info label="Davetli Sayısı" value={`${reservation.guestCount} kişi`} />
             <Info label="Durum" value={reservation.status} />
-            <Info label="Adres" value={reservation.address || '—'} className="sm:col-span-2" />
-            <Info label="Not" value={reservation.note || '—'} className="sm:col-span-2" />
+            <Info label="Adres" value={reservation.address || '-'} className="sm:col-span-2" />
+            <Info label="Not" value={reservation.note || '-'} className="sm:col-span-2" />
           </dl>
 
           {reservation.services.length > 0 && (
@@ -254,7 +254,7 @@ export default function RezervasyonDetay() {
                   <tr key={p.id} className="border-b border-line/60 last:border-0">
                     <td className="py-2.5 text-brand">{formatDate(p.date)}</td>
                     <td className="py-2.5 text-brand">{p.method}</td>
-                    <td className="py-2.5 text-brand-muted">{p.note || '—'}</td>
+                    <td className="py-2.5 text-brand-muted">{p.note || '-'}</td>
                     <td className="py-2.5 text-right font-medium text-brand">{formatMoney(p.amount, reservation.currency)}</td>
                     <td className="py-2.5 text-right">
                       <Link

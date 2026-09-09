@@ -175,7 +175,7 @@ export default function YeniRezervasyon() {
       />
 
       <Yazi tur="minik" renkli={renk.metinSolgun} style={{ marginTop: aralik.m, textAlign: 'center' }}>
-        Dolu bir salon–gün–seans birleşimine ikinci kayıt açılamaz; kural
+        Dolu bir salon-gün-seans birleşimine ikinci kayıt açılamaz; kural
         veritabanında uygulanır.
       </Yazi>
     </ScrollView>

@@ -181,7 +181,7 @@ export default function Kullanicilar() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-brand-muted">{u.email}</td>
-                  <td className="px-4 py-3 text-brand-muted">{u.mobile ? formatPhone(u.mobile) : '—'}</td>
+                  <td className="px-4 py-3 text-brand-muted">{u.mobile ? formatPhone(u.mobile) : '-'}</td>
                   <td className="px-4 py-3 text-xs text-brand-muted">{u.permissions.length} yetki</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">

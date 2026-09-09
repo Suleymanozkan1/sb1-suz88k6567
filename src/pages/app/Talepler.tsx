@@ -165,7 +165,7 @@ export default function Talepler() {
                       <dd>
                         {m.phone
                           ? <a className="text-brand underline" href={`tel:${m.phone}`}>{formatPhone(m.phone)}</a>
-                          : '—'}
+                          : '-'}
                       </dd>
                     </div>
                     {m.handledAt && (

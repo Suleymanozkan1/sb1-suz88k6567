@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Etiket, Secim } from './duzen';
 import { Dugme, Kart, Yazi } from './temel';
-import { doldur, olcSms } from '../sablon';
+import { hazirla, olcSms } from '../sablon';
 import { tarihSayisal, telefon, tutar } from '../bicim';
 import { aralik, renk } from '../tema';
 import {
@@ -54,7 +54,7 @@ export default function HatirlatmaGonder({
     kalan: para(Math.max(0, kayit.toplam - kayit.tahsilat)),
   };
 
-  const metin = sablon ? doldur(sablon.metin, degerler) : '';
+  const metin = sablon ? hazirla(sablon.metin, degerler) : '';
   const olcum = olcSms(metin);
 
   async function gonder() {

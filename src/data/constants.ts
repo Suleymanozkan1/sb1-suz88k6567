@@ -162,7 +162,7 @@ export const MONTH_NAMES = [
 
 export const DAY_NAMES_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
-/** Ücretsiz deneme süresi (gün) — "7 gün ücretsiz deneyin" */
+/** Ücretsiz deneme süresi (gün), "7 gün ücretsiz deneyin" */
 export const TRIAL_DAYS = 7;
 
 /** Tavsiye Et Kazan: her ücretli üye için kazanılan ek süre (gün) */

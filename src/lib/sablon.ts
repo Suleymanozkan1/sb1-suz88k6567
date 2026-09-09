@@ -4,7 +4,7 @@
  * Bir şablon, yer tutucular içeren taslak bir SMS metnidir. Aynı doldurma
  * işi iki yerde yapılır: kullanıcı panelden tek tuşla gönderdiğinde burada,
  * gece görevinde ise veritabanındaki `render_template` fonksiyonunda.
- * İkisinin aynı sonucu üretmesi şart — kullanıcı önizlemede gördüğü metnin
+ * İkisinin aynı sonucu üretmesi şart: kullanıcı önizlemede gördüğü metnin
  * gittiğinden emin olmalı. Bu yüzden kural ikisinde de birebir aynı:
  * yalnızca {süslü parantez} içindeki adlar değiştirilir, bilinmeyen bir ad
  * olduğu gibi bırakılır.
@@ -75,7 +75,7 @@ export const OTOMATIK_OLABILEN: SablonAnahtari[] = [
   'tarih_hatirlatma', 'odeme_hatirlatma', 'etkinlik_gunu', 'tesekkur',
 ];
 
-/** Yer tutucu adları ve ne anlama geldikleri — düzenleme ekranında listelenir. */
+/** Yer tutucu adları ve ne anlama geldikleri: düzenleme ekranında listelenir. */
 export const YER_TUTUCULAR: [string, string][] = [
   ['{musteri}', 'Müşteri adı'],
   ['{isletme}', 'İşletme adı'],
@@ -90,6 +90,28 @@ export const YER_TUTUCULAR: [string, string][] = [
 ];
 
 /**
+ * GSM-7 dışındaki Türkçe harfleri karşılıklarına indirger.
+ *
+ * ş, ğ, ı, İ, ç harfleri GSM-7 alfabesinde yok; biri bile geçtiğinde mesaj
+ * UCS-2'ye düşüyor ve tek parça 160 yerine 70 karakter oluyor. Bu harfler
+ * çoğunlukla müşterinin kendi adından geliyor, yani şablonu ne kadar
+ * kısaltırsak kısaltalım "Ayşe Yıldız" adı tek başına mesajı ikiye
+ * bölüyordu. Sadeleştirme, hatırlatmaların tek SMS'te kalmasının tek
+ * güvenilir yolu.
+ *
+ * ö, ü, Ö, Ü ve Ç zaten GSM-7 içinde olduğu için dokunulmuyor.
+ * Gönderilecek metin her zaman önizlemede gösterildiği için bu dönüşüm
+ * kullanıcıdan gizli değil.
+ */
+const INDIRGEME: Record<string, string> = {
+  'ş': 's', 'Ş': 'S', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I', 'ç': 'c',
+};
+
+export function sadelestir(metin: string): string {
+  return metin.replace(/[şŞğĞıİç]/g, (c) => INDIRGEME[c] ?? c);
+}
+
+/**
  * Yer tutucuları değiştirir.
  *
  * Değerler tek geçişte yerleştirilir: art arda `replace` çağırmak, bir
@@ -99,6 +121,16 @@ export const YER_TUTUCULAR: [string, string][] = [
 export function doldur(govde: string, degerler: Record<string, string>): string {
   return govde.replace(/\{(\w+)\}/g, (tam, ad: string) =>
     Object.prototype.hasOwnProperty.call(degerler, ad) ? degerler[ad]! : tam);
+}
+
+/**
+ * Gönderilecek metni üretir: yer tutucular doldurulur, sonra sadeleştirilir.
+ *
+ * Sıra önemli: önce doldurup sonra sadeleştirmek, müşterinin adındaki
+ * harfleri de kapsıyor. Yalnızca şablonu sadeleştirmek yetmiyordu.
+ */
+export function hazirla(govde: string, degerler: Record<string, string>): string {
+  return sadelestir(doldur(govde, degerler));
 }
 
 /** Bir rezervasyondan yer tutucu değerlerini çıkarır. */

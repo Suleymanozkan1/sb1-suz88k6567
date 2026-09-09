@@ -1,4 +1,4 @@
-# Sahra Takip — mobil uygulama
+# Sahra Takip, mobil uygulama
 
 React Native (Expo) ile yazılmış iOS ve Android uygulaması. Web paneliyle
 aynı Supabase veritabanını kullanır; hangi kaydın görüneceğine sunucudaki

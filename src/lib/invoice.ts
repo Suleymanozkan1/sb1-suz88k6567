@@ -6,7 +6,7 @@
  * açar; vergi belgesinde bu kabul edilemez.
  *
  * Yuvarlama kuralı: her satır kendi içinde yuvarlanır, sonra toplanır.
- * Toplam üzerinden yuvarlama yapılmaz — aksi hâlde satır toplamları ile
+ * Toplam üzerinden yuvarlama yapılmaz: aksi hâlde satır toplamları ile
  * fatura toplamı tutmaz.
  */
 
@@ -14,7 +14,7 @@
 export const VAT_RATES = [0, 1, 10, 20] as const;
 export type VatRate = (typeof VAT_RATES)[number];
 
-/** Fatura satırı girdisi — tutarlar TL cinsinden ondalıklı gelir */
+/** Fatura satırı girdisi: tutarlar TL cinsinden ondalıklı gelir */
 export interface InvoiceLineInput {
   description: string;
   /** Miktar (adet, kişi, gün…) */
@@ -27,7 +27,7 @@ export interface InvoiceLineInput {
   vatRate: VatRate;
 }
 
-/** Hesaplanmış satır — tüm tutarlar kuruş cinsinden tamsayı */
+/** Hesaplanmış satır: tüm tutarlar kuruş cinsinden tamsayı */
 export interface InvoiceLineTotals {
   /** Miktar × birim fiyat */
   grossKurus: number;
@@ -46,7 +46,7 @@ export interface InvoiceTotals {
   baseKurus: number;
   vatKurus: number;
   totalKurus: number;
-  /** Oran bazında KDV dökümü — faturada gösterilmesi zorunludur */
+  /** Oran bazında KDV dökümü: faturada gösterilmesi zorunludur */
   vatBreakdown: { rate: VatRate; baseKurus: number; vatKurus: number }[];
 }
 

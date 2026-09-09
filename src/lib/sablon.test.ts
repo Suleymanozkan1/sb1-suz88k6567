@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { degerler, doldur, olc } from './sablon';
+import { degerler, doldur, hazirla, olc, sadelestir } from './sablon';
 import type { Payment, Reservation } from '../types';
 
 const rezervasyon: Reservation = {
@@ -95,5 +95,66 @@ describe('mesaj uzunluğu', () => {
   it('Türkçe harfleri sayar, ASCII sanmaz', () => {
     expect(olc('İıĞğŞşÖöÇçÜü').turkce).toBe(true);
     expect(olc('Merhaba dunya').turkce).toBe(false);
+  });
+});
+
+describe('GSM-7 sadeleştirme', () => {
+  it('GSM-7 dışındaki Türkçe harfleri indirger', () => {
+    expect(sadelestir('şŞğĞıİç')).toBe('sSgGiIc');
+  });
+
+  it('GSM-7 içindeki harflere dokunmaz', () => {
+    // ö, ü, Ö, Ü ve Ç zaten alfabede; değiştirmek gereksiz bozma olurdu.
+    expect(sadelestir('öüÖÜÇ')).toBe('öüÖÜÇ');
+    expect(sadelestir('Gündüz')).toBe('Gündüz');
+  });
+
+  it('hazirla önce doldurur sonra sadeleştirir', () => {
+    // Sıra önemli: yalnızca şablonu sadeleştirmek müşterinin adını
+    // kapsamıyor ve "Ayşe" tek başına mesajı 70 karakter sınırına düşürüyordu.
+    expect(hazirla('Sayin {musteri}', { musteri: 'Ayşe Yıldız' }))
+      .toBe('Sayin Ayse Yildiz');
+  });
+
+  it('sadeleştirilmiş metin tek parçaya sığar, sadeleştirilmemiş sığmaz', () => {
+    const ham = 'Sayın Ayşe & Mert Yıldız, 16.09.2026 tarihli organizasyonunuz yaklaşıyor.';
+    expect(olc(ham).turkce).toBe(true);
+    expect(olc(ham).parca).toBe(2);
+    expect(olc(sadelestir(ham)).turkce).toBe(false);
+    expect(olc(sadelestir(ham)).parca).toBe(1);
+  });
+});
+
+describe('varsayılan hatırlatma metinleri', () => {
+  // Metinler üç yerde birden duruyor (yerel depo, veritabanı göçü, mobil
+  // tanıtım verisi); bu test yerel depodakini ölçüyor. Üçünün aynı kalması
+  // gerektiği için metinler değişince bu test de düşer.
+  const SABLONLAR = [
+    'Sayin {musteri}, {tarih} {seans} rezervasyonunuz alinmistir. Sorgu kodu: {kod}',
+    'Sayin {musteri}, {tarih} tarihli organizasyonunuz yaklasiyor. {salon}',
+    'Sayin {musteri}, {tarih} organizasyonunuz icin kalan tutar {kalan} TL',
+    'Sayin {musteri}, {odenen} TL odemeniz alinmistir. Kalan {kalan} TL',
+    'Sayin {musteri}, bugun {seans} seansinda {salon} sizi bekliyor',
+    'Sayin {musteri}, bizi tercih ettiginiz icin tesekkur ederiz',
+    'Sayin {musteri}, sezon fiyatlarimiz icin bizi arayabilirsiniz',
+  ];
+
+  // Uzun ve Türkçe harfli bir ad en kötü durumu temsil ediyor.
+  const ENKOTU = {
+    musteri: 'Şeyma Nur & Muhammed Çağatay Yıldırım',
+    tarih: '16.09.2026', seans: 'Gündüz', salon: 'Zümrüt Balo Salonu',
+    kod: 'SA-2026-4141', tutar: '210.000,00', odenen: '60.000,00', kalan: '150.000,00',
+  };
+
+  it.each(SABLONLAR)('tek SMSe sığar: %s', (govde) => {
+    const olcum = olc(hazirla(govde, ENKOTU));
+    expect(olcum.turkce).toBe(false);
+    expect(olcum.parca).toBe(1);
+  });
+
+  it('yer tutucusu doldurulmadan bırakılmaz', () => {
+    for (const govde of SABLONLAR) {
+      expect(hazirla(govde, ENKOTU)).not.toMatch(/\{\w+\}/);
+    }
   });
 });

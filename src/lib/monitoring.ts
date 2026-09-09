@@ -1,5 +1,5 @@
 /**
- * Hata izleme (Sentry) — isteğe bağlı.
+ * Hata izleme (Sentry): isteğe bağlı.
  *
  * VITE_SENTRY_DSN tanımlı değilse hiçbir şey yüklenmez ve dışarıya istek
  * gitmez. Kullanıcı verisinin kazara sızmaması için gönderilen olaylar

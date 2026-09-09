@@ -41,7 +41,7 @@ export default async function handler(request: Request): Promise<Response> {
 
   const ip = clientIp(request);
 
-  // 1) IP bazlı hız sınırı — dağıtık deneme saldırılarını yavaşlatır
+  // 1) IP bazlı hız sınırı, dağıtık deneme saldırılarını yavaşlatır
   const ipLimit = await enforceRateLimit(ip, { bucket: 'login-ip', limit: 20, windowSeconds: 300 });
   if (!ipLimit.allowed) return tooManyRequests(300);
 

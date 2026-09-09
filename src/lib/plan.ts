@@ -14,7 +14,7 @@ export function sortTasks(tasks: EventTask[]): EventTask[] {
     .map((x) => x.task);
 }
 
-/** Tedarikçi maliyetleri toplamı — organizasyonun dış gider yükü. */
+/** Tedarikçi maliyetleri toplamı: organizasyonun dış gider yükü. */
 export function vendorCostTotal(assignments: ReservationVendor[]): number {
   return assignments.reduce((sum, a) => sum + a.cost, 0);
 }

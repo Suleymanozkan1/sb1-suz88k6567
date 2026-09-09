@@ -27,7 +27,7 @@ export default function Salonlar() {
   const [error, setError] = useState('');
   const [toDelete, setToDelete] = useState<Hall | null>(null);
 
-  /** Salona bağlı aktif rezervasyon sayısı — silme uyarısında kullanılır. */
+  /** Salona bağlı aktif rezervasyon sayısı: silme uyarısında kullanılır. */
   function usageOf(hallId: string): number {
     return reservations.filter((r) => r.hallId === hallId && r.status !== 'İptal').length;
   }
@@ -156,7 +156,7 @@ export default function Salonlar() {
               <dl className="mb-4 space-y-1 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-brand-muted">Kapasite</dt>
-                  <dd className="text-brand">{h.capacity > 0 ? `${formatNumber(h.capacity)} kişi` : '—'}</dd>
+                  <dd className="text-brand">{h.capacity > 0 ? `${formatNumber(h.capacity)} kişi` : '-'}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-brand-muted">Rezervasyon</dt>

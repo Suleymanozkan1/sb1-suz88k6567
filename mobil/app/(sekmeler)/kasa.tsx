@@ -9,7 +9,7 @@ import { kasaEkle, kasaHareketleri, kasaOzeti, tanitim, type KasaOzet, type Kasa
 interface Kasa { ozet: KasaOzet; hareketler: KasaSatiri[] }
 
 /**
- * Kasa: özet, hareketler ve hızlı gelir–gider girişi.
+ * Kasa: özet, hareketler ve hızlı gelir-gider girişi.
  *
  * Kayıt girişi mobile de alındı; telefonu eline alan kişi genelde parayı
  * alırken ya da verirken kaydediyor ve masaüstüne dönene kadar unutuyordu.
@@ -27,7 +27,7 @@ export default function Kasa() {
         <Band ustluk="Kasa" baslik="Gelir ve gider">
           <BandOzet
             etiket="KASA BAKİYESİ"
-            deger={veri ? tutar(veri.ozet.bakiye) : '—'}
+            deger={veri ? tutar(veri.ozet.bakiye) : '-'}
           />
         </Band>
       )}

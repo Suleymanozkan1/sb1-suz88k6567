@@ -1,4 +1,4 @@
-/** Tahsilat ve bakiye hesapları — saf fonksiyonlar, depodan bağımsız */
+/** Tahsilat ve bakiye hesapları: saf fonksiyonlar, depodan bağımsız */
 import type { Payment, Reservation } from '../types';
 
 /** Rezervasyon kimliğine göre gruplanmış tahsilat haritası */

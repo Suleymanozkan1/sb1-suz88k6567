@@ -74,7 +74,7 @@ export default function Faturalar() {
     setBuyer((b) => ({ ...b, name: reservation.customerName, email: reservation.customerEmail ?? '' }));
     setLines([{
       ...EMPTY_LINE,
-      description: `${reservation.organizationType} organizasyonu — ${formatDate(reservation.date)}`,
+      description: `${reservation.organizationType} organizasyonu · ${formatDate(reservation.date)}`,
       unitPrice: reservation.totalAmount,
     }]);
     return true;

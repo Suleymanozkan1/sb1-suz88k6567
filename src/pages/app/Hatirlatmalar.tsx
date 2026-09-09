@@ -17,12 +17,12 @@ import { IconCheck, IconMessage } from '../../components/Icons';
  * Hatırlatma şablonları ve otomatik gönderim kuralları.
  *
  * İki ayrı şey düzenlenir ve bu ayrım ekranda da korunur:
- *   metin  — müşteriye ne yazılacağı (her şablon için taslak)
- *   kural  — o taslağın kendiliğinden ne zaman gideceği
+ *   metin: müşteriye ne yazılacağı (her şablon için taslak)
+ *   kural: o taslağın kendiliğinden ne zaman gideceği
  *
  * Bir şablonun metni her zaman düzenlenebilir; kural yalnızca otomatik
  * gönderilebilen türlerde vardır. Rezervasyon onayı ve tahsilat bildirimi
- * bir olaya bağlıdır, takvime değil — onların otomatik kuralı yoktur.
+ * bir olaya bağlıdır, takvime değil: onların otomatik kuralı yoktur.
  */
 export default function Hatirlatmalar() {
   const { user, can } = useAuth();
@@ -118,7 +118,7 @@ export default function Hatirlatmalar() {
                         : 'bg-success/10 text-success'
                     }`}
                   >
-                    {sablon.category === 'ticari' ? 'Ticari ileti — İYS onayı gerekir' : 'İşlem bildirimi — onay gerekmez'}
+                    {sablon.category === 'ticari' ? 'Ticari ileti: İYS onayı gerekir' : 'İşlem bildirimi: onay gerekmez'}
                   </span>
                 </div>
 

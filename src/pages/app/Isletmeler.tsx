@@ -190,7 +190,7 @@ export default function Isletmeler() {
                     <h2 className="font-heading font-bold text-brand">{b.name}</h2>
                     <p className="text-xs text-brand-muted">{b.district} / {b.city} · {b.category}</p>
                     <p className="mt-1 text-xs text-brand-muted">
-                      {b.capacity > 0 && `${b.capacity} kişi · `}{b.phone ? formatPhone(b.phone) : '—'}
+                      {b.capacity > 0 && `${b.capacity} kişi · `}{b.phone ? formatPhone(b.phone) : '-'}
                     </p>
                   </div>
                 </div>

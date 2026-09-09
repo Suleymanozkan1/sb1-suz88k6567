@@ -1,11 +1,11 @@
 /* Google Fonts yerine kendi sunucumuzdan servis edilir.
-   Gerekçe: (1) ziyaretçinin IP adresi Google'a gitmiyor — KVKK açısından
+   Gerekçe: (1) ziyaretçinin IP adresi Google'a gitmiyor, KVKK açısından
    üçüncü tarafa veri aktarımı doğmuyor; (2) dış alan adına giden
    render engelleyici istek kalkıyor.
 
    Jost ve Open Sans DEĞİŞKEN yazı tipi olarak indirildi (400..700):
    her ağırlık için ayrı dosya indirmek aynı değişken dosyayı üç kez
-   indirmek anlamına geliyordu — 428 KB yerine tek geçişte çok daha az.
+   indirmek anlamına geliyordu, 428 KB yerine tek geçişte çok daha az.
    Poppins yalnızca 700 ağırlığında ve yalnızca logo ile hero başlığında
    kullanılıyor. Alt kümeler latin ve latin-ext; Türkçe latin-ext ister. */
 

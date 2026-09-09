@@ -5,7 +5,7 @@ function istek(basliklar: Record<string, string>): Request {
   return new Request('https://ornek.test/api/login', { headers: basliklar });
 }
 
-describe('clientIp — hız sınırı ve giriş kilidinin anahtarı', () => {
+describe('clientIp, hız sınırı ve giriş kilidinin anahtarı', () => {
   it('Cloudflare başlığını önceler', () => {
     expect(clientIp(istek({ 'cf-connecting-ip': '203.0.113.7' }))).toBe('203.0.113.7');
   });

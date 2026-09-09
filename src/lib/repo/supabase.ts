@@ -724,7 +724,7 @@ export const supabaseRepo: Repository = {
     if (error) fail('Denetim kayıtları alınamadı.', error);
     return (data ?? []).map((row: Row): AuditEntry => ({
       id: Number(row.id),
-      actorEmail: (row.actor_email as string) ?? '—',
+      actorEmail: (row.actor_email as string) ?? '-',
       action: (row.action as AuditEntry['action']) ?? 'UPDATE',
       tableName: (row.table_name as string) ?? '',
       recordId: (row.record_id as string) ?? undefined,
@@ -891,7 +891,7 @@ export const supabaseRepo: Repository = {
 
   async deleteHall(id) {
     const { error } = await db().from('halls').delete().eq('id', id);
-    // 23503: salona bağlı rezervasyon var — kayıt silinmek yerine pasife alınmalı
+    // 23503: salona bağlı rezervasyon var, kayıt silinmek yerine pasife alınmalı
     if (error && (error as { code?: string }).code === '23503') {
       throw new RepoError('Bu salona bağlı rezervasyonlar var; salonu silmek yerine pasife alın.');
     }

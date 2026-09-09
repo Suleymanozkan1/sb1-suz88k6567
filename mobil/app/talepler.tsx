@@ -10,7 +10,7 @@ import { talepler, type Talep } from '../src/veri';
  * Siteden gelen müşteri talepleri.
  *
  * Talebin içeriği değiştirilemez ve kayıt silinemez; bu yüzden mobilde de
- * yalnızca okunur. Numaraya dokunmak arama açar — gelen talebe verilecek
+ * yalnızca okunur. Numaraya dokunmak arama açar: gelen talebe verilecek
  * ilk yanıt genelde bir telefon.
  */
 export default function Talepler() {

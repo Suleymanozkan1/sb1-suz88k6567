@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { scrub } from './monitoring';
 
-describe('scrub — hata bildirimlerinde kişisel veri maskeleme', () => {
+describe('scrub: hata bildirimlerinde kişisel veri maskeleme', () => {
   it('e-posta adresini maskeler', () => {
     expect(scrub('Kullanıcı ahmet.yaz@ornek.com giriş yapamadı'))
       .toBe('Kullanıcı [e-posta] giriş yapamadı');

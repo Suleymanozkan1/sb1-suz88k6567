@@ -14,7 +14,7 @@ const GUN_KISA = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
  * Takvim: üstte kompakt ay ızgarası, altında seçili günün listesi.
  *
  * Izgara doldurulmuş bir gün için nokta gösterir, etkinliğin kendisini
- * değil — 375 piksellik ekranda hücre 44 piksel civarında kalıyor ve içine
+ * değil, 375 piksellik ekranda hücre 44 piksel civarında kalıyor ve içine
  * metin sığmıyor. Ayrıntı alttaki listede.
  */
 export default function Takvim() {

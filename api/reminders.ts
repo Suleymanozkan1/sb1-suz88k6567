@@ -52,7 +52,7 @@ export default async function handler(request: Request): Promise<Response> {
     queued,
     blocked: blocked.length,
     // Engellenenlerin gerekçesi türüne göre özetlenir; numaraların
-    // kendisi yanıta konmaz — görev günlüğü kişisel veri taşımamalı.
+    // kendisi yanıta konmaz, görev günlüğü kişisel veri taşımamalı.
     reasons: [...new Set(blocked.map((r) => r.reason ?? 'bilinmiyor'))],
   });
 }

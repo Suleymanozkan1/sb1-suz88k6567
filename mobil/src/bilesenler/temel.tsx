@@ -19,7 +19,7 @@ export function Yazi({
   );
 }
 
-/** İçerik kartı: tek bir kenarlık, gölge yok — liste hâlinde gölge gürültü yapıyor. */
+/** İçerik kartı: tek bir kenarlık, gölge yok: liste hâlinde gölge gürültü yapıyor. */
 export function Kart({ style, children }: { style?: ViewStyle; children: React.ReactNode }) {
   return <View style={[s.kart, style]}>{children}</View>;
 }

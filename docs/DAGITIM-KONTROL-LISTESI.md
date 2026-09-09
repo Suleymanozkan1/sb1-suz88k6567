@@ -70,7 +70,7 @@ Kampanya ya da tanıtım göndermeye karar verirseniz **5. bölüme** bakın.
 ## 3. Netgsm
 
 - [ ] Kurumsal abonelik açın
-- [ ] Vergi levhanızla **başlık (marka) başvurusu** yapın — birkaç iş günü sürer
+- [ ] Vergi levhanızla **başlık (marka) başvurusu** yapın, birkaç iş günü sürer
 - [ ] Başlık onaylandıktan sonra SMS paketi satın alın
 - [ ] API kullanıcı adı ve şifresini panelden alıp Cloudflare'e sır olarak girin
 
@@ -86,7 +86,7 @@ Kampanya ya da tanıtım göndermeye karar verirseniz **5. bölüme** bakın.
 - [ ] **İlk faturayı düşük tutarlı bir test olarak kesin** ve Faturalar
       ekranındaki `provider_error` alanını kontrol edin
 
-## 5. İYS — yalnızca ticari ileti gönderecekseniz
+## 5. İYS, yalnızca ticari ileti gönderecekseniz
 
 Rezervasyon onayı, hatırlatma, doğrulama kodu ve tahsilat bildirimi **işlem
 bildirimidir**; bu bölümü atlayabilirsiniz. Kampanya, indirim ve tanıtım
@@ -143,5 +143,5 @@ Sık karşılaşılanlar:
 | SMS gitmiyor, kayıt "gönderilemedi" | Netgsm başlığı henüz onaylanmamış |
 | Kuyrukta mesaj birikiyor | `CRON_SECRET` tanımsız ya da cron çalışmıyor |
 | Giriş kilidi devrede değil | `SUPABASE_SERVICE_ROLE_KEY` tanımsız |
-| Fatura taslakta kalıyor | `PARASUT_*` eksik ya da alan adı uyuşmazlığı — `provider_error`'a bakın |
+| Fatura taslakta kalıyor | `PARASUT_*` eksik ya da alan adı uyuşmazlığı, `provider_error`'a bakın |
 | Yedek alınmamış uyarısı | `yedekler` kovası yok ya da özel değil |

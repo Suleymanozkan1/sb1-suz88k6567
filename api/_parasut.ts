@@ -4,7 +4,7 @@
  * Paraşüt, tek bir "fatura gönder" ucu sunmaz; süreç üç adımlıdır:
  *   1. Alıcı bir `contacts` kaydı olarak bulunur ya da oluşturulur
  *   2. `sales_invoices` ile satış faturası yazılır
- *   3. `e_archives` (veya `e_invoices`) ile GİB'e gönderilir — bu adım bir
+ *   3. `e_archives` (veya `e_invoices`) ile GİB'e gönderilir, bu adım bir
  *      `trackable_jobs` kaydı döndürür ve sonuç için yoklanması gerekir
  *
  * Kimlik doğrulama OAuth2 "password" akışıdır; jeton 2 saat geçerlidir ve
@@ -116,7 +116,7 @@ export function buildContactAttributes(invoice: InvoiceRow) {
  *
  * Kalem indirimi `discount_type: 'percentage'` ile oranla verilir; tutarları
  * Paraşüt kendisi hesaplar. Bizim hesabımızla Paraşüt'ünki kuruş düzeyinde
- * ayrışırsa fatura toplamı değil, bizim kaydımız doğrudur — bu yüzden
+ * ayrışırsa fatura toplamı değil, bizim kaydımız doğrudur, bu yüzden
  * `sendPending` gönderim sonrası toplamı karşılaştırır.
  */
 export function buildSalesInvoicePayload(
@@ -161,7 +161,7 @@ export function buildSalesInvoicePayload(
   };
 }
 
-/** `e_archives` gövdesi — alıcısı e-Fatura mükellefi olmayan faturalar için. */
+/** `e_archives` gövdesi: alıcısı e-Fatura mükellefi olmayan faturalar için. */
 export function buildEArchivePayload(salesInvoiceId: string, invoice: InvoiceRow) {
   return {
     data: {
@@ -179,7 +179,7 @@ export function buildEArchivePayload(salesInvoiceId: string, invoice: InvoiceRow
   };
 }
 
-/** `e_invoices` gövdesi — alıcı e-Fatura mükellefiyse, GİB posta kutusu ile. */
+/** `e_invoices` gövdesi: alıcı e-Fatura mükellefiyse, GİB posta kutusu ile. */
 export function buildEInvoicePayload(salesInvoiceId: string, inboxAddress: string) {
   return {
     data: {

@@ -165,7 +165,7 @@ export interface Repository {
 
   /* -- iletişim -------------------------------------------------------- */
   addMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'status' | 'note' | 'handledAt'>): Promise<void>;
-  /** Talep kutusu — yalnızca yönetici okuyabilir (RLS). */
+  /** Talep kutusu: yalnızca yönetici okuyabilir (RLS). */
   listMessages(): Promise<ContactMessage[]>;
   setMessageStatus(id: string, status: MessageStatus, note: string): Promise<void>;
 

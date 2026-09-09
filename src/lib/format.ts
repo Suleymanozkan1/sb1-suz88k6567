@@ -37,7 +37,7 @@ export function formatDateLong(iso: string): string {
 
 /** ISO zaman damgası -> 30.08.2026 14:05; boş/geçersiz değerde tire döner. */
 export function formatDateTime(iso: string | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return iso;
   return parsed.toLocaleString('tr-TR', {

@@ -101,21 +101,21 @@ export const DISTANCE_SALES: LegalDoc = {
   title: 'Mesafeli Hizmet Sözleşmesi',
   sections: [
     {
-      heading: 'Madde 1 — Taraflar',
+      heading: 'Madde 1: Taraflar',
       paragraphs: [
-        'HİZMET SAĞLAYICI: [Ticaret unvanı] ("Sahra Takip") — MERSİS No: [MERSİS numarası], Vergi Dairesi/No: [vergi dairesi ve numarası].',
+        'HİZMET SAĞLAYICI: [Ticaret unvanı] ("Sahra Takip"), MERSİS No: [MERSİS numarası], Vergi Dairesi/No: [vergi dairesi ve numarası].',
         'Adres: [merkez adresi]. Telefon: [telefon]. E-posta: info@sahratakip.com. KEP: [kayıtlı elektronik posta adresi].',
         'ALICI: Sitemize üye olarak hizmeti satın alan gerçek veya tüzel kişi.',
       ],
     },
     {
-      heading: 'Madde 2 — Sözleşmenin Konusu',
+      heading: 'Madde 2: Sözleşmenin Konusu',
       paragraphs: [
         'İşbu sözleşmenin konusu, ALICI’nın Sahra Takip internet sitesi üzerinden elektronik ortamda siparişini verdiği online rezervasyon ve ödeme takip hizmetinin (yazılım kullanım lisansı) satışı ve ifası ile ilgili tarafların hak ve yükümlülüklerinin belirlenmesidir.',
       ],
     },
     {
-      heading: 'Madde 3 — Hizmetin Konusu ve Süresi',
+      heading: 'Madde 3: Hizmetin Konusu ve Süresi',
       paragraphs: [
         'Hizmet, internet üzerinden erişilen bir yazılım kullanım hakkıdır. PC’ye kurulum yapılmaz.',
         'Üyelik süresi, ödemenin sisteme yansıdığı tarihten itibaren satın alınan paket süresi kadardır.',
@@ -123,14 +123,14 @@ export const DISTANCE_SALES: LegalDoc = {
       ],
     },
     {
-      heading: 'Madde 4 — Ödeme',
+      heading: 'Madde 4: Ödeme',
       paragraphs: [
         'Ödeme, üye yönetim paneli üzerinden kredi kartı veya havale/EFT ile yapılabilir.',
         'Kredi kartı bilgileri 128 bit SSL güvenlik katmanı üzerinden yalnızca ödeme bilgisi olarak bankaya iletilir, sistemde saklanmaz.',
       ],
     },
     {
-      heading: 'Madde 5 — Genel Hükümler',
+      heading: 'Madde 5: Genel Hükümler',
       paragraphs: [
         'ALICI, hizmetin temel nitelikleri, satış fiyatı ve ödeme şekli ile ifaya ilişkin ön bilgileri okuyup bilgi sahibi olduğunu ve elektronik ortamda gerekli teyidi verdiğini kabul eder.',
         'ALICI, hesap bilgilerinin güvenliğinden kendisi sorumludur. Şifrenin üçüncü kişilerle paylaşılmasından doğacak zararlardan Sahra Takip sorumlu tutulamaz.',
@@ -139,7 +139,7 @@ export const DISTANCE_SALES: LegalDoc = {
       ],
     },
     {
-      heading: 'Madde 6 — Cayma Hakkı',
+      heading: 'Madde 6: Cayma Hakkı',
       paragraphs: [
         'ALICI, sözleşmenin kurulduğu tarihten itibaren 14 (on dört) gün içinde hiçbir gerekçe göstermeksizin ve cezai şart ödemeksizin cayma hakkına sahiptir.',
         'Cayma bildirimi info@sahratakip.com adresine ya da [merkez adresi] adresine yazılı olarak iletilir. Bildirimin süresi içinde gönderilmiş olması yeterlidir.',
@@ -148,7 +148,7 @@ export const DISTANCE_SALES: LegalDoc = {
       ],
     },
     {
-      heading: 'Madde 7 — Yetkili Mahkeme',
+      heading: 'Madde 7: Yetkili Mahkeme',
       paragraphs: [
         'İşbu sözleşmenin uygulanmasında, Ticaret Bakanlığı’nca her yıl ilan edilen parasal sınırlara kadar İlçe/İl Tüketici Hakem Heyetleri; bu sınırın üzerindeki uyuşmazlıklarda ALICI’nın veya SATICI’nın yerleşim yerindeki Tüketici Mahkemeleri yetkilidir.',
         'Başvurular e-Devlet üzerinden Tüketici Bilgi Sistemi (TÜBİS) aracılığıyla da yapılabilir.',
@@ -196,7 +196,7 @@ export const KVKK_NOTICE: LegalDoc = {
     {
       heading: 'Veri Sorumlusunun Kimliği',
       paragraphs: [
-        'Veri sorumlusu: [Ticaret unvanı] — MERSİS No: [MERSİS numarası], Vergi Dairesi/No: [vergi dairesi ve numarası].',
+        'Veri sorumlusu: [Ticaret unvanı], MERSİS No: [MERSİS numarası], Vergi Dairesi/No: [vergi dairesi ve numarası].',
         'Adres: [merkez adresi]. Telefon: [telefon]. E-posta: info@sahratakip.com. KEP: [kayıtlı elektronik posta adresi].',
       ],
     },
