@@ -11,7 +11,7 @@
  * tutarın karşılığı defterde her zaman bulunur.
  */
 import { uid } from './ids';
-import type { SafeDirection, SafeMovement } from '../types';
+import type { CashFlowKind, SafeDirection, SafeMovement } from '../types';
 
 /** Kasadaki para: girişler eksi çıkışlar. */
 export function safeBalance(movements: SafeMovement[]): number {
@@ -52,20 +52,37 @@ export function hasMovement(movements: SafeMovement[], sourceId: string): boolea
 }
 
 /**
+ * Satırın kasadaki doğal yönü.
+ *
+ * Gelir kasaya girer, gider kasadan çıkar. Bunu kullanıcının seçimine
+ * bırakmak, nakit ödenen bir maaşı kasaya para giriyormuş gibi işlemeye
+ * izin veriyordu; kasa o tutar kadar fazla görünüyordu.
+ */
+export function naturalDirection(kind: CashFlowKind): SafeDirection {
+  return kind === 'Gider' ? 'Çıkış' : 'Giriş';
+}
+
+/**
  * Bu satır kasaya bu yönde işlenebilir mi?
  *
- * Karar satırın geçmişine değil, şu anki netine bakar: kasaya girip
- * bankaya yatırılan para ertesi gün yine kasaya konabilir. Yönü bir kez
- * kullanılmış saymak, ikinci turda satırı kilitliyordu.
+ * Karar satırın geçmişine değil, şu anki netine ve türüne bakar:
  *
- * Aynı yönde arka arkaya iki kayıt yine engellenir: para kasadayken tekrar
- * "ekle" demek çift sayımdır, kasada yokken "çıkar" demek eksiye düşürür.
+ *   * Doğal yön (gelirde giriş, giderde çıkış) ancak net sıfırken yazılır.
+ *   * Ters yön — gelirin bankaya yatırılması, giderin geri alınması — ancak
+ *     satırın kasada bir etkisi varken yazılır.
+ *
+ * Böylece kasaya girip bankaya yatırılan para ertesi gün yine kasaya
+ * konabilir, ama aynı hareket arka arkaya iki kez yazılamaz: para
+ * kasadayken tekrar işlemek çift sayımdır, kasada yokken geri almak
+ * kasayı olmadığı bir yere çeker.
  */
 export function safeAllows(
-  movements: SafeMovement[], sourceId: string, direction: SafeDirection,
+  movements: SafeMovement[], sourceId: string, direction: SafeDirection, kind: CashFlowKind,
 ): boolean {
   const net = sourceNet(movements, sourceId);
-  return direction === 'Giriş' ? net === 0 : net > 0;
+  const dogal = naturalDirection(kind);
+  if (direction === dogal) return net === 0;
+  return dogal === 'Giriş' ? net > 0 : net < 0;
 }
 
 export interface SafeMovementInput {

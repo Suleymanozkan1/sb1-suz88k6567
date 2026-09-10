@@ -11,9 +11,9 @@ import { nextContractCode, normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
-  Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
+  Business, CashFlowEntry, CashFlowKind, ColorSetting, EnqueueResult, Invoice,
   EventTask, Hall, Menu, Payment, Reservation, ReservationVendor,
-  SafeMovement, SeatingTable, SmsConsent, SmsLogEntry, Vendor,
+  SafeDirection, SafeMovement, SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   SmsQueueEntry, User,
 } from '../../types';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
@@ -27,6 +27,20 @@ function reservations(): Reservation[] { return read<Reservation[]>(KEYS.reserva
 function payments(): Payment[] { return read<Payment[]>(KEYS.payments, []); }
 function cash(): CashFlowEntry[] { return read<CashFlowEntry[]>(KEYS.cashflow, []); }
 function safeMoves(): SafeMovement[] { return read<SafeMovement[]>(KEYS.safeMovements, []); }
+
+/**
+ * Hareketi doğuran satır gelir mi gider mi?
+ *
+ * Rezervasyondan türeyen satırlar (kapora / tahsilat) her zaman gelirdir;
+ * elle girilen satırın türü kasa defterinde yazılıdır. Kaynak bulunamazsa
+ * gelir varsayılır: kasaya işlenemeyecek bir kayıttır ve diğer kurallar
+ * zaten devreye girer.
+ */
+function kaynakTuru(movement: SafeMovement): CashFlowKind {
+  if (movement.sourceKind === 'reservation') return 'Gelir';
+  const kayit = cash().find((c) => c.id === movement.sourceId);
+  return kayit?.kind ?? 'Gelir';
+}
 function consents(): SmsConsent[] { return read<SmsConsent[]>(KEYS.consents, []); }
 function queue(): SmsQueueEntry[] { return read<SmsQueueEntry[]>(KEYS.queue, []); }
 function invoices(): Invoice[] { return read<Invoice[]>(KEYS.invoices, []); }
@@ -344,25 +358,32 @@ export const localRepo: Repository = {
   async addSafeMovement(movement) {
     if (movement.amount <= 0) throw new RepoError('Çelik kasa tutarı sıfırdan büyük olmalıdır.');
 
-    // Veritabanındaki tetikleyicinin karşılığı: karar satırın netine bakar.
-    // Para kasadayken tekrar "ekle" çift sayımdır; kasada yokken "çıkar"
-    // kasayı eksiye düşürür. Girip çıktıktan sonra yeniden eklenebilir.
+    // Veritabanındaki tetikleyicinin karşılığı: karar satırın türüne ve
+    // şu anki netine bakar. Gelir kasaya girer, gider kasadan çıkar; ters
+    // yön ancak satırın kasada bir etkisi varken bir düzeltme/karşı hareket
+    // olarak yazılabilir. Böylece girip çıkan satır yeniden işlenebilir ama
+    // aynı hareket arka arkaya iki kez yazılamaz.
+    const dogal: SafeDirection = kaynakTuru(movement) === 'Gider' ? 'Çıkış' : 'Giriş';
     const net = safeMoves()
       .filter((m) => m.businessId === movement.businessId
                      && m.sourceKind === movement.sourceKind
                      && m.sourceId === movement.sourceId)
       .reduce((t, m) => t + (m.direction === 'Giriş' ? m.amount : -m.amount), 0);
 
-    if (movement.direction === 'Giriş') {
-      if (net > 0) {
-        throw new RepoError('Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.');
+    if (movement.direction === dogal) {
+      if (net !== 0) {
+        throw new RepoError(dogal === 'Çıkış'
+          ? 'Bu gider çelik kasadan zaten düşülmüş; önce geri alın.'
+          : 'Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.');
       }
     } else {
-      if (net <= 0) {
-        throw new RepoError('Bu kayıt çelik kasada değil; önce kasaya ekleyin.');
+      if (dogal === 'Giriş' ? net <= 0 : net >= 0) {
+        throw new RepoError(dogal === 'Çıkış'
+          ? 'Bu gider çelik kasadan düşülmemiş; geri alınacak bir şey yok.'
+          : 'Bu kayıt çelik kasada değil; önce kasaya ekleyin.');
       }
-      if (movement.amount > net) {
-        throw new RepoError('Çelik kasadan, o kayıt için kasaya giren tutardan fazlası çıkarılamaz.');
+      if (movement.amount > Math.abs(net)) {
+        throw new RepoError('Çelik kasada o kayıt için duran tutardan fazlası işlenemez.');
       }
     }
 

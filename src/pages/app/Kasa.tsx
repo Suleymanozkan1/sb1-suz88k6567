@@ -19,7 +19,7 @@ import {
 } from '../../components/Icons';
 import StatCard from '../../components/StatCard';
 import {
-  hasMovement, makeSafeMovement, safeAllows, safeBalance, safeTotals, sourceNet,
+  hasMovement, makeSafeMovement, naturalDirection, safeAllows, safeBalance, safeTotals, sourceNet,
 } from '../../lib/celikKasa';
 import type { CashFlowEntry, CashFlowKind, SafeDirection, SafeMovement } from '../../types';
 
@@ -167,8 +167,11 @@ export default function Kasa() {
    *
    * Tutar satırın kendi tutarıdır: kısmi giriş, satırın anlamını
    * bulanıklaştırır ve kasadaki parayı gelir/gider kaydından koparırdı.
-   * Satır kasaya girip çıktıktan sonra yeniden eklenebilir; engellenen tek
-   * şey kasadaki parayı ikinci kez saymak. Depo katmanı da aynı kuralı
+   *
+   * Yön çağıran hücreden geliyor ve satırın türüne bağlı: gelir kasaya
+   * girer, gider kasadan çıkar. Satır bir tur döndükten sonra yeniden
+   * işlenebilir; engellenen tek şey aynı hareketi arka arkaya iki kez
+   * yazmak. Aynı kuralı depo katmanı ve veritabanı tetikleyicisi de
    * ayrıca uyguluyor.
    */
   async function kasayaIsle(satir: KasaSatiri, direction: SafeDirection) {
@@ -462,10 +465,20 @@ function CelikKasaHucresi({
 }) {
   const net = sourceNet(hareketler, satir.id);
   const islenmis = hasMovement(hareketler, satir.id);
-  // Kasada duran para tekrar eklenemez, kasada olmayan para çıkarılamaz;
-  // ama girip çıkan satır yeniden eklenebilir.
-  const eklenebilir = safeAllows(hareketler, satir.id, 'Giriş');
-  const cikarilabilir = safeAllows(hareketler, satir.id, 'Çıkış');
+  const gider = satir.kind === 'Gider';
+
+  /*
+    Yön satırın türünden geliyor: nakit tahsilat kasaya girer, nakit ödenen
+    gider kasadan çıkar. Yönü kullanıcıya bırakmak, maaş ödemesini kasaya
+    para giriyormuş gibi işlemeye izin veriyordu.
+
+    Bu yüzden düğmelerin ne yazdığı da satıra göre değişiyor: soldaki
+    düğme satırın doğal hareketi, sağdaki onun karşı hareketi.
+  */
+  const dogal = naturalDirection(satir.kind);
+  const karsi: SafeDirection = dogal === 'Giriş' ? 'Çıkış' : 'Giriş';
+  const dogalAcik = safeAllows(hareketler, satir.id, dogal, satir.kind);
+  const karsiAcik = safeAllows(hareketler, satir.id, karsi, satir.kind);
 
   if (!duzenlenebilir) {
     return islenmis
@@ -473,32 +486,50 @@ function CelikKasaHucresi({
       : <p className="text-center text-xs text-brand-muted">-</p>;
   }
 
+  const dogalEtiket = gider ? 'Öde' : 'Ekle';
+  const dogalAd = gider ? `Çelik kasadan öde: ${satir.category}` : `Çelik kasaya ekle: ${satir.category}`;
+  const dogalIpucu = gider
+    ? (dogalAcik ? 'Bu gideri çelik kasadan öde' : 'Bu gider çelik kasadan zaten düşülmüş; önce geri alın.')
+    : (dogalAcik ? 'Çelik kasaya ekle' : 'Bu kayıt şu an çelik kasada duruyor; önce kasadan çıkarın.');
+
+  const karsiEtiket = gider ? 'Geri al' : 'Çıkar';
+  const karsiAd = gider ? `Çelik kasaya geri al: ${satir.category}` : `Çelik kasadan çıkar: ${satir.category}`;
+  const karsiIpucu = gider
+    ? (karsiAcik ? 'Kasadan ödenen gideri geri al' : 'Bu gider çelik kasadan düşülmemiş; geri alınacak bir şey yok.')
+    : (karsiAcik ? 'Çelik kasadan çıkar' : 'Bu kayıt çelik kasada değil; önce kasaya ekleyin.');
+
   /*
     Düğmeler yazıyla etiketli: bu genişlikte iki ok simgesi birbirinden
     ayırt edilemiyordu ve yanlış yöne basmak kasadaki parayı bozar.
   */
+  const bicim = (vurgu: string) => 'inline-flex items-center gap-1 rounded border border-line px-1.5 py-1 '
+    + 'text-[11px] leading-none text-brand-muted disabled:cursor-not-allowed disabled:opacity-40 '
+    + vurgu;
+  const yesil = 'enabled:hover:border-[#15803d] enabled:hover:text-[#15803d]';
+  const kirmizi = 'enabled:hover:border-[#b91c1c] enabled:hover:text-[#b91c1c]';
+
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="flex gap-1">
         <button
           type="button"
-          onClick={() => isle('Giriş')}
-          disabled={!eklenebilir}
-          title={eklenebilir ? 'Çelik kasaya ekle' : 'Bu kayıt şu an çelik kasada duruyor; önce kasadan çıkarın.'}
-          aria-label={`Çelik kasaya ekle: ${satir.category}`}
-          className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-1 text-[11px] leading-none text-brand-muted enabled:hover:border-[#15803d] enabled:hover:text-[#15803d] disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => isle(dogal)}
+          disabled={!dogalAcik}
+          title={dogalIpucu}
+          aria-label={dogalAd}
+          className={bicim(gider ? kirmizi : yesil)}
         >
-          <IconSafeIn size={12} /> Ekle
+          {gider ? <IconSafeOut size={12} /> : <IconSafeIn size={12} />} {dogalEtiket}
         </button>
         <button
           type="button"
-          onClick={() => isle('Çıkış')}
-          disabled={!cikarilabilir}
-          title={cikarilabilir ? 'Çelik kasadan çıkar' : 'Bu kayıt çelik kasada değil; önce kasaya ekleyin.'}
-          aria-label={`Çelik kasadan çıkar: ${satir.category}`}
-          className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-1 text-[11px] leading-none text-brand-muted enabled:hover:border-[#b91c1c] enabled:hover:text-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => isle(karsi)}
+          disabled={!karsiAcik}
+          title={karsiIpucu}
+          aria-label={karsiAd}
+          className={bicim(gider ? yesil : kirmizi)}
         >
-          <IconSafeOut size={12} /> Çıkar
+          {gider ? <IconSafeIn size={12} /> : <IconSafeOut size={12} />} {karsiEtiket}
         </button>
       </div>
       {islenmis && (

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  hasMovement, makeSafeMovement, movementsOf, safeAllows, safeBalance, safeTotals, sourceNet,
+  hasMovement, makeSafeMovement, movementsOf, naturalDirection, safeAllows,
+  safeBalance, safeTotals, sourceNet,
 } from './celikKasa';
 import { localRepo } from './repo/local';
 import { clearAll } from './storage';
@@ -77,20 +78,50 @@ describe('movementsOf / sourceNet / safeAllows', () => {
     expect(hasMovement(hareketler, 'yok')).toBe(false);
   });
 
-  it('kasada duran satır tekrar eklenemez, çıkarılabilir', () => {
-    expect(safeAllows(hareketler, 'cf2', 'Giriş')).toBe(false);
-    expect(safeAllows(hareketler, 'cf2', 'Çıkış')).toBe(true);
+  it('kasada duran gelir tekrar eklenemez, çıkarılabilir', () => {
+    expect(safeAllows(hareketler, 'cf2', 'Giriş', 'Gelir')).toBe(false);
+    expect(safeAllows(hareketler, 'cf2', 'Çıkış', 'Gelir')).toBe(true);
   });
 
-  it('girip çıkmış satır yeniden eklenebilir', () => {
-    // Asıl düzeltilen davranış: bir tur dönen satır kilitlenmemeli.
-    expect(safeAllows(hareketler, 'cf1', 'Giriş')).toBe(true);
-    expect(safeAllows(hareketler, 'cf1', 'Çıkış')).toBe(false);
+  it('girip çıkmış gelir yeniden eklenebilir', () => {
+    expect(safeAllows(hareketler, 'cf1', 'Giriş', 'Gelir')).toBe(true);
+    expect(safeAllows(hareketler, 'cf1', 'Çıkış', 'Gelir')).toBe(false);
   });
 
-  it('hiç işlenmemiş satır eklenebilir ama çıkarılamaz', () => {
-    expect(safeAllows(hareketler, 'yok', 'Giriş')).toBe(true);
-    expect(safeAllows(hareketler, 'yok', 'Çıkış')).toBe(false);
+  it('hiç işlenmemiş gelir eklenebilir ama çıkarılamaz', () => {
+    expect(safeAllows(hareketler, 'yok', 'Giriş', 'Gelir')).toBe(true);
+    expect(safeAllows(hareketler, 'yok', 'Çıkış', 'Gelir')).toBe(false);
+  });
+});
+
+describe('naturalDirection / gider yönü', () => {
+  it('gelir kasaya girer, gider kasadan çıkar', () => {
+    expect(naturalDirection('Gelir')).toBe('Giriş');
+    expect(naturalDirection('Gider')).toBe('Çıkış');
+  });
+
+  it('işlenmemiş gider kasadan ödenebilir, kasaya eklenemez', () => {
+    // Bildirilen hata: nakit ödenen maaş "kasaya ekle" ile kasayı
+    // artırıyordu ve kasadan düşülemiyordu.
+    expect(safeAllows([], 'cf9', 'Çıkış', 'Gider')).toBe(true);
+    expect(safeAllows([], 'cf9', 'Giriş', 'Gider')).toBe(false);
+  });
+
+  it('kasadan ödenen gider geri alınabilir, ikinci kez ödenemez', () => {
+    const odenmis = [hareket({ id: 'g', sourceId: 'cf9', direction: 'Çıkış', amount: 7500 })];
+    expect(safeAllows(odenmis, 'cf9', 'Çıkış', 'Gider')).toBe(false);
+    expect(safeAllows(odenmis, 'cf9', 'Giriş', 'Gider')).toBe(true);
+    expect(sourceNet(odenmis, 'cf9')).toBe(-7500);
+  });
+
+  it('geri alınan gider yeniden kasadan ödenebilir', () => {
+    const tur = [
+      hareket({ id: 'g1', sourceId: 'cf9', direction: 'Çıkış', amount: 7500 }),
+      hareket({ id: 'g2', sourceId: 'cf9', direction: 'Giriş', amount: 7500 }),
+    ];
+    expect(sourceNet(tur, 'cf9')).toBe(0);
+    expect(safeAllows(tur, 'cf9', 'Çıkış', 'Gider')).toBe(true);
+    expect(safeAllows(tur, 'cf9', 'Giriş', 'Gider')).toBe(false);
   });
 });
 
@@ -169,7 +200,7 @@ describe('depo: çelik kasa defteri', () => {
   it('kasaya girenden fazlası çıkarılamaz', async () => {
     await yaz({ amount: 1000 });
     await expect(yaz({ id: 'm2', direction: 'Çıkış', amount: 1500 }))
-      .rejects.toThrow(/fazlası çıkarılamaz/);
+      .rejects.toThrow(/fazlası işlenemez/);
   });
 
   it('sıfır ya da eksi tutarı reddeder', async () => {
@@ -195,6 +226,63 @@ describe('depo: çelik kasa defteri', () => {
     await yaz({ id: 'a', sourceId: 'cf1' });
     await yaz({ id: 'b', sourceId: 'cf2' });
     expect(safeBalance(await localRepo.listSafeMovements('biz_test'))).toBe(2000);
+  });
+
+  it('gider kasadan ödenir, kasayı azaltır', async () => {
+    // Bildirilen hata: nakit ödenen 7.500 TL'lik maaş kasayı ARTIRIYORDU.
+    await localRepo.addCashFlow({
+      id: 'gd1', businessId: 'biz_test', kind: 'Gider', date: '2026-09-12',
+      category: 'Personel Maaş', amount: 7500, createdAt: '',
+    });
+
+    await expect(yaz({ id: 'g0', sourceId: 'gd1', direction: 'Giriş', amount: 7500 }))
+      .rejects.toThrow(/düşülmemiş/);
+
+    await yaz({ id: 'g1', sourceId: 'gd1', direction: 'Çıkış', amount: 7500 });
+    expect(safeBalance(await localRepo.listSafeMovements('biz_test'))).toBe(-7500);
+  });
+
+  it('kasadan ödenen gider ikinci kez ödenemez, geri alınabilir', async () => {
+    await localRepo.addCashFlow({
+      id: 'gd1', businessId: 'biz_test', kind: 'Gider', date: '2026-09-12',
+      category: 'Personel Maaş', amount: 7500, createdAt: '',
+    });
+    await yaz({ id: 'g1', sourceId: 'gd1', direction: 'Çıkış', amount: 7500 });
+
+    await expect(yaz({ id: 'g2', sourceId: 'gd1', direction: 'Çıkış', amount: 7500 }))
+      .rejects.toThrow(/zaten düşülmüş/);
+
+    await yaz({ id: 'g3', sourceId: 'gd1', direction: 'Giriş', amount: 7500 });
+    expect(safeBalance(await localRepo.listSafeMovements('biz_test'))).toBe(0);
+
+    // Tur tamamlandı: gider yeniden kasadan ödenebilir.
+    await yaz({ id: 'g4', sourceId: 'gd1', direction: 'Çıkış', amount: 7500 });
+    expect(safeBalance(await localRepo.listSafeMovements('biz_test'))).toBe(-7500);
+  });
+
+  it('giderde kasadan düşülenden fazlası geri alınamaz', async () => {
+    await localRepo.addCashFlow({
+      id: 'gd1', businessId: 'biz_test', kind: 'Gider', date: '2026-09-12',
+      category: 'Personel Maaş', amount: 7500, createdAt: '',
+    });
+    await yaz({ id: 'g1', sourceId: 'gd1', direction: 'Çıkış', amount: 7500 });
+    await expect(yaz({ id: 'g2', sourceId: 'gd1', direction: 'Giriş', amount: 9000 }))
+      .rejects.toThrow(/fazlası işlenemez/);
+  });
+
+  it('gelir ve gider kasada birbirini götürür', async () => {
+    // Muhasebe bakiyesi ayrı; buradaki toplam kasadaki gerçek paradır.
+    await localRepo.addCashFlow({
+      id: 'gl1', businessId: 'biz_test', kind: 'Gelir', date: '2026-09-12',
+      category: 'Diğer Gelir', amount: 10000, createdAt: '',
+    });
+    await localRepo.addCashFlow({
+      id: 'gd1', businessId: 'biz_test', kind: 'Gider', date: '2026-09-12',
+      category: 'Personel Maaş', amount: 4000, createdAt: '',
+    });
+    await yaz({ id: 'a', sourceId: 'gl1', direction: 'Giriş', amount: 10000 });
+    await yaz({ id: 'b', sourceId: 'gd1', direction: 'Çıkış', amount: 4000 });
+    expect(safeBalance(await localRepo.listSafeMovements('biz_test'))).toBe(6000);
   });
 
   it('gelir/gider kaydı silinince ona bağlı hareket de düşer', async () => {
