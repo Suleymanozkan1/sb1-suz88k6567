@@ -142,12 +142,11 @@ await dahaEkrani('/izinler', '16-izinler');
 await dahaEkrani('/menuler', '17-menuler');
 await dahaEkrani('/tedarikciler', '18-tedarikciler');
 await dahaEkrani('/musteriler', '19-musteriler');
-await dahaEkrani('/talepler', '20-talepler');
-await dahaEkrani('/kullanicilar', '21-kullanicilar', 300);
-await dahaEkrani('/sistem', '22-sistem');
-await dahaEkrani('/denetim', '23-denetim');
-await dahaEkrani('/ayarlar', '24-ayarlar');
-await dahaEkrani('/hesap', '25-hesap');
+await dahaEkrani('/kullanicilar', '20-kullanicilar', 300);
+await dahaEkrani('/sistem', '21-sistem');
+await dahaEkrani('/denetim', '22-denetim');
+await dahaEkrani('/ayarlar', '23-ayarlar');
+await dahaEkrani('/hesap', '24-hesap');
 
 // Aynı ekranın iki kez yakalanması sessiz bir hatadır (yanlış gezinme,
 // beklenmeyen yönlendirme). Karşılaştırarak erken yakalanır.

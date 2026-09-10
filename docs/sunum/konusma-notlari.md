@@ -122,7 +122,7 @@ veritabanında engellenmesi, İYS'nin sistemin içinde olması, hatırlatmaları
 otomatik gitmesi. Bilmediğiniz bir ürün hakkında yorum yapmayın.
 
 **"Telefonda her şey var mı, yoksa sadece bakabiliyor muyum?"**
-Panelde ne varsa telefonda da var, yirmi bir ekran. Yazma tarafı bilinçli
+Panelde ne varsa telefonda da var, yirmi ekran. Yazma tarafı bilinçli
 sınırlı: tahsilat, gelir-gider, yeni rezervasyon ve mesaj metni telefondan
 girilir; yetki değiştirme ve fatura kesme masaüstünde kalır, çünkü ikisi de
 yanlış dokunuşla geri alınması zor sonuç üretiyor.

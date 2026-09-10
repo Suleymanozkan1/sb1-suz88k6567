@@ -452,7 +452,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     [img('mobil-11-daha.png'), 'Bütün ekranlar'],
     [img('mobil-13-raporlar.png'), 'Raporlar'],
     [img('mobil-15-sms.png'), 'SMS kayıtları'],
-    [img('mobil-22-sistem.png'), 'Sistem durumu'],
+    [img('mobil-21-sistem.png'), 'Sistem durumu'],
   ];
   const EN = 1.9, BOSLUK = 0.42;
   const SOL = KENAR + (GENIS - (EKRAN.length * EN + (EKRAN.length - 1) * BOSLUK)) / 2;

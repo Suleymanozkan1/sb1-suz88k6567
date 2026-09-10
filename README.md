@@ -38,8 +38,12 @@ Demo hesapları yalnızca demo modunda vardır.
 | `npm run build`     | Tip kontrolü + üretim derlemesi (`dist/`)        |
 | `npm run preview`   | Derlenmiş çıktıyı yerel olarak sunar             |
 | `npm run lint`      | ESLint                                           |
-| `npm test`          | Vitest birim + entegrasyon testleri (206 test)   |
-| `npm run e2e`       | Playwright uçtan uca testleri (54 test)          |
+| `npm test`          | Vitest birim + entegrasyon testleri (768 test)  |
+| `npm run e2e`       | Playwright uçtan uca testleri (101 test)        |
+| `npx vitest run --coverage` | Fonksiyon ve satır kapsamı raporu       |
+
+Kapsamın hangi dosyada neyi doğruladığı ve neyin kapsanmadığı
+[`TEST-KAPSAMI.md`](TEST-KAPSAMI.md) dosyasında dosya dosya yazılıdır.
 
 ## Sayfa haritası
 
