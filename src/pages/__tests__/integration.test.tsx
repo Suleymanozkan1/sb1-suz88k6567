@@ -7,23 +7,16 @@ import type { ReactElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../../context/AuthContext';
 import PublicLayout from '../../layouts/PublicLayout';
-import Home from '../Home';
-import Sss from '../Sss';
 import KodDogrulama from '../KodDogrulama';
-import Iletisim from '../Iletisim';
 import UyeOl from '../UyeOl';
 import UyeGirisi from '../UyeGirisi';
-import Uyeler from '../Uyeler';
 import NotFound from '../NotFound';
-import SalonDetay from '../SalonDetay';
-import { DIRECTORY } from '../../data/directory';
 import { clearAll, KEYS, read } from '../../lib/storage';
 import { localRepo } from '../../lib/repo/local';
 import { seedIfEmpty } from '../../lib/seed';
 import { makeReservationCode, normalizeEmail, uid } from '../../lib/ids';
-import type { ContactMessage, User } from '../../types';
+import type { User } from '../../types';
 
-const getMessages = () => read<ContactMessage[]>(KEYS.messages, []);
 const findUserByEmail = (email: string) =>
   read<User[]>(KEYS.users, []).find((u) => normalizeEmail(u.email) === normalizeEmail(email));
 
@@ -57,58 +50,6 @@ function passwordRepeatField(): HTMLInputElement {
 }
 
 beforeEach(() => clearAll());
-
-describe('Anasayfa', () => {
-  it('hero başlığını ve sloganı gösterir', () => {
-    renderAt('/', <Home />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Sahra Takip' })).toBeInTheDocument();
-    expect(screen.getByText("Online salon yönetim sistemi")).toBeInTheDocument();
-  });
-
-  it('dört hizmet kartını listeler', () => {
-    renderAt('/', <Home />);
-    ['Online', 'Raporlama', 'Zaman Kazanın', 'Kolay Kullanım'].forEach((t) => {
-      expect(screen.getByRole('heading', { name: t })).toBeInTheDocument();
-    });
-  });
-
-  it('sektör dağılımını erişilebilir ilerleme çubuğu olarak sunar', () => {
-    renderAt('/', <Home />);
-    const bar = screen.getByRole('progressbar', { name: 'Düğün Salonları' });
-    expect(bar).toHaveAttribute('aria-valuenow', '100');
-  });
-
-  it('7 gün ücretsiz deneme bağlantısı üye ol sayfasına gider', () => {
-    renderAt('/', <Home />);
-    expect(screen.getAllByRole('link', { name: '7 gün ücretsiz deneyin' })[0]).toHaveAttribute('href', '/uye-ol');
-  });
-
-  it('tanıtım videosu lightbox olarak açılır ve kapanır', async () => {
-    const user = userEvent.setup();
-    renderAt('/', <Home />);
-    await user.click(screen.getByRole('button', { name: /Tanıtım videosu/ }));
-    const dialog = screen.getByRole('dialog', { name: 'Tanıtım videosu' });
-    expect(dialog).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: 'Videoyu kapat' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  });
-});
-
-describe('Sık Sorulan Sorular', () => {
-  it('akordeon başlangıçta ilk cevabı açık gösterir', () => {
-    renderAt('/sss', <Sss />);
-    expect(screen.getByRole('button', { name: /Tavsiye Et butonu hakkında/ })).toHaveAttribute('aria-expanded', 'true');
-  });
-
-  it('başka bir soruya tıklandığında o cevap açılır', async () => {
-    const user = userEvent.setup();
-    renderAt('/sss', <Sss />);
-    const q = screen.getByRole('button', { name: /Rezervasyon kaydı sınırı var mı\?/ });
-    await user.click(q);
-    expect(q).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText(/Sisteme istediğiniz kadar rezervasyon kaydı ekleyebilirsiniz/)).toBeVisible();
-  });
-});
 
 describe('Kod Doğrulama', () => {
   it('boş kodda uyarı verir', async () => {
@@ -146,49 +87,6 @@ describe('Kod Doğrulama', () => {
     expect(screen.getByText('100.000,00 ₺')).toBeInTheDocument(); // toplam tutar
     expect(screen.getByText('532*****33')).toBeInTheDocument();   // maskeli telefon
     expect(screen.queryByText(/Kalan Alacak/)).not.toBeInTheDocument();
-  });
-});
-
-describe('İletişim formu', () => {
-  it('zorunlu alanlar boşken hata gösterir ve mesaj kaydetmez', async () => {
-    const user = userEvent.setup();
-    renderAt('/iletisim', <Iletisim />);
-    await user.click(screen.getByRole('button', { name: 'Mesajımı gönder' }));
-    expect(await screen.findByText('Adınızı soyadınızı giriniz.')).toBeInTheDocument();
-    expect(getMessages()).toHaveLength(0);
-  });
-
-  it('hatalı e-posta biçimini reddeder', async () => {
-    const user = userEvent.setup();
-    renderAt('/iletisim', <Iletisim />);
-    await user.type(screen.getByLabelText('E-posta'), 'gecersiz');
-    await user.click(screen.getByRole('button', { name: 'Mesajımı gönder' }));
-    expect(await screen.findByText('Geçerli bir e-posta adresi giriniz.')).toBeInTheDocument();
-  });
-
-  it('geçerli formu kaydeder ve teşekkür mesajı gösterir', async () => {
-    const user = userEvent.setup();
-    renderAt('/iletisim', <Iletisim />);
-    await user.type(screen.getByLabelText('Adınız Soyadınız'), 'Ahmet Yaz');
-    await user.type(screen.getByLabelText('E-posta'), 'ahmet@example.com');
-    await user.type(screen.getByLabelText('Telefon'), '5321234567');
-    await user.type(screen.getByLabelText('Mesajınız'), 'Bilgi almak istiyorum.');
-    await user.click(screen.getByRole('button', { name: 'Mesajımı gönder' }));
-
-    expect(await screen.findByText(/Mesajınız tarafımıza ulaştı/, {}, { timeout: 3000 })).toBeInTheDocument();
-    await waitFor(() => expect(getMessages()).toHaveLength(1));
-    expect(getMessages()[0].kind).toBe('iletisim');
-  });
-
-  it('demo varyantı talebi demo olarak kaydeder', async () => {
-    const user = userEvent.setup();
-    renderAt('/demo-talebi', <Iletisim variant="demo" />);
-    await user.type(screen.getByLabelText('Adınız Soyadınız'), 'Sevil Karakuş');
-    await user.type(screen.getByLabelText('E-posta'), 'sevil@example.com');
-    await user.type(screen.getByLabelText('Telefon'), '5339876543');
-    await user.type(screen.getByLabelText('Mesajınız'), 'Demo istiyorum.');
-    await user.click(screen.getByRole('button', { name: 'Talepte bulun' }));
-    await waitFor(() => expect(getMessages()[0]?.kind).toBe('demo'), { timeout: 3000 });
   });
 });
 
@@ -275,7 +173,7 @@ describe('Üye Girişi', () => {
   it('hatalı şifrede uyarı gösterir', async () => {
     seedIfEmpty();
     const user = userEvent.setup();
-    renderAt('/uye-girisi', <UyeGirisi />);
+    renderAt('/', <UyeGirisi />);
     await user.type(screen.getByLabelText('E-posta Adresiniz'), 'demo@sahratakip.com');
     await user.type(screen.getByLabelText('Şifreniz'), 'yanlis');
     await user.click(screen.getByRole('button', { name: 'Giriş Yap' }));
@@ -284,7 +182,7 @@ describe('Üye Girişi', () => {
 
   it('kayıtlı olmayan e-postada uyarı gösterir', async () => {
     const user = userEvent.setup();
-    renderAt('/uye-girisi', <UyeGirisi />);
+    renderAt('/', <UyeGirisi />);
     await user.type(screen.getByLabelText('E-posta Adresiniz'), 'yok@example.com');
     await user.type(screen.getByLabelText('Şifreniz'), 'sifre123');
     await user.click(screen.getByRole('button', { name: 'Giriş Yap' }));
@@ -294,32 +192,10 @@ describe('Üye Girişi', () => {
   it('doğru bilgilerde panele yönlendirir', async () => {
     seedIfEmpty();
     const user = userEvent.setup();
-    renderAt('/uye-girisi', <UyeGirisi />, [{ path: '/panel', element: <p>Panel açıldı</p> }]);
+    renderAt('/', <UyeGirisi />, [{ path: '/panel', element: <p>Panel açıldı</p> }]);
     await user.click(screen.getByRole('button', { name: 'Demo bilgilerini doldur' }));
     await user.click(screen.getByRole('button', { name: 'Giriş Yap' }));
     expect(await screen.findByText('Panel açıldı', {}, { timeout: 3000 })).toBeInTheDocument();
-  });
-});
-
-describe('Referanslarımız listesi', () => {
-  it('kategori filtresi listeyi daraltır', async () => {
-    const user = userEvent.setup();
-    renderAt('/uyeler', <Uyeler />);
-    const before = screen.getByText(/Listelenen:/).textContent;
-    await user.selectOptions(screen.getByLabelText('Kategori'), 'Kına Salonu');
-    expect(screen.getByText(/Listelenen:/).textContent).not.toBe(before);
-  });
-
-  it('sonuç bulunamadığında bilgilendirme gösterir', async () => {
-    const user = userEvent.setup();
-    renderAt('/uyeler', <Uyeler />);
-    await user.type(screen.getByLabelText('Arama'), 'zzzzbulunmayan');
-    expect(await screen.findByText('Aradığınız kriterlere uygun işletme bulunamadı.')).toBeInTheDocument();
-  });
-
-  it('toplam işletme sayısını gösterir', () => {
-    renderAt('/uyeler', <Uyeler />);
-    expect(screen.getByText('4.024')).toBeInTheDocument();
   });
 });
 
@@ -328,46 +204,5 @@ describe('404 sayfası', () => {
     renderAt('/olmayan-sayfa', <NotFound />);
     expect(screen.getByText('404')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Aradığınız sayfa bulunamadı' })).toBeInTheDocument();
-  });
-});
-
-describe('Salon detay sayfası', () => {
-  const member = DIRECTORY[0];
-
-  it('işletme bilgilerini gösterir', () => {
-    renderAt(`/salon/${member.slug}`, <SalonDetay />);
-    expect(screen.getByRole('heading', { level: 1, name: member.name })).toBeInTheDocument();
-    expect(screen.getByText(`${member.district} / ${member.city}`)).toBeInTheDocument();
-    expect(screen.getByText(member.about)).toBeInTheDocument();
-  });
-
-  it('bilinmeyen salon adresinde 404 gösterir', () => {
-    renderAt('/salon/olmayan-salon', <SalonDetay />);
-    expect(screen.getByText('404')).toBeInTheDocument();
-  });
-
-  it('teklif formunda zorunlu alanları doğrular', async () => {
-    const user = userEvent.setup();
-    renderAt(`/salon/${member.slug}`, <SalonDetay />);
-    await user.click(screen.getByRole('button', { name: 'Gönder' }));
-    expect(await screen.findByText('Adınızı soyadınızı giriniz.')).toBeInTheDocument();
-    expect(getMessages()).toHaveLength(0);
-  });
-
-  it('teklif talebini işletme bilgisiyle birlikte kaydeder', async () => {
-    const user = userEvent.setup();
-    renderAt(`/salon/${member.slug}`, <SalonDetay />);
-
-    await user.selectOptions(screen.getByLabelText('Mesaj Konusu'), 'Rezervasyon');
-    await user.type(screen.getByLabelText('Adınız Soyadınız'), 'Talep Eden');
-    await user.type(screen.getByLabelText('E-posta Adresiniz'), 'talep@example.com');
-    await user.type(screen.getByLabelText('Telefon'), '5321234567');
-    await user.type(screen.getByLabelText('Mesajınız'), 'Fiyat bilgisi rica ederim.');
-    await user.click(screen.getByRole('button', { name: 'Gönder' }));
-
-    await waitFor(() => expect(getMessages()).toHaveLength(1), { timeout: 3000 });
-    const saved = getMessages()[0];
-    expect(saved.message).toContain(member.name);
-    expect(saved.message).toContain('Konu: Rezervasyon');
   });
 });

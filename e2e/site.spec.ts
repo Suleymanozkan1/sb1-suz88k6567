@@ -30,29 +30,17 @@ function collectAppErrors(page: Page): string[] {
   return errors;
 }
 
+// Tanıtım sayfaları kaldırıldı: sistem bir tanıtım sitesi değil,
+// işletmenin kendi paneli. Açılış doğrudan giriş ekranı.
 const PUBLIC_ROUTES = [
-  { path: '/', heading: 'Sahra Takip' },
-  { path: '/nedir', heading: 'Sahra Takip Salon Takip Programı Nedir?' },
-  { path: '/haberler', heading: 'Haberler' },
-  { path: '/ekranlar', heading: 'Ekranlar' },
-  { path: '/uyeler', heading: 'Referanslarımız / Üyeler / İşletmeler' },
-  { path: '/dusunceler', heading: 'Üyelerimizin Düşünceleri' },
-  { path: '/sss', heading: 'Sık Sorulan Sorular' },
-  { path: '/iletisim', heading: 'Sahra Takip Salon Takip Programı İletişim' },
-  { path: '/demo-talebi', heading: 'Demo Talebi' },
-  { path: '/kod-dogrulama', heading: 'Rezervasyon Kod Doğrulama' },
+  { path: '/', heading: 'Üye Girişi' },
   { path: '/uye-ol', heading: 'Üye Ol' },
-  { path: '/uye-girisi', heading: 'Üye Girişi' },
-  { path: '/dugun-salonlari', heading: 'Düğün Salonları' },
-  { path: '/kina-salonlari', heading: 'Kına Salonları' },
-  { path: '/dugun-otelleri', heading: 'Düğün Otelleri' },
-  { path: '/kir-dugunu-mekanlari', heading: 'Kır Düğünü Mekanları' },
+  { path: '/kod-dogrulama', heading: 'Rezervasyon Kod Doğrulama' },
   { path: '/gizlilik-politikasi', heading: 'Gizlilik Politikası' },
-  { path: '/iade-proseduru', heading: 'İade/İptal Prosedürü' },
-  { path: '/mesafeli-hizmet-sozlesmesi', heading: 'Mesafeli Hizmet Sözleşmesi' },
+  { path: '/kvkk-aydinlatma-metni', heading: 'KVKK Aydınlatma Metni' },
   { path: '/uyelik-sozlesmesi', heading: 'Üyelik Sözleşmesi' },
-  { path: '/haberler/basari', heading: 'BAŞARI' },
 ];
+
 
 test.describe('Herkese açık sayfalar', () => {
   for (const route of PUBLIC_ROUTES) {
@@ -67,42 +55,8 @@ test.describe('Herkese açık sayfalar', () => {
     });
   }
 
-  test('referans listesinden salon detay sayfasına gidilir', async ({ page }) => {
-    await blockExternalRequests(page);
-    await page.goto('/uyeler');
-    const firstCard = page.getByRole('link', { name: 'Detay bilgi için tıklayınız →' }).first();
-    await firstCard.click();
-    await expect(page).toHaveURL(/\/salon\//);
-    await expect(page.getByRole('heading', { name: 'İşletme Bilgileri' })).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: /Fiyat Teklifi İste \/ İletişim \/ Rezervasyon/ }),
-    ).toBeVisible();
-  });
 
-  test('bilinmeyen salon adresi 404 gösterir', async ({ page }) => {
-    await blockExternalRequests(page);
-    await page.goto('/salon/olmayan-bir-salon');
-    await expect(page.getByRole('heading', { name: 'Aradığınız sayfa bulunamadı' })).toBeVisible();
-  });
 
-  test('İYS uyumu anasayfada, /nedir ve /sss sayfalarında anlatılır', async ({ page }) => {
-    await blockExternalRequests(page);
-
-    await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'İYS uyumlu SMS gönderimi' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Otomatik İYS aktarımı' })).toBeVisible();
-
-    await page.goto('/nedir');
-    await expect(page.getByRole('heading', { name: 'İYS uyumlu SMS gönderimi' })).toBeVisible();
-
-    // Ticari ileti / işlem bildirimi ayrımı SSS'de de anlatılmalı: satış
-    // görüşmesinde en sık gelen soru bu.
-    await page.goto('/sss');
-    await expect(page.getByText('Müşterilerime kampanya SMS’i gönderebilir miyim?')).toBeVisible();
-
-    await page.goto('/ekranlar');
-    await expect(page.getByRole('heading', { name: 'İYS İzin Yönetimi' })).toBeVisible();
-  });
 
   test('bilinmeyen adres 404 sayfası gösterir', async ({ page }) => {
     await page.goto('/boyle-bir-sayfa-yok');
@@ -131,35 +85,30 @@ test.describe('Herkese açık sayfalar', () => {
 });
 
 test.describe('Gezinme', () => {
-  test('ana menüden sayfalar arasında geçiş yapılır', async ({ page }) => {
+  test('açılış doğrudan giriş ekranıdır', async ({ page }) => {
+    // Tanıtım sayfası yok; kök adres giriş formunu göstermeli.
     await page.goto('/');
-    await page.getByRole('link', { name: 'Nedir', exact: true }).click();
-    await expect(page).toHaveURL(/\/nedir$/);
-    await page.getByRole('link', { name: 'Ekranlar', exact: true }).click();
-    await expect(page).toHaveURL(/\/ekranlar$/);
+    await expect(page.getByRole('heading', { name: 'Üye Girişi', level: 1 })).toBeVisible();
+    await expect(page.getByLabel('E-Posta')).toBeVisible();
   });
 
-  test('İçerik açılır menüsü Kod Doğrulama sayfasına götürür', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: 'İçerik' }).click();
-    await page.getByRole('link', { name: 'Kod Doğrulama' }).first().click();
-    await expect(page).toHaveURL(/\/kod-dogrulama$/);
-  });
-
-  test('mobil menü açılıp kapanır', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 800 });
-    await page.goto('/');
-    const toggle = page.getByRole('button', { name: 'Menüyü aç' });
-    await toggle.click();
-    await expect(page.getByRole('navigation', { name: 'Mobil menü' })).toBeVisible();
-    await page.getByRole('button', { name: 'Menüyü kapat' }).click();
-    await expect(page.getByRole('navigation', { name: 'Mobil menü' })).toBeHidden();
+  test('eski /uye-girisi adresi köke yönlendirir', async ({ page }) => {
+    await page.goto('/uye-girisi');
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('heading', { name: 'Üye Girişi', level: 1 })).toBeVisible();
   });
 
   test('footer bağlantıları çalışır', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: 'İade/İptal Prosedürü' }).click();
-    await expect(page.getByRole('heading', { name: 'İade/İptal Prosedürü', level: 1 })).toBeVisible();
+    await page.getByRole('link', { name: 'KVKK Aydınlatma Metni' }).click();
+    await expect(page.getByRole('heading', { name: 'KVKK Aydınlatma Metni', level: 1 })).toBeVisible();
+  });
+
+  test('kaldırılan tanıtım adresleri 404 verir', async ({ page }) => {
+    for (const yol of ['/nedir', '/ekranlar', '/uyeler', '/sss', '/iletisim', '/haberler']) {
+      await page.goto(yol);
+      await expect(page.getByRole('heading', { level: 1 })).toContainText('bulunamadı');
+    }
   });
 });
 
@@ -169,14 +118,14 @@ test.describe('SEO ve erişilebilirlik', () => {
     const homeTitle = await page.title();
     expect(homeTitle).toContain('Sahra Takip');
 
-    await page.goto('/sss');
-    expect(await page.title()).toContain('Sık Sorulan Sorular');
+    await page.goto('/kod-dogrulama');
+    expect(await page.title()).toContain('Kod Doğrulama');
     const desc = await page.locator('meta[name="description"]').getAttribute('content');
     expect(desc).toBeTruthy();
   });
 
   test('panel sayfaları arama motorlarına kapalıdır', async ({ page }) => {
-    await page.goto('/uye-girisi');
+    await page.goto('/');
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow');
   });
 

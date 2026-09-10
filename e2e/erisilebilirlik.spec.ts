@@ -13,17 +13,20 @@ import { expect, test, type Page } from '@playwright/test';
  * yüklenmemiş bir yazı tipi kontrast ölçümünü bozabilir.
  */
 
+// Tanıtım sayfaları kaldırıldı; herkese açık yüzey giriş, kayıt,
+// müşterinin rezervasyon sorgusu ve yasal metinlerden ibaret.
 const HERKESE_ACIK = [
-  '/', '/nedir', '/haberler', '/ekranlar', '/uyeler', '/dusunceler', '/sss',
-  '/iletisim', '/demo-talebi', '/kod-dogrulama', '/uye-ol', '/uye-girisi',
-  '/dugun-salonlari', '/gizlilik-politikasi', '/uyelik-sozlesmesi',
+  '/', '/uye-ol', '/kod-dogrulama',
+  '/gizlilik-politikasi', '/kvkk-aydinlatma-metni', '/uyelik-sozlesmesi',
 ];
 
 const PANEL = [
   '/panel', '/panel/takvim', '/panel/rezervasyonlar', '/panel/kasa',
   '/panel/faturalar', '/panel/raporlar', '/panel/salonlar', '/panel/menuler',
-  '/panel/izinler', '/panel/sms', '/panel/talepler', '/panel/kullanicilar',
-  '/panel/ayarlar', '/panel/sistem-durumu',
+  '/panel/hatirlatmalar', '/panel/izinler', '/panel/sms', '/panel/talepler',
+  '/panel/kullanicilar', '/panel/musteriler', '/panel/tedarikciler',
+  '/panel/isletmeler', '/panel/renk-ayarlari', '/panel/denetim',
+  '/panel/ayarlar', '/panel/sistem',
 ];
 
 /** WCAG 2.0/2.1/2.2 A ve AA ölçütleri. */
@@ -56,7 +59,7 @@ test.describe('Erişilebilirlik, herkese açık sayfalar', () => {
 test.describe('Erişilebilirlik, üye paneli', () => {
   test.beforeEach(async ({ page }) => {
     await disKaynaklariEngelle(page);
-    await page.goto('/uye-girisi');
+    await page.goto('/');
     await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
     await page.getByRole('button', { name: 'Giriş Yap' }).click();
     await page.waitForURL(/\/panel$/);

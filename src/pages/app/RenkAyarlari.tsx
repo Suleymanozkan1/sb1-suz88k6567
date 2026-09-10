@@ -88,10 +88,20 @@ export default function RenkAyarlari() {
       <section className="card mt-6 p-5">
         <h2 className="mb-4 font-heading text-lg font-bold text-brand">Önizleme</h2>
         <div className="grid grid-cols-7 gap-1.5">
+          {/* Etiket renkli zeminin üstüne değil altına yazılıyor.
+              Renkleri kullanıcı seçiyor ve bazı tonlarda hiçbir metin rengi
+              AA eşiğini tutturamıyor: varsayılan #2c82c9 üzerinde en iyi
+              seçenek olan koyu metin bile 4,35'te kalıyordu. Metni her
+              zaman kart zeminine yazmak bu sınıfı tamamen kapatıyor. */}
           {draft.slice(0, 7).map((c, i) => (
-            <div key={c.key} className="rounded p-2 text-center text-[10px]" style={{ background: c.color, color: okunakliMetinRengi(c.color) }}>
-              {i + 1}
-              <span className="mt-1 block truncate">{c.label}</span>
+            <div key={c.key} className="text-center">
+              <div
+                className="flex h-9 items-center justify-center rounded text-[10px] font-semibold"
+                style={{ background: c.color, color: okunakliMetinRengi(c.color) }}
+              >
+                {i + 1}
+              </div>
+              <span className="mt-1 block truncate text-[10px] text-ink">{c.label}</span>
             </div>
           ))}
         </div>

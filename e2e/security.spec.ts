@@ -29,13 +29,13 @@ test.describe('İstemci tarafı güvenlik', () => {
       '/panel/faturalar', '/panel/ayarlar',
     ]) {
       await page.goto(path);
-      await expect(page, `${path} korumasız`).toHaveURL(/\/uye-girisi$/);
+      await expect(page, `${path} korumasız`).toHaveURL(/\/$/);
     }
   });
 
   test('giriş ve panel sayfaları arama motorlarına kapalı', async ({ page }) => {
     await blockExternalRequests(page);
-    await page.goto('/uye-girisi');
+    await page.goto('/');
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow');
   });
 
@@ -43,13 +43,13 @@ test.describe('İstemci tarafı güvenlik', () => {
     const response = await page.goto('/robots.txt');
     const body = await response!.text();
     expect(body).toContain('Disallow: /panel');
-    expect(body).toContain('Disallow: /uye-girisi');
+    expect(body).toContain('Disallow: /panel');
   });
 
   test('kod doğrulama telefonu maskeler ve ödeme bilgisi sızdırmaz', async ({ page }) => {
     await blockExternalRequests(page);
     // Demo verisindeki bir kodu panelden alıp herkese açık sayfada sorgula
-    await page.goto('/uye-girisi');
+    await page.goto('/');
     await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
     await page.getByRole('button', { name: 'Giriş Yap' }).click();
     await expect(page).toHaveURL(/\/panel$/);
@@ -72,7 +72,7 @@ test.describe('İstemci tarafı güvenlik', () => {
 
   test('ticari ileti İYS onayı olmadan gönderilemez', async ({ page }) => {
     await blockExternalRequests(page);
-    await page.goto('/uye-girisi');
+    await page.goto('/');
     await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
     await page.getByRole('button', { name: 'Giriş Yap' }).click();
     await expect(page).toHaveURL(/\/panel$/);
@@ -93,7 +93,7 @@ test.describe('İstemci tarafı güvenlik', () => {
 
   test('SMS kuyruğu görünümü açılır', async ({ page }) => {
     await blockExternalRequests(page);
-    await page.goto('/uye-girisi');
+    await page.goto('/');
     await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
     await page.getByRole('button', { name: 'Giriş Yap' }).click();
     await expect(page).toHaveURL(/\/panel$/);
@@ -106,7 +106,7 @@ test.describe('İstemci tarafı güvenlik', () => {
 
   test('yedek indirme kendi verisini üretir', async ({ page }) => {
     await blockExternalRequests(page);
-    await page.goto('/uye-girisi');
+    await page.goto('/');
     await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
     await page.getByRole('button', { name: 'Giriş Yap' }).click();
     await expect(page).toHaveURL(/\/panel$/);
@@ -122,7 +122,7 @@ test.describe('İstemci tarafı güvenlik', () => {
 
   test('fatura tutarları arayüzde doğru hesaplanır', async ({ page }) => {
     await blockExternalRequests(page);
-    await page.goto('/uye-girisi');
+    await page.goto('/');
     await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
     await page.getByRole('button', { name: 'Giriş Yap' }).click();
     await expect(page).toHaveURL(/\/panel$/);

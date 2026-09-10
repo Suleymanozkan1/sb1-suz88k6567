@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Seo from '../components/Seo';
 import Alert from '../components/Alert';
-import { CATEGORIES, CITIES, CURRENCIES, DISTRICTS, HEARD_FROM, TRIAL_DAYS } from '../data/constants';
+import { CATEGORIES, CITIES, CURRENCIES, DISTRICTS, HEARD_FROM } from '../data/constants';
 import { useAuth } from '../context/AuthContext';
 import { errorMessage } from '../lib/authHelpers';
 import type { Currency } from '../types';
@@ -157,7 +157,7 @@ export default function UyeOl() {
           <div className="container-dt max-w-2xl">
             <Alert kind="info">
               Yeni üyelik kaydı şu anda kapalıdır. Hesabınız varsa{' '}
-              <Link to="/uye-girisi">üye girişi yapabilirsiniz</Link>. Hesap açtırmak için{' '}
+              <Link to="/">üye girişi yapabilirsiniz</Link>. Hesap açtırmak için{' '}
               <Link to="/iletisim">bizimle iletişime geçin</Link>.
             </Alert>
           </div>
@@ -185,13 +185,13 @@ export default function UyeOl() {
     <>
       <Seo
         title="Üye Ol - Sahra Takip Salon Takip Programı"
-        description={`Sahra Takip sistemine üye olun, ${TRIAL_DAYS} gün boyunca ücretsiz tam sürüm kullanın.`}
+        description="Sahra Takip sistemine üye olun ve paneli kullanmaya başlayın."
         path="/uye-ol"
       />
       <PageHeader
         title="Üye Ol"
         breadcrumbs={[{ label: 'Üye Ol' }]}
-        description={`Üye olarak ${TRIAL_DAYS} gün boyunca ücretsiz tam sürüm kullanabilirsiniz. Kredi kartı bilgisi istenmez.`}
+        description="Üye olduğunuzda panel doğrudan kullanıma açılır; abonelik ya da ödeme adımı yoktur."
       />
 
       <section className="py-12">
@@ -319,7 +319,7 @@ export default function UyeOl() {
             </button>
 
             <p className="mt-4 text-sm">
-              Zaten üye misiniz? <Link to="/uye-girisi">Üye girişi yapın</Link>
+              Zaten üye misiniz? <Link to="/">Üye girişi yapın</Link>
             </p>
           </form>
         </div>

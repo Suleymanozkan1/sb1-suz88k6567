@@ -1,6 +1,12 @@
+# Sistem bir tanıtım sitesi değil, işletmenin kendi paneli.
+# Yalnızca müşterinin rezervasyon sorgusu ve yasal metinler dizine açık.
 User-agent: *
-Allow: /
 Disallow: /panel
-Disallow: /uye-girisi
+Disallow: /uye-ol
+Disallow: /
+Allow: /kod-dogrulama
+Allow: /kvkk-aydinlatma-metni
+Allow: /gizlilik-politikasi
+Allow: /uyelik-sozlesmesi
 
 Sitemap: https://sahratakip.com/sitemap.xml

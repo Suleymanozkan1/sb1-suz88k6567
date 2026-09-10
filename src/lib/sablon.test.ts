@@ -42,11 +42,30 @@ describe('yer tutucu doldurma', () => {
 });
 
 describe('rezervasyondan değer çıkarma', () => {
-  it('kalan alacağı tahsilatlardan hesaplar', () => {
+  it('kaporayı da tahsilat sayar', () => {
+    // Kapora atlanınca kaporası alınmış bir rezervasyonun kalan tutarı
+    // olduğundan yüksek çıkıyor ve müşteriye ekrandakinden farklı bir
+    // rakam gidiyordu: 185.000 toplam, 55.500 kapora ve hiç tahsilat
+    // kaydı yokken SMS'te "kalan 185.000" yazıyordu.
+    const kaporali = { ...rezervasyon, totalAmount: 185000, deposit: 55500 } as Reservation;
+    const d = degerler(kaporali, [], 'Grand Sahra', 'Kristal Salon');
+    expect(d['odenen']).toBe('55.500,00');
+    expect(d['kalan']).toBe('129.500,00');
+  });
+
+  it('kapora ve ek tahsilatları birlikte toplar', () => {
+    const kaporali = { ...rezervasyon, totalAmount: 185000, deposit: 55500 } as Reservation;
+    const d = degerler(kaporali, [odeme(20000)], 'Grand Sahra', 'Kristal Salon');
+    expect(d['odenen']).toBe('75.500,00');
+    expect(d['kalan']).toBe('109.500,00');
+  });
+
+  it('kalan alacağı kapora ve tahsilatlardan hesaplar', () => {
+    // Örnek kaydın kaporası 60.000; 60.000 ek tahsilatla toplam 120.000 eder.
     const d = degerler(rezervasyon, [odeme(60000)], 'Grand Sahra', 'Kristal Salon');
     expect(d['tutar']).toBe('210.000,00');
-    expect(d['odenen']).toBe('60.000,00');
-    expect(d['kalan']).toBe('150.000,00');
+    expect(d['odenen']).toBe('120.000,00');
+    expect(d['kalan']).toBe('90.000,00');
   });
 
   it('tahsilat toplamı tutarı aşarsa kalan sıfırdır, negatif olmaz', () => {

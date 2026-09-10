@@ -14,7 +14,7 @@ async function blockExternalRequests(page: Page) {
 /** Demo hesabıyla giriş yapar (veritabanı bağlı değilken demo modu devreye girer). */
 async function login(page: Page) {
   await blockExternalRequests(page);
-  await page.goto('/uye-girisi');
+  await page.goto('/');
   await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
   await expect(page).toHaveURL(/\/panel$/);
@@ -25,7 +25,7 @@ test.describe('Üye paneli', () => {
   test('oturum açılmadan panel erişimi giriş sayfasına yönlendirir', async ({ page }) => {
     await blockExternalRequests(page);
     await page.goto('/panel');
-    await expect(page).toHaveURL(/\/uye-girisi$/);
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test('e-posta ve şifre ile giriş yapılır', async ({ page }) => {
@@ -160,7 +160,7 @@ test.describe('Üye paneli', () => {
     await login(page);
     await page.getByRole('button', { name: 'Çıkış Yap' }).click();
     await page.goto('/panel');
-    await expect(page).toHaveURL(/\/uye-girisi$/);
+    await expect(page).toHaveURL(/\/$/);
   });
 });
 

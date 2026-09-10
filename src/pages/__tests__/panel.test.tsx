@@ -43,7 +43,7 @@ function renderPanel(path: string) {
     <AuthProvider>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/uye-girisi" element={<p>Giriş sayfası</p>} />
+          <Route path="/" element={<p>Giriş sayfası</p>} />
           <Route path="/panel" element={<RequireAuth><AppLayout /></RequireAuth>}>
             <Route index element={<Dashboard />} />
             <Route path="takvim" element={<Takvim />} />
@@ -73,7 +73,7 @@ describe('Panel erişim kontrolü', () => {
       <AuthProvider>
         <MemoryRouter initialEntries={['/panel']}>
           <Routes>
-            <Route path="/uye-girisi" element={<UyeGirisi />} />
+            <Route path="/" element={<UyeGirisi />} />
             <Route path="/panel" element={<RequireAuth><Dashboard /></RequireAuth>} />
           </Routes>
         </MemoryRouter>

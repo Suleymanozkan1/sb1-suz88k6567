@@ -10,7 +10,7 @@ async function block(page: Page) {
 
 async function login(page: Page) {
   await block(page);
-  await page.goto('/uye-girisi');
+  await page.goto('/');
   await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
   await expect(page).toHaveURL(/\/panel$/);
