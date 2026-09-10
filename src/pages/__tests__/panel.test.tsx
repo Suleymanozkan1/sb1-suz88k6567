@@ -475,6 +475,31 @@ describe('Gelir gider kayıtları', () => {
     expect(within(defter).getAllByRole('row').length).toBeGreaterThan(1);
   });
 
+  it('girip çıkan kayıt kasaya yeniden eklenebilir', async () => {
+    // Para kasa ile banka arasında bir kez değil sürekli gidip gelir;
+    // satırın bir tur sonra kilitlenmesi kullanıcının bildirdiği hataydı.
+    const user = userEvent.setup();
+    clearAll();
+    seedIfEmpty();
+    renderPanel('/panel/kasa');
+
+    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+    const ekle = () => screen.getAllByRole('button', { name: /^Çelik kasaya ekle:/ })[0];
+    const cikar = () => screen.getAllByRole('button', { name: /^Çelik kasadan çıkar:/ })[0];
+
+    await user.click(ekle());
+    await waitFor(() => expect(ekle()).toBeDisabled());
+    await user.click(cikar());
+
+    // Tur tamamlandı: satır yeniden eklenebilir olmalı.
+    await waitFor(() => expect(ekle()).toBeEnabled());
+    expect(cikar()).toBeDisabled();
+
+    await user.click(ekle());
+    await waitFor(() => expect(ekle()).toBeDisabled());
+    expect(cikar()).toBeEnabled();
+  });
+
   it('geçersiz tutarı reddeder', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/kasa');

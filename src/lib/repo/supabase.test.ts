@@ -636,14 +636,26 @@ describe('çelik kasa', () => {
     });
   });
 
-  it('aynı satırın aynı yönü ikinci kez yazılamaz', async () => {
-    // 23505: veritabanındaki benzersizlik kısıtı. İki kez tıklamak kasadaki
-    // parayı ikiye katlardı.
+  it('net kuralını çiğneyen hareketi veritabanının metniyle reddeder', async () => {
+    // DT001: tetikleyici. Para kasadayken tekrar "ekle" çift sayım olurdu;
+    // mesaj kullanıcıya ne yapması gerektiğini söylüyor, sarmalamıyoruz.
+    yanitla('safe_movements', {
+      error: { code: 'DT001', message: 'Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.' },
+    });
+    await expect(repo.addSafeMovement({
+      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
+      amount: 500, description: '', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
+    })).rejects.toThrow('Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.');
+  });
+
+  it('aynı anda gelen ikinci isteği düşürür', async () => {
+    // 23505: (yön, sıra) benzersizliği. Tetikleyici tek başına eşzamanlı iki
+    // isteği ayıramaz; ikisi de neti sıfır görür.
     yanitla('safe_movements', { error: { code: '23505', message: 'duplicate key' } });
     await expect(repo.addSafeMovement({
       id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
       amount: 500, description: '', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
-    })).rejects.toThrow('Bu kayıt çelik kasaya zaten giriş olarak işlendi.');
+    })).rejects.toThrow('Bu kayıt çelik kasaya az önce işlendi; sayfayı yenileyip bakın.');
   });
 
   it('diğer yazma hatalarını kendi metniyle çevirir', async () => {

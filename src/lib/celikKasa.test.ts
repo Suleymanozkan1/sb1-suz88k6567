@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  hasDirection, makeSafeMovement, movementsOf, safeBalance, safeTotals, sourceNet,
+  hasMovement, makeSafeMovement, movementsOf, safeAllows, safeBalance, safeTotals, sourceNet,
 } from './celikKasa';
 import { localRepo } from './repo/local';
 import { clearAll } from './storage';
@@ -10,9 +10,12 @@ import type { SafeMovement } from '../types';
  * Çelik kasa.
  *
  * Kasadaki para, gelir/gider bakiyesinden ayrı tutulur. Buradaki testler
- * iki hesabın birbirine karışmamasını ve bir kaydın kasaya iki kez
- * yazılamamasını koruyor: çift sayım, kasadaki parayı olduğundan farklı
+ * iki hesabın birbirine karışmamasını ve kasadaki paranın iki kez
+ * sayılmamasını koruyor: çift sayım, kasadaki parayı olduğundan farklı
  * gösterir ve akşam sayımda tutmayan bir fark bırakır.
+ *
+ * Buna karşılık kasaya girip çıkan para yeniden kasaya konabilmeli; para
+ * kasa ile banka arasında bir kez değil, sürekli gidip gelir.
  */
 
 function hareket(over: Partial<SafeMovement> = {}): SafeMovement {
@@ -51,7 +54,7 @@ describe('safeTotals', () => {
   });
 });
 
-describe('movementsOf / sourceNet / hasDirection', () => {
+describe('movementsOf / sourceNet / safeAllows', () => {
   const hareketler = [
     hareket({ id: 'a', sourceId: 'cf1', direction: 'Giriş', amount: 1000 }),
     hareket({ id: 'b', sourceId: 'cf1', direction: 'Çıkış', amount: 1000 }),
@@ -69,10 +72,25 @@ describe('movementsOf / sourceNet / hasDirection', () => {
     expect(sourceNet(hareketler, 'yok')).toBe(0);
   });
 
-  it('yön bazında işlenmiş mi söyler', () => {
-    expect(hasDirection(hareketler, 'cf1', 'Giriş')).toBe(true);
-    expect(hasDirection(hareketler, 'cf1', 'Çıkış')).toBe(true);
-    expect(hasDirection(hareketler, 'cf2', 'Çıkış')).toBe(false);
+  it('satırın kasada hareketi var mı söyler', () => {
+    expect(hasMovement(hareketler, 'cf1')).toBe(true);
+    expect(hasMovement(hareketler, 'yok')).toBe(false);
+  });
+
+  it('kasada duran satır tekrar eklenemez, çıkarılabilir', () => {
+    expect(safeAllows(hareketler, 'cf2', 'Giriş')).toBe(false);
+    expect(safeAllows(hareketler, 'cf2', 'Çıkış')).toBe(true);
+  });
+
+  it('girip çıkmış satır yeniden eklenebilir', () => {
+    // Asıl düzeltilen davranış: bir tur dönen satır kilitlenmemeli.
+    expect(safeAllows(hareketler, 'cf1', 'Giriş')).toBe(true);
+    expect(safeAllows(hareketler, 'cf1', 'Çıkış')).toBe(false);
+  });
+
+  it('hiç işlenmemiş satır eklenebilir ama çıkarılamaz', () => {
+    expect(safeAllows(hareketler, 'yok', 'Giriş')).toBe(true);
+    expect(safeAllows(hareketler, 'yok', 'Çıkış')).toBe(false);
   });
 });
 
@@ -117,10 +135,10 @@ describe('depo: çelik kasa defteri', () => {
     expect(await localRepo.listSafeMovements('biz_test')).toHaveLength(1);
   });
 
-  it('aynı satırı aynı yönde ikinci kez yazmaz', async () => {
+  it('kasada duran satırı ikinci kez kasaya yazmaz', async () => {
     // İki kez tıklamak kasadaki parayı ikiye katlardı.
     await yaz();
-    await expect(yaz({ id: 'm2' })).rejects.toThrow(/zaten giriş olarak işlendi/);
+    await expect(yaz({ id: 'm2' })).rejects.toThrow(/zaten çelik kasada/);
     expect(await localRepo.listSafeMovements('biz_test')).toHaveLength(1);
   });
 
@@ -129,6 +147,29 @@ describe('depo: çelik kasa defteri', () => {
     await yaz();
     await yaz({ id: 'm2', direction: 'Çıkış' });
     expect(safeBalance(await localRepo.listSafeMovements('biz_test'))).toBe(0);
+  });
+
+  it('girip çıkan satır yeniden kasaya eklenebilir', async () => {
+    // Kullanıcının bildirdiği hata: bir tur döndükten sonra satır kilitleniyordu.
+    await yaz();
+    await yaz({ id: 'm2', direction: 'Çıkış' });
+    await yaz({ id: 'm3' });
+    await yaz({ id: 'm4', direction: 'Çıkış' });
+    await yaz({ id: 'm5' });
+
+    const liste = await localRepo.listSafeMovements('biz_test');
+    expect(liste).toHaveLength(5);
+    expect(safeBalance(liste)).toBe(1000);
+  });
+
+  it('kasada olmayan satır kasadan çıkarılamaz', async () => {
+    await expect(yaz({ direction: 'Çıkış' })).rejects.toThrow(/kasada değil/);
+  });
+
+  it('kasaya girenden fazlası çıkarılamaz', async () => {
+    await yaz({ amount: 1000 });
+    await expect(yaz({ id: 'm2', direction: 'Çıkış', amount: 1500 }))
+      .rejects.toThrow(/fazlası çıkarılamaz/);
   });
 
   it('sıfır ya da eksi tutarı reddeder', async () => {
@@ -148,6 +189,12 @@ describe('depo: çelik kasa defteri', () => {
     await localRepo.deleteSafeMovement('m1');
     await yaz({ id: 'm2' });
     expect(await localRepo.listSafeMovements('biz_test')).toHaveLength(1);
+  });
+
+  it('satırlar birbirini kilitlemez', async () => {
+    await yaz({ id: 'a', sourceId: 'cf1' });
+    await yaz({ id: 'b', sourceId: 'cf2' });
+    expect(safeBalance(await localRepo.listSafeMovements('biz_test'))).toBe(2000);
   });
 
   it('gelir/gider kaydı silinince ona bağlı hareket de düşer', async () => {

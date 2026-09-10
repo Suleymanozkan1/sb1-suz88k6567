@@ -254,6 +254,36 @@ test.describe('Çelik kasa', () => {
     await expect(satir).toContainText('0,00 ₺');
   });
 
+  test('girip çıkan kayıt kasaya yeniden eklenebilir', async ({ page }) => {
+    await login(page);
+    await kasaAc(page);
+
+    // Para kasa ile banka arasında bir kez değil sürekli gidip gelir.
+    // Satırın bir tur sonra kilitlenmesi kullanıcının bildirdiği hataydı.
+    const defter = page.getByRole('table', { name: 'Çelik kasa hareketleri' });
+    await expect(defter).toBeVisible();
+    const once = await defter.locator('tbody tr').count();
+
+    const satir = page.locator('table tbody tr').filter({
+      has: page.getByRole('button', { name: /^Çelik kasaya ekle:/ }),
+    }).first();
+    const ekle = satir.getByRole('button', { name: /^Çelik kasaya ekle:/ });
+    const cikar = satir.getByRole('button', { name: /^Çelik kasadan çıkar:/ });
+
+    await ekle.click();
+    await expect(ekle).toBeDisabled();
+    await cikar.click();
+    await expect(cikar).toBeDisabled();
+
+    // Tur tamamlandı: düğme yeniden açılmalı ve ikinci tur yürümeli.
+    await expect(ekle).toBeEnabled();
+    await ekle.click();
+    await expect(ekle).toBeDisabled();
+    await expect(cikar).toBeEnabled();
+
+    await expect(defter.locator('tbody tr')).toHaveCount(once + 3);
+  });
+
   test('yanlış işlenen hareket defterden silinir', async ({ page }) => {
     await login(page);
     await kasaAc(page);

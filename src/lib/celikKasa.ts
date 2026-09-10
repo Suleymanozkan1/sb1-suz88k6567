@@ -46,11 +46,26 @@ export function sourceNet(movements: SafeMovement[], sourceId: string): number {
   return safeBalance(movementsOf(movements, sourceId));
 }
 
-/** Bu satır bu yönde kasaya işlenmiş mi? */
-export function hasDirection(
+/** Bu satırın kasada hiç hareketi var mı? */
+export function hasMovement(movements: SafeMovement[], sourceId: string): boolean {
+  return movements.some((m) => m.sourceId === sourceId);
+}
+
+/**
+ * Bu satır kasaya bu yönde işlenebilir mi?
+ *
+ * Karar satırın geçmişine değil, şu anki netine bakar: kasaya girip
+ * bankaya yatırılan para ertesi gün yine kasaya konabilir. Yönü bir kez
+ * kullanılmış saymak, ikinci turda satırı kilitliyordu.
+ *
+ * Aynı yönde arka arkaya iki kayıt yine engellenir: para kasadayken tekrar
+ * "ekle" demek çift sayımdır, kasada yokken "çıkar" demek eksiye düşürür.
+ */
+export function safeAllows(
   movements: SafeMovement[], sourceId: string, direction: SafeDirection,
 ): boolean {
-  return movements.some((m) => m.sourceId === sourceId && m.direction === direction);
+  const net = sourceNet(movements, sourceId);
+  return direction === 'Giriş' ? net === 0 : net > 0;
 }
 
 export interface SafeMovementInput {

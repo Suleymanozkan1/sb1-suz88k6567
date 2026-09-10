@@ -19,7 +19,7 @@ import {
 } from '../../components/Icons';
 import StatCard from '../../components/StatCard';
 import {
-  hasDirection, makeSafeMovement, safeBalance, safeTotals, sourceNet,
+  hasMovement, makeSafeMovement, safeAllows, safeBalance, safeTotals, sourceNet,
 } from '../../lib/celikKasa';
 import type { CashFlowEntry, CashFlowKind, SafeDirection, SafeMovement } from '../../types';
 
@@ -167,8 +167,9 @@ export default function Kasa() {
    *
    * Tutar satırın kendi tutarıdır: kısmi giriş, satırın anlamını
    * bulanıklaştırır ve kasadaki parayı gelir/gider kaydından koparırdı.
-   * Aynı satır aynı yönde ikinci kez yazılamaz; depo katmanı da bunu
-   * ayrıca reddediyor.
+   * Satır kasaya girip çıktıktan sonra yeniden eklenebilir; engellenen tek
+   * şey kasadaki parayı ikinci kez saymak. Depo katmanı da aynı kuralı
+   * ayrıca uyguluyor.
    */
   async function kasayaIsle(satir: KasaSatiri, direction: SafeDirection) {
     setSafeError('');
@@ -459,12 +460,15 @@ function CelikKasaHucresi({
   duzenlenebilir: boolean;
   isle: (yon: SafeDirection) => void;
 }) {
-  const girdi = hasDirection(hareketler, satir.id, 'Giriş');
-  const cikti = hasDirection(hareketler, satir.id, 'Çıkış');
   const net = sourceNet(hareketler, satir.id);
+  const islenmis = hasMovement(hareketler, satir.id);
+  // Kasada duran para tekrar eklenemez, kasada olmayan para çıkarılamaz;
+  // ama girip çıkan satır yeniden eklenebilir.
+  const eklenebilir = safeAllows(hareketler, satir.id, 'Giriş');
+  const cikarilabilir = safeAllows(hareketler, satir.id, 'Çıkış');
 
   if (!duzenlenebilir) {
-    return girdi || cikti
+    return islenmis
       ? <p className="text-center text-xs text-brand">{formatMoney(net, currency)}</p>
       : <p className="text-center text-xs text-brand-muted">-</p>;
   }
@@ -479,8 +483,8 @@ function CelikKasaHucresi({
         <button
           type="button"
           onClick={() => isle('Giriş')}
-          disabled={girdi}
-          title={girdi ? 'Bu kayıt çelik kasaya zaten girdi olarak işlendi.' : 'Çelik kasaya ekle'}
+          disabled={!eklenebilir}
+          title={eklenebilir ? 'Çelik kasaya ekle' : 'Bu kayıt şu an çelik kasada duruyor; önce kasadan çıkarın.'}
           aria-label={`Çelik kasaya ekle: ${satir.category}`}
           className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-1 text-[11px] leading-none text-brand-muted enabled:hover:border-[#15803d] enabled:hover:text-[#15803d] disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -489,15 +493,15 @@ function CelikKasaHucresi({
         <button
           type="button"
           onClick={() => isle('Çıkış')}
-          disabled={cikti}
-          title={cikti ? 'Bu kayıt çelik kasadan zaten çıkış olarak işlendi.' : 'Çelik kasadan çıkar'}
+          disabled={!cikarilabilir}
+          title={cikarilabilir ? 'Çelik kasadan çıkar' : 'Bu kayıt çelik kasada değil; önce kasaya ekleyin.'}
           aria-label={`Çelik kasadan çıkar: ${satir.category}`}
           className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-1 text-[11px] leading-none text-brand-muted enabled:hover:border-[#b91c1c] enabled:hover:text-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-40"
         >
           <IconSafeOut size={12} /> Çıkar
         </button>
       </div>
-      {(girdi || cikti) && (
+      {islenmis && (
         <span className="text-[11px] font-medium text-brand">{formatMoney(net, currency)}</span>
       )}
     </div>

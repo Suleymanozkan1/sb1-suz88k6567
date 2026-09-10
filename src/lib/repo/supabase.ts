@@ -613,9 +613,12 @@ export const supabaseRepo: Repository = {
       source_id: movement.sourceId,
     });
     if (error) {
-      // 23505: aynı satır aynı yönde ikinci kez yazılmak istendi.
-      if ((error as { code?: string }).code === '23505') {
-        throw new RepoError(`Bu kayıt çelik kasaya zaten ${movement.direction.toLocaleLowerCase('tr-TR')} olarak işlendi.`);
+      const kod = (error as { code?: string }).code;
+      // DT001: tetikleyici net kuralını çiğneyen hareketi durdurdu; mesajı
+      // zaten okunabilir. 23505: aynı anda gelen iki istekten ikincisi.
+      if (kod === 'DT001') throw new RepoError(error.message);
+      if (kod === '23505') {
+        throw new RepoError('Bu kayıt çelik kasaya az önce işlendi; sayfayı yenileyip bakın.');
       }
       fail('Çelik kasa hareketi eklenemedi.', error);
     }
