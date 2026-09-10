@@ -3,7 +3,10 @@ import { okunakliMetinRengi } from '../lib/format';
 import type { ProgramEvent, ProgramTable } from '../lib/program';
 
 /**
- * Program çizelgesi: sütunlar salonlar, satırlar tarih aralığındaki günler.
+ * Program çizelgesi: sütunlar salonlar, satırlar organizasyon olan günler.
+ *
+ * Kayıt bulunmayan günler çizelgeye hiç girmez; aralık aylara yayıldığında
+ * boş satırlar dolu günleri gözden kaybettiriyordu.
  *
  * Renk tek başına bilgi taşımaz; organizasyon türü bandın içine yazıyla da
  * yazılır. Renk körü bir kullanıcı ya da siyah beyaz çıktı alan biri
@@ -18,10 +21,21 @@ export default function ProgramCizelgesi({ table }: { table: ProgramTable }) {
     );
   }
 
-  if (table.rows.length === 0) {
+  // Aralık hiç seçilmemiş olmakla, seçilip de içinde kayıt bulunmaması iki
+  // ayrı durum; aynı iletiyi vermek kullanıcıyı tarih kutularına geri
+  // gönderirdi.
+  if (table.dayCount === 0) {
     return (
       <p className="py-10 text-center text-sm text-brand-muted">
         Çizelgeyi görmek için bir başlangıç ve bitiş tarihi seçiniz.
+      </p>
+    );
+  }
+
+  if (table.rows.length === 0) {
+    return (
+      <p className="py-10 text-center text-sm text-brand-muted">
+        Seçilen {table.dayCount} günün hiçbirinde organizasyon bulunmuyor.
       </p>
     );
   }

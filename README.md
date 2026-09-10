@@ -461,9 +461,14 @@ sayısı uyarı olarak gösterilir.
 ## Program raporu
 
 Salonun duvarına asılan haftalık program listesinin karşılığıdır. Sütunlar
-salonlar, satırlar seçilen tarih aralığındaki her gün; **boş günler de satır
-olarak durur**, çünkü çizelgenin işi "o gün ne var" kadar "o gün boş"
-bilgisini de vermektir.
+salonlar, satırlar organizasyon olan günler. **Kayıt bulunmayan günler
+çizelgeye girmez**: aralık aylara yayıldığında boş satırlar dolu günleri
+gözden kaybettiriyordu. Bir salonu boş olsa da diğerinde tören varsa gün
+kalır; o gün salonda iş vardır.
+
+Seçilen aralıkta hiç kayıt yoksa çizelge yerine kaç günün boş olduğu yazar.
+Bu, "tarih aralığı seçilmedi" iletisinden ayrıdır: ikisini aynı cümleyle
+karşılamak kullanıcıyı gereksiz yere tarih kutularına geri gönderirdi.
 
 Her hücrenin üstünde renkli bir tarih bandı bulunur. Renk **Renk Ayarları**
 ekranındaki organizasyon türü renginden gelir; kına ve düğün için kendi
@@ -482,10 +487,8 @@ BÖREĞİ+SALATA`) ve varsa rezervasyon notu görünür.
 hem Word çıktısında görünür ve bu tarayıcıda saklanır.
 
 **Word çıktısı.** "Word indir" düğmesi aynı çizelgeyi `.docx` olarak üretir.
-Tek fark: **boş günler kâğıda basılmaz.** Ekranda boş gün satırı işe yarar
-(o gün salonun boş olduğunu söyler), basılı programda ise arka arkaya
-onlarca boş satır sayfaları şişirmekten başka bir iş görmez. Bir salonu bile
-dolu olan gün çıktıda kalır.
+Çizelge ekranda ne gösteriyorsa kâğıda o iner; boş gün elemesi çizelgenin
+kendisinde yapıldığı için ekran ile çıktı ayrışamaz.
 
 Dosya tarayıcıda kurulur; sunucuya hiçbir şey gönderilmez ve pakete harici
 bir kitaplık eklenmemiştir (`src/lib/docx.ts`, yaklaşık 200 satır).

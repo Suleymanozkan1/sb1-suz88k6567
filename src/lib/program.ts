@@ -45,7 +45,10 @@ export interface ProgramRow {
 
 export interface ProgramTable {
   halls: Hall[];
+  /** Yalnızca en az bir organizasyonu olan günler. */
   rows: ProgramRow[];
+  /** Seçilen aralıktaki toplam gün sayısı. Aralık hiç seçilmediyse 0. */
+  dayCount: number;
 }
 
 const GUNLER = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
@@ -106,6 +109,11 @@ function renkBul(reservation: Reservation, colors: ColorSetting[]): string {
  *
  * İptal edilen kayıtlar çizelgeye girmez: program listesi o gün salonda ne
  * olacağını söyler, iptal edilmiş bir tören orada değildir.
+ *
+ * Boş günler de çizelgeye girmez. Aralık aylara yayıldığında kayıt olmayan
+ * günler arka arkaya onlarca satır tutuyor ve dolu günleri gözden
+ * kaybettiriyordu. Bir salonu boş olsa da diğerinde tören varsa gün kalır:
+ * o gün salonda iş vardır.
  */
 export function buildProgram(input: {
   from: string;
@@ -121,7 +129,7 @@ export function buildProgram(input: {
   const gecerli = reservations.filter((r) => r.status !== 'İptal');
   const gunler = dateRange(from, to);
 
-  const rows: ProgramRow[] = gunler.map((date) => ({
+  const tumSatirlar: ProgramRow[] = gunler.map((date) => ({
     date,
     cells: aktifSalonlar.map((hall) => {
       const kayitlar = gecerli
@@ -163,10 +171,12 @@ export function buildProgram(input: {
     }),
   }));
 
-  return { halls: aktifSalonlar, rows };
+  const rows = tumSatirlar.filter((row) => row.cells.some((c) => c.events.length > 0));
+
+  return { halls: aktifSalonlar, rows, dayCount: gunler.length };
 }
 
 /** Çizelgede hiç organizasyon var mı? Boş çizelgede Word çıktısı önerilmez. */
 export function programIsEmpty(table: ProgramTable): boolean {
-  return table.rows.every((row) => row.cells.every((c) => c.events.length === 0));
+  return table.rows.length === 0;
 }

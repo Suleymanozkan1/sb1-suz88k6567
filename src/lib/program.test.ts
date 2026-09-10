@@ -108,14 +108,39 @@ describe('menuLineOf', () => {
 });
 
 describe('buildProgram', () => {
-  it('aralıktaki her gün için satır üretir, boş günler dahil', () => {
+  it('yalnızca organizasyon olan günler için satır üretir', () => {
+    // Aralık aylara yayıldığında boş satırlar dolu günleri gözden
+    // kaybettiriyordu.
     const t = cizelge([rez({ date: '2026-09-12' })]);
-    expect(t.rows.map((r) => r.date)).toEqual(['2026-09-11', '2026-09-12', '2026-09-13']);
+    expect(t.rows.map((r) => r.date)).toEqual(['2026-09-12']);
+  });
+
+  it('aralıktaki gün sayısını ayrıca bildirir', () => {
+    // Ekran, "aralık seçilmedi" ile "aralık boş" durumlarını ayırabilmeli.
+    expect(cizelge([rez({})]).dayCount).toBe(3);
+    expect(cizelge([]).dayCount).toBe(3);
+    expect(buildProgram({
+      from: '', to: '', halls: SALONLAR, reservations: [], menus: MENULER, colors: RENKLER,
+    }).dayCount).toBe(0);
+  });
+
+  it('bir salonu boş olan günü atmaz', () => {
+    // Sağ sütun boş olsa da o gün salonda tören var.
+    const t = cizelge([rez({ hallId: 'h2' })]);
+    expect(t.rows.map((r) => r.date)).toEqual(['2026-09-12']);
     expect(t.rows[0].cells[0].events).toEqual([]);
+    expect(t.rows[0].cells[1].events).toHaveLength(1);
+  });
+
+  it('hiç kayıt yoksa satır kalmaz', () => {
+    const t = cizelge([]);
+    expect(t.rows).toEqual([]);
+    // Sütunlar yine de tanımlıdır: ekran başlıkları çizebilmeli.
+    expect(t.halls.map((h) => h.name)).toEqual(['Kristal Salon', 'Zümrüt Salon']);
   });
 
   it('her salon için bir sütun kurar', () => {
-    const t = cizelge([]);
+    const t = cizelge([rez({})]);
     expect(t.halls.map((h) => h.name)).toEqual(['Kristal Salon', 'Zümrüt Salon']);
     expect(t.rows[0].cells.map((c) => c.hallName)).toEqual(['Kristal Salon', 'Zümrüt Salon']);
   });
@@ -134,9 +159,10 @@ describe('buildProgram', () => {
     expect(hucre.headerColor).toBe('#ffff00');
   });
 
-  it('boş günde bandın rengi olmaz', () => {
-    const hucre = cizelge([]).rows[0].cells[0];
-    expect(hucre.headerLabel).toBe('11.09.2026 CUMA');
+  it('boş kalan salonun bandında renk olmaz', () => {
+    // Gün dolu ama bu salon boş: tarih yazılır, renk verilmez.
+    const hucre = cizelge([rez({ hallId: 'h2' })]).rows[0].cells[0];
+    expect(hucre.headerLabel).toBe('12.09.2026 CUMARTESİ');
     expect(hucre.headerColor).toBe('');
   });
 
@@ -198,27 +224,27 @@ describe('buildProgram', () => {
 
   it('ikinci kişi varsa iki adı birlikte yazar', () => {
     const t = cizelge([rez({ customerName: 'Zuhal Rana', secondPersonName: 'Mustafa Sezgin' })]);
-    expect(t.rows[1].cells[0].events[0].parties).toBe('ZUHAL RANA / MUSTAFA SEZGİN');
+    expect(t.rows[0].cells[0].events[0].parties).toBe('ZUHAL RANA / MUSTAFA SEZGİN');
   });
 
   it('rezervasyon notunu hücreye taşır', () => {
     const t = cizelge([rez({ note: '  Sahne 12:00 kurulacak.  ' })]);
-    expect(t.rows[1].cells[0].events[0].note).toBe('Sahne 12:00 kurulacak.');
+    expect(t.rows[0].cells[0].events[0].note).toBe('Sahne 12:00 kurulacak.');
   });
 
   it('saat girilmemişse etiket boş kalır', () => {
     const t = cizelge([rez({ startTime: undefined, endTime: undefined })]);
-    expect(t.rows[1].cells[0].events[0].timeLabel).toBe('');
+    expect(t.rows[0].cells[0].events[0].timeLabel).toBe('');
   });
 
   it('yalnızca başlangıç saati varsa tek saat yazar', () => {
     const t = cizelge([rez({ startTime: '19:00', endTime: undefined })]);
-    expect(t.rows[1].cells[0].events[0].timeLabel).toBe('19:00');
+    expect(t.rows[0].cells[0].events[0].timeLabel).toBe('19:00');
   });
 
   it('tanımsız renk anahtarında nötr renk kullanır', () => {
     const t = cizelge([rez({ colorKey: 'bilinmeyen' })]);
-    expect(t.rows[1].cells[0].events[0].color).toBe('#e5e7eb');
+    expect(t.rows[0].cells[0].events[0].color).toBe('#e5e7eb');
   });
 
   it('kapalı salonu ancak kaydı varsa gösterir', () => {
@@ -240,7 +266,7 @@ describe('buildProgram', () => {
 
   it('sözleşme numarasını ve davetli sayısını taşır', () => {
     const t = cizelge([rez({ code: '202612', guestCount: 450 })]);
-    const e = t.rows[1].cells[0].events[0];
+    const e = t.rows[0].cells[0].events[0];
     expect(e.contractNo).toBe('202612');
     expect(e.guestCount).toBe(450);
   });

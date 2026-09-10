@@ -74,9 +74,9 @@ gövdesinde ya da hata metninde geçmiyor.
 | `invoice.ts` | `invoice.test.ts` | KDV, yuvarlama, TCKN / VKN doğrulaması, fatura numarası |
 | `sablon.ts` | `sablon.test.ts` | Yer tutucu doldurma, GSM-7 indirgeme, SMS parça ölçümü |
 | `reports.ts` | `reports.test.ts`, `kasaGeliri.test.ts` | Rapor toplamları, CSV kaçışları, Excel için BOM; rezervasyondan türetilen kasa satırları (kapora + tahsilat, iptal edilenin dışarıda kalması, sahipsiz tahsilatın yok sayılması) |
-| `program.ts` | `program.test.ts` | Çizelge kurulumu: boş günlerin satır olarak durması, gündüz töreninin geceden önce gelmesi, aynı gün iki törenin ayrılması, iptal edilenin çizelgeye girmemesi |
+| `program.ts` | `program.test.ts` | Çizelge kurulumu: yalnızca dolu günlerin satır olması, bir salonu boş olan günün atılmaması, aralıktaki gün sayısının ayrıca bildirilmesi, gündüz töreninin geceden önce gelmesi, aynı gün iki törenin ayrılması, iptal edilenin çizelgeye girmemesi |
 | `docx.ts` | `docx.test.ts` | ZIP yapısı (CRC32 referans değerleri, merkez dizin), XML kaçışları, boş hücrenin paragrafsız kalmaması, Word MIME türü |
-| `programDocx.ts` | `programDocx.test.ts` | Word çıktısı: renk dönüşümü, saat bandı, ek notlar bölümü, dosya adındaki tarih aralığı, boş günlerin kâğıda basılmaması ve bir salonu dolu olan günün atılmaması |
+| `programDocx.ts` | `programDocx.test.ts` | Word çıktısı: renk dönüşümü, saat bandı, ek notlar bölümü, dosya adındaki tarih aralığı, ekranda görünen satırların birebir kâğıda inmesi |
 | `seating.ts`, `plan.ts`, `health.ts`, `ids.ts` | kendi test dosyaları | — |
 | `format.ts` | `format.test.ts` | Para, tarih, telefon, kontrast; `formatDateTime` dahil |
 | `sms.ts` | `sms.test.ts` | Gönderim, OTP, uç noktanın varlığının anlaşılması |
@@ -120,7 +120,7 @@ hangi akışla kapsandığını gösterir.
 | Kasa | Gelir / gider ekleme, listeye ve bakiyeye yansıma; rezervasyon tahsilatlarının sözleşme numarası ve taraflarla görünmesi, türetilmiş satırın silinememesi |
 | Faturalar | Fatura oluşturma, tutar hesabı, durum |
 | Raporlar | Sekme geçişi, toplamların kasa ve rezervasyon verisiyle tutarlılığı |
-| Program raporu | Salon sütunları, tarih aralığının çizelgeye yansıması, boş günlerin satır kalması, aynı gün iki törenin saat bandıyla ayrılması, ek notların saklanması, Word indirme ve boş aralıkta düğmenin kapanması |
+| Program raporu | Salon sütunları, tarih aralığının çizelgeye yansıması, boş günlerin listelenmemesi, kayıt bulunmayan aralıkta gün sayısının bildirilmesi, aynı gün iki törenin saat bandıyla ayrılması, ek notların saklanması, Word indirme ve boş aralıkta düğmenin kapanması |
 | Salonlar | Ekleme, mükerrer ad reddi, çakışma kuralı |
 | Menüler | Kişi başı tutar önerisi, rezervasyona uygulanması |
 | Masa düzeni | Plan önerisi, kaydetme, eksik koltuk uyarısı |
