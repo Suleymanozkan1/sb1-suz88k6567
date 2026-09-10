@@ -11,7 +11,6 @@ const YETKILER: [string, boolean, boolean][] = [
   ['Rezervasyon silme', true, false],
   ['Gelir-gider (kasa)', true, false],
   ['Raporlar ve ciro', true, false],
-  ['Müşteri talepleri', true, false],
   ['Kullanıcı ve yetki yönetimi', true, false],
 ];
 

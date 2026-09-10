@@ -535,38 +535,6 @@ export async function turDagilimi(): Promise<TurDagilim[]> {
     .map(([tur, adet]) => ({ tur, adet, renk: TUR_RENK[tur] ?? '#47b2e4' }));
 }
 
-/* ═══ Talepler ════════════════════════════════════════════════════ */
-
-export interface Talep {
-  id: string; ad: string; telefon: string; kaynak: string;
-  mesaj: string; durum: string; tarih: string;
-}
-
-const ORNEK_TALEP: Talep[] = [
-  { id: 'tl1', ad: 'Hatice Demir', telefon: '5327778811', kaynak: 'Salon teklif formu',
-    mesaj: 'Haziran ayı için 300 kişilik düğün fiyatı öğrenmek istiyorum.', durum: 'Yeni', tarih: gunEkle(0) },
-  { id: 'tl2', ad: 'Serkan Uçar', telefon: '5327778822', kaynak: 'İletişim formu',
-    mesaj: 'Nişan organizasyonu için salon müsaitliği sormak istiyorum.', durum: 'İşlemde', tarih: gunEkle(-1) },
-  { id: 'tl3', ad: 'Elif Korkmaz', telefon: '5327778833', kaynak: 'Demo talebi',
-    mesaj: 'Sistemi görmek istiyoruz, ne zaman uygun olursunuz?', durum: 'Kapatıldı', tarih: gunEkle(-4) },
-];
-
-export function talepler(limit = 50): Promise<Talep[]> {
-  return sorgu(ORNEK_TALEP, async () => {
-    const { data, error } = await db().from('contact_messages')
-      .select('id, name, phone, source, message, status, created_at')
-      .order('created_at', { ascending: false }).limit(limit);
-    return denetle(data, error, 'Talepler okunamadı.').map((s) => {
-      const t = s as unknown as {
-        id: string; name: string; phone: string; source: string;
-        message: string; status: string; created_at: string;
-      };
-      return { id: t.id, ad: t.name, telefon: t.phone, kaynak: t.source,
-        mesaj: t.message, durum: t.status, tarih: t.created_at.slice(0, 10) };
-    });
-  });
-}
-
 /* ═══ SMS, izin ve hatırlatma ═════════════════════════════════════ */
 
 export interface SmsKaydi {

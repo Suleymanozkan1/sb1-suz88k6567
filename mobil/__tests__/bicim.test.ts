@@ -1,5 +1,6 @@
 import {
-  gorecelıGun, kalanGun, okunakliMetin, tarihKisa, tarihSayisal, tarihUzun, telefon, telefonUri, tutar, tutarKisa, yerelIso,
+  ayAdi, gorecelıGun, gunAdi, kalanGun, okunakliMetin, tarihKisa, tarihSayisal,
+  tarihUzun, telefon, telefonUri, tutar, tutarKisa, yerelIso,
 } from '../src/bicim';
 
 /**
@@ -89,5 +90,44 @@ describe('hatırlatma tarihi', () => {
 
   it('bozuk girdiyi olduğu gibi döndürür', () => {
     expect(tarihSayisal('')).toBe('');
+  });
+});
+
+describe('gün ve ay adları', () => {
+  it('gün adını Türkçe verir', () => {
+    // 2026-09-14 pazartesidir.
+    expect(gunAdi('2026-09-14')).toBe('Pazartesi');
+    expect(gunAdi('2026-09-20')).toBe('Pazar');
+  });
+
+  it('ay adını sıfır tabanlı numaradan verir', () => {
+    expect(ayAdi(0)).toBe('Ocak');
+    expect(ayAdi(8)).toBe('Eylül');
+    expect(ayAdi(11)).toBe('Aralık');
+  });
+});
+
+describe('göreceli gün', () => {
+  function gunSonra(n: number): string {
+    const t = new Date();
+    t.setDate(t.getDate() + n);
+    return yerelIso(t);
+  }
+
+  it('bugünü, yarını ve dünü ayrı adlandırır', () => {
+    expect(gorecelıGun(gunSonra(0))).toBe('bugün');
+    expect(gorecelıGun(gunSonra(1))).toBe('yarın');
+    expect(gorecelıGun(gunSonra(-1))).toBe('dün');
+  });
+
+  it('uzak tarihleri gün sayısıyla anlatır', () => {
+    expect(gorecelıGun(gunSonra(5))).toBe('5 gün sonra');
+    expect(gorecelıGun(gunSonra(-12))).toBe('12 gün önce');
+  });
+
+  it('kalan gün sayısı işaretlidir', () => {
+    expect(kalanGun(gunSonra(3))).toBe(3);
+    expect(kalanGun(gunSonra(-3))).toBe(-3);
+    expect(kalanGun(gunSonra(0))).toBe(0);
   });
 });

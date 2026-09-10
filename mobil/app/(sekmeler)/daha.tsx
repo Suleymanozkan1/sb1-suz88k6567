@@ -36,7 +36,6 @@ const BOLUMLER: { baslik: string; satirlar: [string, string, string][] }[] = [
       ['Hatırlatmalar', 'Taslak mesajlar ve otomatik gönderim', '/hatirlatmalar'],
       ['SMS kayıtları', 'Gönderilen ve engellenen mesajlar', '/sms'],
       ['İYS izinleri', 'Ticari ileti onay ve ret kayıtları', '/izinler'],
-      ['Talepler', 'Siteden gelen müşteri talepleri', '/talepler'],
     ],
   },
   {
