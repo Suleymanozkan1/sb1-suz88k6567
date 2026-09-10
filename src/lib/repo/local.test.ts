@@ -56,7 +56,7 @@ describe('oturum', () => {
   it('kayıtlı olmayan e-postayı reddeder', async () => {
     seedIfEmpty();
     await expect(localRepo.signIn('yok@ornek.com', 'sifre123'))
-      .rejects.toThrow('kayıtlı üyelik bulunamadı');
+      .rejects.toThrow('kayıtlı hesap bulunamadı');
   });
 
   it('e-posta karşılaştırması büyük/küçük harften bağımsızdır', async () => {
@@ -70,15 +70,6 @@ describe('oturum', () => {
     await localRepo.signIn(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password);
     await localRepo.signOut();
     expect(await localRepo.getSession()).toBeNull();
-  });
-
-  it('mükerrer e-posta ile kayıt açtırmaz', async () => {
-    seedIfEmpty();
-    await expect(localRepo.signUp({
-      email: DEMO_CREDENTIALS.email, password: 'sifre123', companyName: 'X', fullName: 'Y',
-      mobile: '5321112233', city: 'Ankara', district: 'Çankaya', category: 'Düğün Salonu',
-      capacity: 100, currency: 'TL',
-    })).rejects.toThrow('daha önce üyelik oluşturulmuş');
   });
 
   it('şifre değiştirmede mevcut şifreyi doğrular', async () => {

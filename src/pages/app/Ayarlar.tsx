@@ -231,7 +231,7 @@ export default function Ayarlar() {
       <ConfirmDialog
         open={confirmReset}
         title="Tüm veriler silinsin mi?"
-        description="Bu tarayıcıda saklanan üyelikler, rezervasyonlar ve kasa kayıtları kalıcı olarak silinecek, oturumunuz kapatılacaktır."
+        description="Bu tarayıcıda saklanan hesaplar, rezervasyonlar ve kasa kayıtları kalıcı olarak silinecek, oturumunuz kapatılacaktır."
         confirmLabel="Evet, sıfırla"
         onConfirm={() => { void resetData(); }}
         onCancel={() => setConfirmReset(false)}

@@ -55,7 +55,7 @@ async function ekran(page, ad, yol) {
 }
 
 async function girisYap(page) {
-  await page.goto(`${KOK}/uye-girisi`);
+  await page.goto(`${KOK}/`);
   await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
   await page.waitForURL(/\/panel$/);

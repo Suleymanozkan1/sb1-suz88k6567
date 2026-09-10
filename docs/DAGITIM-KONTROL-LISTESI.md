@@ -45,7 +45,6 @@ ya da Workers → Settings → Variables and Secrets ekranından girilir.
 |---|---|---|
 | `VITE_SUPABASE_URL` | Supabase → API → URL | ✅ |
 | `VITE_SUPABASE_ANON_KEY` | Supabase → API → anon key | ✅ |
-| `VITE_ALLOW_SIGNUP` | `false` yazın (tek şirket kullanımı) | ✅ |
 | `SUPABASE_URL` | Yukarıdakiyle aynı değer | ✅ |
 | `SUPABASE_ANON_KEY` | Yukarıdakiyle aynı değer | ✅ |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API → service_role | ✅ |
@@ -69,7 +68,7 @@ Kampanya ya da tanıtım göndermeye karar verirseniz **5. bölüme** bakın.
 
 ## 3. Netgsm
 
-- [ ] Kurumsal abonelik açın
+- [ ] Kurumsal hesap açın
 - [ ] Vergi levhanızla **başlık (marka) başvurusu** yapın, birkaç iş günü sürer
 - [ ] Başlık onaylandıktan sonra SMS paketi satın alın
 - [ ] API kullanıcı adı ve şifresini panelden alıp Cloudflare'e sır olarak girin

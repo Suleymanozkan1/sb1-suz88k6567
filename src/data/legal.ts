@@ -11,19 +11,16 @@ export const PRIVACY_POLICY: LegalDoc = {
     {
       paragraphs: [
         'Bu gizlilik politikası sahratakip.com’la başlayan tüm URL’li sitelerde geçerlidir.',
-        'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz.',
-        'Sitemizi ziyaret için herhangi bir kişisel bilginizi bize vermek zorunda değilsiniz.',
-        'Ancak, hizmetlerimizden faydalanmak için üye olmanız ve bazı kişisel bilgilerinizi vermeniz gerekmektedir.',
-        'Size ait üyelik bilgileri (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz, şifrelerin başkasının eline geçmesi ya da çalınmasından sahratakip.com sorumlu değildir.',
-        'Üye ve ziyaretçilerin site ile ilgili tarafımıza ulaştırdıkları her türlü öneri, istek, soru ve şikâyetleri içeren bilgiler site performansını ölçmek açısından saklanmaktadır.',
-        'Bu bilgiler kişilerin kendilerine yanıt vermek dışında herhangi bir amaç için kullanılamaz.',
+        'Hesabınıza ait bilgiler (e-posta, şifre vb.) hiçbir şekilde üçüncü şahıslarla paylaşılmaz.',
+        'Panele erişim için hesabınız işletme yöneticisi tarafından tanımlanır; siteden kendi kendinize kayıt açılmaz.',
+        'Şifrelerin başkasının eline geçmesi ya da çalınmasından sahratakip.com sorumlu değildir.',
       ],
     },
     {
       heading: 'İçerik Sorumluluğu',
       paragraphs: [
-        'Üyelerimizin sisteme girmiş olduğu rezervasyon, müşteri ve muhasebe kayıtlarının içeriğinden üyenin kendisi sorumludur.',
-        'Sistemde yasa dışı, genel ahlaka aykırı, üçüncü kişilerin haklarını ihlal eden içerik barındırılamaz. Bu tür içerikler tespit edildiğinde üyelik askıya alınır.',
+        'Sisteme girilen rezervasyon, müşteri ve muhasebe kayıtlarının içeriğinden kaydı giren işletme sorumludur.',
+        'Sistemde yasa dışı, genel ahlaka aykırı, üçüncü kişilerin haklarını ihlal eden içerik barındırılamaz. Bu tür içerikler tespit edildiğinde ilgili hesap askıya alınır.',
       ],
     },
     {
@@ -45,23 +42,6 @@ export const PRIVACY_POLICY: LegalDoc = {
       paragraphs: [
         '128 bit SSL güvenlik katmanı ile tüm veri trafiği şifrelenmektedir.',
         'Sistemimizde saklamış olduğunuz bilgileri şifrenizi kimseye söylemediğiniz sürece başkaları tarafından görülemez ve görüntülenemez.',
-      ],
-    },
-  ],
-};
-
-export const MEMBERSHIP_AGREEMENT: LegalDoc = {
-  slug: 'uyelik-sozlesmesi',
-  title: 'Üyelik Sözleşmesi',
-  sections: [
-    {
-      paragraphs: [
-        'İşbu üyelik sözleşmesi, sahratakip.com sitesine üye olan kullanıcı ile Sahra Takip arasında akdedilmiştir.',
-        'Üye, kayıt sırasında verdiği bilgilerin doğru ve güncel olduğunu kabul eder.',
-        'Üye, hesabını üçüncü kişilerle paylaşmayacağını; paylaşması hâlinde doğacak zararlardan kendisinin sorumlu olduğunu kabul eder.',
-        'Üye, sisteme yüklediği tüm verilerin içeriğinden bizzat sorumludur.',
-        'Sahra Takip, üyelik kurallarına aykırı davranan üyelerin üyeliğini önceden bildirimde bulunmaksızın askıya alma veya sonlandırma hakkına sahiptir.',
-        'Üyelik süresi boyunca sunulan hizmetlerin kapsamı, geliştirmeler doğrultusunda genişletilebilir.',
       ],
     },
   ],
@@ -96,15 +76,15 @@ export const KVKK_NOTICE: LegalDoc = {
     {
       heading: 'İşlenen Kişisel Veriler',
       paragraphs: [
-        'Üyelik verileri: ad soyad, e-posta adresi, cep telefonu, işletme unvanı ve fatura bilgileri.',
+        'Hesap verileri: ad soyad, e-posta adresi, cep telefonu ve işletme unvanı.',
         'İşlem güvenliği verileri: IP adresi, giriş denemeleri ve oturum kayıtları.',
-        'Müşteri kayıtları: üyenin kendi müşterilerine ait olarak sisteme girdiği ad, telefon ve organizasyon bilgileri. Bu verilerde veri sorumlusu üyenin kendisidir; Sahra Takip veri işleyen sıfatıyla hareket eder.',
+        'Müşteri kayıtları: işletmenin kendi müşterilerine ait olarak sisteme girdiği ad, telefon ve organizasyon bilgileri. Bu verilerde veri sorumlusu işletmenin kendisidir; Sahra Takip veri işleyen sıfatıyla hareket eder.',
       ],
     },
     {
       heading: 'İşleme Amaçları',
       paragraphs: [
-        'Üyelik sözleşmesinin kurulması ve ifası, hizmetin sunulması ve faturalandırılması.',
+        'Hizmetin sunulması ve panel erişiminin sağlanması.',
         'Giriş güvenliğinin sağlanması, kötüye kullanımın tespiti ve denetim kaydının tutulması.',
         'Talep, şikâyet ve destek başvurularının karşılanması.',
         'Mevzuattan doğan saklama ve bilgi verme yükümlülüklerinin yerine getirilmesi.',
@@ -127,7 +107,7 @@ export const KVKK_NOTICE: LegalDoc = {
     {
       heading: 'Saklama Süresi',
       paragraphs: [
-        'Veriler, üyelik süresince ve mevzuatın öngördüğü zamanaşımı ve saklama süreleri boyunca (fatura ve ticari kayıtlar için 10 yıl) saklanır; sürenin dolmasıyla silinir, yok edilir veya anonim hâle getirilir.',
+        'Veriler, hesap etkin olduğu sürece ve mevzuatın öngördüğü zamanaşımı ve saklama süreleri boyunca (fatura ve ticari kayıtlar için 10 yıl) saklanır; sürenin dolmasıyla silinir, yok edilir veya anonim hâle getirilir.',
       ],
     },
     {
@@ -146,12 +126,12 @@ export const KVKK_NOTICE: LegalDoc = {
 /**
  * Yayındaki yasal metinler.
  *
- * İade/İptal Prosedürü ve Mesafeli Hizmet Sözleşmesi kaldırıldı: ikisi de
- * bir satışın varlığını varsayıyordu (paket satın alma, kredi kartıyla
- * ödeme, cayma hakkı). Sistemde abonelik ya da ödeme adımı yok, dolayısıyla
- * mesafeli satış da yok. Metinler işletmenin hukuk danışmanıyla birlikte
- * gözden geçirilmelidir.
+ * İade/İptal Prosedürü, Mesafeli Hizmet Sözleşmesi ve Üyelik Sözleşmesi
+ * kaldırıldı: ilk ikisi bir satışın varlığını (paket satın alma, kredi
+ * kartıyla ödeme, cayma hakkı), üçüncüsü siteden self servis üye olmayı
+ * varsayıyordu. Sistemde ne satış ne de üyelik adımı var. Kalan metinler
+ * işletmenin hukuk danışmanıyla birlikte gözden geçirilmelidir.
  */
 export const LEGAL_DOCS: LegalDoc[] = [
-  PRIVACY_POLICY, KVKK_NOTICE, MEMBERSHIP_AGREEMENT,
+  PRIVACY_POLICY, KVKK_NOTICE,
 ];

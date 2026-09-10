@@ -14,23 +14,6 @@ import type {
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
 
-export interface SignUpInput {
-  email: string;
-  password: string;
-  companyName: string;
-  fullName: string;
-  mobile: string;
-  city: string;
-  district: string;
-  category: string;
-  capacity: number;
-  currency: User['currency'];
-  facebook?: string;
-  instagram?: string;
-  address?: string;
-  phone?: string;
-}
-
 export interface StaffInput {
   id?: string;
   fullName: string;
@@ -60,7 +43,6 @@ export interface Repository {
   /* -- oturum ------------------------------------------------------- */
   getSession(): Promise<User | null>;
   signIn(email: string, password: string): Promise<User>;
-  signUp(input: SignUpInput): Promise<User>;
   signOut(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   changePassword(currentPassword: string, nextPassword: string): Promise<void>;

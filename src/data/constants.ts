@@ -1,6 +1,6 @@
 import type { ColorSetting, OrganizationType, Permission } from '../types';
 
-/** Üye Ol formundaki 81 il + yurt dışı seçenekleri */
+/** İşletme kayıt formlarındaki 81 il + yurt dışı seçenekleri */
 export const CITIES: string[] = [
   'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya', 'Ankara', 'Antalya',
   'Ardahan', 'Artvin', 'Aydın', 'Balıkesir', 'Bartın', 'Batman', 'Bayburt', 'Bilecik',
@@ -53,7 +53,7 @@ export const DISTRICTS: Record<string, string[]> = {
   ],
 };
 
-/** Üye Ol formundaki işletme kategorileri */
+/** İşletme kayıt formlarındaki kategoriler */
 export const CATEGORIES: string[] = [
   'Düğün Salonu',
   'Kına Salonu',

@@ -45,24 +45,17 @@ Demo hesapları yalnızca demo modunda vardır.
 
 ### Herkese açık
 
+Sistem bir tanıtım sitesi değil, işletmenin kendi panelidir. Herkese açık
+yüzey giriş ekranı, müşterinin rezervasyon sorgusu ve yasal metinlerden
+ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştır.
+
 | Yol | Açıklama |
 |-----|----------|
-| `/` | Anasayfa, hero, "Ne İşe Yarar?", sektör dağılımı, hizmetler, demo talebi, üye yorumları |
-| `/nedir` | Programın tanıtımı, yetenek listesi, ekran özetleri |
-| `/haberler`, `/haberler/:slug` | Haberler listesi ve detay sayfaları |
-| `/ekranlar` | Uygulama ekranlarının önizlemeleri |
-| `/uyeler` | Referanslarımız, kategori/il filtreleri, arama, sayfalama |
-| `/salon/:slug` | İşletme detay sayfası, bilgiler, fiyat teklifi/rezervasyon formu, aynı ildeki diğer işletmeler |
-| `/dugun-salonlari`, `/kina-salonlari`, `/dugun-otelleri`, `/kir-dugunu-mekanlari` | Kategoriye göre daraltılmış salon listeleri |
-| `/dusunceler` | Üye yorumları (aranabilir) |
-| `/sss` | Sık sorulan sorular (akordeon) |
-| `/iletisim`, `/demo-talebi` | İletişim ve demo talebi formları |
-| `/kod-dogrulama` | Rezervasyon kodu sorgulama |
-| `/uye-ol` | Üyelik formu (81 il, 24 kategori, sözleşme onayları) |
-| `/uye-girisi` | Giriş + zorunlu SMS doğrulama |
-| `/gizlilik-politikasi`, `/iade-proseduru`, `/mesafeli-hizmet-sozlesmesi`, `/uyelik-sozlesmesi` | Yasal metinler |
+| `/` | Giriş + zorunlu SMS doğrulama |
+| `/kod-dogrulama` | Rezervasyon kodu sorgulama (müşteriye SMS ile giden kod) |
+| `/gizlilik-politikasi`, `/kvkk-aydinlatma-metni` | Yasal metinler |
 
-### Üye paneli (`/panel`, oturum gerekir)
+### Panel (`/panel`, oturum gerekir)
 
 | Yol | Açıklama |
 |-----|----------|
@@ -537,6 +530,6 @@ Aynı kontroller panelde **Sistem Durumu** ekranında Türkçe açıklamalarla v
 
 - Demo modunda kalıcılık tarayıcıdadır ve şifreler düz metin saklanır. Gerçek
   kullanımda Supabase bağlantısı yapılandırılmalıdır.
-- Abonelik, plan ve ücretlendirme sistemi **yoktur**. `VITE_ALLOW_SIGNUP=true` iken salonlar siteden kendileri üye olabilir ve paneli doğrudan kullanmaya başlar; ödeme adımı bulunmaz.
+- Üyelik, abonelik, plan ve ücretlendirme **yoktur**. Siteden kendi kendine kayıt açılmaz; panel hesapları Supabase → Authentication → Users bölümünden ya da panelin Kullanıcılar ekranından tanımlanır.
 - e-Fatura bağlantısı Paraşüt için yazılmıştır (`api/_parasut.ts`); gövde üretimi ve hata çözümlemesi birim testleriyle doğrulanmış, ancak **gerçek bir Paraşüt hesabıyla test edilmemiştir**. İlk gönderimde alan adı uyuşmazlığı çıkabilir; hata metni Faturalar ekranında görünür.
 - Referans listesindeki işletmeler örnek veridir.

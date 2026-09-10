@@ -6,7 +6,7 @@
  * modu gerçek veri için kullanılmamalıdır (arayüzde uyarı gösterilir).
  */
 import { KEYS, read, remove, write } from '../storage';
-import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS, seedIfEmpty } from '../seed';
+import { DEFAULT_COLOR_SETTINGS, seedIfEmpty } from '../seed';
 import { normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
@@ -152,51 +152,10 @@ export const localRepo: Repository = {
     seedIfEmpty();
     const needle = normalizeEmail(email);
     const found = users().find((u) => normalizeEmail(u.email) === needle);
-    if (!found) throw new RepoError('Bu e-posta adresi ile kayıtlı üyelik bulunamadı.');
+    if (!found) throw new RepoError('Bu e-posta adresi ile kayıtlı hesap bulunamadı.');
     if (found.password !== password) throw new RepoError('E-posta veya şifreniz hatalı.');
     write(KEYS.session, found.id);
     return wait(found);
-  },
-
-  async signUp(input) {
-    seedIfEmpty();
-    if (users().some((u) => normalizeEmail(u.email) === normalizeEmail(input.email))) {
-      throw new RepoError('Bu e-posta adresi ile daha önce üyelik oluşturulmuş.');
-    }
-    const now = new Date().toISOString();
-    const userId = uid('user');
-    const businessId = uid('biz');
-
-    const created: User = {
-      id: userId,
-      companyName: input.companyName,
-      fullName: input.fullName,
-      email: input.email.trim(),
-      password: input.password,
-      mobile: input.mobile,
-      role: 'owner',
-      permissions: OWNER_PERMISSIONS,
-      city: input.city,
-      district: input.district,
-      category: input.category,
-      capacity: input.capacity,
-      currency: input.currency,
-      facebook: input.facebook,
-      instagram: input.instagram,
-      createdAt: now,
-      activeBusinessId: businessId,
-    };
-    saveUsers([...users(), created]);
-
-    write(KEYS.businesses, [...businesses(), {
-      id: businessId, ownerId: userId, name: input.companyName, category: input.category,
-      city: input.city, district: input.district, phone: input.phone || input.mobile,
-      capacity: input.capacity, currency: input.currency, address: input.address,
-      facebook: input.facebook, instagram: input.instagram, createdAt: now,
-    }]);
-
-    write(KEYS.session, userId);
-    return wait(created);
   },
 
   async signOut() { remove(KEYS.session); },

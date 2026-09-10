@@ -557,7 +557,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     items: [
       ['Maskeleme', 'Telefon 532*****00 biçiminde gösterilir.'],
       ['Ödeme bilgisi', 'Tahsilat ve kalan alacak dışarı açılmaz.'],
-      ['Erişim', 'Sorgu için üyelik gerekmez.'],
+      ['Erişim', 'Sorgu için giriş yapmak gerekmez.'],
     ],
   });
   s.addNotes('Kod, rezervasyon onayı SMS’inde müşteriye gönderilir.');
@@ -724,7 +724,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     y: 2.15, h: 2.15, sutun: 3, koyu: true,
     items: [
       ['Kendi sunucumuz', 'Güvenlik yamaları, sertifika yenileme ve yedeğin gerçekten geri yüklenebildiğinin denenmesi bize kalırdı. Sunucuyu kiralamak ucuz, ona bakmak pahalıdır.'],
-      ['Supabase ne veriyor', 'PostgreSQL veritabanı, satır bazlı erişim kuralları, kullanıcı girişi, dosya deposu ve gecelik yedek; tek abonelikte, ayrı ayrı kurulmadan.'],
+      ['Supabase ne veriyor', 'PostgreSQL veritabanı, satır bazlı erişim kuralları, kullanıcı girişi, dosya deposu ve gecelik yedek; tek hizmette, ayrı ayrı kurulmadan.'],
       ['Cloudflare ne veriyor', 'Site dünya çapında dağıtılır, HTTPS ve saldırı koruması hazır gelir, gecelik görevler ayrı bir sunucu olmadan çalışır.'],
     ],
   });
@@ -736,7 +736,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: 6.78, y: 4.4, w: 5.85, h: 2.05, zemin: BRAND, bas: 'Yedek kimin sorumluluğunda',
     metin: 'İki katman var. Supabase kendi gecelik yedeğini alır; buna ek olarak sistem her gece kendi yedeğini üretip dışarıya kapalı bir alana yazar. İkinci katmanın sebebi, sağlayıcıya ait yedeğin sağlayıcıyla birlikte erişilemez hâle gelebilmesidir.',
   });
-  s.addText('İki abonelik toplamı ayda yaklaşık 30 dolardır. Bu tutar veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar.', {
+  s.addText('İki servisin toplamı ayda yaklaşık 30 dolardır. Bu tutar veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar.', {
     x: KENAR, y: 6.75, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12, color: PALE,
   });
@@ -861,7 +861,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: KENAR, y: 6.85, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 11, color: MUTED,
   });
-  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100-150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider iki abonelikten ibarettir. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
+  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100-150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider bu iki servisten ibarettir. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
 }
 
 pres.writeFile({ fileName: 'Sahra-Takip-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));

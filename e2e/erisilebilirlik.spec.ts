@@ -13,11 +13,11 @@ import { expect, test, type Page } from '@playwright/test';
  * yüklenmemiş bir yazı tipi kontrast ölçümünü bozabilir.
  */
 
-// Tanıtım sayfaları kaldırıldı; herkese açık yüzey giriş, kayıt,
+// Tanıtım sayfaları ve üyelik akışı kaldırıldı; herkese açık yüzey giriş,
 // müşterinin rezervasyon sorgusu ve yasal metinlerden ibaret.
 const HERKESE_ACIK = [
-  '/', '/uye-ol', '/kod-dogrulama',
-  '/gizlilik-politikasi', '/kvkk-aydinlatma-metni', '/uyelik-sozlesmesi',
+  '/', '/kod-dogrulama',
+  '/gizlilik-politikasi', '/kvkk-aydinlatma-metni',
 ];
 
 const PANEL = [

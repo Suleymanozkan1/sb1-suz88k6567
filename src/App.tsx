@@ -8,7 +8,6 @@ import RequireAuth from './components/RequireAuth';
 
 import KodDogrulama from './pages/KodDogrulama';
 import LegalPage from './pages/LegalPage';
-import UyeOl from './pages/UyeOl';
 import UyeGirisi from './pages/UyeGirisi';
 import NotFound from './pages/NotFound';
 
@@ -66,19 +65,17 @@ export default function App() {
                 Açılış doğrudan giriş ekranı. */}
             <Route index element={<UyeGirisi />} />
             <Route path="uye-girisi" element={<Navigate to="/" replace />} />
-            <Route path="uye-ol" element={<UyeOl />} />
 
             {/* Müşteriye gönderilen SMS'teki sorgu kodu buraya geliyor. */}
             <Route path="kod-dogrulama" element={<KodDogrulama />} />
 
             <Route path="gizlilik-politikasi" element={<LegalPage />} />
             <Route path="kvkk-aydinlatma-metni" element={<LegalPage />} />
-            <Route path="uyelik-sozlesmesi" element={<LegalPage />} />
 
             <Route path="*" element={<NotFound />} />
           </Route>
 
-          {/* Panel ekranları yalnızca giriş yapan üyeler için yüklenir; ana paket küçük kalır. */}
+          {/* Panel ekranları yalnızca giriş yapan kullanıcılar için yüklenir; ana paket küçük kalır. */}
           <Route
             path="panel"
             element={

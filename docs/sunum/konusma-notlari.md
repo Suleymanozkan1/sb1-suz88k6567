@@ -64,7 +64,7 @@ Slayt başına ezberlenecek tek cümleler. Gerisi zaten ekranda.
   kapatırsanız yalnızca o özellik kapanır."
 - **Neden (22):** "Kendi sunucumuz olsaydı yazılım aynı çalışırdı; fark,
   yedek ve güvenliğin kimin üzerinde kaldığında."
-- **Maliyet (26):** "Sabit gider iki abonelik, ayda yaklaşık 30 dolar.
+- **Maliyet (26):** "Sabit gider iki servis, ayda yaklaşık 30 dolar.
   Gerisi kullandıkça."
 
 ## 4. Ezberlenecek sayılar

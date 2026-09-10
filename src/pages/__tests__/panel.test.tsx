@@ -79,7 +79,7 @@ describe('Panel erişim kontrolü', () => {
         </MemoryRouter>
       </AuthProvider>,
     );
-    expect(await screen.findByRole('heading', { name: 'Üye Girişi' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Giriş' })).toBeInTheDocument();
   });
 });
 

@@ -12,7 +12,6 @@ const BAGLANTILAR = [
   { label: 'Rezervasyon Sorgulama', to: '/kod-dogrulama' },
   { label: 'KVKK Aydınlatma Metni', to: '/kvkk-aydinlatma-metni' },
   { label: 'Gizlilik Politikası', to: '/gizlilik-politikasi' },
-  { label: 'Üyelik Sözleşmesi', to: '/uyelik-sozlesmesi' },
 ];
 
 export default function SiteFooter() {

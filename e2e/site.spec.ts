@@ -30,15 +30,14 @@ function collectAppErrors(page: Page): string[] {
   return errors;
 }
 
-// Tanıtım sayfaları kaldırıldı: sistem bir tanıtım sitesi değil,
-// işletmenin kendi paneli. Açılış doğrudan giriş ekranı.
+// Tanıtım sayfaları ve üyelik akışı kaldırıldı: sistem bir tanıtım sitesi
+// değil, işletmenin kendi paneli. Açılış doğrudan giriş ekranı; hesaplar
+// panelden tanımlanır, siteden üye olunmaz.
 const PUBLIC_ROUTES = [
-  { path: '/', heading: 'Üye Girişi' },
-  { path: '/uye-ol', heading: 'Üye Ol' },
+  { path: '/', heading: 'Giriş' },
   { path: '/kod-dogrulama', heading: 'Rezervasyon Kod Doğrulama' },
   { path: '/gizlilik-politikasi', heading: 'Gizlilik Politikası' },
   { path: '/kvkk-aydinlatma-metni', heading: 'KVKK Aydınlatma Metni' },
-  { path: '/uyelik-sozlesmesi', heading: 'Üyelik Sözleşmesi' },
 ];
 
 
@@ -88,14 +87,14 @@ test.describe('Gezinme', () => {
   test('açılış doğrudan giriş ekranıdır', async ({ page }) => {
     // Tanıtım sayfası yok; kök adres giriş formunu göstermeli.
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Üye Girişi', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Giriş', level: 1 })).toBeVisible();
     await expect(page.getByLabel('E-Posta')).toBeVisible();
   });
 
   test('eski /uye-girisi adresi köke yönlendirir', async ({ page }) => {
     await page.goto('/uye-girisi');
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole('heading', { name: 'Üye Girişi', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Giriş', level: 1 })).toBeVisible();
   });
 
   test('footer bağlantıları çalışır', async ({ page }) => {
@@ -104,8 +103,9 @@ test.describe('Gezinme', () => {
     await expect(page.getByRole('heading', { name: 'KVKK Aydınlatma Metni', level: 1 })).toBeVisible();
   });
 
-  test('kaldırılan tanıtım adresleri 404 verir', async ({ page }) => {
-    for (const yol of ['/nedir', '/ekranlar', '/uyeler', '/sss', '/iletisim', '/haberler']) {
+  test('kaldırılan tanıtım ve üyelik adresleri 404 verir', async ({ page }) => {
+    for (const yol of ['/nedir', '/ekranlar', '/uyeler', '/sss', '/iletisim', '/haberler',
+      '/uye-ol', '/uyelik-sozlesmesi']) {
       await page.goto(yol);
       await expect(page.getByRole('heading', { level: 1 })).toContainText('bulunamadı');
     }

@@ -163,27 +163,3 @@ test.describe('Üye paneli', () => {
     await expect(page).toHaveURL(/\/$/);
   });
 });
-
-test.describe('Üye kaydı', () => {
-  test('yeni üyelik oluşturulup panele giriş yapılır', async ({ page }) => {
-    await blockExternalRequests(page);
-    await page.goto('/uye-ol');
-    const email = `e2e${Date.now()}@example.com`;
-
-    await page.getByLabel(/Üye Firma Adı/).fill('E2E Düğün Salonu');
-    await page.getByLabel(/Yetkili Ad Soyad/).fill('E2E Yetkili');
-    await page.getByLabel(/Cep Telefonu/).fill('5321230000');
-    await page.getByLabel(/Kategori/).selectOption('Düğün Salonu');
-    await page.getByLabel(/Şehir/).selectOption('İzmir');
-    await page.getByLabel(/İlçe/).selectOption('Bornova');
-    await page.getByLabel(/E-posta Adresiniz/).fill(email);
-    await page.locator('#password').fill('sifre1234');
-    await page.locator('#passwordRepeat').fill('sifre1234');
-    await page.locator('#acceptPrivacy').check();
-    await page.locator('#acceptTerms').check();
-    await page.getByRole('button', { name: 'Üye Ol' }).click();
-
-    await expect(page).toHaveURL(/\/panel$/);
-    await expect(page.getByRole('heading', { name: /Hoş geldiniz, E2E Yetkili/ })).toBeVisible();
-  });
-});

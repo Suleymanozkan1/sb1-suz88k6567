@@ -381,48 +381,6 @@ export const supabaseRepo: Repository = {
     return profile;
   },
 
-  async signUp(input) {
-    const { error } = await db().auth.signUp({
-      email: input.email.trim(),
-      password: input.password,
-      options: {
-        data: {
-          company_name: input.companyName, full_name: input.fullName, mobile: input.mobile,
-          city: input.city, district: input.district, category: input.category,
-          capacity: input.capacity, currency: input.currency,
-        },
-      },
-    });
-    if (error) {
-      if (error.message.includes('already registered')) {
-        throw new RepoError('Bu e-posta adresi ile daha önce üyelik oluşturulmuş.');
-      }
-      throw new RepoError('Üyelik oluşturulamadı.', error);
-    }
-
-    const profile = await currentProfile();
-    if (!profile) {
-      throw new RepoError('Üyeliğiniz oluşturuldu. E-posta doğrulaması gerekiyorsa gelen kutunuzu kontrol edin.');
-    }
-
-    // İlk işletmeyi oluştur ve aktif işletme olarak ata
-    const business = await this.saveBusiness({
-      id: crypto.randomUUID(),
-      ownerId: profile.id,
-      name: input.companyName,
-      category: input.category,
-      city: input.city,
-      district: input.district,
-      phone: input.phone || input.mobile,
-      capacity: input.capacity,
-      currency: input.currency,
-      address: input.address,
-      facebook: input.facebook,
-      instagram: input.instagram,
-    });
-    return this.updateProfile({ activeBusinessId: business.id });
-  },
-
   async signOut() {
     await db().auth.signOut();
   },

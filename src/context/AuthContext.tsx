@@ -1,17 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { isDemoMode, repo, RepoError } from '../lib/repo';
-import { SIGNUP_ENABLED } from '../lib/authHelpers';
-import type { SignUpInput } from '../lib/repo';
+import { isDemoMode, repo } from '../lib/repo';
 import type { Permission, User } from '../types';
 
 interface AuthValue {
   user: User | null;
   loading: boolean;
   isDemoMode: boolean;
-  signupEnabled: boolean;
   signIn: (email: string, password: string) => Promise<User>;
-  signUp: (input: SignUpInput) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (patch: Partial<User>) => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
@@ -43,13 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return account;
   }, []);
 
-  const signUp = useCallback<AuthValue['signUp']>(async (input) => {
-    if (!SIGNUP_ENABLED) {
-      throw new RepoError('Yeni üyelik kaydı kapalıdır.');
-    }
-    setUser(await repo.signUp(input));
-  }, []);
-
   const signOut = useCallback(async () => {
     await repo.signOut();
     setUser(null);
@@ -79,10 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const ownerId = user ? (user.role === 'staff' ? user.ownerId ?? user.id : user.id) : '';
 
   const value = useMemo<AuthValue>(() => ({
-    user, loading, isDemoMode, signupEnabled: SIGNUP_ENABLED,
-    signIn, signUp, signOut, updateProfile, changePassword, requestPasswordReset,
+    user, loading, isDemoMode,
+    signIn, signOut, updateProfile, changePassword, requestPasswordReset,
     setActiveBusiness, can, ownerId,
-  }), [user, loading, signIn, signUp, signOut, updateProfile, changePassword,
+  }), [user, loading, signIn, signOut, updateProfile, changePassword,
        requestPasswordReset, setActiveBusiness, can, ownerId]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
