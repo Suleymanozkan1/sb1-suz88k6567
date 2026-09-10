@@ -347,6 +347,39 @@ Ortam değişkenleri iki yere girilir:
 Sunucu sırları `process.env` üzerinden okunur; `wrangler.jsonc` içindeki
 `nodejs_compat` bayrağı ve 2025-04-01 sonrası uyumluluk tarihi bunu sağlar.
 
+### Vercel bağlıysa
+
+Depoya ayrıca bir Vercel projesi bağlıysa, Vercel **yalnızca derlenmiş
+statik siteyi** sunar; `vercel.json` bunu böyle sabitler.
+
+Sebebi: Vercel'in sıfır yapılandırma algılaması kökteki `api/` klasörünü
+kendi sunucusuz işlev kuralına göre yorumluyor ve iki sorun çıkarıyordu.
+
+1. Her `api/*.ts` dosyasını projenin `tsconfig.node.json` ayarı yerine
+   kendi `node16` ayarıyla derliyordu; uzantısız içe aktarımlar (TS2835) ve
+   `Array.prototype.at` (TS2550) hata verip derlemeyi düşürüyordu.
+2. `api/*.test.ts` dosyalarını da işlev sanıyordu. Derleme geçseydi test
+   dosyaları `/api/backup.test` gibi herkese açık uç noktalar olarak yayına
+   çıkacaktı.
+
+`vercel.json` içindeki `builds` alanı sıfır yapılandırmayı kapatır;
+`.vercelignore` ise test dosyalarının ve derlemeye girmeyen klasörlerin
+dağıtıma hiç yüklenmemesini sağlar.
+
+`api/` altındaki işleyiciler Vercel işlevi değildir: `worker/index.ts`
+tarafından içe aktarılan Worker işleyicileridir. Bu yüzden Vercel
+dağıtımında `/api/*` uç noktaları **çalışmaz** ve şunlar devre dışı kalır:
+
+- Giriş kilidi ve hız sınırı (giriş doğrudan Supabase'e düşer)
+- SMS ile iki adımlı doğrulama
+- Fatura gönderimi
+- Zamanlanmış görevlerin tamamı (hatırlatma, kuyruk, yedek, İYS)
+
+İstemci bu durumu algılayacak biçimde yazılmıştır: `/api/*` JSON yerine
+HTML döndürdüğünde uç nokta yok sayılır ve uygulama çökmez
+(`supabase.test.ts` → "uç nokta yoksa doğrudan Supabase ile giriş yapar").
+Sistemin tamamı için dağıtım Cloudflare üzerinden yapılmalıdır.
+
 ### Zamanlanmış görevler
 
 `wrangler.jsonc` içindeki `triggers.crons` listesinde tanımlıdır; her biri
