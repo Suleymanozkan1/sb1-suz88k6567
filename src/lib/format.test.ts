@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addDays, daysBetween, formatDate, formatDateLong, formatMoney, formatNumber,
-  formatPhone, fromIso, initials, normalizeTr, slugify, toIso,
+  addDays, daysBetween, formatDate, formatDateLong, formatDateTime, formatMoney,
+  formatNumber, formatPhone, fromIso, initials, normalizeTr, slugify, toIso,
 } from './format';
 
 describe('formatMoney', () => {
@@ -111,5 +111,25 @@ describe('initials', () => {
 
   it('tek kelimede tek harf döner', () => {
     expect(initials('Ahmet')).toBe('A');
+  });
+});
+
+describe('formatDateTime', () => {
+  it('ISO zaman damgasını gün.ay.yıl saat:dakika olarak yazar', () => {
+    expect(formatDateTime('2026-08-30T14:05:00')).toBe('30.08.2026 14:05');
+  });
+
+  it('değer yoksa tire döner', () => {
+    // Ekranda "Invalid Date" görünmesi kullanıcıya bir şey anlatmaz.
+    expect(formatDateTime(undefined)).toBe('-');
+    expect(formatDateTime('')).toBe('-');
+  });
+
+  it('çözümlenemeyen değeri olduğu gibi gösterir', () => {
+    expect(formatDateTime('bir tarih değil')).toBe('bir tarih değil');
+  });
+
+  it('gün ve ayı iki haneye tamamlar', () => {
+    expect(formatDateTime('2026-01-05T09:07:00')).toBe('05.01.2026 09:07');
   });
 });
