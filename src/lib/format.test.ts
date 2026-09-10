@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays, daysBetween, formatDate, formatDateLong, formatDateTime, formatMoney,
-  formatNumber, formatPhone, fromIso, initials, normalizeTr, slugify, toIso,
+  formatNumber, formatPhone, formatTimeRange, fromIso, initials, normalizeTr, slugify, toIso,
 } from './format';
 
 describe('formatMoney', () => {
@@ -131,5 +131,31 @@ describe('formatDateTime', () => {
 
   it('gün ve ayı iki haneye tamamlar', () => {
     expect(formatDateTime('2026-01-05T09:07:00')).toBe('05.01.2026 09:07');
+  });
+});
+
+describe('formatTimeRange', () => {
+  it('başlangıç ve bitişi tire ile birleştirir', () => {
+    expect(formatTimeRange('19:00', '23:00')).toBe('19:00-23:00');
+  });
+
+  it('Postgres saniyesini kırpar', () => {
+    // time sütunu "19:00:00" döner; sözleşmede saniye istenmez.
+    expect(formatTimeRange('19:00:00', '23:00:00')).toBe('19:00-23:00');
+  });
+
+  it('yalnızca başlangıç varsa tek saat yazar', () => {
+    // Uydurma bir bitiş saati basmak sözleşmeyi yanlış yapar.
+    expect(formatTimeRange('19:00', undefined)).toBe('19:00');
+    expect(formatTimeRange('19:00', '')).toBe('19:00');
+  });
+
+  it('saat girilmemişse boş döner', () => {
+    expect(formatTimeRange(undefined, undefined)).toBe('');
+    expect(formatTimeRange('', '23:00')).toBe('');
+  });
+
+  it('gece yarısını aşan aralığı olduğu gibi yazar', () => {
+    expect(formatTimeRange('22:00', '02:00')).toBe('22:00-02:00');
   });
 });

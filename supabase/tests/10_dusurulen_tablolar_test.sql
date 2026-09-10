@@ -84,8 +84,10 @@ insert into auth.users (id, email, raw_user_meta_data) values
   (:a_id, 'a@ornek.com', '{"company_name":"A","full_name":"A"}');
 insert into public.businesses (id, owner_id, name, capacity) values
   ('aaaaaaaa-0000-0000-0000-000000000001', :a_id, 'A Salonu', 400);
+-- 0007 gocu her yeni isletme icin "Ana Salon" adinda bir salon acar;
+-- ayni adi kullanmak benzersizlik kisitina carpar.
 insert into public.halls (id, business_id, name, capacity) values
-  ('cccccccc-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000001','Ana Salon',400);
+  ('cccccccc-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000001','A Kristal Salon',400);
 
 insert into public.reservations
   (id, business_id, hall_id, code, customer_name, customer_phone, date, slot,

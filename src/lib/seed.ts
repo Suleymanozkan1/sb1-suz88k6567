@@ -114,16 +114,28 @@ export function seedIfEmpty(): void {
 
   const demoMenus: Menu[] = [
     { id: 'menu_demo1', businessId, name: 'Açık Büfe Ziyafet', pricing: 'kisi_basi',
-      priceKurus: 45_000, description: 'Çorba, 3 ara sıcak, 2 ana yemek, tatlı, limitsiz meşrubat.',
+      priceKurus: 45_000,
+      description: [
+        'ANA YEMEK', '- Et Kavurma', '- Tereyağlı Pirinç Pilavı', '- İçli Köfte',
+        '- Patates Püresi', '- Roll Ekmek',
+        'TATLI', '- Dondurmalı Pasta veya 2 Dilim Baklava',
+        'SERPMELER', '- Limon Suyu Eşliğinde Salatalık ve Havuç',
+        '- Soslu ve Sossuz Patates Cipsi',
+        'İÇECEKLER', '- Litrelik Soft İçecek ve Su',
+      ].join('\n'),
       isActive: true, createdAt: now },
     { id: 'menu_demo2', businessId, name: 'Kokteyl İkramı', pricing: 'kisi_basi',
-      priceKurus: 22_000, description: 'Ayakta servis, kanepe ve tatlı çeşitleri.',
+      priceKurus: 22_000,
+      description: ['SERPMELER', '- Kanepe Çeşitleri', '- Mini Börek',
+        'TATLI', '- Profiterol', 'İÇECEKLER', '- Soft İçecek ve Su'].join('\n'),
       isActive: true, createdAt: now },
     { id: 'menu_demo3', businessId, name: 'Salon Kirası (yemeksiz)', pricing: 'sabit',
       priceKurus: 12_000_000, description: 'Yalnızca salon ve ses sistemi.',
       isActive: true, createdAt: now },
     { id: 'menu_demo4', businessId: 'biz_demo2', name: 'Kır Düğünü Paketi', pricing: 'kisi_basi',
-      priceKurus: 38_000, description: 'Açık alan, barbekü ve limitsiz içecek.',
+      priceKurus: 38_000,
+      description: ['ANA YEMEK', '- Barbekü Izgara Çeşitleri', '- Mevsim Salata',
+        'TATLI', '- Meyve Tabağı', 'İÇECEKLER', '- Limitsiz Soft İçecek'].join('\n'),
       isActive: true, createdAt: now },
   ];
   write(KEYS.menus, [
@@ -148,8 +160,24 @@ export function seedIfEmpty(): void {
 
   const list: Reservation[] = [];
   const paid: Payment[] = [];
+
+  // Sözleşme numarası yıl başına 1'den başlar; tek bir sayaçla üretilirse
+  // 2027'nin ilk kaydı 20279 gibi görünürdü.
+  const siralar = new Map<number, number>();
+  const siraAl = (yil: number) => {
+    const sonraki = (siralar.get(yil) ?? 0) + 1;
+    siralar.set(yil, sonraki);
+    return sonraki;
+  };
   const base = new Date();
   base.setDate(1);
+
+  // Saatler seanstan türetilir: gündüz töreni 13:00-17:00, gece 19:00-23:00.
+  // Program raporunda aynı gün aynı salondaki iki organizasyonu ayıran da budur.
+  const SEANS_SAATI = {
+    'Gündüz': { start: '13:00', end: '17:00' },
+    'Gece': { start: '19:00', end: '23:00' },
+  } as const;
 
   DEMO_CUSTOMERS.forEach(([name, phone, org], i) => {
     const d = new Date(base);
@@ -160,15 +188,23 @@ export function seedIfEmpty(): void {
     const deposit = Math.round(total * (0.2 + (i % 4) * 0.1));
     const isPast = date < todayIso();
     const orgType = org as Reservation['organizationType'];
+    const slot: Reservation['slot'] = i % 3 === 0 ? 'Gündüz' : 'Gece';
 
     list.push({
       id: `res_seed_${i}`,
       businessId: i % 5 === 4 ? 'biz_demo2' : businessId,
       hallId: i % 5 === 4 ? 'hall_demo3' : i % 3 === 1 ? 'hall_demo2' : 'hall_demo1',
       menuId: i % 5 === 4 ? 'menu_demo4' : i % 4 === 3 ? 'menu_demo3' : 'menu_demo1',
-      code: `SA-${d.getFullYear()}-${1000 + i * 37}`,
+      code: `${d.getFullYear()}${siraAl(d.getFullYear())}`,
       customerName: name, customerPhone: phone, customerEmail: '',
-      date, slot: i % 3 === 0 ? 'Gündüz' : 'Gece',
+      // Çift isimli kayıtlarda ikinci kişi sözleşmede "Gelin ve Damat"
+      // satırında görünür.
+      secondPersonName: name.includes('&') ? name.split('&').map((p) => p.trim()).join(' / ') : undefined,
+      secondPhone: name.includes('&') ? `533${String(1000000 + i * 4321).slice(0, 7)}` : undefined,
+      date,
+      startTime: SEANS_SAATI[slot].start,
+      endTime: SEANS_SAATI[slot].end,
+      slot,
       organizationType: orgType, guestCount: 120 + (i % 9) * 45,
       totalAmount: total, deposit, currency: 'TL',
       status: isPast ? 'Tamamlandı' : i % 6 === 5 ? 'Ön Rezervasyon' : 'Kesin Rezervasyon',
@@ -185,6 +221,88 @@ export function seedIfEmpty(): void {
         note: 'Organizasyon günü kalan tahsilat', createdAt: now,
       });
     }
+  });
+
+  /*
+    Program çizelgesi haftalık bir çıktıdır; yukarıdaki tohum ayda bir kayıt
+    ürettiği için çizelge tanıtımda boş görünüyordu. Bu blok içinde
+    bulunulan haftayı doldurur: iki salon, kına ve düğün karışık, bir günde
+    aynı salonda gündüz ve gece iki ayrı tören.
+  */
+  const haftaBasi = (() => {
+    const g = new Date();
+    // Pazartesi'ye çek (getDay: 0 = Pazar).
+    g.setDate(g.getDate() - ((g.getDay() + 6) % 7));
+    return g;
+  })();
+  const haftaGunu = (n: number) => {
+    const g = new Date(haftaBasi);
+    g.setDate(haftaBasi.getDate() + n);
+    return toIso(g);
+  };
+
+  const HAFTA: {
+    gun: number; hall: string; slot: Reservation['slot']; org: Reservation['organizationType'];
+    ad: string; ikinci?: string; tel: string; kisi: number; menu?: string; hizmet: string[];
+    not?: string;
+  }[] = [
+    { gun: 1, hall: 'hall_demo1', slot: 'Gece', org: 'Kına', ad: 'Rabia Yıldız',
+      tel: '5331000011', kisi: 200, menu: 'menu_demo2', hizmet: [] },
+    { gun: 2, hall: 'hall_demo1', slot: 'Gece', org: 'Kına', ad: 'Esra Kaplan',
+      tel: '5331000012', kisi: 300, menu: 'menu_demo2', hizmet: [] },
+    { gun: 3, hall: 'hall_demo1', slot: 'Gece', org: 'Kına', ad: 'İlknur Ateş',
+      tel: '5331000013', kisi: 300, menu: 'menu_demo2', hizmet: ['Masa Süsleme'] },
+    { gun: 4, hall: 'hall_demo1', slot: 'Gece', org: 'Kına', ad: 'Şevval Erdem',
+      tel: '5331000014', kisi: 200, menu: 'menu_demo2', hizmet: ['Masa Süsleme'] },
+    { gun: 4, hall: 'hall_demo2', slot: 'Gece', org: 'Düğün', ad: 'Rabia Şen', ikinci: 'Emre Şen',
+      tel: '5331000015', kisi: 250, menu: 'menu_demo1', hizmet: ['Orkestra'] },
+    { gun: 5, hall: 'hall_demo1', slot: 'Gece', org: 'Düğün', ad: 'Zuhal Rana Emen', ikinci: 'Mustafa Sezgin',
+      tel: '5331000016', kisi: 300, menu: 'menu_demo1', hizmet: ['Orkestra', 'Masa Süsleme'] },
+    // Aynı gün aynı salonda iki tören: çizelgede saat bandıyla ayrılır.
+    { gun: 5, hall: 'hall_demo2', slot: 'Gündüz', org: 'Düğün', ad: 'Afra Sude Kılıç', ikinci: 'Ömer Faruk Kılıç',
+      tel: '5331000017', kisi: 450, menu: 'menu_demo1', hizmet: ['Su Böreği', 'Salata'],
+      not: 'Sahne 12:00 kurulacak.' },
+    { gun: 5, hall: 'hall_demo2', slot: 'Gece', org: 'Düğün', ad: 'Zehra Bulut', ikinci: 'Özgür Bulut',
+      tel: '5331000018', kisi: 800, menu: 'menu_demo1', hizmet: ['Orkestra'] },
+    { gun: 6, hall: 'hall_demo1', slot: 'Gece', org: 'Düğün', ad: 'Emine Toprak', ikinci: 'Ethem Toprak',
+      tel: '5331000019', kisi: 300, menu: 'menu_demo1', hizmet: ['Orkestra'] },
+    { gun: 6, hall: 'hall_demo2', slot: 'Gece', org: 'Düğün', ad: 'Beyzanur Çetin', ikinci: 'Fatih Çetin',
+      tel: '5331000020', kisi: 600, menu: 'menu_demo1', hizmet: ['Orkestra', 'Masa Süsleme'] },
+  ];
+
+  HAFTA.forEach((h, i) => {
+    const tarih = haftaGunu(h.gun);
+    const toplam = 80000 + h.kisi * 350;
+    const kapora = Math.round(toplam * 0.3);
+    list.push({
+      id: `res_hafta_${i}`,
+      businessId,
+      hallId: h.hall,
+      menuId: h.menu,
+      code: `${new Date().getFullYear()}${siraAl(new Date().getFullYear())}`,
+      customerName: h.ad,
+      customerPhone: h.tel,
+      secondPersonName: h.ikinci,
+      secondPhone: h.ikinci ? `533200${String(1000 + i).slice(-4)}` : undefined,
+      // Tanıtım verisi: gerçek bir kimlik numarası değil, 11 haneli örnek.
+      identityNo: `1${String(10000000000 + i * 137).slice(1)}`,
+      date: tarih,
+      startTime: SEANS_SAATI[h.slot].start,
+      endTime: SEANS_SAATI[h.slot].end,
+      slot: h.slot,
+      organizationType: h.org,
+      guestCount: h.kisi,
+      totalAmount: toplam,
+      deposit: kapora,
+      currency: 'TL',
+      status: 'Kesin Rezervasyon',
+      colorKey: ORG_TO_COLOR_KEY[h.org] ?? 'diger',
+      note: h.not ?? '',
+      services: h.hizmet,
+      address: 'Tahtakale Mah. Abdi İpekçi Cad. No:31',
+      createdAt: now,
+      updatedAt: now,
+    });
   });
 
   write(KEYS.reservations, list);

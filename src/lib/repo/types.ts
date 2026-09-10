@@ -96,6 +96,14 @@ export interface Repository {
   /* -- rezervasyonlar ----------------------------------------------- */
   listReservations(businessId: string): Promise<Reservation[]>;
   getReservation(id: string): Promise<Reservation | null>;
+  /**
+   * Kaydeder ve kaydedilmiş hâli döndürür.
+   *
+   * Sözleşme numarası boş bırakılırsa veritabanı doldurur (yıl + sıra:
+   * 20261, 20262, ...). Numarayı istemcinin üretmemesi, iki kayıt aynı
+   * anda açıldığında numaranın tekrar etmemesini sağlar; mevcut bir
+   * kaydın numarası hiçbir güncellemede değişmez.
+   */
   saveReservation(reservation: Reservation): Promise<Reservation>;
   deleteReservation(id: string): Promise<void>;
   verifyCode(code: string): Promise<PublicReservation | null>;

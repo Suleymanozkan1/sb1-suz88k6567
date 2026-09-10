@@ -52,6 +52,8 @@ export interface Rezervasyon {
   telefon: string;
   tarih: string;
   seans: Seans;
+  /** "19:00-23:00"; saat girilmemişse boş metin. */
+  saat: string;
   tur: string;
   renk: string;
   salon: string;
@@ -86,28 +88,28 @@ const TUR_RENK: Record<string, string> = {
 
 const ORNEK: Rezervasyon[] = [
   { id: '1', kod: 'SA-2026-4141', musteri: 'Zeynep & Can Arslan', telefon: '5321234567',
-    tarih: gunEkle(0), seans: 'Gece', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
+    tarih: gunEkle(0), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
     davetli: 320, toplam: 21_000_000, tahsilat: 6_000_000, kapora: 4_000_000, durum: 'Kesin Rezervasyon' },
   { id: '2', kod: 'SA-2026-7683', musteri: 'Deniz & Kaan Şen', telefon: '5309876543',
-    tarih: gunEkle(0), seans: 'Gündüz', tur: 'Nikâh', renk: TUR_RENK['Nikâh']!, salon: 'Zümrüt Salon',
+    tarih: gunEkle(0), seans: 'Gündüz', saat: '13:00-17:00', tur: 'Nikâh', renk: TUR_RENK['Nikâh']!, salon: 'Zümrüt Salon',
     davetli: 150, toplam: 9_500_000, tahsilat: 9_500_000, kapora: 6_333_334, durum: 'Tamamlandı' },
   { id: '3', kod: 'SA-2026-9736', musteri: 'Melis Ailesi', telefon: '5551112233',
-    tarih: gunEkle(2), seans: 'Gece', tur: 'Kına', renk: TUR_RENK['Kına']!, salon: 'Kristal Salon',
+    tarih: gunEkle(2), seans: 'Gece', saat: '19:00-23:00', tur: 'Kına', renk: TUR_RENK['Kına']!, salon: 'Kristal Salon',
     davetli: 200, toplam: 12_000_000, tahsilat: 3_000_000, kapora: 2_000_000, durum: 'Kesin Rezervasyon' },
   { id: '4', kod: 'SA-2026-7446', musteri: 'Ayşe & Mert Yıldız', telefon: '5323334455',
-    tarih: gunEkle(5), seans: 'Gece', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
+    tarih: gunEkle(5), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
     davetli: 280, toplam: 18_000_000, tahsilat: 8_000_000, kapora: 5_333_334, durum: 'Kesin Rezervasyon' },
   { id: '5', kod: 'SA-2026-2210', musteri: 'Ece & Kerem Aydın', telefon: '5445556677',
-    tarih: gunEkle(9), seans: 'Gündüz', tur: 'Nişan', renk: TUR_RENK['Nişan']!, salon: 'Zümrüt Salon',
+    tarih: gunEkle(9), seans: 'Gündüz', saat: '13:00-17:00', tur: 'Nişan', renk: TUR_RENK['Nişan']!, salon: 'Zümrüt Salon',
     davetli: 80, toplam: 5_500_000, tahsilat: 1_500_000, kapora: 1_000_000, durum: 'Ön Rezervasyon' },
   { id: '6', kod: 'SA-2026-3382', musteri: 'Gül & Emre Doğan', telefon: '5337778899',
-    tarih: gunEkle(14), seans: 'Gece', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
+    tarih: gunEkle(14), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
     davetli: 400, toplam: 26_000_000, tahsilat: 0, kapora: 0, durum: 'Ön Rezervasyon' },
   { id: '7', kod: 'SA-2026-5518', musteri: 'Sude & Barış Kaya', telefon: '5362223344',
-    tarih: gunEkle(21), seans: 'Gece', tur: 'Sünnet', renk: TUR_RENK['Sünnet']!, salon: 'Zümrüt Salon',
+    tarih: gunEkle(21), seans: 'Gece', saat: '19:00-23:00', tur: 'Sünnet', renk: TUR_RENK['Sünnet']!, salon: 'Zümrüt Salon',
     davetli: 180, toplam: 9_000_000, tahsilat: 2_500_000, kapora: 1_666_667, durum: 'Kesin Rezervasyon' },
   { id: '8', kod: 'SA-2026-6094', musteri: 'Nur & Onur Çetin', telefon: '5354445566',
-    tarih: gunEkle(-12), seans: 'Gece', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
+    tarih: gunEkle(-12), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
     davetli: 260, toplam: 16_500_000, tahsilat: 16_500_000, kapora: 11_000_000, durum: 'Tamamlandı' },
 ];
 
@@ -136,11 +138,12 @@ const ORNEK_IS: IsSatiri[] = [
 ];
 
 const REZ_ALAN =
-  'id, code, customer_name, customer_phone, date, slot, organization_type, guest_count, total_amount, deposit, status, halls(name)';
+  'id, code, customer_name, customer_phone, date, start_time, end_time, slot, organization_type, guest_count, total_amount, deposit, status, halls(name)';
 
 interface SatirDb {
   id: string; code: string; customer_name: string; customer_phone: string;
-  date: string; slot: Seans; organization_type: string; guest_count: number;
+  date: string; start_time?: string | null; end_time?: string | null;
+  slot: Seans; organization_type: string; guest_count: number;
   total_amount: number; deposit: number; status: string;
   halls?: { name: string } | null;
 }
@@ -151,10 +154,23 @@ interface SatirDb {
  * bir rezervasyonun kalan tutarı olduğundan yüksek çıkıyor ve mobil
  * ekran ile web paneli aynı kayıt için farklı rakam gösteriyordu.
  */
+/**
+ * Postgres `time` sütunu "19:00:00" döndürür; ekranda saniye istenmez.
+ * Yalnızca başlangıç varsa tek saat yazılır: uydurma bir bitiş saati
+ * göstermek yanlış bilgi olur.
+ */
+function saatAraligi(bas?: string | null, bit?: string | null): string {
+  const b = (bas ?? '').slice(0, 5);
+  const s = (bit ?? '').slice(0, 5);
+  if (!b) return '';
+  return s ? `${b}-${s}` : b;
+}
+
 function esle(r: SatirDb, tahsilat: number): Rezervasyon {
   return {
     id: r.id, kod: r.code, musteri: r.customer_name, telefon: r.customer_phone ?? '',
-    tarih: r.date, seans: r.slot, tur: r.organization_type,
+    tarih: r.date, seans: r.slot, saat: saatAraligi(r.start_time, r.end_time),
+    tur: r.organization_type,
     renk: TUR_RENK[r.organization_type] ?? '#47b2e4',
     salon: r.halls?.name ?? '-', davetli: r.guest_count ?? 0,
     toplam: r.total_amount ?? 0, kapora: r.deposit ?? 0,
@@ -275,10 +291,17 @@ export async function rezervasyonEkle(girdi: YeniRezervasyon): Promise<string | 
   if (tanitim) return null;
 
   const { data: salonSatiri } = await db().from('halls')
-    .select('id').eq('name', girdi.salon).maybeSingle();
+    .select('id, business_id').eq('name', girdi.salon).maybeSingle();
 
+  const salon = salonSatiri as { id: string; business_id: string } | null;
+  // business_id zorunlu bir sütun; salondan türetilmezse kayıt hiç açılmaz.
+  if (!salon) throw new Error('Seçilen salon bulunamadı.');
+
+  // Sözleşme numarası (code) gönderilmez: veritabanı tetikleyicisi sıradaki
+  // numarayı atar, böylece panel ile mobil aynı diziyi paylaşır.
   const { data, error } = await db().from('reservations').insert({
-    hall_id: (salonSatiri as { id: string } | null)?.id ?? null,
+    business_id: salon.business_id,
+    hall_id: salon.id,
     customer_name: girdi.musteri,
     customer_phone: girdi.telefon,
     date: girdi.tarih,

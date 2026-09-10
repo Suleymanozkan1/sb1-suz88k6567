@@ -13,7 +13,7 @@ import NotFound from '../NotFound';
 import { clearAll } from '../../lib/storage';
 import { localRepo } from '../../lib/repo/local';
 import { seedIfEmpty } from '../../lib/seed';
-import { makeReservationCode, uid } from '../../lib/ids';
+import { uid } from '../../lib/ids';
 
 function renderAt(path: string, element: ReactElement, extra?: { path: string; element: ReactElement }[]) {
   const queryClient = new QueryClient({
@@ -56,13 +56,18 @@ describe('Kod Doğrulama', () => {
 
   it('geçerli kodda rezervasyon bilgilerini gösterir', async () => {
     seedIfEmpty();
-    const code = makeReservationCode();
-    await localRepo.saveReservation({
-      id: uid('res'), businessId: 'biz_demo', hallId: 'hall_demo1', code, customerName: 'Test Çift',
-      customerPhone: '5321112233', date: '2026-09-12', slot: 'Gece', organizationType: 'Düğün',
+    // Kod boş bırakılır: sıradaki sözleşme numarasını depo atar. Sabit bir
+    // kod yazmak tohumdaki numaralardan birine çarpar ve yanlış kaydı bulur.
+    const kayit = await localRepo.saveReservation({
+      id: uid('res'), businessId: 'biz_demo', hallId: 'hall_demo1', code: '', customerName: 'Test Çift',
+      // Tanıtım haftası içinde bulunulan haftayı doldurur; test kaydı oraya
+      // düşerse salon-gün-seans çakışmasına takılır.
+      customerPhone: '5321112233', date: '2031-06-14', slot: 'Gece', organizationType: 'Düğün',
       guestCount: 250, totalAmount: 100000, deposit: 40000, currency: 'TL',
       status: 'Kesin Rezervasyon', colorKey: 'dugun', services: [], createdAt: '', updatedAt: '',
     });
+    const code = kayit.code;
+    expect(code).toMatch(/^[0-9]{5,}$/);
 
     const user = userEvent.setup();
     renderAt('/kod-dogrulama', <KodDogrulama />);

@@ -108,12 +108,18 @@ test.describe('Üye paneli', () => {
     await page.getByLabel('İsim / telefon / kod').fill('E2E Test');
     await expect(page.getByRole('link', { name: 'E2E Test Çifti', exact: true })).toBeVisible();
 
-    // Sözleşme çıktısı
+    // Sözleşme çıktısı: düzen işletmenin basılı sözleşmesini izler, başlık
+    // salon adıdır ve bilgiler etiket/değer satırları hâlinde durur.
     await page.getByRole('link', { name: 'E2E Test Çifti', exact: true }).click();
+    await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/(?!yeni$)[^/]+$/, { timeout: 15_000 });
     await page.getByRole('link', { name: /Sözleşme/ }).click();
-    await expect(page.getByRole('heading', { name: 'SALON KİRALAMA SÖZLEŞMESİ' })).toBeVisible();
-    await expect(page.getByRole('row', { name: /Toplam Kira Bedeli/ })).toContainText('200.000,00 ₺');
-    await expect(page.getByRole('row', { name: /Kalan Bakiye/ })).toContainText('100.000,00 ₺');
+    await expect(page).toHaveURL(/\/sozlesme$/, { timeout: 15_000 });
+
+    const belge = page.locator('article');
+    await expect(belge.getByText('Sözleşme No :')).toBeVisible();
+    await expect(belge).toContainText('200.000,00 ₺'); // toplam fiyat
+    await expect(belge).toContainText('100.000,00 ₺'); // bakiye
+    await expect(belge.getByText('Kiralayan İmza')).toBeVisible();
   });
 
   test('rezervasyon kodu herkese açık doğrulama sayfasında sorgulanabilir', async ({ page }) => {

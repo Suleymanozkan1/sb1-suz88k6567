@@ -39,7 +39,19 @@ export interface Reservation {
   customerPhone: string;
   customerEmail?: string;
   secondPersonName?: string;
+  /** İkinci kişinin telefonu; sözleşmedeki "Gelin Cep" satırı. */
+  secondPhone?: string;
+  /**
+   * Sözleşmeyi imzalayanın TC kimlik numarası (11 hane).
+   * KVKK: yalnızca sözleşme düzenlemek için tutulur, kod doğrulama
+   * ekranına hiçbir koşulda çıkmaz.
+   */
+  identityNo?: string;
   date: string; // ISO yyyy-mm-dd
+  /** Başlangıç saati HH:mm; sözleşmedeki "Saat" satırı. İsteğe bağlı. */
+  startTime?: string;
+  /** Bitiş saati HH:mm. Gece yarısını aşan törenlerde başlangıçtan küçük olabilir. */
+  endTime?: string;
   slot: SessionSlot;
   organizationType: OrganizationType;
   guestCount: number;

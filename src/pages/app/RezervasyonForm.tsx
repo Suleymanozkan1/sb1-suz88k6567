@@ -9,7 +9,6 @@ import {
   useHalls, useMenus, useReservation, useReservations, useSaveReservation, useSendSms,
 } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
-import { makeReservationCode } from '../../lib/ids';
 import { formatDate, formatMoney, todayIso } from '../../lib/format';
 import { ORGANIZATION_TYPES, ORG_TO_COLOR_KEY, SERVICE_OPTIONS } from '../../data/constants';
 import type { OrganizationType, Reservation, ReservationStatus, SessionSlot } from '../../types';
@@ -21,9 +20,13 @@ interface FormState {
   customerPhone: string;
   customerEmail: string;
   secondPersonName: string;
+  secondPhone: string;
+  identityNo: string;
   hallId: string;
   menuId: string;
   date: string;
+  startTime: string;
+  endTime: string;
   slot: SessionSlot;
   organizationType: OrganizationType;
   guestCount: string;
@@ -40,9 +43,13 @@ const EMPTY: FormState = {
   customerPhone: '',
   customerEmail: '',
   secondPersonName: '',
+  secondPhone: '',
+  identityNo: '',
   hallId: '',
   menuId: '',
   date: todayIso(),
+  startTime: '',
+  endTime: '',
   slot: 'Gece',
   organizationType: 'Düğün',
   guestCount: '',
@@ -78,9 +85,13 @@ export default function RezervasyonForm() {
       customerPhone: existing.customerPhone,
       customerEmail: existing.customerEmail ?? '',
       secondPersonName: existing.secondPersonName ?? '',
+      secondPhone: existing.secondPhone ?? '',
+      identityNo: existing.identityNo ?? '',
       hallId: existing.hallId,
       menuId: existing.menuId ?? '',
       date: existing.date,
+      startTime: existing.startTime ?? '',
+      endTime: existing.endTime ?? '',
       slot: existing.slot,
       organizationType: existing.organizationType,
       guestCount: String(existing.guestCount),
@@ -143,6 +154,19 @@ export default function RezervasyonForm() {
 
     if (!form.date) e.date = 'Organizasyon tarihini seçiniz.';
 
+    // TC kimlik numarası isteğe bağlı; girildiyse sözleşmeye basılacağı
+    // için biçimi tutmalı.
+    const kimlik = form.identityNo.replace(/\D/g, '');
+    if (form.identityNo.trim() && kimlik.length !== 11)
+      e.identityNo = 'TC kimlik numarası 11 haneli olmalıdır.';
+
+    const ikinciHane = form.secondPhone.replace(/\D/g, '');
+    if (form.secondPhone.trim() && ikinciHane.length < 10)
+      e.secondPhone = 'Telefon numarası en az 10 haneli olmalıdır.';
+
+    // Bitiş saati gece yarısını aşabilir; yalnızca biri girilmişse uyarılır.
+    if (form.endTime && !form.startTime) e.startTime = 'Bitiş saati girdiyseniz başlangıç saatini de giriniz.';
+
     const guests = Number(form.guestCount);
     if (!form.hallId) e.hallId = 'Salon seçiniz.';
     if (!form.guestCount) e.guestCount = 'Davetli sayısını giriniz.';
@@ -173,12 +197,17 @@ export default function RezervasyonForm() {
     const record: Reservation = {
       id: existing?.id ?? crypto.randomUUID(),
       businessId: existing?.businessId ?? businessId,
-      code: existing?.code ?? makeReservationCode(),
+      // Boş bırakılır: sıradaki sözleşme numarasını veritabanı atar.
+      code: existing?.code ?? '',
       customerName: form.customerName.trim(),
       customerPhone: phone,
       customerEmail: form.customerEmail.trim() || undefined,
       secondPersonName: form.secondPersonName.trim() || undefined,
+      secondPhone: form.secondPhone.replace(/\D/g, '') || undefined,
+      identityNo: form.identityNo.replace(/\D/g, '') || undefined,
       date: form.date,
+      startTime: form.startTime || undefined,
+      endTime: form.endTime || undefined,
       hallId: form.hallId,
       menuId: form.menuId || undefined,
       slot: form.slot,
@@ -264,8 +293,19 @@ export default function RezervasyonForm() {
             <Field id="customerPhone" label="Telefon" required error={errors.customerPhone}>
               <input id="customerPhone" type="tel" className="field-input" placeholder="532xxxyyzz" value={form.customerPhone} onChange={(e) => update('customerPhone', e.target.value)} aria-invalid={Boolean(errors.customerPhone)} />
             </Field>
+            <Field id="secondPhone" label="İkinci Kişi Telefonu (varsa)" error={errors.secondPhone}>
+              <input id="secondPhone" type="tel" className="field-input" placeholder="533xxxyyzz" value={form.secondPhone} onChange={(e) => update('secondPhone', e.target.value)} aria-invalid={Boolean(errors.secondPhone)} />
+            </Field>
             <Field id="customerEmail" label="E-Posta" error={errors.customerEmail}>
               <input id="customerEmail" type="email" className="field-input" value={form.customerEmail} onChange={(e) => update('customerEmail', e.target.value)} aria-invalid={Boolean(errors.customerEmail)} />
+            </Field>
+            <Field
+              id="identityNo"
+              label="TC Kimlik No (sözleşme için)"
+              error={errors.identityNo}
+              hint="Yalnızca sözleşme düzenlemek için tutulur; kod doğrulama ekranında görünmez."
+            >
+              <input id="identityNo" inputMode="numeric" maxLength={11} className="field-input" value={form.identityNo} onChange={(e) => update('identityNo', e.target.value)} aria-describedby="identityNo-hint" aria-invalid={Boolean(errors.identityNo)} />
             </Field>
             <Field id="address" label="Adres" className="md:col-span-2">
               <input id="address" className="field-input" value={form.address} onChange={(e) => update('address', e.target.value)} />
@@ -289,6 +329,12 @@ export default function RezervasyonForm() {
             </Field>
             <Field id="date" label="Tarih" required error={errors.date}>
               <input id="date" type="date" className="field-input" value={form.date} onChange={(e) => update('date', e.target.value)} aria-invalid={Boolean(errors.date)} />
+            </Field>
+            <Field id="startTime" label="Başlangıç Saati" error={errors.startTime}>
+              <input id="startTime" type="time" className="field-input" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} aria-invalid={Boolean(errors.startTime)} />
+            </Field>
+            <Field id="endTime" label="Bitiş Saati">
+              <input id="endTime" type="time" className="field-input" value={form.endTime} onChange={(e) => update('endTime', e.target.value)} />
             </Field>
             <Field id="slot" label="Seans" required>
               <select id="slot" className="field-input" value={form.slot} onChange={(e) => update('slot', e.target.value as SessionSlot)}>
@@ -393,12 +439,15 @@ export default function RezervasyonForm() {
 }
 
 function Field({
-  id, label, required, error, className = '', children,
+  id, label, required, error, hint, className = '', children,
 }: {
   id: string;
   label: string;
   required?: boolean;
   error?: string;
+  /** Alanın altında görünen açıklama. Alanı okuyan çağıran taraf
+   *  aria-describedby ile `${id}-hint` kimliğine bağlar. */
+  hint?: string;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -409,6 +458,7 @@ function Field({
         {required && <span className="ml-0.5 text-danger" aria-hidden="true">*</span>}
       </label>
       {children}
+      {hint && <p id={`${id}-hint`} className="mt-1 text-xs text-brand-muted">{hint}</p>}
       {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
     </div>
   );

@@ -120,7 +120,7 @@ export default function Ayrinti() {
 
       <Yazi tur="baslik" renkli={renk.lacivert} style={{ marginTop: aralik.s }}>{kayit.musteri}</Yazi>
       <Yazi tur="kucuk" renkli={renk.metinSolgun} style={{ marginTop: 2 }}>
-        {tarihUzun(kayit.tarih)} · {kayit.seans} · {gorecelıGun(kayit.tarih)}
+        {tarihUzun(kayit.tarih)} · {kayit.saat ? `${kayit.saat} · ` : ''}{kayit.seans} · {gorecelıGun(kayit.tarih)}
       </Yazi>
 
       <View style={s.kisayollar}>

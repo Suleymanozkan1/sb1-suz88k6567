@@ -1,30 +1,53 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
-import { useReservationsWithBalances } from '../../lib/queries';
+import { useBusinesses, useHalls, useMenus, useReservationsWithBalances } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { balanceReport, downloadCsv, monthReport, programReport, slotReport, summarize, toCsv, withinRange } from '../../lib/reports';
-import { formatDate, formatMoney, formatNumber, formatPhone } from '../../lib/format';
+import { addDays, formatDate, formatMoney, formatNumber, formatPhone, todayIso } from '../../lib/format';
+import { buildProgram, programIsEmpty } from '../../lib/program';
+import { downloadProgramDocx } from '../../lib/programDocx';
+import ProgramCizelgesi from '../../components/ProgramCizelgesi';
+import { KEYS, read, write } from '../../lib/storage';
 import { IconDownload, IconPrint } from '../../components/Icons';
 
-type Tab = 'program' | 'ay' | 'bakiye' | 'seans';
+type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'program', label: 'Program bazlı rapor' },
+  { key: 'cizelge', label: 'Program raporu' },
+  // Eski adı "Program bazlı rapor" idi; çizelge eklenince aynı sözcük iki
+  // ayrı raporu anlatır olmuştu.
+  { key: 'program', label: 'Organizasyon bazlı rapor' },
   { key: 'ay', label: 'Ay bazlı rapor' },
   { key: 'bakiye', label: 'Alacak bakiyesi' },
   { key: 'seans', label: 'Gündüz / Gece' },
 ];
 
+const TAB_KEYS = TABS.map((t) => t.key);
+
 export default function Raporlar() {
   const { user, can } = useAuth();
   const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
-  const [tab, setTab] = useState<Tab>('program');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const { data: halls = [] } = useHalls();
+  const { data: businesses = [] } = useBusinesses();
+  const { data: menus = [] } = useMenus();
+  const [params] = useSearchParams();
+  const istenenTab = params.get('tab');
+  const [tab, setTab] = useState<Tab>(
+    istenenTab && (TAB_KEYS as string[]).includes(istenenTab) ? (istenenTab as Tab) : 'cizelge',
+  );
+  // Boş aralık "tüm kayıtlar" demektir ve diğer raporlar bunu bekliyor;
+  // varsayılanı bu hafta yapmak onları sessizce daraltırdı. Çizelge kendi
+  // içinde bu haftaya düşer.
+  const [from, setFrom] = useState(() => params.get('from') ?? '');
+  const [to, setTo] = useState(() => params.get('to') ?? '');
+  const [notlar, setNotlar] = useState(() => read<string>(KEYS.programNotes, ''));
   const currency = user?.currency ?? 'TL';
+
+  // Notlar bu tarayıcıda saklanır: rapor her açılışta yeniden yazılmasın.
+  useEffect(() => { write(KEYS.programNotes, notlar); }, [notlar]);
 
   const scoped = useMemo(
     () => reservations.filter((r) => r.status !== 'İptal' && withinRange(r.date, { from, to })),
@@ -36,6 +59,20 @@ export default function Raporlar() {
   const months = useMemo(() => monthReport(scoped, balance), [scoped, balance]);
   const balances = useMemo(() => balanceReport(scoped, balance), [scoped, balance]);
   const slots = useMemo(() => slotReport(scoped, balance), [scoped, balance]);
+
+  const aktifIsletmeAdi =
+    businesses.find((b) => b.id === user?.activeBusinessId)?.name ?? businesses[0]?.name ?? 'Program';
+
+  // Aralık seçilmediyse çizelge bu haftayı gösterir; boş bir çizelge
+  // kullanıcıya hiçbir şey anlatmaz.
+  const aralikSecilmedi = !from || !to;
+  const cizelgeFrom = from || todayIso();
+  const cizelgeTo = to || addDays(cizelgeFrom, 6);
+
+  const cizelge = useMemo(
+    () => buildProgram({ from: cizelgeFrom, to: cizelgeTo, halls, reservations, menus, colors }),
+    [cizelgeFrom, cizelgeTo, halls, reservations, menus, colors],
+  );
 
   if (!can('rapor.goruntule')) {
     return <Alert kind="error">Raporları görüntüleme yetkiniz bulunmuyor.</Alert>;
@@ -70,6 +107,13 @@ export default function Raporlar() {
     downloadCsv(`rapor-${tab}-${new Date().toISOString().slice(0, 10)}.csv`, csv);
   }
 
+  function indirWord() {
+    downloadProgramDocx(cizelge, {
+      businessName: aktifIsletmeAdi,
+      from: cizelgeFrom, to: cizelgeTo, notes: notlar,
+    });
+  }
+
   const maxProgram = Math.max(1, ...programs.map((p) => p.total));
   const maxMonth = Math.max(1, ...months.map((m) => m.count));
 
@@ -80,9 +124,20 @@ export default function Raporlar() {
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Raporlar</h1>
         <div className="flex gap-2">
-          <button type="button" onClick={exportCsv} className="btn-outline btn-sm">
-            <IconDownload size={16} /> CSV indir
-          </button>
+          {tab === 'cizelge' ? (
+            <button
+              type="button"
+              onClick={indirWord}
+              disabled={programIsEmpty(cizelge)}
+              className="btn-outline btn-sm disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <IconDownload size={16} /> Word indir
+            </button>
+          ) : (
+            <button type="button" onClick={exportCsv} className="btn-outline btn-sm">
+              <IconDownload size={16} /> CSV indir
+            </button>
+          )}
           <button type="button" onClick={() => window.print()} className="btn-outline btn-sm">
             <IconPrint size={16} /> Yazdır
           </button>
@@ -99,9 +154,21 @@ export default function Raporlar() {
           <input id="rp-to" type="date" className="field-input" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
         <div className="flex items-end">
-          <button type="button" className="btn-outline w-full" onClick={() => { setFrom(''); setTo(''); }}>
-            Tarih aralığını temizle
-          </button>
+          {tab === 'cizelge' ? (
+            // Çizelge tarih aralığı olmadan çizilemez; temizlemek yerine
+            // bu haftaya döner.
+            <button
+              type="button"
+              className="btn-outline w-full"
+              onClick={() => { setFrom(cizelgeFrom); setTo(cizelgeTo); }}
+            >
+              Bu hafta
+            </button>
+          ) : (
+            <button type="button" className="btn-outline w-full" onClick={() => { setFrom(''); setTo(''); }}>
+              Tarih aralığını temizle
+            </button>
+          )}
         </div>
       </form>
 
@@ -131,7 +198,38 @@ export default function Raporlar() {
       </div>
 
       <section className="card p-5" role="tabpanel" aria-label={TABS.find((t) => t.key === tab)?.label}>
-        {scoped.length === 0 ? (
+        {tab === 'cizelge' ? (
+          <>
+            {aralikSecilmedi && (
+              <p className="no-print mb-3 text-sm text-brand-muted">
+                Tarih aralığı seçilmedi; {formatDate(cizelgeFrom)} - {formatDate(cizelgeTo)} arası gösteriliyor.
+              </p>
+            )}
+            <ProgramCizelgesi table={cizelge} />
+            <div className="no-print mt-5">
+              <label htmlFor="rp-notlar" className="field-label">Ek notlar</label>
+              <textarea
+                id="rp-notlar"
+                rows={4}
+                className="field-input"
+                placeholder="Örn. Cumartesi gündüz düğününde sahne 12:00'de kurulacak."
+                value={notlar}
+                onChange={(e) => setNotlar(e.target.value)}
+                aria-describedby="rp-notlar-hint"
+              />
+              <p id="rp-notlar-hint" className="mt-1 text-xs text-brand-muted">
+                Bu notlar çizelgenin altında ve Word çıktısında görünür.
+              </p>
+            </div>
+            {/* Ekranda yukarıdaki alanın kopyası olmasın diye yalnızca çıktıda. */}
+            {notlar.trim() && (
+              <div className="print-only mt-5 border-t border-line pt-4">
+                <h2 className="mb-1 font-heading text-sm font-bold uppercase text-brand">Ek Notlar</h2>
+                <p className="whitespace-pre-line text-sm text-brand">{notlar}</p>
+              </div>
+            )}
+          </>
+        ) : scoped.length === 0 ? (
           <p className="py-10 text-center text-sm text-brand-muted">Seçilen tarih aralığında kayıt bulunmuyor.</p>
         ) : tab === 'program' ? (
           <>

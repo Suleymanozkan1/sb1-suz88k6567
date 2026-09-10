@@ -205,7 +205,9 @@ describe('Yeni rezervasyon formu', () => {
     await waitFor(async () => expect(await getReservations(BIZ)).toHaveLength(before + 1), { timeout: 4000 });
     const created = (await getReservations(BIZ)).find((r: Reservation) => r.customerName === 'Yeni Çift');
     expect(created?.totalAmount).toBe(120000);
-    expect(created?.code).toMatch(/^SA-\d{4}-\d{4}$/);
+    // Sözleşme numarası yıl + sıra: tohumdaki eski biçimli kodlar diziyi
+    // etkilemez, ilk yeni kayıt yılın 1'incisidir.
+    expect(created?.code).toMatch(new RegExp(`^${new Date().getFullYear()}[0-9]{1,9}$`));
     const smsAfter = await getSmsLog(BIZ);
     expect(smsAfter.length).toBe(smsBefore + 1);
     expect(smsAfter[0].kind).toBe('Rezervasyon');
@@ -315,10 +317,92 @@ describe('Salon kiralama sözleşmesi', () => {
     const target = (await getReservations(BIZ))[0];
     renderPanel(`/panel/rezervasyonlar/${target.id}/sozlesme`);
 
-    expect(await screen.findByRole('heading', { name: 'SALON KİRALAMA SÖZLEŞMESİ' })).toBeInTheDocument();
-    expect(screen.getAllByText('KİRAYA VEREN').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('KİRACI').length).toBeGreaterThan(0);
+    // Başlık, işletmenin basılı sözleşmesindeki gibi salon adıdır.
+    expect(await screen.findByRole('heading', { name: 'Grand Sahra Düğün ve Davet Salonu' })).toBeInTheDocument();
+    expect(screen.getByText('Kiraya Veren İmza')).toBeInTheDocument();
+    expect(screen.getByText('Kiralayan İmza')).toBeInTheDocument();
     expect(screen.getAllByText(target.customerName).length).toBeGreaterThan(0);
+    expect(screen.getByText('Sözleşme No :')).toBeInTheDocument();
+    expect(screen.getByText(target.code)).toBeInTheDocument();
+  });
+
+  it('sözleşme şartlarının on altı maddesi çıktıda yer alır', async () => {
+    seedIfEmpty();
+    const target = (await getReservations(BIZ))[0];
+    renderPanel(`/panel/rezervasyonlar/${target.id}/sozlesme`);
+
+    // Başlık CSS ile büyük harfe çevrilir; DOM'daki metin karışık yazımdır.
+    const bolum = await screen.findByRole('heading', { name: 'Sözleşme Şartları' });
+    const metin = bolum.parentElement?.textContent ?? '';
+    expect(metin).toContain('CAYMA TAZMİNATI');
+    expect(metin).toContain('16. )');
+    expect(metin).toContain('Kredi kartı ödemelerinde');
+    // Yetkili mahkeme işletmenin şehrinden gelir, metne gömülü değildir.
+    expect(metin).toContain('İstanbul Mahkemeleri');
+  });
+
+  it('boş kalan alanlar sözleşmeye hiç basılmaz', async () => {
+    seedIfEmpty();
+    // Tohumdaki ilk kayıtta TC kimlik numarası yoktur; "TC : -" yazan bir
+    // sözleşme doldurulmamış bir form gibi görünürdü.
+    const target = (await getReservations(BIZ)).find((r) => !r.identityNo);
+    expect(target).toBeTruthy();
+    renderPanel(`/panel/rezervasyonlar/${target!.id}/sozlesme`);
+
+    await screen.findByText('Sözleşme No :');
+    expect(screen.queryByText('TC :')).not.toBeInTheDocument();
+  });
+});
+
+describe('Program raporu', () => {
+  it('salon sütunlarıyla çizelgeyi çizer', async () => {
+    seedIfEmpty();
+    renderPanel('/panel/raporlar?tab=cizelge');
+
+    expect(await screen.findByRole('tab', { name: 'Program raporu' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByRole('columnheader', { name: 'Kristal Salon' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Zümrüt Salon' })).toBeInTheDocument();
+  });
+
+  it('tarih aralığı seçilince o günleri gösterir', async () => {
+    const user = userEvent.setup();
+    seedIfEmpty();
+    renderPanel('/panel/raporlar?tab=cizelge');
+
+    await user.type(await screen.findByLabelText('Başlangıç tarihi'), '2026-09-11');
+    await user.type(screen.getByLabelText('Bitiş tarihi'), '2026-09-13');
+
+    // Boş günler de satır olarak durur: çizelge "o gün boş" bilgisini de
+    // verir. Dolu bir hücrenin bandına tür de yazıldığı için tam eşleşme
+    // yerine tarihe bakılır.
+    expect(await screen.findAllByText(/^11\.09\.2026 CUMA/)).toHaveLength(2);
+    expect(screen.getAllByText(/^13\.09\.2026 PAZAR/)).toHaveLength(2);
+    expect(screen.queryByText(/^10\.09\.2026/)).not.toBeInTheDocument();
+  });
+
+  it('ek notlar çizelgenin altına yazılır', async () => {
+    const user = userEvent.setup();
+    seedIfEmpty();
+    renderPanel('/panel/raporlar?tab=cizelge');
+
+    await user.type(await screen.findByLabelText('Ek notlar'), 'Sahne 12:00 kurulacak.');
+    expect(screen.getAllByText(/Sahne 12:00 kurulacak\./).length).toBeGreaterThan(0);
+  });
+
+  it('çizelge sekmesinde Word indirme sunulur', async () => {
+    seedIfEmpty();
+    renderPanel('/panel/raporlar?tab=cizelge');
+    expect(await screen.findByRole('button', { name: /Word indir/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /CSV indir/ })).not.toBeInTheDocument();
+  });
+
+  it('diğer sekmelerde CSV indirmeye döner', async () => {
+    const user = userEvent.setup();
+    seedIfEmpty();
+    renderPanel('/panel/raporlar?tab=cizelge');
+    await user.click(await screen.findByRole('tab', { name: 'Ay bazlı rapor' }));
+    expect(screen.getByRole('button', { name: /CSV indir/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Word indir/ })).not.toBeInTheDocument();
   });
 });
 
@@ -328,6 +412,27 @@ describe('Gelir gider kayıtları', () => {
     expect(await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' })).toBeInTheDocument();
     expect(screen.getByText('Toplam Gelir')).toBeInTheDocument();
     expect(screen.getByText('Kasa Bakiyesi')).toBeInTheDocument();
+  });
+
+  it('rezervasyon tahsilatlarını sözleşme numarası ve taraflarla listeler', async () => {
+    seedIfEmpty();
+    const kayit = (await getReservations(BIZ)).find((r) => r.deposit > 0 && r.status !== 'İptal')!;
+    renderPanel('/panel/kasa');
+
+    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+    // Kasa satırı hangi sözleşmeye ait olduğunu kendi başına anlatmalı.
+    expect(screen.getAllByText(kayit.code).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Kapora').length).toBeGreaterThan(0);
+  });
+
+  it('rezervasyondan gelen satır silinemez', async () => {
+    seedIfEmpty();
+    renderPanel('/panel/kasa');
+
+    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+    // Türetilmiş satırın silme düğmesi yerine kaynağını söyleyen bir etiket
+    // durur; düzeltme rezervasyon ekranından yapılır.
+    expect(screen.getAllByText('Rezervasyon').length).toBeGreaterThan(0);
   });
 
   it('geçersiz tutarı reddeder', async () => {
@@ -358,9 +463,16 @@ describe('Gelir gider kayıtları', () => {
 });
 
 describe('Raporlar', () => {
-  it('program bazlı rapor sekmesi varsayılan açıktır', async () => {
+  it('program raporu sekmesi varsayılan açıktır', async () => {
     renderPanel('/panel/raporlar');
-    expect(await screen.findByRole('tab', { name: 'Program bazlı rapor' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByRole('tab', { name: 'Program raporu' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('organizasyon bazlı rapora geçiş yapar', async () => {
+    const user = userEvent.setup();
+    renderPanel('/panel/raporlar');
+    await user.click(await screen.findByRole('tab', { name: 'Organizasyon bazlı rapor' }));
+    expect(screen.getByRole('tab', { name: 'Organizasyon bazlı rapor' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('ay bazlı rapora geçiş yapar', async () => {
@@ -380,6 +492,8 @@ describe('Raporlar', () => {
   it('gelecekteki tarih aralığında boş sonuç bildirir', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/raporlar');
+    // Çizelge boş günleri de çizer; "kayıt yok" iletisi diğer raporlarda.
+    await user.click(await screen.findByRole('tab', { name: 'Ay bazlı rapor' }));
     await user.type(await screen.findByLabelText('Başlangıç tarihi'), '2099-01-01');
     expect(await screen.findByText('Seçilen tarih aralığında kayıt bulunmuyor.')).toBeInTheDocument();
   });

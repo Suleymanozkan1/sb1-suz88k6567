@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
@@ -26,6 +27,21 @@ export default function Isletmeler() {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
   const [toDelete, setToDelete] = useState<Business | null>(null);
+  const [params, setParams] = useSearchParams();
+
+  // Kenar çubuğundaki "Yeni işletme ekle" bağlantısı buraya ?yeni=1 ile gelir;
+  // kullanıcı ayrıca düğmeye basmak zorunda kalmasın.
+  useEffect(() => {
+    if (params.get('yeni') !== '1') return;
+    setEditing(null);
+    setForm(EMPTY);
+    setError('');
+    setShowForm(true);
+    // Parametre tüketilir: sayfa yenilenince form kendiliğinden açılmasın.
+    const kalan = new URLSearchParams(params);
+    kalan.delete('yeni');
+    setParams(kalan, { replace: true });
+  }, [params, setParams]);
 
   const districts = DISTRICTS[form.city] ?? [];
 

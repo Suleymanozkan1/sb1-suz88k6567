@@ -10,30 +10,30 @@ tek tek yazılıdır.
 
 | Katman | Test | Fonksiyon kapsamı | Satır kapsamı |
 |---|---|---|---|
-| `api/` (sunucu uçları) | 253 birim | **%100** (67/67) | %99,9 |
-| `src/lib/` (iş mantığı) | 248 birim | **%100** (215/215) | %99,6 |
-| `src/lib/repo/` (veri erişimi) | 213 birim | **%100** (155/155) | %99,7 |
-| `worker/` (yönlendirme, cron) | 14 birim | **%100** (4/4) | %100 |
-| Ekranlar (React) | 40 tümleşik + 101 uçtan uca | akış bazlı, aşağıda | — |
-| `mobil/src/` | 132 birim (2 atlandı) | %98,9 (`veri.ts`) | %97,4 |
-| Veritabanı (RLS, tetikleyici, fonksiyon) | 9 SQL paketi | — | — |
+| `api/` (sunucu uçları) | 253 birim | **%100** (55/55) | %99,9 |
+| `src/lib/` (iş mantığı) | 320 birim | **%100** (251/251) | %99,7 |
+| `src/lib/repo/` (veri erişimi) | 213 birim | **%100** (166/166) | %99,5 |
+| `worker/` (yönlendirme, cron) | 14 birim | **%100** (3/3) | %100 |
+| Ekranlar (React) | 49 tümleşik + 115 uçtan uca | akış bazlı, aşağıda | — |
+| `mobil/src/` | 133 birim (2 atlandı) | %98,9 (`veri.ts`) | %97,4 |
+| Veritabanı (RLS, tetikleyici, fonksiyon) | 10 SQL paketi | — | — |
 
-**Ölçülen 441 fonksiyonun 441'i çalıştırılıyor; testi olmayan fonksiyon
+**Ölçülen 475 fonksiyonun 475'i çalıştırılıyor; testi olmayan fonksiyon
 kalmadı.**
 
-Toplam: **768 web birim testi**, **132 mobil testi** (2'si atlandı),
-**101 uçtan uca test**, **9 SQL test paketi**.
+Toplam: **885 web birim testi**, **133 mobil testi** (2'si atlandı),
+**115 uçtan uca test**, **10 SQL test paketi**.
 
 ## 2. Çalıştırma
 
 ```bash
 npm run typecheck            # tsc, hata yok
 npm run lint                 # eslint, 0 hata
-npm test                     # 768 birim + tümleşik test
+npm test                     # 885 birim + tümleşik test
 npm run build                # üretim derlemesi
-npm run e2e                  # 101 Playwright testi (Chromium)
+npm run e2e                  # 115 Playwright testi (Chromium)
 
-cd mobil && npx tsc --noEmit && npx jest    # 132 mobil testi
+cd mobil && npx tsc --noEmit && npx jest    # 133 mobil testi
 
 # SQL paketleri her biri temiz bir veritabanında çalıştırılır:
 createdb sahra_test
@@ -73,7 +73,10 @@ gövdesinde ya da hata metninde geçmiyor.
 | `money.ts` | `local.test.ts` içinden | Kapora + tahsilat toplamı, kalan bakiyenin negatife düşmemesi |
 | `invoice.ts` | `invoice.test.ts` | KDV, yuvarlama, TCKN / VKN doğrulaması, fatura numarası |
 | `sablon.ts` | `sablon.test.ts` | Yer tutucu doldurma, GSM-7 indirgeme, SMS parça ölçümü |
-| `reports.ts` | `reports.test.ts` | Rapor toplamları, CSV kaçışları, Excel için BOM |
+| `reports.ts` | `reports.test.ts`, `kasaGeliri.test.ts` | Rapor toplamları, CSV kaçışları, Excel için BOM; rezervasyondan türetilen kasa satırları (kapora + tahsilat, iptal edilenin dışarıda kalması, sahipsiz tahsilatın yok sayılması) |
+| `program.ts` | `program.test.ts` | Çizelge kurulumu: boş günlerin satır olarak durması, gündüz töreninin geceden önce gelmesi, aynı gün iki törenin ayrılması, iptal edilenin çizelgeye girmemesi |
+| `docx.ts` | `docx.test.ts` | ZIP yapısı (CRC32 referans değerleri, merkez dizin), XML kaçışları, boş hücrenin paragrafsız kalmaması, Word MIME türü |
+| `programDocx.ts` | `programDocx.test.ts` | Word çıktısının ekrandakiyle aynı olması: renk dönüşümü, saat bandı, ek notlar bölümü, dosya adındaki tarih aralığı |
 | `seating.ts`, `plan.ts`, `health.ts`, `ids.ts` | kendi test dosyaları | — |
 | `format.ts` | `format.test.ts` | Para, tarih, telefon, kontrast; `formatDateTime` dahil |
 | `sms.ts` | `sms.test.ts` | Gönderim, OTP, uç noktanın varlığının anlaşılması |
@@ -82,6 +85,7 @@ gövdesinde ya da hata metninde geçmiyor.
 | `authHelpers.ts` | `authHelpers.test.ts` | Ham veritabanı metninin kullanıcıya gösterilmemesi |
 | `queries.ts` | `queries.test.tsx` | 50'den fazla veri kancası tek tek; doğru işletmenin sorulması, kimliksiz sorgunun çalışmaması, yazma sonrası önbellek tazelemesi, İYS kuralı |
 | `seed.ts` | `local.test.ts` | Mevcut verinin üzerine yazmama |
+| `data/sozlesme.ts` | `sozlesme.test.ts` | Sözleşme şartlarının on altı maddesinin eksilmemesi, yetkili mahkemenin işletmenin şehrinden gelmesi |
 
 ## 5. Veri erişimi (`src/lib/repo/`)
 
@@ -112,10 +116,11 @@ hangi akışla kapsandığını gösterir.
 | Takvim | Ay gezinmesi, rezervasyonun takvimde işaretlenmesi |
 | Rezervasyonlar | Arama, filtre, yeni kayıt, düzenleme, silme kilidi |
 | Rezervasyon detayı | Tahsilat ekleme, kalan bakiye, tahsilatın kalanı aşamaması, hatırlatma taslağı |
-| Sözleşme / Makbuz | Çıktı görünümü ve tutarların taşınması |
-| Kasa | Gelir / gider ekleme, listeye ve bakiyeye yansıma |
+| Sözleşme / Makbuz | Çıktı görünümü, tutarların taşınması, on altı maddelik şartlar, menü içeriğinin sağ sütuna basılması, boş alanın hiç yazılmaması |
+| Kasa | Gelir / gider ekleme, listeye ve bakiyeye yansıma; rezervasyon tahsilatlarının sözleşme numarası ve taraflarla görünmesi, türetilmiş satırın silinememesi |
 | Faturalar | Fatura oluşturma, tutar hesabı, durum |
 | Raporlar | Sekme geçişi, toplamların kasa ve rezervasyon verisiyle tutarlılığı |
+| Program raporu | Salon sütunları, tarih aralığının çizelgeye yansıması, boş günlerin satır kalması, aynı gün iki törenin saat bandıyla ayrılması, ek notların saklanması, Word indirme ve boş aralıkta düğmenin kapanması |
 | Salonlar | Ekleme, mükerrer ad reddi, çakışma kuralı |
 | Menüler | Kişi başı tutar önerisi, rezervasyona uygulanması |
 | Masa düzeni | Plan önerisi, kaydetme, eksik koltuk uyarısı |
@@ -124,7 +129,7 @@ hangi akışla kapsandığını gösterir.
 | SMS kayıtları | Tür filtresi, kuyruk görünümü |
 | İYS izinleri | Onay / ret kaydı, onaysız ticari iletinin engellenmesi |
 | Müşteriler | Rezervasyondan oluşma, bakiye, isim ve telefonla arama |
-| İşletmeler | İşletme değiştirmenin listeyi değiştirmesi |
+| İşletmeler | İşletme değiştirmenin listeyi değiştirmesi; kenar çubuğundaki "Yeni işletme ekle" bağlantısının formu açması ve eklenen işletmenin hem listeye hem aktif işletme seçicisine düşmesi |
 | Kullanıcılar | Personel ekleme, düzenleme, silme, mükerrer e-posta reddi |
 | Renk ayarları | Renk kaydı, varsayılana dönüş |
 | Denetim kaydı | Süzgeçler |
@@ -173,6 +178,7 @@ koşulduklarında birbirlerinin tohum verisiyle çakışırlar.
 | `08_is_emri_tedarikci_test.sql` | İş emri satırları, tedarikçi ataması, bağlı tedarikçinin silinememesi |
 | `09_hatirlatma_test.sql` | Vadesi gelen hatırlatmanın kuyruğa alınması, aynı hatırlatmanın ikinci kez gitmemesi, tutarın kapora dahil hesaplanması |
 | `10_dusurulen_tablolar_test.sql` | `0013` göçünün doğrulaması: düşmesi gerekenlerin düştüğü **ve** kullanılan hiçbir tabloya dokunulmadığı |
+| `11_sozlesme_alanlari_ve_seri_test.sql` | `0014` göçü: dört alanın isteğe bağlı eklenmesi, hatalı TC'nin reddi, numaranın veritabanınca atanması, dokuzdan ona sayısal geçiş, güncellemede numaranın korunması, kimlik numarasının herkese açık sorguya sızmaması, sayacın yazmaya kapalı olması |
 
 ## 9. Kapsanmayanlar ve gerekçeleri
 
@@ -226,6 +232,24 @@ paket dokuz kez üst üste eksiksiz geçti.
 Not düşülmesinin sebebi: "ara sıra düşüyor" bir gerekçe değildir.
 Testi yeniden çalıştırıp geçmesini beklemek, buradaki gerçek kusuru
 gizleyecekti.
+
+Bu turda üç kusur daha aynı yoldan çıktı:
+
+**Testte:** iki sözleşme testi, müşteri satırına tıkladıktan sonra ayrıntı
+sayfasının yerleştiğini doğrulamadan "Sözleşme" bağlantısını arıyordu; yavaş
+bir yüklemede tıklama hâlâ liste ekranındayken gerçekleşiyor ve test tek
+başına geçtiği hâlde tam koşuda düşüyordu. Ortak bir yardımcıya alındı ve
+adres beklemesi eklendi; dört tam koşu üst üste temiz geçti.
+
+**SQL testinde:** `10_dusurulen_tablolar_test.sql` "Ana Salon" adında bir
+salon açmaya çalışıyordu. `0007` göçü her yeni işletme için aynı adda bir
+salon açtığı için benzersizlik kısıtına çarpıyordu; test gerçek bir
+veritabanında hiç yeşil koşmamıştı. Salon adı değiştirildi.
+
+**Üründe:** program çizelgesi saat girilmemiş kayıtları seans adına göre
+metin olarak sıralıyordu. Türkçe alfabede "Gece", "Gündüz"den önce geldiği
+için gece töreni gündüz töreninin üstüne yazılıyordu. Seans için açık bir
+sıra tanımlandı (`program.ts` içinde `seansSirasi`), iki test eklendi.
 
 ## 11. Bildirilen hatanın karşılığı
 

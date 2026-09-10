@@ -9,7 +9,7 @@ import Alert from '../../components/Alert';
 import { formatDate, formatMoney, formatPhone, normalizeTr } from '../../lib/format';
 import { downloadCsv, toCsv, withinRange } from '../../lib/reports';
 import { ORGANIZATION_TYPES } from '../../data/constants';
-import { IconDownload, IconEdit, IconPlus, IconSearch, IconTrash } from '../../components/Icons';
+import { IconDownload, IconEdit, IconPlus, IconReport, IconSearch, IconTrash } from '../../components/Icons';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import type { Reservation, ReservationStatus } from '../../types';
 
@@ -108,6 +108,16 @@ export default function Rezervasyonlar() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Rezervasyonlar</h1>
         <div className="flex gap-2">
+          {/*
+            Program raporu buradan da çekilebilir: ekrandaki tarih aralığı
+            rapora taşınır, kullanıcı aralığı ikinci kez girmez.
+          */}
+          <Link
+            to={`/panel/raporlar?tab=cizelge${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
+            className="btn-outline btn-sm"
+          >
+            <IconReport size={16} /> Program raporu
+          </Link>
           <button type="button" onClick={exportCsv} className="btn-outline btn-sm" disabled={filtered.length === 0}>
             <IconDownload size={16} /> CSV indir
           </button>

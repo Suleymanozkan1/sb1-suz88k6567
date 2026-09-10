@@ -78,7 +78,7 @@ export const KVKK_NOTICE: LegalDoc = {
       paragraphs: [
         'Hesap verileri: ad soyad, e-posta adresi, cep telefonu ve işletme unvanı.',
         'İşlem güvenliği verileri: IP adresi, giriş denemeleri ve oturum kayıtları.',
-        'Müşteri kayıtları: işletmenin kendi müşterilerine ait olarak sisteme girdiği ad, telefon ve organizasyon bilgileri. Bu verilerde veri sorumlusu işletmenin kendisidir; Sahra Takip veri işleyen sıfatıyla hareket eder.',
+        'Müşteri kayıtları: işletmenin kendi müşterilerine ait olarak sisteme girdiği ad, telefon, adres ve organizasyon bilgileri. İşletme, salon kiralama sözleşmesini düzenlemek için sözleşmeyi imzalayanın TC kimlik numarasını da kaydedebilir; bu alan isteğe bağlıdır ve yalnızca sözleşme çıktısında yer alır, herkese açık rezervasyon kodu sorgulama ekranında hiçbir koşulda gösterilmez. Bu verilerde veri sorumlusu işletmenin kendisidir; Sahra Takip veri işleyen sıfatıyla hareket eder.',
       ],
     },
     {

@@ -74,6 +74,8 @@ export const KEYS = {
   resVendors: 'resVendors',
   session: 'session',
   seeded: 'seeded',
+  /** Program raporuna elle eklenen serbest notlar */
+  programNotes: 'program-notlari',
   /** Demo modu uyarı bandı kullanıcı tarafından kapatıldı mı */
   demoNotice: 'demo-notice',
 } as const;

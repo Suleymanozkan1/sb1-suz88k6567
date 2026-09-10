@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { localRepo } from './local';
 import { KEYS, clearAll, write } from '../storage';
 import { seedIfEmpty, DEMO_CREDENTIALS, DEFAULT_COLOR_SETTINGS } from '../seed';
-import { makeReservationCode, normalizeEmail, uid } from '../ids';
+import { contractSequence, nextContractCode, normalizeEmail, uid } from '../ids';
 import { makeBalanceLookup, remainingBalance, totalPaid } from '../money';
 import type { Reservation } from '../../types';
 
@@ -11,7 +11,7 @@ const BIZ = 'biz_test';
 function makeReservation(over: Partial<Reservation> = {}): Reservation {
   const now = new Date().toISOString();
   return {
-    id: uid('res'), businessId: BIZ, hallId: 'hall_test', code: makeReservationCode(),
+    id: uid('res'), businessId: BIZ, hallId: 'hall_test', code: nextContractCode([]),
     customerName: 'Test Müşteri', customerPhone: '5321112233',
     date: '2026-09-12', slot: 'Gece', organizationType: 'Düğün',
     guestCount: 300, totalAmount: 100000, deposit: 20000, currency: 'TL',
@@ -218,8 +218,35 @@ describe('SMS kayıtları', () => {
 });
 
 describe('kimlik yardımcıları', () => {
-  it('rezervasyon kodu SA-YIL-NNNN biçimindedir', () => {
-    expect(makeReservationCode()).toMatch(/^SA-\d{4}-\d{4}$/);
+  it('sözleşme numarası yıl + sıra biçimindedir', () => {
+    expect(nextContractCode([], 2026)).toBe('20261');
+    expect(nextContractCode(['20261'], 2026)).toBe('20262');
+    expect(nextContractCode(['20261', '20262', '20263'], 2026)).toBe('20264');
+  });
+
+  it('sıra sayısal olarak ilerler: 20269 sonrası 202610 gelir', () => {
+    // Metin sıralaması "202610" < "20269" der; numara sayıya çevrilmezse
+    // dizi dokuzuncu sözleşmede takılır.
+    expect(nextContractCode(['20269'], 2026)).toBe('202610');
+    expect(nextContractCode(['202610', '20269'], 2026)).toBe('202611');
+  });
+
+  it('eski biçimli kodlar diziyi geriye çekmez', () => {
+    expect(nextContractCode(['SA-2026-4821', '20263'], 2026)).toBe('20264');
+    expect(nextContractCode(['SA-2026-4821'], 2026)).toBe('20261');
+  });
+
+  it('başka yılın numaraları bu yılın dizisine karışmaz', () => {
+    expect(nextContractCode(['20257', '20261'], 2026)).toBe('20262');
+    expect(contractSequence('20257', 2026)).toBeNull();
+    expect(contractSequence('20262', 2026)).toBe(2);
+  });
+
+  it('dokuz haneden uzun sıra taşma riskiyle okunmaz', () => {
+    // Number('9999999999') güvenli aralıkta olsa da kod alanına elle
+    // yazılmış uzun bir değer diziyi ele geçirmemeli.
+    expect(contractSequence('20261234567890', 2026)).toBeNull();
+    expect(nextContractCode(['20261234567890', '20262'], 2026)).toBe('20263');
   });
 
   it('e-postayı locale-bağımsız normalleştirir', () => {

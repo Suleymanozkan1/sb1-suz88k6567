@@ -1,6 +1,6 @@
 /** Rapor hesaplamaları: program bazlı, ay bazlı, tarih aralığı, alacak bakiyesi */
 import { MONTH_NAMES } from '../data/constants';
-import type { OrganizationType, Reservation } from '../types';
+import type { OrganizationType, Payment, Reservation } from '../types';
 
 /**
  * Tahsilat/bakiye çözücüsü. `makeBalanceLookup` bunu üretir; raporlar
@@ -152,6 +152,88 @@ export function slotReport(reservations: Reservation[], balance: BalanceLookup):
     map.set(r.slot, list);
   });
   return [...map.entries()].map(([slot, list]) => ({ slot, ...summarize(list, balance) }));
+}
+
+/**
+ * Kasa ekranında görünen, rezervasyondan türetilmiş gelir satırı.
+ *
+ * Bu satırlar kasa tablosuna ayrıca YAZILMAZ, tahsilat kayıtlarından
+ * hesaplanır. Yazılsalardı rezervasyon tutarı düzeltildiğinde ya da bir
+ * tahsilat silindiğinde kasa ile rezervasyon birbirinden kopardı; iki
+ * yerde duran aynı para er geç iki kez sayılır.
+ */
+export interface ReservationIncomeRow {
+  /** Türetilmiş satır kimliği; kasa tablosundaki bir satıra karşılık gelmez. */
+  id: string;
+  reservationId: string;
+  date: string;
+  /** Kapora mı sonradan yapılan tahsilat mı */
+  category: 'Kapora' | 'Tahsilat';
+  amount: number;
+  /** Sözleşme numarası (rezervasyon kodu) */
+  contractNo: string;
+  customerName: string;
+  /** İkinci kişi varsa "Ahmet Yılmaz / Elif Kaya" biçiminde tam ad */
+  parties: string;
+  method?: string;
+}
+
+/** Sözleşmedeki taraflar: ikinci kişi varsa iki isim birlikte yazılır. */
+export function contractParties(reservation: Reservation): string {
+  const ikinci = reservation.secondPersonName?.trim();
+  if (!ikinci || ikinci === reservation.customerName.trim()) return reservation.customerName;
+  return `${reservation.customerName} / ${ikinci}`;
+}
+
+/**
+ * Rezervasyonlardan gelen bütün gelirleri kasa satırlarına çevirir.
+ *
+ * Kapora da bir tahsilattır: rezervasyon üzerinde ayrı bir alanda durduğu
+ * için ödemeler listesinde görünmez, ama kasaya girmezse "rezervasyondan
+ * gelen gelirlerin hepsi" eksik kalır. Kaporanın tarihi kaydın açıldığı
+ * gündür; sözleşme o gün imzalanmış olur.
+ *
+ * İptal edilmiş rezervasyonlar dışarıda kalır.
+ */
+export function reservationIncome(
+  reservations: Reservation[],
+  payments: Payment[],
+): ReservationIncomeRow[] {
+  const kayitlar = new Map(reservations.filter((r) => r.status !== 'İptal').map((r) => [r.id, r]));
+  const satirlar: ReservationIncomeRow[] = [];
+
+  for (const r of kayitlar.values()) {
+    if (r.deposit > 0) {
+      satirlar.push({
+        id: `kapora:${r.id}`,
+        reservationId: r.id,
+        date: (r.createdAt || '').slice(0, 10) || r.date,
+        category: 'Kapora',
+        amount: r.deposit,
+        contractNo: r.code,
+        customerName: r.customerName,
+        parties: contractParties(r),
+      });
+    }
+  }
+
+  for (const p of payments) {
+    const r = kayitlar.get(p.reservationId);
+    if (!r) continue;
+    satirlar.push({
+      id: `tahsilat:${p.id}`,
+      reservationId: r.id,
+      date: p.date,
+      category: 'Tahsilat',
+      amount: p.amount,
+      contractNo: r.code,
+      customerName: r.customerName,
+      parties: contractParties(r),
+      method: p.method,
+    });
+  }
+
+  return satirlar.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 /** CSV dışa aktarım (Excel uyumlu, noktalı virgül ayraçlı) */
