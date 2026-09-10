@@ -481,9 +481,14 @@ BÖREĞİ+SALATA`) ve varsa rezervasyon notu görünür.
 **Ek notlar.** Çizelgenin altındaki alana yazılan serbest notlar hem ekranda
 hem Word çıktısında görünür ve bu tarayıcıda saklanır.
 
-**Word çıktısı.** "Word indir" düğmesi ekrandakiyle aynı düzende bir `.docx`
-üretir. Dosya tarayıcıda kurulur; sunucuya hiçbir şey gönderilmez ve pakete
-harici bir kitaplık eklenmemiştir (`src/lib/docx.ts`, yaklaşık 200 satır).
+**Word çıktısı.** "Word indir" düğmesi aynı çizelgeyi `.docx` olarak üretir.
+Tek fark: **boş günler kâğıda basılmaz.** Ekranda boş gün satırı işe yarar
+(o gün salonun boş olduğunu söyler), basılı programda ise arka arkaya
+onlarca boş satır sayfaları şişirmekten başka bir iş görmez. Bir salonu bile
+dolu olan gün çıktıda kalır.
+
+Dosya tarayıcıda kurulur; sunucuya hiçbir şey gönderilmez ve pakete harici
+bir kitaplık eklenmemiştir (`src/lib/docx.ts`, yaklaşık 200 satır).
 
 Rapor, **Rezervasyonlar** ekranındaki "Program raporu" düğmesinden de açılır;
 listede seçili tarih aralığı rapora taşınır.

@@ -96,8 +96,13 @@ export function programBlocks(table: ProgramTable, meta: ProgramDocxMeta): DocxB
       }))
     : [{ paragraphs: [satir('Salon tanımlı değil')] }];
 
+  // Kâğıda yalnızca dolu günler basılır. Ekranda boş gün satırı işe yarar
+  // (o gün salonun boş olduğunu söyler), ama basılı programda arka arkaya
+  // onlarca boş satır sayfaları şişirmekten başka bir iş görmez.
+  const doluGunler = table.rows.filter((row) => row.cells.some((c) => c.events.length > 0));
+
   const rows: DocxCell[][] = [baslik];
-  for (const row of table.rows) {
+  for (const row of doluGunler) {
     rows.push(
       row.cells.length > 0
         ? row.cells.map((c) => hucre(c.headerLabel, c.headerColor, c.events))

@@ -146,13 +146,36 @@ describe('programBlocks', () => {
     expect(baslik).toEqual(['KRİSTAL SALON', 'ZÜMRÜT SALON']);
   });
 
-  it('her gün için bir satır ekler', () => {
+  it('yalnızca dolu günler için satır ekler', () => {
+    // Ekranda boş gün satırı işe yarar; basılı programda arka arkaya
+    // onlarca boş satır sayfaları şişirmekten başka bir iş görmez.
     const t3 = buildProgram({
-      from: '2026-09-11', to: '2026-09-13', halls: SALONLAR, reservations: [], menus: MENULER, colors: RENKLER,
+      from: '2026-09-11', to: '2026-09-13', halls: SALONLAR, menus: MENULER, colors: RENKLER,
+      reservations: [rez({ date: '2026-09-12' })],
     });
     const tablo = programBlocks(t3, meta).find((b) => b.kind === 'table');
-    // 1 başlık + 3 gün
-    expect(tablo?.kind === 'table' && tablo.rows.length).toBe(4);
+    if (tablo?.kind !== 'table') throw new Error('tablo yok');
+
+    // 1 başlık + yalnızca 12 Eylül
+    expect(tablo.rows.length).toBe(2);
+    expect(tablo.rows[1][0].paragraphs[0].runs[0].text).toBe('12.09.2026 CUMARTESİ DÜĞÜN');
+  });
+
+  it('bir salonu dolu olan günü atmaz', () => {
+    // Sağ sütunu boş olsa da o gün salonda tören var; satır kalmalı.
+    const t = buildProgram({
+      from: '2026-09-12', to: '2026-09-12', halls: SALONLAR, menus: MENULER, colors: RENKLER,
+      reservations: [rez({ hallId: 'h2' })],
+    });
+    const tablo = programBlocks(t, meta).find((b) => b.kind === 'table');
+    if (tablo?.kind !== 'table') throw new Error('tablo yok');
+    expect(tablo.rows.length).toBe(2);
+    expect(tablo.rows[1]).toHaveLength(2);
+  });
+
+  it('hiç kayıt yoksa yalnızca başlık satırı kalır', () => {
+    const tablo = programBlocks(cizelge([]), meta).find((b) => b.kind === 'table');
+    expect(tablo?.kind === 'table' && tablo.rows.length).toBe(1);
   });
 
   it('ek notları ayrı bir bölüm olarak ekler', () => {
@@ -202,7 +225,20 @@ describe('buildProgramDocx', () => {
   it('boş çizelgede bile geçerli belge üretir', () => {
     const x = metin(buildProgramDocx(cizelge([]), { ...meta, notes: '' }));
     expect(x).toContain('<w:document');
-    expect(x).toContain('12.09.2026 CUMARTESİ');
+    // Salon başlıkları durur, boş gün satırı basılmaz.
+    expect(x).toContain('KRİSTAL SALON');
+    expect(x).not.toContain('12.09.2026');
+  });
+
+  it('boş günleri çıktıya basmaz', () => {
+    const hafta = buildProgram({
+      from: '2026-09-11', to: '2026-09-13', halls: SALONLAR, menus: MENULER, colors: RENKLER,
+      reservations: [rez({ date: '2026-09-12' })],
+    });
+    const x = metin(buildProgramDocx(hafta, { ...meta, notes: '' }));
+    expect(x).toContain('12.09.2026');
+    expect(x).not.toContain('11.09.2026');
+    expect(x).not.toContain('13.09.2026');
   });
 });
 

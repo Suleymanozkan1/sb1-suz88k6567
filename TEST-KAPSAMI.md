@@ -76,7 +76,7 @@ gövdesinde ya da hata metninde geçmiyor.
 | `reports.ts` | `reports.test.ts`, `kasaGeliri.test.ts` | Rapor toplamları, CSV kaçışları, Excel için BOM; rezervasyondan türetilen kasa satırları (kapora + tahsilat, iptal edilenin dışarıda kalması, sahipsiz tahsilatın yok sayılması) |
 | `program.ts` | `program.test.ts` | Çizelge kurulumu: boş günlerin satır olarak durması, gündüz töreninin geceden önce gelmesi, aynı gün iki törenin ayrılması, iptal edilenin çizelgeye girmemesi |
 | `docx.ts` | `docx.test.ts` | ZIP yapısı (CRC32 referans değerleri, merkez dizin), XML kaçışları, boş hücrenin paragrafsız kalmaması, Word MIME türü |
-| `programDocx.ts` | `programDocx.test.ts` | Word çıktısının ekrandakiyle aynı olması: renk dönüşümü, saat bandı, ek notlar bölümü, dosya adındaki tarih aralığı |
+| `programDocx.ts` | `programDocx.test.ts` | Word çıktısı: renk dönüşümü, saat bandı, ek notlar bölümü, dosya adındaki tarih aralığı, boş günlerin kâğıda basılmaması ve bir salonu dolu olan günün atılmaması |
 | `seating.ts`, `plan.ts`, `health.ts`, `ids.ts` | kendi test dosyaları | — |
 | `format.ts` | `format.test.ts` | Para, tarih, telefon, kontrast; `formatDateTime` dahil |
 | `sms.ts` | `sms.test.ts` | Gönderim, OTP, uç noktanın varlığının anlaşılması |
