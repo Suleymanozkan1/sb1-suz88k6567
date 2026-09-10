@@ -74,4 +74,6 @@ export const KEYS = {
   resVendors: 'resVendors',
   session: 'session',
   seeded: 'seeded',
+  /** Demo modu uyarı bandı kullanıcı tarafından kapatıldı mı */
+  demoNotice: 'demo-notice',
 } as const;

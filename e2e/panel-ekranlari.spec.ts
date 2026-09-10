@@ -111,8 +111,13 @@ test.describe('Hatırlatmalar ekranı', () => {
     await login(page);
     await page.goto('/panel/hatirlatmalar');
 
+    // Kutu React tarafından denetleniyor ve değişiklik eşzamansız bir kayıtla
+    // dönüyor. Playwright'ın check/uncheck'i tıklayıp durumu hemen doğruluyor;
+    // kayıt tamamlanmadan DOM eski değere döndüğü için "Clicking the checkbox
+    // did not change its state" hatası veriyordu. Tıklama ile bekleyen
+    // doğrulama ayrıldı.
     const kutu = page.getByRole('checkbox', { name: 'Kendiliğinden gönderilsin' }).first();
-    if (!(await kutu.isChecked())) await kutu.check();
+    if (!(await kutu.isChecked())) await kutu.click();
     await expect(kutu).toBeChecked();
 
     const gun = page.locator('input[id^="gun-"]').first();
@@ -129,7 +134,8 @@ test.describe('Hatırlatmalar ekranı', () => {
     await page.goto('/panel/hatirlatmalar');
 
     const kutu = page.getByRole('checkbox', { name: 'Kendiliğinden gönderilsin' }).first();
-    if (await kutu.isChecked()) await kutu.uncheck();
+    if (await kutu.isChecked()) await kutu.click();
+    await expect(kutu).not.toBeChecked();
 
     await expect(page.locator('input[id^="gun-"]').first()).toBeDisabled();
     await expect(page.locator('input[id^="saat-"]').first()).toBeDisabled();
