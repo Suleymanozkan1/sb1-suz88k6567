@@ -128,6 +128,11 @@ Toplam **351 otomatik senaryo**.
 
 ### 0.1 Bu denetimde bulunan ve düzeltilen sorunlar
 
+> **Sonradan not:** Aşağıdaki A ve B maddeleri "müşteri talepleri"
+> özelliğine aittir. Özellik daha sonra tümüyle kaldırıldı; `contact_messages`
+> tablosu da `0013_kullanilmayan_tablolari_dusur.sql` ile düşürüldü. Maddeler
+> denetim geçmişi olarak korunuyor.
+
 **A. Siteden gelen talepler hiçbir yerden okunamıyordu, *yüksek***
 
 İletişim formu, demo talebi ve salon teklif formu `contact_messages` tablosuna

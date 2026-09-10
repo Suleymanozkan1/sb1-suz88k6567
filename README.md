@@ -79,7 +79,6 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | `/panel/renk-ayarlari` | Organizasyon türü başına takvim rengi |
 | `/panel/isletmeler` | Firmalarım / Adminler, çok işletmeli kullanım |
 | `/panel/kullanicilar` | Alt kullanıcılar ve yetkileri *(yalnızca yönetici)* |
-| `/panel/talepler` | Talep kutusu, siteden gelen iletişim, demo ve salon teklifi formları *(yalnızca yönetici)* |
 | `/panel/sms` | Gönderilen SMS kayıtları |
 | `/panel/izinler` | İYS izin yönetimi, ticari ileti onay/ret kayıtları |
 | `/panel/denetim` | Denetim kaydı, kim, neyi, ne zaman değiştirdi |
@@ -138,7 +137,13 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
    `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` →
    `0004_backup_health.sql` → `0005_invoices.sql` → `0006_talepler.sql` →
    `0007_salon_menu_masa.sql` → `0008_odeme_plani_is_emri_tedarikci.sql` →
-   `0009_nikah_yazimi.sql`
+   `0009_nikah_yazimi.sql` → `0010_hatirlatma_sablonlari.sql` →
+   `0011_kisa_hatirlatma_metinleri.sql` → `0012_hatirlatmada_kapora.sql` →
+   `0013_kullanilmayan_tablolari_dusur.sql`
+
+   Sıra önemlidir: `0006` ve `0008` bugün kullanılmayan iki tabloyu
+   oluşturur, `0013` ikisini de düşürür. Aradaki göçler o tablolara
+   dokunduğu için atlanamazlar.
 3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
 4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
 5. Authentication → Users bölümünden kendi hesabınızı oluşturun.
@@ -156,31 +161,24 @@ Supabase Dashboard → **SQL Editor** → **New query** → ilgili dosyanın iç
 yapıştırıp **Run**. Yerel `psql` ile de yapılabilir:
 
 ```bash
-psql "$DATABASE_URL" -f supabase/migrations/0006_talepler.sql
+psql "$DATABASE_URL" -f supabase/migrations/0013_kullanilmayan_tablolari_dusur.sql
 ```
 
-Uygulandıktan sonra aşağıdaki sorgu ilk altı sütunda `t` döndürmelidir:
+`0013` **geri alınamaz**: kullanımdan kalkan `contact_messages` (müşteri
+talepleri) ve `payment_installments` (vade tarihli taksit planı) tablolarını,
+yalnızca onlara ait fonksiyon ve tipleri düşürür. Uygulamadan önce panelden
+yedek indirin. Göç kendi doğrulamasını içinde yapar; yarım uygulanırsa hata
+verir. Uygulandıktan sonra aşağıdaki sorgu üç sütunda da `t` döndürmelidir:
 
 ```sql
 select
-  (select count(*) = 4 from information_schema.columns
-     where table_name = 'contact_messages'
-       and column_name in ('status','note','handled_by','handled_at'))          as kolonlar_eklendi,
-  (to_regprocedure('public.is_owner()') is not null)                            as is_owner_var,
-  (select exists (select 1 from pg_trigger
-     where tgname = 'contact_messages_stamp' and not tgisinternal))             as damga_tetikleyicisi,
-  (select exists (select 1 from pg_policies
-     where tablename = 'contact_messages' and policyname = 'contact_messages_select'
-       and qual like '%is_owner%'))                                             as okuma_yoneticiye_kapali,
-  (select exists (select 1 from pg_policies
-     where tablename = 'contact_messages' and policyname = 'contact_messages_update')) as guncelleme_politikasi,
-  (select not has_table_privilege('authenticated', 'public.contact_messages', 'DELETE')) as silme_kapali,
-  (select count(*) from public.contact_messages)                                as talep_sayisi;
+  to_regclass('public.contact_messages')      is null as talep_tablosu_dustu,
+  to_regclass('public.payment_installments')  is null as taksit_tablosu_dustu,
+  to_regtype('public.message_status')         is null as tip_dustu;
 ```
 
-`0006` mevcut talepleri korur ve hepsini `status = 'yeni'` yapar. Göçten önce
-gönderilmiş salon teklif formları `kind = 'demo'` olarak kalır; yalnızca yeni
-gönderimler `teklif` olarak sınıflandırılır.
+Denetim kaydı (`audit_log`) bilerek korunur: düşen tablolara ait geçmiş
+satırlar "kim neyi ne zaman değiştirdi" sorusunun cevabıdır.
 
 ### RLS testlerini çalıştırma
 
@@ -213,11 +211,12 @@ done
 | `03_iys_test.sql` | 16 | İYS onayı ve SMS kuyruğu |
 | `04_backup_restore_test.sql` | 13 | Yedek alma ve geri yükleme |
 | `05_invoice_test.sql` | 15 | Fatura değişmezliği ve seri numarası |
-| `06_talepler_test.sql` | 11 | Talep kutusu yetkileri |
 | `07_salon_menu_masa_test.sql` | 13 | Salon, menü ve masa düzeni kuralları |
-| `08_odeme_plani_test.sql` | 14 | Ödeme planı, iş emri ve tedarikçi kuralları |
+| `08_is_emri_tedarikci_test.sql` | 9 | İş emri ve tedarikçi kuralları |
+| `09_hatirlatma_test.sql` | 14 | Otomatik hatırlatma, mükerrer gönderim engeli, kapora dahil tutar |
+| `10_dusurulen_tablolar_test.sql` | 9 | `0013` göçü: düşenler düştü, kullanılanlara dokunulmadı |
 
-Toplam **105 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
+Toplam **112 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
 `BASARISIZ:` ile başlayan bir hata görürseniz test gerçekten düşmüştür.
 
 `04_backup_restore_test.sql` yedeği temiz bir şemaya gerçekten geri yükler ve
@@ -240,11 +239,9 @@ korunduğunu kanıtlar.
 | **Denetim kaydı** | Postgres tetikleyicileri | Tüm ekleme/değişiklik/silme işlemleri, değişen alanlarla birlikte; kayıtlar değiştirilemez |
 | **İYS kuralı** | `enqueue_sms` fonksiyonu | Ticari ileti onaysız gönderilemez; kuyruğa doğrudan yazma istemciye kapalı |
 | **Belge bütünlüğü** | Postgres tetikleyicileri | Gönderilmiş fatura değiştirilemez, silinemez; seri sayacı geri alınamaz |
-| **Talep gizliliği** | `is_owner()` + RLS | Siteden gelen talepleri yalnızca yönetici okur; içerik değiştirilemez, kayıt silinemez |
 | **Salon çakışması** | Postgres benzersiz dizin | Aynı salona aynı gün ve seansta ikinci rezervasyon açılamaz; farklı salonlara açılabilir |
 | **Kapsam bütünlüğü** | `check_reservation_scope()` | Başka işletmenin salonu veya menüsü bir rezervasyona bağlanamaz |
 | **Tedarikçi kapsamı** | `check_vendor_scope()` | Başka işletmenin tedarikçisi bir organizasyona atanamaz |
-| **Plan tutarlılığı** | `check_installment_total()` | Taksit toplamı rezervasyon tutarını aşamaz |
 | **Yedek erişimi** | Postgres RLS | Yedek yalnızca kendi kapsamını içerir; başka hesabın verisi dışa aktarılamaz |
 | **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `service_role` anahtarı yalnızca sunucuda; `VITE_` öneki taşımaz |
 | **Hata izleme** | `src/lib/monitoring.ts` | İsteğe bağlı Sentry; gönderilen olaylarda e-posta ve telefon maskelenir |
@@ -413,16 +410,7 @@ plan öner" düğmesi, masa başına koltuk sayısından planı üretir ve topla
 her zaman davetli sayısına yeter. Plan davetliyi karşılamıyorsa eksik koltuk
 sayısı uyarı olarak gösterilir.
 
-## Ödeme planı, iş emri ve tedarikçiler
-
-**Ödeme planı.** Rezervasyona vade tarihli taksitler tanımlanır. Kalan tutar
-istenen sayıda taksite bölünebilir; yuvarlama artığı ilk taksite eklendiği için
-taksit toplamı daima kalan tutara eşittir.
-
-Tahsilatlar tek tek taksitlere bağlanmaz: toplam tahsilat, vadesi önce gelen
-taksitten başlayarak düşülür. Vadesi geçmiş ve karşılanmamış tutar ayrıca
-gösterilir. Taksit toplamının rezervasyon tutarını aşması veritabanı
-tetikleyicisiyle engellenir.
+## İş emri ve tedarikçiler
 
 **Etkinlik iş emri.** Organizasyon gününün saat saat planıdır: hangi iş, ne
 zaman, kimin sorumluluğunda ve tamamlandı mı. Yeni bir iş emri örnek bir akışla

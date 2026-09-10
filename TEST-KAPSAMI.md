@@ -169,10 +169,10 @@ koşulduklarında birbirlerinin tohum verisiyle çakışırlar.
 | `03_iys_test.sql` | İşlem bildirimi muafiyeti, ticari iletide onay şartı, ret kaydının engellemesi |
 | `04_backup_restore_test.sql` | Yedeğin temiz şemaya gerçekten geri yüklenmesi, satır ve tutar eşitliği |
 | `05_invoice_test.sql` | Fatura numarası sırası, tutar kısıtları |
-| `06_talepler_test.sql` | (Kaldırılan özelliğin tablosu; 9. bölüme bakınız) |
 | `07_salon_menu_masa_test.sql` | Salon çakışması, menü fiyatı, masa planı |
-| `08_odeme_plani_test.sql` | Tahsilat ve bakiye kuralları |
+| `08_is_emri_tedarikci_test.sql` | İş emri satırları, tedarikçi ataması, bağlı tedarikçinin silinememesi |
 | `09_hatirlatma_test.sql` | Vadesi gelen hatırlatmanın kuyruğa alınması, aynı hatırlatmanın ikinci kez gitmemesi, tutarın kapora dahil hesaplanması |
+| `10_dusurulen_tablolar_test.sql` | `0013` göçünün doğrulaması: düşmesi gerekenlerin düştüğü **ve** kullanılan hiçbir tabloya dokunulmadığı |
 
 ## 9. Kapsanmayanlar ve gerekçeleri
 
@@ -190,11 +190,13 @@ Dürüst olmak gerekirse şunlar test edilmiyor:
    gönderimde alan adı uyuşmazlığı çıkabilir; hata metni ilgili ekranda
    görünür.
 
-3. **`contact_messages` ve `payment_installments` tabloları.**
-   Karşılık gelen özellikler (müşteri talepleri, vadeli taksit planı)
-   arayüzden kaldırıldı; tablolar veritabanında duruyor. Veri silmek geri
-   alınamaz bir işlem olduğu için düşürme göçü yazılmadı. İstenirse
-   yazılabilir.
+3. **Düşürülen tabloların geri alınması.**
+   `0013_kullanilmayan_tablolari_dusur.sql`, kullanımdan kalkan
+   `contact_messages` ve `payment_installments` tablolarını düşürür. Göç
+   **geri alınamaz**; geri dönüş yolu yalnızca yedekten geri yüklemedir.
+   Göçün kendisi `10_dusurulen_tablolar_test.sql` ile sınanıyor (test,
+   göç uygulanmadığında bilerek başarısız oluyor), ancak **gerçek veri
+   taşıyan bir üretim veritabanında çalıştırılmadı**.
 
 4. **React bileşenlerinin satır kapsamı.**
    Ekranlar tarayıcıda uçtan uca çalıştırılıyor; bu koşumlar `vitest`
@@ -205,7 +207,27 @@ Dürüst olmak gerekirse şunlar test edilmiyor:
 5. **Yük ve dayanıklılık.** Eşzamanlı kullanıcı, büyük veri hacmi ve
    sağlayıcı kesintisi altında davranış ölçülmedi.
 
-## 10. Bildirilen hatanın karşılığı
+## 10. Testin kendisinde bulunan bir hata
+
+Uçtan uca paketi ilk kez tam olarak koşturduğumda bir test onda bir
+sıklıkta düşüyordu. Sebebi ürün değil, testin kendisiydi:
+
+```
+/\/panel\/rezervasyonlar\/[^/]+$/
+```
+
+Bu kalıp `/panel/rezervasyonlar/**yeni**` adresine de uyuyor. Kayıt
+yavaş tamamlandığında yardımcı fonksiyon form adresini ayrıntı adresi
+sanıp döndürüyor, sonraki adım da kimliği "yeni" olan bir rezervasyon
+arıyordu. Kalıba `(?!yeni$)` eklendi ve kayıt beklemesi yük altında
+zaman aşımına uğramasın diye 15 saniyeye çıkarıldı. Düzeltmeden sonra
+paket dokuz kez üst üste eksiksiz geçti.
+
+Not düşülmesinin sebebi: "ara sıra düşüyor" bir gerekçe değildir.
+Testi yeniden çalıştırıp geçmesini beklemek, buradaki gerçek kusuru
+gizleyecekti.
+
+## 11. Bildirilen hatanın karşılığı
 
 Ekranda 129.500 ₺ yazarken SMS'te 185.000 TL gönderilmesi, kaporanın
 tahsilat sayılmamasından kaynaklanıyordu. Bu hata artık dört ayrı yerde

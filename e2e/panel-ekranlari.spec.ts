@@ -45,7 +45,12 @@ async function rezervasyonAc(
   await page.locator('#totalAmount').fill(String(tutar));
   await page.locator('#deposit').fill(String(kapora));
   await page.getByRole('button', { name: /Kaydet/ }).click();
-  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[^/]+$/);
+  // "yeni" hariç tutulmalı: /panel/rezervasyonlar/yeni de bu kalıba uyuyor.
+  // Kayıt yavaş kaydedildiğinde form adresi ayrıntı adresi sanılıyor ve
+  // sonraki adım "yeni" kimlikli bir rezervasyon arıyordu.
+  // Sekiz işçi aynı önizleme sunucusuna yüklenince kayıt varsayılan
+  // 5 saniyeyi aşabiliyor; süre kısa kalırsa test kendi yavaşlığına takılır.
+  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/(?!yeni$)[^/]+$/, { timeout: 15_000 });
   return page.url();
 }
 
@@ -409,7 +414,7 @@ test.describe('Rezervasyon düzenleme', () => {
     await page.locator('#totalAmount').fill('150000');
     await page.getByRole('button', { name: /Kaydet/ }).click();
 
-    await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[^/]+$/);
+    await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/(?!yeni$)[^/]+$/);
     await expect(page.getByText('130.000,00 ₺').first()).toBeVisible();
   });
 
