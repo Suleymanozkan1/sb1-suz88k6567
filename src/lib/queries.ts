@@ -11,7 +11,7 @@ import type { StaffInput } from './repo';
 import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
-  Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage, MessageCategory, MessageStatus,
+  Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
   Payment, Reservation, SmsLogEntry,
 } from '../types';
 
@@ -30,7 +30,6 @@ export const keys = {
   health: (ownerId: string) => ['health', ownerId] as const,
   invoices: (businessId: string) => ['invoices', businessId] as const,
   invoice: (id: string) => ['invoice', id] as const,
-  messages: () => ['messages'] as const,
   halls: (businessId: string) => ['halls', businessId] as const,
   menus: (businessId: string) => ['menus', businessId] as const,
   seating: (reservationId: string) => ['seating', reservationId] as const,
@@ -556,29 +555,5 @@ export function useDeleteConsent() {
   return useMutation({
     mutationFn: (id: string) => repo.deleteConsent(id),
     onSuccess: invalidate,
-  });
-}
-
-export function useAddMessage() {
-  return useMutation({
-    mutationFn: (message: Omit<ContactMessage, 'id' | 'createdAt' | 'status' | 'note' | 'handledAt'>) =>
-      repo.addMessage(message),
-  });
-}
-
-/** Talep kutusu, RLS gereği yalnızca yönetici hesabında dolu döner. */
-export function useMessages() {
-  return useQuery({
-    queryKey: keys.messages(),
-    queryFn: () => repo.listMessages(),
-  });
-}
-
-export function useSetMessageStatus() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { id: string; status: MessageStatus; note: string }) =>
-      repo.setMessageStatus(input.id, input.status, input.note),
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.messages() }),
   });
 }

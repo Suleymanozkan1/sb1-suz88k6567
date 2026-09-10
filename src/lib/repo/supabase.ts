@@ -4,7 +4,7 @@ import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants'
 import { RepoError, type PublicReservation, type Repository } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, MessageStatus,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult,
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
@@ -276,20 +276,6 @@ function toReservationVendor(row: Row): ReservationVendor {
   };
 }
 
-function toMessage(row: Row): ContactMessage {
-  return {
-    id: String(row.id),
-    name: (row.name as string) ?? '',
-    email: (row.email as string) ?? '',
-    phone: (row.phone as string) ?? '',
-    message: (row.message as string) ?? '',
-    kind: (row.kind as ContactMessage['kind']) ?? 'iletisim',
-    status: (row.status as ContactMessage['status']) ?? 'yeni',
-    note: (row.note as string) ?? '',
-    handledAt: (row.handled_at as string) ?? undefined,
-    createdAt: (row.created_at as string) ?? '',
-  };
-}
 
 /** Supabase hatalarını kullanıcıya gösterilebilir mesaja çevirir. */
 function fail(message: string, error: unknown): never {
@@ -393,48 +379,6 @@ export const supabaseRepo: Repository = {
     const profile = await currentProfile();
     if (!profile) throw new RepoError('Hesabınıza ait profil bulunamadı.');
     return profile;
-  },
-
-  async signUp(input) {
-    const { error } = await db().auth.signUp({
-      email: input.email.trim(),
-      password: input.password,
-      options: {
-        data: {
-          company_name: input.companyName, full_name: input.fullName, mobile: input.mobile,
-          city: input.city, district: input.district, category: input.category,
-          capacity: input.capacity, currency: input.currency,
-        },
-      },
-    });
-    if (error) {
-      if (error.message.includes('already registered')) {
-        throw new RepoError('Bu e-posta adresi ile daha önce üyelik oluşturulmuş.');
-      }
-      throw new RepoError('Üyelik oluşturulamadı.', error);
-    }
-
-    const profile = await currentProfile();
-    if (!profile) {
-      throw new RepoError('Üyeliğiniz oluşturuldu. E-posta doğrulaması gerekiyorsa gelen kutunuzu kontrol edin.');
-    }
-
-    // İlk işletmeyi oluştur ve aktif işletme olarak ata
-    const business = await this.saveBusiness({
-      id: crypto.randomUUID(),
-      ownerId: profile.id,
-      name: input.companyName,
-      category: input.category,
-      city: input.city,
-      district: input.district,
-      phone: input.phone || input.mobile,
-      capacity: input.capacity,
-      currency: input.currency,
-      address: input.address,
-      facebook: input.facebook,
-      instagram: input.instagram,
-    });
-    return this.updateProfile({ activeBusinessId: business.id });
   },
 
   async signOut() {
@@ -865,13 +809,6 @@ export const supabaseRepo: Repository = {
     return data;
   },
 
-  async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'status' | 'note' | 'handledAt'>) {
-    const { error } = await db().from('contact_messages').insert({
-      name: message.name, email: message.email, phone: message.phone,
-      message: message.message, kind: message.kind,
-    });
-    if (error) fail('Mesajınız gönderilemedi.', error);
-  },
 
   async listHalls(businessId) {
     const { data, error } = await db().from('halls')
@@ -1045,22 +982,5 @@ export const supabaseRepo: Repository = {
     if (error) fail('Tedarikçi atamaları kaydedilemedi.', error);
   },
 
-  async listMessages() {
-    // RLS, okumayı yönetici hesabına kapatır; personelde boş liste döner.
-    const { data, error } = await db()
-      .from('contact_messages')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) fail('Talepler okunamadı.', error);
-    return (data ?? []).map(toMessage);
-  },
 
-  async setMessageStatus(id: string, status: MessageStatus, note: string) {
-    // handled_at / handled_by damgasını veritabanı tetikleyicisi yazar.
-    const { error } = await db()
-      .from('contact_messages')
-      .update({ status, note })
-      .eq('id', id);
-    if (error) fail('Talep durumu güncellenemedi.', error);
-  },
 };

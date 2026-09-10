@@ -158,3 +158,45 @@ values
 select count(*) as erken_saatte_SIFIR_OLMALI
   from public.enqueue_due_reminders((current_date + interval '5 hours')::timestamptz)
   where reservation_id = 'dddddddd-0000-0000-0000-000000000006';
+
+\echo '=== 12) Kapora tahsilat sayilmali: kalan tutar panelle ayni olmali ==='
+-- 185.000 toplam, 55.500 kapora, baska tahsilat yok.
+-- Panelde kalan 129.500 gorunuyor; mesajda da 129.500 yazmali.
+-- Kapora atlandiginda 185.000 yaziliyordu.
+insert into public.reservations
+  (id, business_id, hall_id, code, customer_name, customer_phone, date, slot,
+   organization_type, guest_count, total_amount, deposit)
+values
+  ('dddddddd-0000-0000-0000-000000000007', :biz, '11111111-aaaa-0000-0000-000000000002',
+   'SA-2027-0007', 'Kaporali Musteri', '5321113399',
+   (current_date + 7), 'Gündüz', 'Düğün', 345, 185000, 55500);
+
+update public.reminder_rules set enabled = false where business_id = :biz;
+update public.reminder_rules set enabled = true
+  where business_id = :biz and key = 'odeme_hatirlatma';
+update public.reminder_rules set days_before = 7
+  where business_id = :biz and key = 'odeme_hatirlatma';
+
+select public.render_template(
+  (select body from public.message_templates
+    where business_id = :biz and key = 'odeme_hatirlatma'),
+  jsonb_build_object(
+    'musteri', 'Kaporali Musteri', 'tarih', '17.09.2026',
+    'odenen', public.tr_tutar(55500),
+    'kalan',  public.tr_tutar(185000 - 55500))
+) as beklenen_metin;
+
+select body as gonderilen_metin
+  from public.sms_queue
+ where phone = '5321113399';
+select count(*) as kuyruga_girdi_BIR_OLMALI
+  from public.enqueue_due_reminders((current_date + interval '11 hours')::timestamptz)
+ where reservation_id = 'dddddddd-0000-0000-0000-000000000007';
+select body as gonderilen_metin_129500_ICERMELI
+  from public.sms_queue where phone = '5321113399';
+
+\echo '=== 13) Tutar bicimi Turkce olmali: 129.500,00 (yerelden bagimsiz) ==='
+select public.tr_tutar(185000)    as bir_yuz_seksen_bes_bin,
+       public.tr_tutar(129500)    as yuz_yirmi_dokuz_bin_bes_yuz,
+       public.tr_tutar(500)       as bes_yuz,
+       public.tr_tutar(1234567.5) as bir_milyon;

@@ -60,11 +60,14 @@ Yeni bir Supabase projesi açtıktan sonra:
 **Adım 1, Şemayı kur**
 
 ```bash
-psql "$DATABASE_URL" -f supabase/migrations/0001_init.sql
-psql "$DATABASE_URL" -f supabase/migrations/0002_security.sql
-psql "$DATABASE_URL" -f supabase/migrations/0003_iys_queue.sql
-psql "$DATABASE_URL" -f supabase/migrations/0004_backup_health.sql
+# Göçlerin tamamı, dosya adı sırasıyla:
+for f in supabase/migrations/*.sql; do
+  psql -v ON_ERROR_STOP=1 "$DATABASE_URL" -f "$f"
+done
 ```
+
+Sıra atlanmamalıdır: `0013`, `0006` ve `0008`'in oluşturduğu iki tabloyu
+düşürür; ara göçler o tablolara dokunduğu için ayıklanamazlar.
 
 **Adım 2, Kullanıcı hesaplarını yeniden oluştur**
 

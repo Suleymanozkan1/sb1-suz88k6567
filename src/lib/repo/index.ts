@@ -14,4 +14,4 @@ export const repo: Repository = isSupabaseConfigured ? supabaseRepo : localRepo;
 export const isDemoMode = !isSupabaseConfigured;
 
 export { RepoError } from './types';
-export type { PublicReservation, Repository, SignUpInput, StaffInput } from './types';
+export type { PublicReservation, Repository, StaffInput } from './types';

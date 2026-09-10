@@ -22,8 +22,17 @@ export default {
         // Anlamsal durum renkleri. Eski #e74c3c (beyazla 3,82) ve
         // #18d26e (2,00) AA eşiğinin altındaydı.
         danger: '#d42c1a',    // beyazla 5,03
-        success: '#0f7f43',   // beyazla 5,08
-        warning: '#9b6208',   // beyazla 5,07
+        // `deep` tonları, rengin kendi %10 tonundan üretilen açık bir
+        // zeminde kullanılır: DEFAULT orada 4,43'te kalıp AA eşiğini
+        // tutturamıyordu (beyaz üstünde 5,08 olmasına rağmen).
+        success: {
+          DEFAULT: '#0f7f43', // beyazla 5,08
+          deep: '#0d7039',    // kendi %10 tonlu zeminde 5,36
+        },
+        warning: {
+          DEFAULT: '#9b6208', // beyazla 5,07
+          deep: '#8a5707',    // kendi %10 tonlu zeminde 5,28
+        },
         surface: '#f3f5fa',
         ink: '#444444',
         line: '#e8edf5',

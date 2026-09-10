@@ -114,8 +114,8 @@ export default function Hatirlatmalar() {
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                       sablon.category === 'ticari'
-                        ? 'bg-warning/10 text-warning'
-                        : 'bg-success/10 text-success'
+                        ? 'bg-warning/10 text-warning-deep'
+                        : 'bg-success/10 text-success-deep'
                     }`}
                   >
                     {sablon.category === 'ticari' ? 'Ticari ileti: İYS onayı gerekir' : 'İşlem bildirimi: onay gerekmez'}

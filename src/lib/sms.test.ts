@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { issueLoginOtp, sendSms, verifyLoginOtp } from './sms';
+import { isTwoFactorAvailable, issueLoginOtp, sendSms, verifyLoginOtp } from './sms';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 
@@ -84,5 +84,33 @@ describe('verifyLoginOtp', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const result = await verifyLoginOtp('5321234567', '123456', challenge);
     expect(result.ok).toBe(false);
+  });
+});
+
+describe('isTwoFactorAvailable', () => {
+  it('uç nokta JSON döndürüyorsa etkin sayar', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', {
+      headers: { 'content-type': 'application/json' },
+    })));
+    await expect(isTwoFactorAvailable()).resolves.toBe(true);
+  });
+
+  it('uç nokta yoksa (SPA kabuğu dönüyorsa) etkin saymaz', async () => {
+    // Uç noktası olmayan dağıtımda sunucu HTML döndürür; bunu "etkin"
+    // saymak kullanıcıya gelmeyecek bir kodu beklettirirdi.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<!doctype html>', {
+      headers: { 'content-type': 'text/html' },
+    })));
+    await expect(isTwoFactorAvailable()).resolves.toBe(false);
+  });
+
+  it('ağ hatasında etkin saymaz', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('ağ yok'); }));
+    await expect(isTwoFactorAvailable()).resolves.toBe(false);
+  });
+
+  it('content-type başlığı hiç yoksa etkin saymaz', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { headers: {} })));
+    await expect(isTwoFactorAvailable()).resolves.toBe(false);
   });
 });

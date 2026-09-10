@@ -14,6 +14,7 @@
  * hatayı önizlemede fark etsin.
  */
 import { formatDate, formatMoney } from './format';
+import { remainingBalance, totalPaid } from './money';
 import type { Reservation, Payment } from '../types';
 
 /** Veritabanındaki `template_key` enum'unun karşılığı. */
@@ -140,8 +141,12 @@ export function degerler(
   isletmeAdi: string,
   salonAdi: string,
 ): Record<string, string> {
-  const odenen = payments.reduce((sum, p) => sum + p.amount, 0);
-  const kalan = Math.max(0, reservation.totalAmount - odenen);
+  // Kapora da bir tahsilattır. Burada yalnızca `payments` toplanınca
+  // kaporası alınmış bir rezervasyonun kalan tutarı olduğundan yüksek
+  // çıkıyor ve müşteriye ekrandakinden farklı bir rakam gidiyordu.
+  // Panelin kendi hesabıyla aynı yardımcılar kullanılır.
+  const odenen = totalPaid(reservation, payments);
+  const kalan = remainingBalance(reservation, payments);
   // Tutarlarda para simgesi yazılmaz: SMS'te "₺" bazı operatörlerde
   // karakter sayısını Türkçe alfabe moduna düşürüp mesajı ikiye bölüyor.
   const para = (n: number) => formatMoney(n, reservation.currency).replace(/\s*₺\s*$/, '');

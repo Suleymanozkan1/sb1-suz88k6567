@@ -64,7 +64,6 @@ export const KEYS = {
   consents: 'consents',
   queue: 'queue',
   invoices: 'invoices',
-  messages: 'messages',
   halls: 'halls',
   menus: 'menus',
   seating: 'seating',

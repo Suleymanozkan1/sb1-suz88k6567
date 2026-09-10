@@ -26,7 +26,6 @@ const EKRANLAR: [string, string][] = [
   ['hatirlatmalar', 'Hatırlatmalar'],
   ['sms', 'SMS Kayıtları'],
   ['izinler', 'İYS İzinleri'],
-  ['talepler', 'Talepler'],
   ['kullanicilar', 'Kullanıcılar'],
   ['denetim', 'Denetim Kaydı'],
   ['sistem', 'Sistem Durumu'],

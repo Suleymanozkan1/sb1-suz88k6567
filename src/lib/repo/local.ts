@@ -6,13 +6,13 @@
  * modu gerçek veri için kullanılmamalıdır (arayüzde uyarı gösterilir).
  */
 import { KEYS, read, remove, write } from '../storage';
-import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS, seedIfEmpty } from '../seed';
+import { DEFAULT_COLOR_SETTINGS, seedIfEmpty } from '../seed';
 import { normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
-  Business, CashFlowEntry, ColorSetting, ContactMessage, EnqueueResult, Invoice,
-  EventTask, Hall, Menu, MessageStatus, Payment, Reservation, ReservationVendor,
+  Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
+  EventTask, Hall, Menu, Payment, Reservation, ReservationVendor,
   SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   SmsQueueEntry, User,
 } from '../../types';
@@ -37,11 +37,6 @@ function normalizePhone(raw: string): string | null {
 }
 
 /** Oturumdaki kullanıcı; oturum yoksa null. */
-function currentUser(): User | null {
-  const id = read<string | null>(KEYS.session, null);
-  if (!id) return null;
-  return users().find((u) => u.id === id) ?? null;
-}
 
 const halls = () => read<Hall[]>(KEYS.halls, []);
 const menus = () => read<Menu[]>(KEYS.menus, []);
@@ -157,51 +152,10 @@ export const localRepo: Repository = {
     seedIfEmpty();
     const needle = normalizeEmail(email);
     const found = users().find((u) => normalizeEmail(u.email) === needle);
-    if (!found) throw new RepoError('Bu e-posta adresi ile kayıtlı üyelik bulunamadı.');
+    if (!found) throw new RepoError('Bu e-posta adresi ile kayıtlı hesap bulunamadı.');
     if (found.password !== password) throw new RepoError('E-posta veya şifreniz hatalı.');
     write(KEYS.session, found.id);
     return wait(found);
-  },
-
-  async signUp(input) {
-    seedIfEmpty();
-    if (users().some((u) => normalizeEmail(u.email) === normalizeEmail(input.email))) {
-      throw new RepoError('Bu e-posta adresi ile daha önce üyelik oluşturulmuş.');
-    }
-    const now = new Date().toISOString();
-    const userId = uid('user');
-    const businessId = uid('biz');
-
-    const created: User = {
-      id: userId,
-      companyName: input.companyName,
-      fullName: input.fullName,
-      email: input.email.trim(),
-      password: input.password,
-      mobile: input.mobile,
-      role: 'owner',
-      permissions: OWNER_PERMISSIONS,
-      city: input.city,
-      district: input.district,
-      category: input.category,
-      capacity: input.capacity,
-      currency: input.currency,
-      facebook: input.facebook,
-      instagram: input.instagram,
-      createdAt: now,
-      activeBusinessId: businessId,
-    };
-    saveUsers([...users(), created]);
-
-    write(KEYS.businesses, [...businesses(), {
-      id: businessId, ownerId: userId, name: input.companyName, category: input.category,
-      city: input.city, district: input.district, phone: input.phone || input.mobile,
-      capacity: input.capacity, currency: input.currency, address: input.address,
-      facebook: input.facebook, instagram: input.instagram, createdAt: now,
-    }]);
-
-    write(KEYS.session, userId);
-    return wait(created);
   },
 
   async signOut() { remove(KEYS.session); },
@@ -565,17 +519,6 @@ export const localRepo: Repository = {
     });
   },
 
-  async addMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'status' | 'note' | 'handledAt'>) {
-    const all = read<ContactMessage[]>(KEYS.messages, []);
-    all.push({
-      ...message,
-      id: uid('msg'),
-      status: 'yeni',
-      note: '',
-      createdAt: new Date().toISOString(),
-    });
-    write(KEYS.messages, all);
-  },
 
   async listHalls(businessId) {
     return wait(halls().filter((h) => h.businessId === businessId)
@@ -774,31 +717,7 @@ export const localRepo: Repository = {
     return wait(undefined);
   },
 
-  async listMessages() {
-    // Supabase'deki RLS ile aynı kural: talepleri yalnızca yönetici görür.
-    const me = currentUser();
-    if (!me || me.role !== 'owner') return wait<ContactMessage[]>([]);
-    const all = read<ContactMessage[]>(KEYS.messages, []);
-    // Zaman damgası eşitse ekleme sırası belirleyici olsun diye kararlı sıralama
-    return wait(all
-      .map((entry, index) => ({ entry, index }))
-      .sort((a, b) => b.entry.createdAt.localeCompare(a.entry.createdAt) || b.index - a.index)
-      .map((x) => x.entry));
-  },
 
-  async setMessageStatus(id: string, status: MessageStatus, note: string) {
-    const me = currentUser();
-    if (!me || me.role !== 'owner') throw new RepoError('Bu işlem için yetkiniz bulunmuyor.');
-    const all = read<ContactMessage[]>(KEYS.messages, []);
-    const target = all.find((m) => m.id === id);
-    if (!target) throw new RepoError('Talep bulunamadı.');
-    target.status = status;
-    target.note = note;
-    // 'yeni'ye dönünce damga silinir; veritabanı tetikleyicisiyle aynı kural.
-    target.handledAt = status === 'yeni' ? undefined : new Date().toISOString();
-    write(KEYS.messages, all);
-    return wait(undefined);
-  },
 };
 
 /** Testlerde kullanılmak üzere: oturumu doğrudan ayarlar */

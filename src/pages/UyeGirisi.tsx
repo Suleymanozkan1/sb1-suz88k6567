@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Seo from '../components/Seo';
 import Alert from '../components/Alert';
@@ -11,7 +11,7 @@ import { issueLoginOtp, verifyLoginOtp, type OtpChallenge } from '../lib/sms';
 import { formatPhone } from '../lib/format';
 
 export default function UyeGirisi() {
-  const { user, signIn, signOut, requestPasswordReset, isDemoMode, signupEnabled } = useAuth();
+  const { user, signIn, signOut, requestPasswordReset, isDemoMode } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -99,8 +99,8 @@ export default function UyeGirisi() {
 
   return (
     <>
-      <Seo title="Üye Girişi - Sahra Takip" description="Sahra Takip üye girişi." path="/uye-girisi" noindex />
-      <PageHeader title="Üye Girişi" breadcrumbs={[{ label: 'Üye Girişi' }]} />
+      <Seo title="Giriş - Sahra Takip" description="Sahra Takip panel girişi." path="/" noindex />
+      <PageHeader title="Giriş" breadcrumbs={[{ label: 'Giriş' }]} />
 
       <section className="py-12">
         <div className="container-dt grid max-w-4xl gap-8 md:grid-cols-5">
@@ -167,12 +167,6 @@ export default function UyeGirisi() {
                 <button type="button" onClick={() => { void onReset(); }} className="mt-3 w-full text-sm text-accent-ink hover:text-accent-ink-dark">
                   Şifremi unuttum
                 </button>
-              )}
-
-              {signupEnabled && (
-                <p className="mt-4 text-sm">
-                  Üye değil misiniz? <Link to="/uye-ol">Hemen üye olun</Link>
-                </p>
               )}
             </form>
             )}

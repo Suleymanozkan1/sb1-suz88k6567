@@ -6,19 +6,8 @@ import PublicLayout from './layouts/PublicLayout';
 import AppLayout from './layouts/AppLayout';
 import RequireAuth from './components/RequireAuth';
 
-import Home from './pages/Home';
-import Nedir from './pages/Nedir';
-import Haberler, { HaberDetay } from './pages/Haberler';
-import Ekranlar from './pages/Ekranlar';
-import Uyeler from './pages/Uyeler';
-import VenueCategory from './pages/VenueCategory';
-import SalonDetay from './pages/SalonDetay';
-import Iletisim from './pages/Iletisim';
-import Dusunceler from './pages/Dusunceler';
-import Sss from './pages/Sss';
 import KodDogrulama from './pages/KodDogrulama';
 import LegalPage from './pages/LegalPage';
-import UyeOl from './pages/UyeOl';
 import UyeGirisi from './pages/UyeGirisi';
 import NotFound from './pages/NotFound';
 
@@ -29,7 +18,6 @@ const RezervasyonForm = lazy(() => import('./pages/app/RezervasyonForm'));
 const RezervasyonDetay = lazy(() => import('./pages/app/RezervasyonDetay'));
 const Sozlesme = lazy(() => import('./pages/app/Sozlesme'));
 const Kasa = lazy(() => import('./pages/app/Kasa'));
-const Talepler = lazy(() => import('./pages/app/Talepler'));
 const Salonlar = lazy(() => import('./pages/app/Salonlar'));
 const Menuler = lazy(() => import('./pages/app/Menuler'));
 const Hatirlatmalar = lazy(() => import('./pages/app/Hatirlatmalar'));
@@ -73,36 +61,21 @@ export default function App() {
         <BrowserRouter>
         <Routes>
           <Route element={<PublicLayout />}>
-            <Route index element={<Home />} />
-            <Route path="nedir" element={<Nedir />} />
-            <Route path="haberler" element={<Haberler />} />
-            <Route path="haberler/:slug" element={<HaberDetay />} />
-            <Route path="ekranlar" element={<Ekranlar />} />
-            <Route path="uyeler" element={<Uyeler />} />
-            <Route path="dusunceler" element={<Dusunceler />} />
-            <Route path="sss" element={<Sss />} />
-            <Route path="iletisim" element={<Iletisim />} />
-            <Route path="demo-talebi" element={<Iletisim variant="demo" />} />
-            <Route path="kod-dogrulama" element={<KodDogrulama />} />
-            <Route path="uye-ol" element={<UyeOl />} />
-            <Route path="uye-girisi" element={<UyeGirisi />} />
+            {/* Sistem bir tanıtım sitesi değil, işletmenin kendi paneli.
+                Açılış doğrudan giriş ekranı. */}
+            <Route index element={<UyeGirisi />} />
+            <Route path="uye-girisi" element={<Navigate to="/" replace />} />
 
-            <Route path="dugun-salonlari" element={<VenueCategory />} />
-            <Route path="kina-salonlari" element={<VenueCategory />} />
-            <Route path="dugun-otelleri" element={<VenueCategory />} />
-            <Route path="kir-dugunu-mekanlari" element={<VenueCategory />} />
-            <Route path="salon/:slug" element={<SalonDetay />} />
+            {/* Müşteriye gönderilen SMS'teki sorgu kodu buraya geliyor. */}
+            <Route path="kod-dogrulama" element={<KodDogrulama />} />
 
             <Route path="gizlilik-politikasi" element={<LegalPage />} />
             <Route path="kvkk-aydinlatma-metni" element={<LegalPage />} />
-            <Route path="iade-proseduru" element={<LegalPage />} />
-            <Route path="mesafeli-hizmet-sozlesmesi" element={<LegalPage />} />
-            <Route path="uyelik-sozlesmesi" element={<LegalPage />} />
 
             <Route path="*" element={<NotFound />} />
           </Route>
 
-          {/* Panel ekranları yalnızca giriş yapan üyeler için yüklenir; ana paket küçük kalır. */}
+          {/* Panel ekranları yalnızca giriş yapan kullanıcılar için yüklenir; ana paket küçük kalır. */}
           <Route
             path="panel"
             element={
@@ -128,7 +101,6 @@ export default function App() {
             <Route path="musteriler" element={<Musteriler />} />
             <Route path="isletmeler" element={<Isletmeler />} />
             <Route path="kullanicilar" element={<Kullanicilar />} />
-            <Route path="talepler" element={<Talepler />} />
             <Route path="salonlar" element={<Salonlar />} />
             <Route path="menuler" element={<Menuler />} />
             <Route path="hatirlatmalar" element={<Hatirlatmalar />} />

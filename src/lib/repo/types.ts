@@ -7,30 +7,12 @@
  */
 import type { HatirlatmaKurali, Sablon } from '../sablon';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage,
-  EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
-  Invoice, InvoiceKind, BuyerKind, MessageStatus, Hall, Menu, SeatingTable,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus,   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
+  Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
   EventTask, Vendor, ReservationVendor,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
-
-export interface SignUpInput {
-  email: string;
-  password: string;
-  companyName: string;
-  fullName: string;
-  mobile: string;
-  city: string;
-  district: string;
-  category: string;
-  capacity: number;
-  currency: User['currency'];
-  facebook?: string;
-  instagram?: string;
-  address?: string;
-  phone?: string;
-}
 
 export interface StaffInput {
   id?: string;
@@ -61,7 +43,6 @@ export interface Repository {
   /* -- oturum ------------------------------------------------------- */
   getSession(): Promise<User | null>;
   signIn(email: string, password: string): Promise<User>;
-  signUp(input: SignUpInput): Promise<User>;
   signOut(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   changePassword(currentPassword: string, nextPassword: string): Promise<void>;
@@ -162,12 +143,6 @@ export interface Repository {
     note?: string;
   }): Promise<void>;
   deleteConsent(id: string): Promise<void>;
-
-  /* -- iletişim -------------------------------------------------------- */
-  addMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'status' | 'note' | 'handledAt'>): Promise<void>;
-  /** Talep kutusu: yalnızca yönetici okuyabilir (RLS). */
-  listMessages(): Promise<ContactMessage[]>;
-  setMessageStatus(id: string, status: MessageStatus, note: string): Promise<void>;
 
   /* -- denetim kaydı ---------------------------------------------------- */
   listAuditLog(limit: number): Promise<AuditEntry[]>;

@@ -52,13 +52,6 @@ export default function Hesap() {
           >
             Gizlilik Politikası
           </Text>
-          <Text
-            style={[yazi.kucuk as object, s.baglanti, { marginTop: aralik.s }]}
-            accessibilityRole="link"
-            onPress={() => void Linking.openURL(`${API_KOK}/uyelik-sozlesmesi`)}
-          >
-            Üyelik Sözleşmesi
-          </Text>
         </Kart>
 
         <Dugme

@@ -232,7 +232,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
       ['Para', 'Tahsilat, kasa, makbuz, raporlar'],
       ['Organizasyon', 'Menü ve paketler, masa düzeni, iş emri, tedarikçiler'],
       ['Mevzuat', 'e-Arşiv / e-Fatura, İYS izin yönetimi, KVKK, denetim kaydı'],
-      ['İletişim', 'Hatırlatma şablonları, otomatik SMS, siteden gelen talepler'],
+      ['İletişim', 'Hatırlatma şablonları ve otomatik SMS gönderimi'],
       ['Yönetim', 'Kullanıcılar ve yetkiler, yedekleme, sistem durumu'],
       ['Mobil', 'iOS ve Android uygulaması: panelin bütün ekranları telefonda'],
     ],
@@ -452,7 +452,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     [img('mobil-11-daha.png'), 'Bütün ekranlar'],
     [img('mobil-13-raporlar.png'), 'Raporlar'],
     [img('mobil-15-sms.png'), 'SMS kayıtları'],
-    [img('mobil-22-sistem.png'), 'Sistem durumu'],
+    [img('mobil-21-sistem.png'), 'Sistem durumu'],
   ];
   const EN = 1.9, BOSLUK = 0.42;
   const SOL = KENAR + (GENIS - (EKRAN.length * EN + (EKRAN.length - 1) * BOSLUK)) / 2;
@@ -463,7 +463,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   mikroNotlar(s, {
     y: 6.1, ortala: true,
     items: [
-      ['On beş ekran daha', 'Müşteriler, salonlar, menüler, tedarikçiler, faturalar, raporlar, hatırlatmalar, SMS, İYS izinleri, talepler, kullanıcılar, denetim kaydı, sistem durumu, ayarlar ve hesap.'],
+      ['On dört ekran daha', 'Müşteriler, salonlar, menüler, tedarikçiler, faturalar, raporlar, hatırlatmalar, SMS, İYS izinleri, kullanıcılar, denetim kaydı, sistem durumu, ayarlar ve hesap.'],
       ['Aynı veri, aynı kural', 'Uygulama web ile aynı veritabanını kullanır. Hangi kaydı göreceğine sunucudaki satır bazlı güvenlik karar verir.'],
       ['Yazma işlemi sınırlı', 'Tahsilat, gelir-gider, yeni rezervasyon ve mesaj metni telefondan yazılır. Yetki değişikliği ve fatura kesme web panelinde kalır.'],
     ],
@@ -557,7 +557,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     items: [
       ['Maskeleme', 'Telefon 532*****00 biçiminde gösterilir.'],
       ['Ödeme bilgisi', 'Tahsilat ve kalan alacak dışarı açılmaz.'],
-      ['Erişim', 'Sorgu için üyelik gerekmez.'],
+      ['Erişim', 'Sorgu için giriş yapmak gerekmez.'],
     ],
   });
   s.addNotes('Kod, rezervasyon onayı SMS’inde müşteriye gönderilir.');
@@ -623,26 +623,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Gönderim Paraşüt üzerinden yapılır. Mükellefiyet durumu mali müşavire sorulmalıdır.');
 }
 
-/* ══ 20 · Talepler ════════════════════════════════════════════ */
-{
-  const s = slayt();
-  baslik(s, 'TALEPLER', 'Siteden gelen müşteri talepleri');
-  gorsel(s, img('panel-talepler.png'), {
-    x: KENAR, y: UST, w: 7.4, h: 4.63, altYazi: 'Talepler durumlarına göre sayılır ve filtrelenir.',
-  });
-  maddeler(s, {
-    x: 8.45, y: 1.9, w: 4.15, gap: 1.2,
-    items: [
-      ['Tek liste', 'İletişim formu, demo talebi ve salon teklif formu aynı yerde toplanır.'],
-      ['Durum ve not', 'Her talep yeni, işlemde ya da kapatıldı olarak işaretlenir; not yazılabilir.'],
-      ['Değiştirilemezlik', 'Talebin içeriği sonradan değiştirilemez, kayıt silinemez.'],
-      ['Erişim', 'Talepleri yalnızca yönetici görür.'],
-    ],
-  });
-  s.addNotes('Talep geldiğinde işleyen kullanıcı ve zaman damgası kaydedilir.');
-}
-
-/* ══ 21 · Yetkiler ════════════════════════════════════════════ */
+/* ══ 20 · Yetkiler ════════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'YETKİLER', 'Kullanıcı yetkileri');
@@ -661,7 +642,6 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
       ['Rezervasyon silme', isaret('✓'), isaret('-')],
       ['Gelir-gider (kasa)', isaret('✓'), isaret('-')],
       ['Raporlar ve ciro', isaret('✓'), isaret('-')],
-      ['Müşteri talepleri', isaret('✓'), isaret('-')],
       ['Kullanıcı ve yetki yönetimi', isaret('✓'), isaret('-')],
     ],
   });
@@ -676,7 +656,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Yedi ayrı yetki tanımlıdır; tablo bunlardan bir dağılım örneğidir.');
 }
 
-/* ══ 22 · Altyapı ═════════════════════════════════════════════ */
+/* ══ 21 · Altyapı ═════════════════════════════════════════════ */
 {
   const s = slayt(SURFACE);
   baslik(s, 'ALTYAPI', 'Sistem neyin üzerinde çalışıyor');
@@ -730,7 +710,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Supabase yönetilen bir PostgreSQL servisidir. Cloudflare Workers hem statik dosyaları dağıtır hem de zamanlanmış görevleri çalıştırır.');
 }
 
-/* ══ 23 · Neden hazır servis ══════════════════════════════════ */
+/* ══ 22 · Neden hazır servis ══════════════════════════════════ */
 {
   const s = slayt(NAVY);
   baslik(s, 'NEDEN', 'Neden kendi sunucumuz yok', { koyu: true });
@@ -744,7 +724,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     y: 2.15, h: 2.15, sutun: 3, koyu: true,
     items: [
       ['Kendi sunucumuz', 'Güvenlik yamaları, sertifika yenileme ve yedeğin gerçekten geri yüklenebildiğinin denenmesi bize kalırdı. Sunucuyu kiralamak ucuz, ona bakmak pahalıdır.'],
-      ['Supabase ne veriyor', 'PostgreSQL veritabanı, satır bazlı erişim kuralları, kullanıcı girişi, dosya deposu ve gecelik yedek; tek abonelikte, ayrı ayrı kurulmadan.'],
+      ['Supabase ne veriyor', 'PostgreSQL veritabanı, satır bazlı erişim kuralları, kullanıcı girişi, dosya deposu ve gecelik yedek; tek hizmette, ayrı ayrı kurulmadan.'],
       ['Cloudflare ne veriyor', 'Site dünya çapında dağıtılır, HTTPS ve saldırı koruması hazır gelir, gecelik görevler ayrı bir sunucu olmadan çalışır.'],
     ],
   });
@@ -756,14 +736,14 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: 6.78, y: 4.4, w: 5.85, h: 2.05, zemin: BRAND, bas: 'Yedek kimin sorumluluğunda',
     metin: 'İki katman var. Supabase kendi gecelik yedeğini alır; buna ek olarak sistem her gece kendi yedeğini üretip dışarıya kapalı bir alana yazar. İkinci katmanın sebebi, sağlayıcıya ait yedeğin sağlayıcıyla birlikte erişilemez hâle gelebilmesidir.',
   });
-  s.addText('İki abonelik toplamı ayda yaklaşık 30 dolardır. Bu tutar veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar.', {
+  s.addText('İki servisin toplamı ayda yaklaşık 30 dolardır. Bu tutar veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar.', {
     x: KENAR, y: 6.75, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12, color: PALE,
   });
   s.addNotes('Bu slayt “neden bir sürü servise para veriyoruz” sorusunun cevabıdır. Asıl gerekçe maliyet değil, bakım yükünün ve yedek sorumluluğunun kimde olduğudur.');
 }
 
-/* ══ 24 · Veri ════════════════════════════════════════════════ */
+/* ══ 23 · Veri ════════════════════════════════════════════════ */
 {
   const s = slayt(NAVY);
   baslik(s, 'VERİ', 'Veri saklama ve yedekleme', { koyu: true });
@@ -779,7 +759,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     y: 4.3, koyu: true,
     items: [
       ['Giriş koruması', 'Art arda hatalı girişte hesap geçici olarak kilitlenir.'],
-      ['Silinemeyen kayıtlar', 'Fatura, denetim kaydı ve müşteri talepleri silinemez.'],
+      ['Silinemeyen kayıtlar', 'Fatura ve denetim kaydı silinemez.'],
       ['Sistem durumu ekranı', 'Yedek, SMS kuyruğu ve İYS durumu panelden izlenir.'],
     ],
   });
@@ -790,7 +770,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Veriler Supabase (PostgreSQL) üzerinde tutulur.');
 }
 
-/* ══ 25 · Kurulum ═════════════════════════════════════════════ */
+/* ══ 24 · Kurulum ═════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'KURULUM', 'Kurulum ve gereksinimler');
@@ -812,7 +792,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   s.addNotes('Netgsm marka başlığı onayı birkaç iş günü sürer; en erken başvurulması gereken adımdır.');
 }
 
-/* ══ 26 · Maliyet ═════════════════════════════════════════════ */
+/* ══ 25 · Maliyet ═════════════════════════════════════════════ */
 {
   const s = slayt();
   baslik(s, 'MALİYET', 'Aylık ve tek seferlik giderler');
@@ -881,7 +861,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: KENAR, y: 6.85, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 11, color: MUTED,
   });
-  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100-150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider iki abonelikten ibarettir. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
+  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100-150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider bu iki servisten ibarettir. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
 }
 
 pres.writeFile({ fileName: 'Sahra-Takip-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));

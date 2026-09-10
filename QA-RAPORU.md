@@ -67,9 +67,9 @@ Toplam **423 otomatik senaryo**.
 | **Menü / paket** | Kişi başı fiyatlandırma sektör standardı | `/panel/menuler` |
 | **Masa oturma düzeni** | Yabancı ürünlerin ayırt edici özelliği | Rezervasyon detayı |
 | **Tahsilat makbuzu** | Yerli ürünlerde "makbuz basımı" olarak geçiyor | `/…/makbuz` |
-| **Self-servis kayıt** | Başka salonlara satış için | `VITE_ALLOW_SIGNUP=true` |
 
-Abonelik, plan ve ücretlendirme **bilinçli olarak yapılmadı**.
+Üyelik, abonelik, plan ve ücretlendirme **bilinçli olarak yapılmadı**. Siteden
+kendi kendine kayıt açılmaz; panel hesaplarını işletme kendisi tanımlar.
 
 ### 0.2 Bu turda bulunan ve düzeltilen hatalar
 
@@ -127,6 +127,11 @@ araması yapıldı.
 Toplam **351 otomatik senaryo**.
 
 ### 0.1 Bu denetimde bulunan ve düzeltilen sorunlar
+
+> **Sonradan not:** Aşağıdaki A ve B maddeleri "müşteri talepleri"
+> özelliğine aittir. Özellik daha sonra tümüyle kaldırıldı; `contact_messages`
+> tablosu da `0013_kullanilmayan_tablolari_dusur.sql` ile düşürüldü. Maddeler
+> denetim geçmişi olarak korunuyor.
 
 **A. Siteden gelen talepler hiçbir yerden okunamıyordu, *yüksek***
 
@@ -230,7 +235,7 @@ Türkçe kuralında ASCII `I` harfi noktasız `ı`ya dönüştüğü için
 kullanıcı **bulunamıyordu**.
 
 **Etkisi:** E-postasını büyük harfle veya otomatik düzelten bir klavyeyle yazan
-üye giriş yapamaz; aynı e-posta ile mükerrer üyelik açılabilirdi.
+kullanıcı giriş yapamaz; aynı e-posta ile mükerrer hesap açılabilirdi.
 
 **Düzeltme:** Tanımlayıcı (e-posta, rezervasyon kodu, tavsiye kodu)
 karşılaştırmaları locale-bağımsız `toLowerCase()` / `toUpperCase()` ile yapılır.
@@ -243,7 +248,7 @@ karşılaştırmaları locale-bağımsız `toLowerCase()` / `toUpperCase()` ile 
 ### 2.2 Tohum (seed) verisi mevcut kullanıcı kayıtlarının üzerine yazıyordu, *kritik*
 
 `seedIfEmpty()` yalnızca `seeded` bayrağına bakıyordu. Bayrak silinir de veriler
-kalırsa (kısmi depolama temizliği, sürüm geçişi, kota hatası) tüm üyelikler,
+kalırsa (kısmi depolama temizliği, sürüm geçişi, kota hatası) tüm hesaplar,
 rezervasyonlar ve kasa kayıtları örnek verilerle **eziliyordu**.
 
 **Düzeltme:** Tohumlama artık bayrağın yanı sıra gerçek veri varlığını da
@@ -348,7 +353,7 @@ CSV içindeki ayraç ve tırnak karakterleri.
   hesabı → tahsilat ekleme → bakiye güncellemesi → otomatik SMS kaydı → listede
   arama → sözleşme çıktısı → koddan herkese açık doğrulama.
 - Referans listesinden salon detay sayfasına geçiş; bilinmeyen salon adresinde 404.
-- Yeni üyelik oluşturma, işletme değiştirme, çıkış yapma.
+- İşletme değiştirme, çıkış yapma.
 
 ---
 

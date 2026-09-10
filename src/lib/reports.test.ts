@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  balanceReport, lastMonthsReport, monthReport, programReport, slotReport, summarize, toCsv, withinRange,
+  balanceReport, downloadCsv, lastMonthsReport, monthReport, programReport,
+  slotReport, summarize, toCsv, withinRange,
 } from './reports';
 import { uid } from './ids';
 import { makeBalanceLookup } from './money';
@@ -39,6 +40,8 @@ const lookup = (payments: Payment[]) => makeBalanceLookup(payments);
 const keep = (r: Reservation) => r;
 
 beforeEach(() => clearAll());
+
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('withinRange', () => {
   it('boş aralıkta her tarihi kabul eder', () => {
@@ -205,5 +208,66 @@ describe('lastMonthsReport', () => {
     );
     expect(rows[0].count).toBe(2);
     expect(rows[0].total).toBe(150000);
+  });
+});
+
+describe('downloadCsv', () => {
+  /**
+   * Excel, BOM olmadan UTF-8 CSV'yi Latin-1 sanıyor ve Türkçe harfleri
+   * bozuyor. Dosyanın başına eklenen BOM bunu engelliyor.
+   */
+  it('dosyayı BOM ile üretir ve indirmeyi tetikler', () => {
+    const olusturulanUrl = 'blob:ornek/1';
+    const olustur = vi.fn((_blob: Blob) => olusturulanUrl);
+    const serbestBirak = vi.fn();
+    vi.stubGlobal('URL', { ...URL, createObjectURL: olustur, revokeObjectURL: serbestBirak });
+
+    const tiklamalar: HTMLAnchorElement[] = [];
+    const gercekOlustur = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((etiket: string) => {
+      const el = gercekOlustur(etiket) as HTMLAnchorElement;
+      if (etiket === 'a') {
+        el.click = () => { tiklamalar.push(el); };
+      }
+      return el;
+    });
+
+    downloadCsv('rapor.csv', 'Ad;Tutar\nÇiğdem;1000');
+
+    expect(tiklamalar).toHaveLength(1);
+    expect(tiklamalar[0].download).toBe('rapor.csv');
+    expect(tiklamalar[0].href).toContain(olusturulanUrl);
+
+    const blob = olustur.mock.calls[0][0];
+    expect(blob.type).toContain('charset=utf-8');
+
+    // Bağlantı DOM'da bırakılmamalı, nesne adresi serbest bırakılmalı.
+    expect(document.querySelectorAll('a[download]')).toHaveLength(0);
+    expect(serbestBirak).toHaveBeenCalledWith(olusturulanUrl);
+  });
+
+  it('içeriğin başına BOM ekler', () => {
+    // jsdom Blob'u okunamıyor; kurucuya gelen parçalar yakalanıyor.
+    const parcalar: unknown[][] = [];
+    const GercekBlob = globalThis.Blob;
+    vi.stubGlobal('Blob', class extends GercekBlob {
+      constructor(bolum: unknown[], secenek?: BlobPropertyBag) {
+        super(bolum as BlobPart[], secenek);
+        parcalar.push(bolum);
+      }
+    });
+    vi.stubGlobal('URL', {
+      ...URL, createObjectURL: () => 'blob:x', revokeObjectURL: () => undefined,
+    });
+    const gercekOlustur = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((etiket: string) => {
+      const el = gercekOlustur(etiket) as HTMLAnchorElement;
+      if (etiket === 'a') el.click = () => undefined;
+      return el;
+    });
+
+    downloadCsv('rapor.csv', 'Ad;Tutar');
+
+    expect(parcalar[0]).toEqual(['\ufeffAd;Tutar']);
   });
 });

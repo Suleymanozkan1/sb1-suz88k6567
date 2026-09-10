@@ -56,7 +56,7 @@ describe('oturum', () => {
   it('kayıtlı olmayan e-postayı reddeder', async () => {
     seedIfEmpty();
     await expect(localRepo.signIn('yok@ornek.com', 'sifre123'))
-      .rejects.toThrow('kayıtlı üyelik bulunamadı');
+      .rejects.toThrow('kayıtlı hesap bulunamadı');
   });
 
   it('e-posta karşılaştırması büyük/küçük harften bağımsızdır', async () => {
@@ -70,15 +70,6 @@ describe('oturum', () => {
     await localRepo.signIn(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password);
     await localRepo.signOut();
     expect(await localRepo.getSession()).toBeNull();
-  });
-
-  it('mükerrer e-posta ile kayıt açtırmaz', async () => {
-    seedIfEmpty();
-    await expect(localRepo.signUp({
-      email: DEMO_CREDENTIALS.email, password: 'sifre123', companyName: 'X', fullName: 'Y',
-      mobile: '5321112233', city: 'Ankara', district: 'Çankaya', category: 'Düğün Salonu',
-      capacity: 100, currency: 'TL',
-    })).rejects.toThrow('daha önce üyelik oluşturulmuş');
   });
 
   it('şifre değiştirmede mevcut şifreyi doğrular', async () => {
@@ -408,79 +399,6 @@ describe('faturalar', () => {
     const result = await localRepo.sendInvoice('herhangi');
     expect(result.sent).toBe(false);
     expect(result.reason).toMatch(/entegratör/i);
-  });
-});
-
-describe('talep kutusu', () => {
-  async function gonderVeGir() {
-    seedIfEmpty();
-    await localRepo.addMessage({
-      name: 'Ziyaretçi', email: 'z@ornek.com', phone: '5320000001',
-      message: 'Demo talep ediyorum.', kind: 'demo',
-    });
-    return localRepo.signIn(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password);
-  }
-
-  it('gelen talep yönetici listesinde yeni durumuyla görünür', async () => {
-    await gonderVeGir();
-    const talepler = await localRepo.listMessages();
-    expect(talepler).toHaveLength(1);
-    expect(talepler[0]).toMatchObject({ name: 'Ziyaretçi', kind: 'demo', status: 'yeni', note: '' });
-    expect(talepler[0].handledAt).toBeUndefined();
-  });
-
-  it('oturum yokken talep okunamaz', async () => {
-    seedIfEmpty();
-    await localRepo.addMessage({
-      name: 'Ziyaretçi', email: 'z@ornek.com', phone: '5320000001',
-      message: 'Merhaba', kind: 'iletisim',
-    });
-    expect(await localRepo.listMessages()).toEqual([]);
-  });
-
-  it('personel talepleri göremez ve durumunu değiştiremez', async () => {
-    const owner = await gonderVeGir();
-    await localRepo.saveStaff(owner.id, {
-      fullName: 'Personel', email: 'personel@ornek.com', password: 'sifre123',
-      mobile: '5329998877', permissions: ['rezervasyon.goruntule'],
-    });
-    const talepId = (await localRepo.listMessages())[0].id;
-
-    await localRepo.signIn('personel@ornek.com', 'sifre123');
-    expect(await localRepo.listMessages()).toEqual([]);
-    await expect(localRepo.setMessageStatus(talepId, 'kapatildi', '')).rejects.toThrow();
-  });
-
-  it('durum değişince işlem damgası yazılır, yeniye dönünce silinir', async () => {
-    await gonderVeGir();
-    const talep = (await localRepo.listMessages())[0];
-
-    await localRepo.setMessageStatus(talep.id, 'islemde', 'Arandı.');
-    const islemde = (await localRepo.listMessages())[0];
-    expect(islemde.status).toBe('islemde');
-    expect(islemde.note).toBe('Arandı.');
-    expect(islemde.handledAt).toBeTruthy();
-
-    await localRepo.setMessageStatus(talep.id, 'yeni', '');
-    expect((await localRepo.listMessages())[0].handledAt).toBeUndefined();
-  });
-
-  it('talepler en yeniden eskiye sıralanır', async () => {
-    seedIfEmpty();
-    for (const ad of ['Birinci', 'İkinci', 'Üçüncü']) {
-      await localRepo.addMessage({
-        name: ad, email: `${ad}@ornek.com`, phone: '5320000001',
-        message: 'test', kind: 'iletisim',
-      });
-    }
-    await localRepo.signIn(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password);
-    const adlar = (await localRepo.listMessages()).map((m) => m.name);
-    expect(adlar).toEqual(['Üçüncü', 'İkinci', 'Birinci']);
-  });
-
-  it('bulunmayan talebin durumu değiştirilemez', async () => {
-    await gonderVeGir();
-    await expect(localRepo.setMessageStatus('yok', 'kapatildi', '')).rejects.toThrow();
   });
 });
 

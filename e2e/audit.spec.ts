@@ -13,7 +13,7 @@ async function blockExternalRequests(page: Page) {
 
 async function login(page: Page) {
   await blockExternalRequests(page);
-  await page.goto('/uye-girisi');
+  await page.goto('/');
   await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
   await expect(page).toHaveURL(/\/panel$/);
@@ -127,41 +127,6 @@ test('DENETIM: çıkış yapınca oturum kapanır ve panel korunur', async ({ pa
   await login(page);
   await page.getByRole('button', { name: /Çıkış/ }).first().click();
   await page.goto('/panel/kasa');
-  await expect(page).toHaveURL(/\/uye-girisi/);
+  await expect(page).toHaveURL(/\/$/);
 });
 
-test('DENETIM: siteden gönderilen talep panelde görünür ve durumu değişir', async ({ page }) => {
-  await blockExternalRequests(page);
-
-  // 1) Ziyaretçi olarak iletişim formunu doldur
-  await page.goto('/iletisim');
-  await page.locator('#ct-name').fill('Denetim Ziyaretçi');
-  await page.locator('#ct-email').fill('ziyaretci@ornek.com');
-  await page.locator('#ct-phone').fill('5320000123');
-  await page.locator('#ct-message').fill('Fiyat bilgisi almak istiyorum.');
-  await page.getByRole('button', { name: 'Mesajımı gönder' }).click();
-  await expect(page.getByText(/Mesajınız tarafımıza ulaştı/)).toBeVisible();
-
-  // 2) Yönetici olarak talep kutusunda görünmeli
-  await page.goto('/uye-girisi');
-  await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
-  await page.getByRole('button', { name: 'Giriş Yap' }).click();
-  await expect(page).toHaveURL(/\/panel$/);
-
-  await page.getByRole('link', { name: 'Talepler' }).click();
-  await expect(page).toHaveURL(/\/panel\/talepler$/);
-  await expect(page.getByText('Denetim Ziyaretçi')).toBeVisible();
-
-  // 3) Aç, not düş, durumunu değiştir
-  await page.getByRole('button', { name: /Denetim Ziyaretçi/ }).click();
-  await expect(page.getByText('Fiyat bilgisi almak istiyorum.')).toBeVisible();
-  await expect(page.getByText('ziyaretci@ornek.com')).toBeVisible();
-
-  await page.getByLabel('Not').fill('Arandı, teklif gönderildi.');
-  await page.getByRole('button', { name: 'İşlemde yap' }).click();
-  await expect(page.getByText('İşlemde').first()).toBeVisible();
-
-  // 4) Durum sayacı güncellenmeli
-  await page.reload();
-  await expect(page.getByRole('button', { name: /İşlemde\s*1/ })).toBeVisible();
-});

@@ -24,7 +24,7 @@ slayttır.
 | Çekirdek | 3-10 | 10 dk | Takvim, rezervasyon, para, belgeler, organizasyon |
 | Mobil | 11-13 | 5 dk | Telefon uygulaması |
 | Hatırlatma ve iletişim | 14-16 | 6 dk | Taslak mesajlar, otomatik gönderim, SMS, İYS |
-| Para ve mevzuat | 17-19 | 5 dk | Kasa, raporlar, fatura, talepler |
+| Para ve mevzuat | 17-18 | 5 dk | Kasa, raporlar, fatura |
 | Yönetim ve altyapı | 20-23 | 5 dk | Yetkiler, altyapı, veri |
 | Kurulum ve maliyet | 24-26 | 4 dk | Ne gerekiyor, ne tutuyor |
 
@@ -64,7 +64,7 @@ Slayt başına ezberlenecek tek cümleler. Gerisi zaten ekranda.
   kapatırsanız yalnızca o özellik kapanır."
 - **Neden (22):** "Kendi sunucumuz olsaydı yazılım aynı çalışırdı; fark,
   yedek ve güvenliğin kimin üzerinde kaldığında."
-- **Maliyet (26):** "Sabit gider iki abonelik, ayda yaklaşık 30 dolar.
+- **Maliyet (26):** "Sabit gider iki servis, ayda yaklaşık 30 dolar.
   Gerisi kullandıkça."
 
 ## 4. Ezberlenecek sayılar
@@ -122,7 +122,7 @@ veritabanında engellenmesi, İYS'nin sistemin içinde olması, hatırlatmaları
 otomatik gitmesi. Bilmediğiniz bir ürün hakkında yorum yapmayın.
 
 **"Telefonda her şey var mı, yoksa sadece bakabiliyor muyum?"**
-Panelde ne varsa telefonda da var, yirmi bir ekran. Yazma tarafı bilinçli
+Panelde ne varsa telefonda da var, yirmi ekran. Yazma tarafı bilinçli
 sınırlı: tahsilat, gelir-gider, yeni rezervasyon ve mesaj metni telefondan
 girilir; yetki değiştirme ve fatura kesme masaüstünde kalır, çünkü ikisi de
 yanlış dokunuşla geri alınması zor sonuç üretiyor.

@@ -1,6 +1,6 @@
 import type { ColorSetting, OrganizationType, Permission } from '../types';
 
-/** Üye Ol formundaki 81 il + yurt dışı seçenekleri */
+/** İşletme kayıt formlarındaki 81 il + yurt dışı seçenekleri */
 export const CITIES: string[] = [
   'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya', 'Ankara', 'Antalya',
   'Ardahan', 'Artvin', 'Aydın', 'Balıkesir', 'Bartın', 'Batman', 'Bayburt', 'Bilecik',
@@ -53,7 +53,7 @@ export const DISTRICTS: Record<string, string[]> = {
   ],
 };
 
-/** Üye Ol formundaki işletme kategorileri */
+/** İşletme kayıt formlarındaki kategoriler */
 export const CATEGORIES: string[] = [
   'Düğün Salonu',
   'Kına Salonu',
@@ -162,8 +162,6 @@ export const MONTH_NAMES = [
 
 export const DAY_NAMES_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
-/** Ücretsiz deneme süresi (gün), "7 gün ücretsiz deneyin" */
-export const TRIAL_DAYS = 7;
 
 /** Tavsiye Et Kazan: her ücretli üye için kazanılan ek süre (gün) */
 export const REFERRAL_BONUS_DAYS = 30;

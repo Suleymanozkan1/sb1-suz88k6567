@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBusinesses } from '../lib/queries';
 import DemoNotice from '../components/DemoNotice';
 import {
-  IconAlert, IconBell, IconBuilding, IconCalendar, IconChart, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMail, IconMenu, IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
+  IconAlert, IconBell, IconBuilding, IconCalendar, IconChart, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu, IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
 
 const NAV = [
@@ -21,7 +21,6 @@ const NAV = [
   { to: '/panel/renk-ayarlari', label: 'Renk Ayarları', icon: IconPalette },
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
   { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser, ownerOnly: true },
-  { to: '/panel/talepler', label: 'Talepler', icon: IconMail, ownerOnly: true },
   { to: '/panel/hatirlatmalar', label: 'Hatırlatmalar', icon: IconBell },
   { to: '/panel/sms', label: 'SMS Kayıtları', icon: IconMessage },
   { to: '/panel/izinler', label: 'İYS İzinleri', icon: IconCheck },

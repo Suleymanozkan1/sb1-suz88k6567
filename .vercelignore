@@ -1,0 +1,19 @@
+# Vercel yalnızca derlenmiş statik siteyi sunar; aşağıdakiler derlemeye
+# girmez ve yüklenmelerinin tek etkisi dağıtımı şişirmektir.
+mobil
+e2e
+docs
+supabase
+test-results
+playwright-report
+
+# Test dosyaları hiçbir dağıtıma çıkmamalı. Kökteki api/ klasörü Vercel'in
+# sunucusuz işlev kuralına benzediği için, bir yapılandırma kazasında
+# api/backup.test.ts gibi bir dosyanın uç nokta olarak yayına çıkması
+# ihtimali tümüyle kapatılıyor.
+**/*.test.ts
+**/*.test.tsx
+
+# Teslim paketleri sürüm takibinde; dağıtımda işleri yok.
+*.pptx
+*.pdf

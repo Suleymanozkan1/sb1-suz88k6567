@@ -14,7 +14,7 @@ async function blockExternalRequests(page: Page) {
 /** Demo hesabıyla giriş yapar (veritabanı bağlı değilken demo modu devreye girer). */
 async function login(page: Page) {
   await blockExternalRequests(page);
-  await page.goto('/uye-girisi');
+  await page.goto('/');
   await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
   await expect(page).toHaveURL(/\/panel$/);
@@ -25,7 +25,7 @@ test.describe('Üye paneli', () => {
   test('oturum açılmadan panel erişimi giriş sayfasına yönlendirir', async ({ page }) => {
     await blockExternalRequests(page);
     await page.goto('/panel');
-    await expect(page).toHaveURL(/\/uye-girisi$/);
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test('e-posta ve şifre ile giriş yapılır', async ({ page }) => {
@@ -160,30 +160,6 @@ test.describe('Üye paneli', () => {
     await login(page);
     await page.getByRole('button', { name: 'Çıkış Yap' }).click();
     await page.goto('/panel');
-    await expect(page).toHaveURL(/\/uye-girisi$/);
-  });
-});
-
-test.describe('Üye kaydı', () => {
-  test('yeni üyelik oluşturulup panele giriş yapılır', async ({ page }) => {
-    await blockExternalRequests(page);
-    await page.goto('/uye-ol');
-    const email = `e2e${Date.now()}@example.com`;
-
-    await page.getByLabel(/Üye Firma Adı/).fill('E2E Düğün Salonu');
-    await page.getByLabel(/Yetkili Ad Soyad/).fill('E2E Yetkili');
-    await page.getByLabel(/Cep Telefonu/).fill('5321230000');
-    await page.getByLabel(/Kategori/).selectOption('Düğün Salonu');
-    await page.getByLabel(/Şehir/).selectOption('İzmir');
-    await page.getByLabel(/İlçe/).selectOption('Bornova');
-    await page.getByLabel(/E-posta Adresiniz/).fill(email);
-    await page.locator('#password').fill('sifre1234');
-    await page.locator('#passwordRepeat').fill('sifre1234');
-    await page.locator('#acceptPrivacy').check();
-    await page.locator('#acceptTerms').check();
-    await page.getByRole('button', { name: 'Üye Ol' }).click();
-
-    await expect(page).toHaveURL(/\/panel$/);
-    await expect(page.getByRole('heading', { name: /Hoş geldiniz, E2E Yetkili/ })).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
   });
 });

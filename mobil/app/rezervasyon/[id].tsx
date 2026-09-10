@@ -146,6 +146,16 @@ export default function Ayrinti() {
             </Text>
           </View>
         </View>
+        {/* Kapora ayrı yazılıyor: TAHSİLAT toplamı kaporayı da içeriyor ve
+            aşağıdaki geçmiş listesinde kapora satırı görünmediği için
+            iki rakam birbirini tutmuyor sanılıyordu. */}
+        {kayit.kapora > 0 ? (
+          <View style={[s.satir, { marginTop: aralik.m }]}>
+            <Yazi tur="kucuk" renkli={renk.metinSolgun}>Kapora</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{tutar(kayit.kapora)}</Yazi>
+          </View>
+        ) : null}
+
         <View
           style={s.cubukArka}
           accessibilityRole="progressbar"
