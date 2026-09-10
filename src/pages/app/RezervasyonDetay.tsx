@@ -15,7 +15,7 @@ import {
 } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
-import { formatDate, formatDateLong, formatMoney, formatPhone, todayIso } from '../../lib/format';
+import { formatDate, formatDateLong, formatMoney, formatPhone, formatTimeRange, todayIso } from '../../lib/format';
 import { PAYMENT_METHODS } from '../../data/constants';
 import { IconEdit, IconPlus, IconPrint, IconReport, IconTrash } from '../../components/Icons';
 import type { Payment } from '../../types';
@@ -160,8 +160,11 @@ export default function RezervasyonDetay() {
             <Info label="Müşteri" value={reservation.customerName} />
             <Info label="İkinci Kişi" value={reservation.secondPersonName || '-'} />
             <Info label="Telefon" value={formatPhone(reservation.customerPhone)} />
+            <Info label="İkinci Kişi Telefonu" value={reservation.secondPhone ? formatPhone(reservation.secondPhone) : '-'} />
             <Info label="E-Posta" value={reservation.customerEmail || '-'} />
+            <Info label="TC Kimlik No" value={reservation.identityNo || '-'} />
             <Info label="Tarih / Seans" value={`${formatDateLong(reservation.date)} · ${reservation.slot}`} />
+            <Info label="Saat" value={formatTimeRange(reservation.startTime, reservation.endTime) || '-'} />
             <Info label="Organizasyon" value={reservation.organizationType} />
             <Info label="Davetli Sayısı" value={`${reservation.guestCount} kişi`} />
             <Info label="Durum" value={reservation.status} />

@@ -73,6 +73,10 @@
 /* Yazdırma görünümü (sözleşme / rapor çıktısı) */
 @media print {
   .no-print { display: none !important; }
+  /* Ekranda düzenleme alanı, kâğıtta düz metin: ikisi aynı anda görünmez. */
+  .print-only { display: block !important; }
   body { background: #fff; }
   .print-area { box-shadow: none !important; border: 0 !important; }
 }
+
+.print-only { display: none; }

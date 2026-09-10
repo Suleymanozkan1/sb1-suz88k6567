@@ -1,23 +1,41 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
-import { useAddCashFlow, useCashFlow, useDeleteCashFlow } from '../../lib/queries';
+import { useAddCashFlow, useCashFlow, useDeleteCashFlow, useReservationsWithBalances } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, todayIso } from '../../lib/format';
-import { downloadCsv, toCsv, withinRange } from '../../lib/reports';
+import { downloadCsv, reservationIncome, toCsv, withinRange } from '../../lib/reports';
+import type { ReservationIncomeRow } from '../../lib/reports';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../data/constants';
 import { IconDownload, IconPlus, IconTrash } from '../../components/Icons';
 import StatCard from '../../components/StatCard';
 import { IconWallet } from '../../components/Icons';
 import type { CashFlowEntry, CashFlowKind } from '../../types';
 
+/**
+ * Kasa tablosunun tek satırı. `kaynak` alanı satırın nereden geldiğini
+ * söyler: elle girilen kayıt silinebilir, rezervasyondan türeyen satır
+ * silinemez.
+ */
+type KasaSatiri =
+  | {
+      id: string; date: string; kind: CashFlowKind; category: string;
+      description: string; amount: number; kaynak: 'elle'; entry: CashFlowEntry;
+    }
+  | {
+      id: string; date: string; kind: CashFlowKind; category: string;
+      description: string; amount: number; kaynak: 'rezervasyon'; row: ReservationIncomeRow;
+    };
+
 export default function Kasa() {
   const { user, can } = useAuth();
   const businessId = user?.activeBusinessId ?? '';
   const { data: cashData, isLoading, error: loadError } = useCashFlow();
+  const { reservations, payments } = useReservationsWithBalances();
   const addMutation = useAddCashFlow();
   const deleteMutation = useDeleteCashFlow();
   const [kindFilter, setKindFilter] = useState('');
@@ -37,13 +55,53 @@ export default function Kasa() {
 
   const entries = useMemo(() => cashData ?? [], [cashData]);
 
+  /*
+    Kasa iki kaynağı birlikte gösterir:
+      * elle girilen gelir/gider kayıtları
+      * rezervasyonlardan gelen tahsilatlar (kapora dahil)
+
+    İkincisi kasa tablosuna yazılmaz, rezervasyondan türetilir. Yazılsaydı
+    tutar düzeltildiğinde ya da tahsilat silindiğinde kasa rezervasyondan
+    kopar ve aynı para iki kez görünürdü. Türetilmiş satır bu yüzden
+    silinemez; düzeltme rezervasyon ekranından yapılır.
+  */
+  const rezervasyonSatirlari = useMemo(
+    () => reservationIncome(reservations, payments),
+    [reservations, payments],
+  );
+
+  const birlesik: KasaSatiri[] = useMemo(() => [
+    ...entries.map((e) => ({
+      id: e.id,
+      date: e.date,
+      kind: e.kind,
+      category: e.category,
+      description: e.description ?? '',
+      amount: e.amount,
+      kaynak: 'elle' as const,
+      entry: e,
+    })),
+    ...rezervasyonSatirlari.map((r) => ({
+      id: r.id,
+      date: r.date,
+      kind: 'Gelir' as CashFlowKind,
+      category: r.category,
+      // Sözleşme numarası ve taraflar: kasadaki satır hangi sözleşmeye
+      // ait olduğunu kendi başına anlatmalı.
+      description: `${r.contractNo} · ${r.parties}${r.method ? ` · ${r.method}` : ''}`,
+      amount: r.amount,
+      kaynak: 'rezervasyon' as const,
+      row: r,
+    })),
+  ], [entries, rezervasyonSatirlari]);
+
   const filtered = useMemo(
     () =>
-      entries
+      birlesik
         .filter((e) => (kindFilter ? e.kind === kindFilter : true))
         .filter((e) => withinRange(e.date, { from, to }))
         .sort((a, b) => b.date.localeCompare(a.date)),
-    [entries, kindFilter, from, to],
+    [birlesik, kindFilter, from, to],
   );
 
   const totals = useMemo(
@@ -102,8 +160,15 @@ export default function Kasa() {
 
   function exportCsv() {
     const csv = toCsv(
-      ['Tarih', 'Tür', 'Kategori', 'Açıklama', 'Tutar'],
-      filtered.map((e) => [formatDate(e.date), e.kind, e.category, e.description ?? '', e.amount]),
+      ['Tarih', 'Tür', 'Kategori', 'Sözleşme No', 'Taraflar', 'Açıklama', 'Tutar', 'Kaynak'],
+      filtered.map((e) => [
+        formatDate(e.date), e.kind, e.category,
+        e.kaynak === 'rezervasyon' ? e.row.contractNo : '',
+        e.kaynak === 'rezervasyon' ? e.row.parties : '',
+        e.description,
+        e.amount,
+        e.kaynak === 'rezervasyon' ? 'Rezervasyon' : 'Elle girilen',
+      ]),
     );
     downloadCsv(`gelir-gider-${new Date().toISOString().slice(0, 10)}.csv`, csv);
   }
@@ -117,7 +182,13 @@ export default function Kasa() {
       <Seo title="Gelir Gider Kayıtları - Sahra Takip Panel" noindex />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-heading text-2xl font-bold text-brand">Gelir Gider Kayıtları</h1>
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-brand">Gelir Gider Kayıtları</h1>
+          <p className="mt-1 text-sm text-brand-muted">
+            Rezervasyonlardan gelen tahsilatlar (kapora dahil) sözleşme numarası ve taraflarla birlikte
+            burada kendiliğinden görünür; düzeltme rezervasyon ekranından yapılır.
+          </p>
+        </div>
         <button type="button" onClick={exportCsv} className="btn-outline btn-sm" disabled={filtered.length === 0}>
           <IconDownload size={16} /> CSV indir
         </button>
@@ -222,13 +293,25 @@ export default function Kasa() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-brand">{e.category}</td>
-                  <td className="px-4 py-3 text-brand-muted">{e.description || '-'}</td>
+                  <td className="px-4 py-3 text-brand-muted">
+                    {e.kaynak === 'rezervasyon' ? (
+                      <Link to={`/panel/rezervasyonlar/${e.row.reservationId}`} className="hover:text-accent-ink">
+                        <span className="font-mono text-brand">{e.row.contractNo}</span>
+                        {' · '}{e.row.parties}
+                        {e.row.method ? ` · ${e.row.method}` : ''}
+                      </Link>
+                    ) : (e.description || '-')}
+                  </td>
                   <td className={`px-4 py-3 text-right font-medium ${e.kind === 'Gelir' ? 'text-[#15803d]' : 'text-[#b91c1c]'}`}>
                     {e.kind === 'Gelir' ? '+' : '−'} {formatMoney(e.amount, currency)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {can('kasa.duzenle') && (
-                      <button type="button" onClick={() => setToDelete(e)} aria-label="Kaydı sil" className="rounded p-1 text-brand-muted hover:text-danger">
+                    {e.kaynak === 'rezervasyon' ? (
+                      <span className="rounded-full bg-surface px-2 py-1 text-[11px] text-brand-muted" title="Bu satır rezervasyondan gelir; düzeltme rezervasyon ekranından yapılır.">
+                        Rezervasyon
+                      </span>
+                    ) : can('kasa.duzenle') && (
+                      <button type="button" onClick={() => setToDelete(e.entry)} aria-label="Kaydı sil" className="rounded p-1 text-brand-muted hover:text-danger">
                         <IconTrash size={15} />
                       </button>
                     )}

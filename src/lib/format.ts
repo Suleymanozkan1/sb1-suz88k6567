@@ -76,6 +76,20 @@ export function daysBetween(aIso: string, bIso: string): number {
 }
 
 /** 5321234567 -> 0532 123 45 67 */
+/**
+ * Saat aralığını sözleşmedeki gibi yazar: "19:00-23:00".
+ *
+ * Saat isteğe bağlı bir alan; hiç girilmemişse boş metin döner ve çağıran
+ * taraf satırı hiç göstermez. Yalnızca başlangıç varsa tek saat yazılır:
+ * uydurma bir bitiş saati basmak sözleşmeyi yanlış yapar.
+ */
+export function formatTimeRange(start?: string, end?: string): string {
+  const bas = (start ?? '').slice(0, 5);
+  const bit = (end ?? '').slice(0, 5);
+  if (!bas) return '';
+  return bit ? `${bas}-${bit}` : bas;
+}
+
 export function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
   if (digits.length !== 10) return raw;

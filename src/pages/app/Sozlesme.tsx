@@ -2,23 +2,40 @@ import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
-import { useBusinesses, useReservation, useReservationsWithBalances } from '../../lib/queries';
+import { useBusinesses, useMenus, useReservation, useReservationsWithBalances } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
-import { formatDateLong, formatMoney, formatPhone } from '../../lib/format';
+import { formatDate, formatDateLong, formatMoney, formatPhone, formatTimeRange, todayIso } from '../../lib/format';
+import { contractParties } from '../../lib/reports';
+import { sozlesmeSartlari } from '../../data/sozlesme';
 import { IconPrint } from '../../components/Icons';
 
-/** Salon Kiralama Sözleşmesi: yazdırılabilir çıktı */
+/**
+ * Salon Kiralama Sözleşmesi.
+ *
+ * Düzen işletmenin kendi basılı sözleşmesini izler: üstte adres bloğu,
+ * ortada salon adı, solda bilgi sütunu, sağda menü içeriği, altta
+ * sözleşme şartları ve imza yerleri. Tek sayfaya sığması gözetilmiştir;
+ * salon çalışanı bunu yazıcıdan alıp müşteriye imzalatır.
+ *
+ * Boş kalan satır hiç yazılmaz. "TC : -" yazan bir sözleşme, doldurulmayı
+ * bekleyen bir form gibi görünür.
+ */
 export default function Sozlesme() {
   const { id } = useParams();
   const reservationQuery = useReservation(id);
   const { balance, isLoading: listLoading } = useReservationsWithBalances();
   const { data: businesses = [] } = useBusinesses();
+  const { data: menus = [] } = useMenus();
 
   const reservation = reservationQuery.data ?? undefined;
   const business = useMemo(
     () => businesses.find((b) => b.id === reservation?.businessId),
     [businesses, reservation],
+  );
+  const menu = useMemo(
+    () => menus.find((m) => m.id === reservation?.menuId),
+    [menus, reservation],
   );
 
   if (reservationQuery.isLoading || listLoading) {
@@ -37,6 +54,15 @@ export default function Sozlesme() {
   const paid = totalPaid(reservation, payments);
   const remaining = remainingBalance(reservation, payments);
 
+  // Ödeme satırındaki tarih: son tahsilatın günü, hiç tahsilat yoksa
+  // kaydın açıldığı gün (kapora o gün alınmıştır).
+  const sonOdemeTarihi = payments.length > 0
+    ? payments.map((p) => p.date).sort().slice(-1)[0]
+    : (reservation.createdAt || '').slice(0, 10);
+
+  const saat = formatTimeRange(reservation.startTime, reservation.endTime);
+  const sartlar = sozlesmeSartlari(business?.city ?? '');
+
   return (
     <>
       <Seo title="Salon Kiralama Sözleşmesi" noindex />
@@ -51,101 +77,125 @@ export default function Sozlesme() {
         </div>
       </div>
 
-      <article className="print-area card mx-auto max-w-3xl p-8 text-sm leading-relaxed text-black">
-        <header className="mb-6 border-b border-line pb-4 text-center">
-          <h2 className="font-heading text-xl font-bold text-brand">SALON KİRALAMA SÖZLEŞMESİ</h2>
-          <p className="mt-1 text-xs text-brand-muted">Sözleşme No: {reservation.code}</p>
+      <article className="print-area card mx-auto max-w-3xl bg-white p-8 text-[13px] leading-snug text-black">
+        <header className="mb-6 flex items-start justify-between gap-6">
+          <p className="font-heading text-sm font-bold uppercase text-black">{business?.name ?? ''}</p>
+          <address className="text-right text-[11px] not-italic leading-tight">
+            {business?.address && <span className="block">{business.address}</span>}
+            {(business?.district || business?.city) && (
+              <span className="block">{[business?.district, business?.city].filter(Boolean).join(' / ')}</span>
+            )}
+            {business?.phone && <span className="block">Tel/Cep: {formatPhone(business.phone)}</span>}
+            {business?.instagram && <span className="block">instagram.com/{business.instagram}</span>}
+          </address>
         </header>
 
-        <section className="mb-5">
-          <h3 className="mb-2 font-heading font-bold text-brand">1. TARAFLAR</h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="font-semibold">KİRAYA VEREN</p>
-              <p>{business?.name ?? '-'}</p>
-              <p>{business?.address ?? `${business?.district ?? ''} / ${business?.city ?? ''}`}</p>
-              <p>Tel: {business ? formatPhone(business.phone) : '-'}</p>
-            </div>
-            <div>
-              <p className="font-semibold">KİRACI</p>
-              <p>{reservation.customerName}</p>
-              {reservation.secondPersonName && <p>{reservation.secondPersonName}</p>}
-              <p>{reservation.address ?? '-'}</p>
-              <p>Tel: {formatPhone(reservation.customerPhone)}</p>
-            </div>
+        <h2 className="mb-6 text-center font-heading text-xl font-bold text-black">
+          {business?.name ?? 'Salon Kiralama Sözleşmesi'}
+        </h2>
+
+        <div className="mb-6 grid gap-6 sm:grid-cols-[1.05fr_1fr]">
+          <dl className="space-y-0.5">
+            <Satir label="Tarih" value={formatDateLong(reservation.date)} />
+            <Satir label="Saat" value={saat} />
+            <Satir label="Sözleşme No" value={reservation.code} mono />
+            <Satir label="İşletme" value={business?.name ?? ''} />
+            <Satir label="Ad Soyad" value={reservation.customerName} />
+            <Satir label="TC" value={reservation.identityNo ?? ''} mono />
+            <Satir label="Cep Telefonu" value={formatPhone(reservation.customerPhone)} />
+            <Satir
+              label="Gelin ve Damat"
+              value={reservation.secondPersonName ? contractParties(reservation) : ''}
+            />
+            <Satir label="Gelin Cep" value={reservation.secondPhone ? formatPhone(reservation.secondPhone) : ''} />
+            <Satir label="Adres" value={reservation.address ?? ''} />
+            <Satir label="Rez. Türü" value={reservation.organizationType} />
+            <Satir label="Davetli Sayısı" value={String(reservation.guestCount)} />
+            <Satir label="Toplam Fiyat" value={formatMoney(reservation.totalAmount, reservation.currency)} />
+            <Satir
+              label="Ödeme"
+              value={paid > 0
+                ? `${formatMoney(paid, reservation.currency)}${sonOdemeTarihi ? ` (${formatDate(sonOdemeTarihi)})` : ''}`
+                : ''}
+            />
+            <Satir label="Bakiye" value={formatMoney(remaining, reservation.currency)} />
+          </dl>
+
+          {/*
+            Menü içeriği Menüler ekranındaki açıklamadan gelir. Büyük harfle
+            yazılan satırlar (ANA YEMEK, TATLI…) başlık sayılıp kalın çıkar.
+          */}
+          <div className="border-black pl-4 sm:border-l">
+            {menu ? (
+              <>
+                <p className="mb-1 font-bold">{menu.name}</p>
+                {menu.description.split('\n').map((satir, i) => (
+                  <p key={i} className={basliksaMi(satir) ? 'font-semibold' : ''}>{satir}</p>
+                ))}
+              </>
+            ) : (
+              <p className="text-black/60">Menü seçilmemiştir.</p>
+            )}
+            {reservation.services.length > 0 && (
+              <div className="mt-2">
+                <p className="font-semibold">EK HİZMETLER</p>
+                {reservation.services.map((s) => <p key={s}>- {s}</p>)}
+              </div>
+            )}
           </div>
-        </section>
+        </div>
 
-        <section className="mb-5">
-          <h3 className="mb-2 font-heading font-bold text-brand">2. ORGANİZASYON BİLGİLERİ</h3>
-          <table className="w-full border-collapse text-sm">
-            <tbody>
-              <Row label="Organizasyon Türü" value={reservation.organizationType} />
-              <Row label="Tarih" value={formatDateLong(reservation.date)} />
-              <Row label="Seans" value={reservation.slot} />
-              <Row label="Davetli Sayısı" value={`${reservation.guestCount} kişi`} />
-              <Row label="Salon" value={business?.name ?? '-'} />
-              {reservation.services.length > 0 && <Row label="Dahil Hizmetler" value={reservation.services.join(', ')} />}
-            </tbody>
-          </table>
-        </section>
-
-        <section className="mb-5">
-          <h3 className="mb-2 font-heading font-bold text-brand">3. ÜCRET VE ÖDEME</h3>
-          <table className="w-full border-collapse text-sm">
-            <tbody>
-              <Row label="Toplam Kira Bedeli" value={formatMoney(reservation.totalAmount, reservation.currency)} />
-              <Row label="Alınan Kapora" value={formatMoney(reservation.deposit, reservation.currency)} />
-              <Row label="Toplam Tahsilat" value={formatMoney(paid, reservation.currency)} />
-              <Row label="Kalan Bakiye" value={formatMoney(remaining, reservation.currency)} />
-            </tbody>
-          </table>
-          <p className="mt-2 text-xs">
-            Kalan bakiyenin organizasyon tarihinden önce ödenmesi esastır. Ödemeler nakit, kredi kartı veya havale/EFT
-            yoluyla yapılabilir.
+        <section className="border-t border-black pt-3">
+          <h3 className="mb-1 font-heading text-sm font-bold uppercase text-black">Sözleşme Şartları</h3>
+          <p className="text-justify text-[11px] leading-snug">
+            {sartlar.map((madde, i) => (
+              <span key={i}>{i + 1}. ) {madde}{' '}</span>
+            ))}
           </p>
         </section>
 
-        <section className="mb-5">
-          <h3 className="mb-2 font-heading font-bold text-brand">4. GENEL HÜKÜMLER</h3>
-          <ol className="list-decimal space-y-1.5 pl-5 text-xs">
-            <li>Kiracı, belirtilen tarih ve seansta salonu kullanma hakkına sahiptir.</li>
-            <li>Kapora, kiracının organizasyonu iptal etmesi hâlinde iade edilmez.</li>
-            <li>Davetli sayısının sözleşmede belirtilen sayıyı aşması hâlinde kişi başı ek ücret uygulanır.</li>
-            <li>Salona ve demirbaşlara verilecek zararlardan kiracı sorumludur.</li>
-            <li>Kiraya veren, mücbir sebep hâlinde tarihi karşılıklı mutabakat ile değiştirebilir.</li>
-            <li>Taraflar arasında doğacak uyuşmazlıklarda {business?.city ?? '-'} Mahkemeleri ve İcra Daireleri yetkilidir.</li>
-            <li>İşbu sözleşme iki nüsha olarak düzenlenmiş ve taraflarca imzalanmıştır.</li>
-          </ol>
-        </section>
-
         {reservation.note && (
-          <section className="mb-5">
-            <h3 className="mb-2 font-heading font-bold text-brand">5. ÖZEL NOTLAR</h3>
-            <p className="text-xs">{reservation.note}</p>
+          <section className="mt-3">
+            <h3 className="mb-1 font-heading text-sm font-bold uppercase text-black">Özel Notlar</h3>
+            <p className="whitespace-pre-line text-[11px]">{reservation.note}</p>
           </section>
         )}
 
-        <footer className="mt-10 grid gap-8 sm:grid-cols-2">
-          <div className="text-center">
-            <p className="mb-12 text-xs font-semibold">KİRAYA VEREN</p>
-            <p className="border-t border-black pt-1 text-xs">{business?.name ?? ''}</p>
+        <footer className="mt-8 grid gap-8 sm:grid-cols-2">
+          <div className="text-center text-[12px]">
+            <p>Kiraya Veren İmza</p>
+            <p className="mt-10 font-semibold uppercase">{business?.name ?? ''}</p>
           </div>
-          <div className="text-center">
-            <p className="mb-12 text-xs font-semibold">KİRACI</p>
-            <p className="border-t border-black pt-1 text-xs">{reservation.customerName}</p>
+          <div className="text-center text-[12px]">
+            <p>Kiralayan İmza</p>
+            <p className="mt-10 font-semibold uppercase">{reservation.customerName}</p>
           </div>
         </footer>
+
+        <p className="mt-8 flex justify-between border-t border-black pt-1 text-[10px] font-semibold">
+          <span>{formatDate(todayIso())}</span>
+          <span>{business?.name ?? ''}</span>
+          <span>1/1</span>
+        </p>
       </article>
     </>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+/** Menü açıklamasında büyük harfle yazılan satır başlıktır. */
+function basliksaMi(satir: string): boolean {
+  const temiz = satir.trim();
+  if (!temiz || temiz.startsWith('-')) return false;
+  return temiz === temiz.toLocaleUpperCase('tr-TR');
+}
+
+/** Değeri boş olan satır sözleşmeye hiç basılmaz. */
+function Satir({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  if (!value.trim()) return null;
   return (
-    <tr className="border-b border-line/70">
-      <th scope="row" className="w-1/3 py-1.5 text-left font-medium text-brand-muted">{label}</th>
-      <td className="py-1.5">{value}</td>
-    </tr>
+    <div className="flex gap-2">
+      <dt className="w-32 shrink-0 text-right text-black/80">{label} :</dt>
+      <dd className={mono ? 'font-mono' : ''}>{value}</dd>
+    </div>
   );
 }

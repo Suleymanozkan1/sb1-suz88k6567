@@ -67,11 +67,11 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | `/panel/takvim` | Rezervasyon takvimi, gündüz/gece seansları, organizasyon türüne göre renklendirme |
 | `/panel/rezervasyonlar` | Liste, isim/telefon/kod araması, tür, durum, tarih aralığı, sıralama, CSV dışa aktarım |
 | `/panel/rezervasyonlar/yeni`, `/:id`, `/:id/duzenle` | Detaylı rezervasyon kaydı, tahsilat yönetimi |
-| `/panel/rezervasyonlar/:id/sozlesme` | Yazdırılabilir salon kiralama sözleşmesi |
+| `/panel/rezervasyonlar/:id/sozlesme` | Yazdırılabilir salon kiralama sözleşmesi: bilgi sütunu, menü içeriği ve 16 maddelik şartlar |
 | `/panel/musteriler` | Rezervasyonlardan türetilen müşteri listesi |
-| `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi |
+| `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi; rezervasyon tahsilatları sözleşme numarası ve taraflarla birlikte |
 | `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
-| `/panel/raporlar` | Program bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
+| `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
 | `/panel/salonlar` | Salon tanımları, bir işletmede birden çok salon |
 | `/panel/menuler` | Menü ve paket tanımları, kişi başı veya sabit fiyat |
 | `/panel/tedarikciler` | Tedarikçi defteri, orkestra, fotoğrafçı, çiçekçi |
@@ -139,7 +139,8 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
    `0007_salon_menu_masa.sql` → `0008_odeme_plani_is_emri_tedarikci.sql` →
    `0009_nikah_yazimi.sql` → `0010_hatirlatma_sablonlari.sql` →
    `0011_kisa_hatirlatma_metinleri.sql` → `0012_hatirlatmada_kapora.sql` →
-   `0013_kullanilmayan_tablolari_dusur.sql`
+   `0013_kullanilmayan_tablolari_dusur.sql` →
+   `0014_sozlesme_alanlari_ve_seri.sql`
 
    Sıra önemlidir: `0006` ve `0008` bugün kullanılmayan iki tabloyu
    oluşturur, `0013` ikisini de düşürür. Aradaki göçler o tablolara
@@ -180,6 +181,19 @@ select
 Denetim kaydı (`audit_log`) bilerek korunur: düşen tablolara ait geçmiş
 satırlar "kim neyi ne zaman değiştirdi" sorusunun cevabıdır.
 
+`0014` rezervasyona dört isteğe bağlı alan ekler (`start_time`, `end_time`,
+`identity_no`, `second_phone`) ve sözleşme numarasını rastgele (`SA-2026-4821`)
+yerine yıl + sıra biçimine (`20261`, `20262`, …) geçirir. Numarayı artık
+veritabanı atar: `code` boş gönderilirse tetikleyici sıradaki numarayı yazar,
+böylece panel ile mobil uygulama aynı numarayı iki kayda veremez. **Mevcut
+kayıtların numarası değişmez**; basılmış sözleşmelerin üstündeki numara ile
+kayıt arasındaki bağ korunur.
+
+`identity_no` TC kimlik numarasıdır ve KVKK kapsamında kişisel veridir:
+yalnızca sözleşme çıktısında görünür, herkese açık kod doğrulama ekranına
+(`verify_reservation_code`) hiçbir koşulda çıkmaz. Aydınlatma metnine
+işlenmiştir.
+
 ### RLS testlerini çalıştırma
 
 Her test dosyası kendi kimliklerini (`auth.users`) ve örnek verisini sıfırdan
@@ -188,7 +202,7 @@ veritabanında art arda çalıştırılırsa ikinci paket birincil anahtar çak�
 durur.
 
 ```bash
-for t in supabase/tests/0[1-8]_*.sql; do
+for t in supabase/tests/0[1-9]_*.sql supabase/tests/1[01]_*.sql; do
   db="qa_$(basename "$t" .sql)"
   psql -c "drop database if exists $db" postgres
   psql -c "create database $db" postgres
@@ -215,8 +229,9 @@ done
 | `08_is_emri_tedarikci_test.sql` | 9 | İş emri ve tedarikçi kuralları |
 | `09_hatirlatma_test.sql` | 14 | Otomatik hatırlatma, mükerrer gönderim engeli, kapora dahil tutar |
 | `10_dusurulen_tablolar_test.sql` | 9 | `0013` göçü: düşenler düştü, kullanılanlara dokunulmadı |
+| `11_sozlesme_alanlari_ve_seri_test.sql` | 9 | `0014` göçü: saat/TC alanları, sıralı sözleşme numarası, sayaç yazmaya kapalı |
 
-Toplam **112 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
+Toplam **121 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
 `BASARISIZ:` ile başlayan bir hata görürseniz test gerçekten düşmüştür.
 
 `04_backup_restore_test.sql` yedeği temiz bir şemaya gerçekten geri yükler ve
@@ -442,6 +457,62 @@ değiştirebilir, öneri dayatma değildir.
 plan öner" düğmesi, masa başına koltuk sayısından planı üretir ve toplam koltuk
 her zaman davetli sayısına yeter. Plan davetliyi karşılamıyorsa eksik koltuk
 sayısı uyarı olarak gösterilir.
+
+## Program raporu
+
+Salonun duvarına asılan haftalık program listesinin karşılığıdır. Sütunlar
+salonlar, satırlar seçilen tarih aralığındaki her gün; **boş günler de satır
+olarak durur**, çünkü çizelgenin işi "o gün ne var" kadar "o gün boş"
+bilgisini de vermektir.
+
+Her hücrenin üstünde renkli bir tarih bandı bulunur. Renk **Renk Ayarları**
+ekranındaki organizasyon türü renginden gelir; kına ve düğün için kendi
+renklerinizi tanımlayabilirsiniz. Renk tek başına bilgi taşımaz: tür bandın
+içine yazıyla da yazılır, böylece siyah beyaz çıktı ve renk körü kullanıcı
+çizelgeyi aynı şekilde okur.
+
+Aynı gün aynı salonda iki organizasyon varsa her biri kendi saat bandını alır
+(`13:00-17:00 DÜĞÜN`, `19:00-23:00 DÜĞÜN`). Saat girilmemişse bandda seans adı
+(`GÜNDÜZ` / `GECE`) yazar; uydurma bir saat basılmaz.
+
+Hücrede sırasıyla taraflar, davetli sayısı, menü ve hizmetler (`MENÜ-2+SU
+BÖREĞİ+SALATA`) ve varsa rezervasyon notu görünür.
+
+**Ek notlar.** Çizelgenin altındaki alana yazılan serbest notlar hem ekranda
+hem Word çıktısında görünür ve bu tarayıcıda saklanır.
+
+**Word çıktısı.** "Word indir" düğmesi ekrandakiyle aynı düzende bir `.docx`
+üretir. Dosya tarayıcıda kurulur; sunucuya hiçbir şey gönderilmez ve pakete
+harici bir kitaplık eklenmemiştir (`src/lib/docx.ts`, yaklaşık 200 satır).
+
+Rapor, **Rezervasyonlar** ekranındaki "Program raporu" düğmesinden de açılır;
+listede seçili tarih aralığı rapora taşınır.
+
+## Salon kiralama sözleşmesi
+
+Düzen işletmenin basılı sözleşmesini izler: üstte adres bloğu, ortada salon
+adı, solda bilgi sütunu (Tarih, Saat, Sözleşme No, Ad Soyad, TC, Gelin ve
+Damat, Adres, Davetli, Toplam, Ödeme, Bakiye), sağda menü içeriği, altta 16
+maddelik sözleşme şartları ve imza yerleri.
+
+**Boş kalan satır hiç basılmaz.** "TC : -" yazan bir sözleşme, doldurulmayı
+bekleyen bir form gibi görünür.
+
+Sağ sütundaki menü içeriği **Menüler** ekranındaki açıklama alanından gelir.
+Büyük harfle yazdığınız satırlar (`ANA YEMEK`, `TATLI`, `İÇECEKLER`) başlık
+sayılır ve kalın çıkar.
+
+Sözleşme şartları `src/data/sozlesme.ts` içindedir. Yetkili mahkeme maddesi
+işletmenin şehrinden üretilir; metne sabit bir il yazılmamıştır.
+
+> Sözleşme metni hukuki inceleme yerine geçmez. Yürürlüğe almadan önce
+> avukatınıza okutunuz.
+
+**Sözleşme numarası.** Yıl + sıra biçimindedir: 2026'nın ilk sözleşmesi
+`20261`, ikincisi `20262`. Numarayı veritabanı atar (`0014` göçündeki
+tetikleyici), istemci değil; panel ile mobil uygulama aynı numarayı iki kayda
+veremez. Yıl değişince sıra 1'den başlar, numaranın kendisi yılı taşıdığı için
+çakışma olmaz. Bir kayıt bir kez numara alır, sonradan değişmez.
 
 ## İş emri ve tedarikçiler
 

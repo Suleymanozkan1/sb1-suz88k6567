@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBusinesses } from '../lib/queries';
 import DemoNotice from '../components/DemoNotice';
 import {
-  IconAlert, IconBell, IconBuilding, IconCalendar, IconChart, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu, IconMessage, IconPalette, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
+  IconAlert, IconBell, IconBuilding, IconCalendar, IconChart, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu, IconMessage, IconPalette, IconPlus, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
 
 const NAV = [
@@ -30,7 +30,7 @@ const NAV = [
 ];
 
 export default function AppLayout() {
-  const { user, signOut, setActiveBusiness } = useAuth();
+  const { user, signOut, setActiveBusiness, can } = useAuth();
   const { data: businesses = [] } = useBusinesses();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -69,21 +69,43 @@ export default function AppLayout() {
           </button>
         </div>
 
-        {businesses.length > 1 && (
+        {/*
+          Aktif işletme bölümü tek işletmede de görünür. Önceden yalnızca
+          birden çok işletmesi olana açılıyordu; yeni işletmeyi buradan
+          eklemek isteyen kullanıcı hiçbir giriş noktası bulamıyordu.
+        */}
+        {active && (
           <div className="mb-4">
             <label htmlFor="active-business" className="mb-1 block text-xs text-white/75">
               Aktif işletme
             </label>
-            <select
-              id="active-business"
-              className="w-full rounded-md border border-white/20 bg-brand-dark px-2 py-2 text-sm text-white"
-              value={active?.id ?? ''}
-              onChange={(e) => { void setActiveBusiness(e.target.value); }}
-            >
-              {businesses.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
+            {businesses.length > 1 ? (
+              <select
+                id="active-business"
+                className="w-full rounded-md border border-white/20 bg-brand-dark px-2 py-2 text-sm text-white"
+                value={active.id}
+                onChange={(e) => { void setActiveBusiness(e.target.value); }}
+              >
+                {businesses.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            ) : (
+              <p
+                id="active-business"
+                className="rounded-md border border-white/20 bg-brand-dark px-2 py-2 text-sm text-white"
+              >
+                {active.name}
+              </p>
+            )}
+            {can('ayarlar.duzenle') && (
+              <Link
+                to="/panel/isletmeler?yeni=1"
+                className="mt-1.5 inline-flex items-center gap-1 text-xs text-white/75 hover:text-white"
+              >
+                <IconPlus size={14} /> Yeni işletme ekle
+              </Link>
+            )}
           </div>
         )}
 

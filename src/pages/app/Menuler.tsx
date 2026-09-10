@@ -129,9 +129,18 @@ export default function Menuler() {
             </div>
             <div className="md:col-span-2">
               <label htmlFor="menu-desc" className="field-label">Açıklama</label>
-              <input id="menu-desc" className="field-input" value={form.description}
-                placeholder="Çorba, ara sıcak, ana yemek, tatlı…"
+              {/*
+                Çok satırlı: bu metin sözleşmenin menü sütununa olduğu gibi
+                basılır. Büyük harfle yazılan satırlar (ANA YEMEK, TATLI…)
+                sözleşmede başlık olarak kalın görünür.
+              */}
+              <textarea id="menu-desc" rows={8} className="field-input" value={form.description}
+                placeholder={'ANA YEMEK\n- Et Kavurma\n- Tereyağlı Pirinç Pilavı\nTATLI\n- Dondurmalı Pasta'}
+                aria-describedby="menu-desc-hint"
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+              <p id="menu-desc-hint" className="mt-1 text-xs text-brand-muted">
+                Bu metin sözleşmenin menü sütununa olduğu gibi basılır. Başlıkları büyük harfle yazınız.
+              </p>
             </div>
             <label className="flex items-center gap-2 text-sm md:col-span-3">
               <input type="checkbox" checked={form.isActive}
@@ -170,7 +179,7 @@ export default function Menuler() {
                   {m.pricing === 'kisi_basi' ? '/ kişi' : 'sabit'}
                 </span>
               </p>
-              {m.description && <p className="mb-3 text-sm text-brand-muted">{m.description}</p>}
+              {m.description && <p className="mb-3 whitespace-pre-line text-sm text-brand-muted">{m.description}</p>}
 
               {m.pricing === 'kisi_basi' && (
                 <dl className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-xs">

@@ -88,7 +88,8 @@ function islem(c: Cagri, ad: string) {
 
 const REZ_SATIRI = {
   id: 'r1', code: 'SA-2026-0001', customer_name: 'Ayşe Yılmaz',
-  customer_phone: '5321112233', date: '2026-09-12', slot: 'Gece',
+  customer_phone: '5321112233', date: '2026-09-12',
+  start_time: '19:00:00', end_time: '23:00:00', slot: 'Gece',
   organization_type: 'Düğün', guest_count: 300, total_amount: 25_000_000,
   deposit: 6_000_000, status: 'Kesin Rezervasyon', halls: { name: 'Kristal Salon' },
 };
@@ -107,7 +108,7 @@ describe('rezervasyon eşlemesi', () => {
 
     expect(r).toEqual({
       id: 'r1', kod: 'SA-2026-0001', musteri: 'Ayşe Yılmaz', telefon: '5321112233',
-      tarih: '2026-09-12', seans: 'Gece', tur: 'Düğün', renk: '#47b2e4',
+      tarih: '2026-09-12', seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: '#47b2e4',
       salon: 'Kristal Salon', davetli: 300, toplam: 25_000_000,
       kapora: 6_000_000, tahsilat: 6_000_000, durum: 'Kesin Rezervasyon',
     });
@@ -240,7 +241,7 @@ describe('rezervasyon ekleme', () => {
   it('salon adını kimliğe çevirip sütun adlarıyla yazar', async () => {
     // Mobil form salonu adıyla seçtiriyor; telefonda kimlik gösteren bir
     // liste kullanıcıya hiçbir şey anlatmıyor.
-    durum.satirlar.halls = [{ id: 'h1' }];
+    durum.satirlar.halls = [{ id: 'h1', business_id: 'b1' }];
     durum.satirlar.reservations = [{ id: 'yeni' }];
 
     const id = await veri.rezervasyonEkle({
@@ -254,24 +255,40 @@ describe('rezervasyon ekleme', () => {
 
     const govde = islem(cagri('reservations'), 'insert')?.arg[0] as Record<string, unknown>;
     expect(govde).toMatchObject({
-      hall_id: 'h1', customer_name: 'Ayşe', customer_phone: '5321112233',
+      business_id: 'b1', hall_id: 'h1', customer_name: 'Ayşe', customer_phone: '5321112233',
       organization_type: 'Düğün', guest_count: 300,
       total_amount: 25_000_000, deposit: 6_000_000,
     });
   });
 
-  it('salon bulunamazsa kimliği boş bırakır', async () => {
-    durum.satirlar.halls = [];
+  it('sözleşme numarasını göndermez: veritabanı atar', async () => {
+    // Numara istemcide üretilseydi panel ile mobil aynı numarayı verebilirdi.
+    durum.satirlar.halls = [{ id: 'h1', business_id: 'b1' }];
     durum.satirlar.reservations = [{ id: 'yeni' }];
 
     await veri.rezervasyonEkle({
       musteri: 'Ayşe', telefon: '5321112233', tarih: '2026-09-12', seans: 'Gece',
-      tur: 'Düğün', salon: 'Olmayan Salon', davetli: 100,
-      toplam: 1000, kapora: 0, durum: 'Ön Rezervasyon',
+      tur: 'Düğün', salon: 'Kristal Salon', davetli: 300,
+      toplam: 25_000_000, kapora: 6_000_000, durum: 'Kesin Rezervasyon',
     });
 
     const govde = islem(cagri('reservations'), 'insert')?.arg[0] as Record<string, unknown>;
-    expect(govde.hall_id).toBeNull();
+    expect(govde).not.toHaveProperty('code');
+  });
+
+  it('salon bulunamazsa kayıt hiç açılmaz', async () => {
+    // business_id zorunlu sütun; salondan türetilemiyorsa insert zaten
+    // not-null ihlaliyle düşerdi. Anlaşılır bir hata vermek daha doğru.
+    durum.satirlar.halls = [];
+    durum.satirlar.reservations = [{ id: 'yeni' }];
+
+    await expect(veri.rezervasyonEkle({
+      musteri: 'Ayşe', telefon: '5321112233', tarih: '2026-09-12', seans: 'Gece',
+      tur: 'Düğün', salon: 'Olmayan Salon', davetli: 100,
+      toplam: 1000, kapora: 0, durum: 'Ön Rezervasyon',
+    })).rejects.toThrow('Seçilen salon bulunamadı.');
+
+    expect(cagri('reservations')).toBeUndefined();
   });
 });
 

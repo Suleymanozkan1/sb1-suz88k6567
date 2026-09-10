@@ -7,7 +7,7 @@
  */
 import { KEYS, read, remove, write } from '../storage';
 import { DEFAULT_COLOR_SETTINGS, seedIfEmpty } from '../seed';
-import { normalizeEmail, uid } from '../ids';
+import { nextContractCode, normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
@@ -247,6 +247,14 @@ export const localRepo: Repository = {
   },
 
   async saveReservation(reservation) {
+    // Veritabanındaki tetikleyicinin karşılığı: kod boşsa sıradaki
+    // sözleşme numarası atanır, dolu kod hiçbir zaman değiştirilmez.
+    if (!reservation.code.trim()) {
+      const kodlar = reservations()
+        .filter((r) => r.businessId === reservation.businessId)
+        .map((r) => r.code);
+      reservation = { ...reservation, code: nextContractCode(kodlar) };
+    }
     // Veritabanındaki benzersizlik kısıtının karşılığı: çakışma SALON bazındadır
     const conflict = reservations().find(
       (r) => r.hallId === reservation.hallId && r.date === reservation.date &&

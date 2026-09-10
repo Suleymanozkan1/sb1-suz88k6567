@@ -73,6 +73,15 @@ function toBusiness(row: Row): Business {
   };
 }
 
+/**
+ * Postgres `time` sütunu "19:00:00" döndürür; ekranlarda ve <input type="time">
+ * içinde saniye istenmez. Boş değerler undefined kalır.
+ */
+function saatiKirp(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value) return undefined;
+  return value.slice(0, 5);
+}
+
 function toReservation(row: Row): Reservation {
   return {
     id: String(row.id),
@@ -84,7 +93,11 @@ function toReservation(row: Row): Reservation {
     customerPhone: (row.customer_phone as string) ?? '',
     customerEmail: (row.customer_email as string) ?? undefined,
     secondPersonName: (row.second_person_name as string) ?? undefined,
+    secondPhone: (row.second_phone as string) ?? undefined,
+    identityNo: (row.identity_no as string) ?? undefined,
     date: (row.date as string) ?? '',
+    startTime: saatiKirp(row.start_time),
+    endTime: saatiKirp(row.end_time),
     slot: (row.slot as Reservation['slot']) ?? 'Gece',
     organizationType: (row.organization_type as Reservation['organizationType']) ?? 'Düğün',
     guestCount: Number(row.guest_count ?? 0),
@@ -104,10 +117,13 @@ function toReservation(row: Row): Reservation {
 function fromReservation(r: Reservation) {
   return {
     id: r.id, business_id: r.businessId, hall_id: r.hallId,
-    menu_id: r.menuId || null, code: r.code,
+    // Kod boşsa veritabanı tetikleyicisi sıradaki numarayı yazar.
+    menu_id: r.menuId || null, code: r.code || null,
     customer_name: r.customerName, customer_phone: r.customerPhone,
     customer_email: r.customerEmail || null, second_person_name: r.secondPersonName || null,
-    date: r.date, slot: r.slot, organization_type: r.organizationType,
+    second_phone: r.secondPhone || null, identity_no: r.identityNo || null,
+    date: r.date, start_time: r.startTime || null, end_time: r.endTime || null,
+    slot: r.slot, organization_type: r.organizationType,
     guest_count: r.guestCount, total_amount: r.totalAmount, deposit: r.deposit,
     currency: r.currency, status: r.status, color_key: r.colorKey,
     note: r.note || null, address: r.address || null, services: r.services,
