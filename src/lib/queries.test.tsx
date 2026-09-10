@@ -7,7 +7,7 @@ import * as sorgular from './queries';
 import { repo } from './repo';
 import { KEYS, clearAll, read, write } from './storage';
 import { uid } from './ids';
-import type { CashFlowEntry, Payment, Reservation, SmsConsent, User } from '../types';
+import type { CashFlowEntry, Payment, Reservation, SafeMovement, SmsConsent, User } from '../types';
 
 /**
  * Veri kancaları.
@@ -203,6 +203,14 @@ describe('okuma kancaları', () => {
       { id: 'c1', businessId: BIZ, kind: 'Gider', date: '2026-01-01', category: 'Kira', amount: 500, createdAt: '' },
     ] satisfies CashFlowEntry[]);
     await expect(veri(() => sorgular.useCashFlow())).resolves.toHaveLength(1);
+  });
+
+  it('çelik kasa hareketlerini okur', async () => {
+    write(KEYS.safeMovements, [{
+      id: 'k1', businessId: BIZ, date: '2026-01-01', direction: 'Giriş', amount: 500,
+      description: 'Gelir · Tahsilat', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
+    }] satisfies SafeMovement[]);
+    await expect(veri(() => sorgular.useSafeMovements())).resolves.toHaveLength(1);
   });
 
   it('sms kayıtlarını okur', async () => {
@@ -401,6 +409,20 @@ describe('yazma kancaları', () => {
 
     await yaz(() => sorgular.useDeleteCashFlow(), 'c1');
     expect(read<CashFlowEntry[]>(KEYS.cashflow, [])).toHaveLength(0);
+  });
+
+  it('çelik kasa hareketi ekler ve siler', async () => {
+    // Kasadaki para gelir/gider bakiyesinden ayrı bir defterde durur.
+    const hareket: SafeMovement = {
+      id: 'k1', businessId: BIZ, date: '2026-01-01', direction: 'Giriş', amount: 500,
+      description: 'Gelir · Tahsilat', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
+    };
+
+    await yaz(() => sorgular.useAddSafeMovement(), hareket);
+    expect(read<SafeMovement[]>(KEYS.safeMovements, [])).toHaveLength(1);
+
+    await yaz(() => sorgular.useDeleteSafeMovement(), 'k1');
+    expect(read<SafeMovement[]>(KEYS.safeMovements, [])).toHaveLength(0);
   });
 
   it('renk ayarlarını kaydeder', async () => {

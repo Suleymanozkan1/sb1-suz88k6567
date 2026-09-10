@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
-  Payment, Reservation, SmsLogEntry,
+  Payment, Reservation, SafeMovement, SmsLogEntry,
 } from '../types';
 
 export const keys = {
@@ -22,6 +22,7 @@ export const keys = {
   reservation: (id: string) => ['reservation', id] as const,
   payments: (businessId: string) => ['payments', businessId] as const,
   cashFlow: (businessId: string) => ['cashFlow', businessId] as const,
+  safeMovements: (businessId: string) => ['safeMovements', businessId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
   audit: (ownerId: string) => ['audit', ownerId] as const,
@@ -94,6 +95,16 @@ export function useCashFlow() {
   return useQuery({
     queryKey: keys.cashFlow(businessId),
     queryFn: () => repo.listCashFlow(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+/** Çelik kasa hareketleri. Kasa bakiyesinden ayrı bir defterdir. */
+export function useSafeMovements() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.safeMovements(businessId),
+    queryFn: () => repo.listSafeMovements(businessId),
     enabled: Boolean(businessId),
   });
 }
@@ -394,6 +405,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.reservations(businessId) });
     qc.invalidateQueries({ queryKey: keys.payments(businessId) });
     qc.invalidateQueries({ queryKey: keys.cashFlow(businessId) });
+    qc.invalidateQueries({ queryKey: keys.safeMovements(businessId) });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
     qc.invalidateQueries({ queryKey: keys.colors(businessId) });
     qc.invalidateQueries({ queryKey: keys.businesses(ownerId) });
@@ -451,6 +463,22 @@ export function useDeleteCashFlow() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => repo.deleteCashFlow(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useAddSafeMovement() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (movement: SafeMovement) => repo.addSafeMovement(movement),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteSafeMovement() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteSafeMovement(id),
     onSuccess: invalidate,
   });
 }

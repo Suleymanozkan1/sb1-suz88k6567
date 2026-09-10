@@ -157,6 +157,31 @@ export interface CashFlowEntry {
   createdAt: string;
 }
 
+/** Çelik kasa hareketinin yönü */
+export type SafeDirection = 'Giriş' | 'Çıkış';
+
+/**
+ * Çelik kasa (fiziksel kasa) hareketi.
+ *
+ * Kasa bakiyesi (gelir - gider) muhasebe hesabıdır; çelik kasa ise
+ * kasadaki gerçek paradır. Havaleyle gelen tahsilat kasaya girmez,
+ * kasadan alınıp bankaya yatırılan para kasadan çıkar ama gelir kaydı
+ * yerinde durur. Bu yüzden iki bakiye ayrı tutulur.
+ */
+export interface SafeMovement {
+  id: string;
+  businessId: string;
+  date: string;
+  direction: SafeDirection;
+  amount: number;
+  description: string;
+  /** Hareketi doğuran gelir/gider satırının türü */
+  sourceKind: 'cash_flow' | 'reservation';
+  /** cash_flow kimliği ya da "kapora:<id>" / "tahsilat:<id>" */
+  sourceId: string;
+  createdAt: string;
+}
+
 export interface Business {
   id: string;
   ownerId: string;

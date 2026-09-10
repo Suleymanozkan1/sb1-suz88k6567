@@ -187,6 +187,88 @@ test.describe('Kasa ve rezervasyon geliri', () => {
   });
 });
 
+test.describe('Çelik kasa', () => {
+  /**
+   * Kasa ekranını açar ve tablonun çizilmesini bekler.
+   *
+   * `count()` beklemez; sayım sayfa henüz boşken yapılırsa sıfır çıkar ve
+   * test ürün hatası yokken düşer.
+   */
+  async function kasaAc(page: Page) {
+    await page.goto('/panel/kasa');
+    await expect(page.getByRole('heading', { name: 'Gelir Gider Kayıtları' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Gelir ve gider kayıtları' })).toBeVisible();
+  }
+
+  test('kasa bakiyesinden ayrı bir kart olarak durur', async ({ page }) => {
+    await login(page);
+    await kasaAc(page);
+
+    // İki bakiye toplanmaz: biri muhasebe hesabı, diğeri kasadaki gerçek para.
+    await expect(page.getByText('Kasa Bakiyesi')).toBeVisible();
+    // Çelik kasa kartını özet satırından tanıyoruz; "Çelik Kasa" metni
+    // ayrıca tablo başlığında da geçiyor.
+    await expect(page.getByText(/^Giren .+ · Çıkan /)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Çelik Kasa Hareketleri' })).toBeVisible();
+  });
+
+  test('her gelir gider satırında iki düğme bulunur', async ({ page }) => {
+    await login(page);
+    await kasaAc(page);
+
+    const ekle = page.getByRole('button', { name: /^Çelik kasaya ekle:/ });
+    const cikar = page.getByRole('button', { name: /^Çelik kasadan çıkar:/ });
+    await expect(ekle.first()).toBeVisible();
+    expect(await ekle.count()).toBe(await cikar.count());
+  });
+
+  test('kasaya eklenen kayıt deftere düşer ve düğme kapanır', async ({ page }) => {
+    await login(page);
+    await kasaAc(page);
+
+    const defter = page.getByRole('table', { name: 'Çelik kasa hareketleri' });
+    await expect(defter).toBeVisible();
+    const oncekiSatir = await defter.locator('tbody tr').count();
+
+    const ekle = page.getByRole('button', { name: /^Çelik kasaya ekle:/ }).first();
+    await ekle.click();
+
+    // Aynı satır ikinci kez yazılamaz; çift sayım kasadaki parayı bozardı.
+    await expect(ekle).toBeDisabled();
+    await expect(defter.locator('tbody tr')).toHaveCount(oncekiSatir + 1);
+  });
+
+  test('kasadan çıkarılan kayıt bakiyeyi geri alır', async ({ page }) => {
+    await login(page);
+    await kasaAc(page);
+
+    // Kasaya girip bankaya yatırılan para: satırın kasaya net etkisi sıfır.
+    const satir = page.locator('table tbody tr').filter({
+      has: page.getByRole('button', { name: /^Çelik kasaya ekle:/ }),
+    }).first();
+    await satir.getByRole('button', { name: /^Çelik kasaya ekle:/ }).click();
+    await expect(satir.getByRole('button', { name: /^Çelik kasaya ekle:/ })).toBeDisabled();
+    await satir.getByRole('button', { name: /^Çelik kasadan çıkar:/ }).click();
+
+    await expect(satir.getByRole('button', { name: /^Çelik kasadan çıkar:/ })).toBeDisabled();
+    await expect(satir).toContainText('0,00 ₺');
+  });
+
+  test('yanlış işlenen hareket defterden silinir', async ({ page }) => {
+    await login(page);
+    await kasaAc(page);
+
+    const defter = page.getByRole('table', { name: 'Çelik kasa hareketleri' });
+    await expect(defter.locator('tbody tr').first()).toBeVisible();
+    const once = await defter.locator('tbody tr').count();
+
+    await defter.getByRole('button', { name: 'Çelik kasa hareketini sil' }).first().click();
+    await page.getByRole('button', { name: 'Evet, sil' }).click();
+
+    await expect(defter.locator('tbody tr')).toHaveCount(once - 1);
+  });
+});
+
 test.describe('İşletme ekleme', () => {
   test('kenar çubuğundaki bağlantı yeni işletme formunu açar', async ({ page }) => {
     await login(page);

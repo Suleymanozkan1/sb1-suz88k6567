@@ -7,7 +7,7 @@
 import { KEYS, read, write } from './storage';
 import { addDays, toIso, todayIso } from './format';
 import { DEFAULT_COLOR_SETTINGS, ORG_TO_COLOR_KEY, OWNER_PERMISSIONS } from '../data/constants';
-import type { Business, CashFlowEntry, Hall, Menu, Payment, Reservation, User, Vendor } from '../types';
+import type { Business, CashFlowEntry, Hall, Menu, Payment, Reservation, SafeMovement, User, Vendor } from '../types';
 
 export { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS };
 
@@ -324,6 +324,42 @@ export function seedIfEmpty(): void {
     });
   }
   write(KEYS.cashflow, flow);
+
+  /*
+    Çelik kasa tanıtım hareketleri.
+
+    Kasadaki para ile muhasebe bakiyesinin neden ayrı olduğunu bir bakışta
+    göstermek için üç örnek: nakit alınıp kasada duran bir gelir, kasaya
+    girip sonra bankaya yatırılan bir gelir (net etkisi sıfır) ve kasadan
+    ödenen bir gider.
+  */
+  const kasaHareketleri: SafeMovement[] = [];
+  const nakitGelir = flow.filter((f) => f.kind === 'Gelir').slice(0, 2);
+  const nakitGider = flow.find((f) => f.kind === 'Gider');
+
+  nakitGelir.forEach((f, i) => {
+    kasaHareketleri.push({
+      id: `kasa_seed_${i}_giris`, businessId, date: f.date, direction: 'Giriş',
+      amount: f.amount, description: `${f.category} · ${f.description ?? ''}`.trim(),
+      sourceKind: 'cash_flow', sourceId: f.id, createdAt: now,
+    });
+  });
+  // İlk gelir bankaya yatırıldı: kasaya girdi, sonra kasadan çıktı.
+  if (nakitGelir[0]) {
+    kasaHareketleri.push({
+      id: 'kasa_seed_0_cikis', businessId, date: nakitGelir[0].date, direction: 'Çıkış',
+      amount: nakitGelir[0].amount, description: 'Bankaya yatırıldı',
+      sourceKind: 'cash_flow', sourceId: nakitGelir[0].id, createdAt: now,
+    });
+  }
+  if (nakitGider) {
+    kasaHareketleri.push({
+      id: 'kasa_seed_gider', businessId, date: nakitGider.date, direction: 'Çıkış',
+      amount: nakitGider.amount, description: `${nakitGider.category} · kasadan ödendi`,
+      sourceKind: 'cash_flow', sourceId: nakitGider.id, createdAt: now,
+    });
+  }
+  write(KEYS.safeMovements, kasaHareketleri);
 
   write(KEYS.sms, [{
     id: 'sms_seed_0', businessId, to: '5321234567',
