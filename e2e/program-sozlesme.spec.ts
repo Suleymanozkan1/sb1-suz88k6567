@@ -59,17 +59,29 @@ test.describe('Program raporu', () => {
     await expect(page.getByRole('columnheader', { name: 'Zümrüt Salon' })).toBeVisible();
   });
 
-  test('tarih aralığı seçilince o günler listelenir', async ({ page }) => {
+  test('tarih aralığında yalnızca dolu günler listelenir', async ({ page }) => {
     await login(page);
     await page.goto('/panel/raporlar?tab=cizelge');
 
+    // Tohumda bu aralıkta yalnızca 9 Mart'ta bir düğün var.
     await page.locator('#rp-from').fill('2027-03-08');
     await page.locator('#rp-to').fill('2027-03-10');
 
-    // Boş günler de satır olarak durur; çizelge "o gün boş" bilgisini de verir.
-    await expect(page.getByText(/^08\.03\.2027 PAZARTESİ/).first()).toBeVisible();
-    await expect(page.getByText(/^10\.03\.2027 ÇARŞAMBA/).first()).toBeVisible();
-    await expect(page.getByText(/^11\.03\.2027/)).toHaveCount(0);
+    await expect(page.getByText(/^09\.03\.2027 SALI/).first()).toBeVisible();
+    await expect(page.getByText(/^08\.03\.2027/)).toHaveCount(0);
+    await expect(page.getByText(/^10\.03\.2027/)).toHaveCount(0);
+  });
+
+  test('kayıt bulunmayan aralıkta gün sayısını bildirir', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/raporlar?tab=cizelge');
+
+    await page.locator('#rp-from').fill('2035-01-01');
+    await page.locator('#rp-to').fill('2035-01-03');
+
+    // "Aralık seçilmedi" ile "aralık boş" ayrı iletiler; ikincisi kullanıcıyı
+    // tarih kutularına geri göndermemeli.
+    await expect(page.getByText('Seçilen 3 günün hiçbirinde organizasyon bulunmuyor.')).toBeVisible();
   });
 
   test('aynı gün aynı salondaki iki tören saat bandıyla ayrılır', async ({ page }) => {
