@@ -20,3 +20,6 @@ playwright-report
 # Sunum ekran görüntüleri (ss-yakala.mjs üretir)
 docs/ss/
 Sahra-Takip-Tanitim.pptx
+
+# Teslim için üretilen paketler (deponun kendi arşivi depoya girmemeli)
+*.zip
