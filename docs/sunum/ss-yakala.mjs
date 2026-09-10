@@ -107,22 +107,6 @@ const rid = await rezervasyon(page, { ad: 'Ayşe & Mert Yıldız', tarih: buAy(2
 // 28 satırlık tablosu slayta sığmıyor.
 const ridMasa = await rezervasyon(page, { ad: 'Ece & Kerem Aydın', tarih: buAy(28), kisi: 80, tutar: 55000, kapora: 15000, tur: 'Nişan' });
 
-// Talepler ekranı için siteden gerçek talepler gönderilir.
-for (const [ad, tel, mesaj] of [
-  ['Elif Demir',  '5321110011', '14 Haziran 2027 için 250 kişilik düğün organizasyonu düşünüyoruz. Fiyat bilgisi alabilir miyiz?'],
-  ['Burak Aslan', '5321110022', 'Nikâh sonrası kokteyl için salon müsaitliğinizi öğrenmek istiyorum.'],
-  ['Selin Kaya',  '5321110033', 'Kına gecesi için 120 kişilik menü seçeneklerinizi paylaşabilir misiniz?'],
-]) {
-  await page.goto(`${KOK}/iletisim`);
-  await page.getByLabel('Adınız Soyadınız').fill(ad);
-  await page.getByLabel('Telefon').fill(tel);
-  await page.getByLabel('E-posta').fill(`${tel}@ornek.com`);
-  await page.getByLabel('Mesajınız').fill(mesaj);
-  await page.getByRole('button', { name: /Mesajımı gönder/ }).click();
-  not('  · talep: ' + ad);
-  await page.waitForTimeout(250);
-}
-
 // İş emri, tedarikçi ve masa düzeni bölümleri boş görünmesin diye örnek
 // kayıt üzerinde gerçekten doldurulur.
 not('Örnek rezervasyon dolduruluyor…');
@@ -209,7 +193,6 @@ for (const [ad, yol] of [
   ['panel-tedarikciler','/panel/tedarikciler'],
   ['panel-raporlar',    '/panel/raporlar'],
   ['panel-kasa',        '/panel/kasa'],
-  ['panel-talepler',    '/panel/talepler'],
   ['panel-izin-yonetimi', '/panel/izinler'],
   ['panel-hatirlatmalar',  '/panel/hatirlatmalar'],
   ['panel-sms-kayitlari',  '/panel/sms'],

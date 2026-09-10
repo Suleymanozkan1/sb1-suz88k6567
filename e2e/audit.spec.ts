@@ -130,29 +130,3 @@ test('DENETIM: çıkış yapınca oturum kapanır ve panel korunur', async ({ pa
   await expect(page).toHaveURL(/\/$/);
 });
 
-test('DENETIM: talep kutusu yalnızca yöneticiye açık ve durumu değişir', async ({ page }) => {
-  await blockExternalRequests(page);
-
-  // Siteden gelen form kaldırıldı (tanıtım sayfaları yok); talep kaydı
-  // doğrudan depoya yazılıp panelin okuma ve durum değiştirme yolu ölçülür.
-  await page.goto('/');
-  await page.evaluate(() => {
-    const anahtar = 'dt:messages';
-    const liste = JSON.parse(localStorage.getItem(anahtar) ?? '[]');
-    liste.push({
-      id: 'denetim-talep', businessId: 'demo', name: 'Denetim Ziyaretçi',
-      email: 'ziyaretci@ornek.com', phone: '5320000123',
-      message: 'Fiyat bilgisi almak istiyorum.', source: 'İletişim formu',
-      status: 'Yeni', note: '', createdAt: new Date().toISOString(),
-    });
-    localStorage.setItem(anahtar, JSON.stringify(liste));
-  });
-
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
-  await page.getByRole('button', { name: 'Giriş Yap' }).click();
-  await expect(page).toHaveURL(/\/panel$/);
-
-  await page.goto('/panel/talepler');
-  await expect(page.getByText('Denetim Ziyaretçi')).toBeVisible();
-});

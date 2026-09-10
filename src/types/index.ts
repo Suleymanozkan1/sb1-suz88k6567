@@ -263,36 +263,6 @@ export interface SmsLogEntry {
   sentAt: string;
 }
 
-export type MessageKind = 'iletisim' | 'demo' | 'teklif';
-
-/** Talep kutusundaki durum; 'yeni' dışındaki her durumda işleyen ve zaman damgası bulunur. */
-export type MessageStatus = 'yeni' | 'islemde' | 'kapatildi';
-
-export interface ContactMessage {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  message: string;
-  kind: MessageKind;
-  status: MessageStatus;
-  note: string;
-  handledAt?: string;
-  createdAt: string;
-}
-
-export const MESSAGE_KIND_LABELS: Record<MessageKind, string> = {
-  iletisim: 'İletişim',
-  demo: 'Demo Talebi',
-  teklif: 'Salon Teklifi',
-};
-
-export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
-  yeni: 'Yeni',
-  islemde: 'İşlemde',
-  kapatildi: 'Kapatıldı',
-};
-
 export type InvoiceKind = 'e-Arsiv' | 'e-Fatura';
 export type InvoiceStatus =
   | 'taslak' | 'gonderiliyor' | 'gonderildi' | 'onaylandi' | 'reddedildi' | 'iptal';

@@ -7,9 +7,8 @@
  */
 import type { HatirlatmaKurali, Sablon } from '../sablon';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ContactMessage,
-  EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
-  Invoice, InvoiceKind, BuyerKind, MessageStatus, Hall, Menu, SeatingTable,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus,   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
+  Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
   EventTask, Vendor, ReservationVendor,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
 } from '../../types';
@@ -162,12 +161,6 @@ export interface Repository {
     note?: string;
   }): Promise<void>;
   deleteConsent(id: string): Promise<void>;
-
-  /* -- iletişim -------------------------------------------------------- */
-  addMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'status' | 'note' | 'handledAt'>): Promise<void>;
-  /** Talep kutusu: yalnızca yönetici okuyabilir (RLS). */
-  listMessages(): Promise<ContactMessage[]>;
-  setMessageStatus(id: string, status: MessageStatus, note: string): Promise<void>;
 
   /* -- denetim kaydı ---------------------------------------------------- */
   listAuditLog(limit: number): Promise<AuditEntry[]>;

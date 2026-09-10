@@ -24,7 +24,7 @@ slayttır.
 | Çekirdek | 3-10 | 10 dk | Takvim, rezervasyon, para, belgeler, organizasyon |
 | Mobil | 11-13 | 5 dk | Telefon uygulaması |
 | Hatırlatma ve iletişim | 14-16 | 6 dk | Taslak mesajlar, otomatik gönderim, SMS, İYS |
-| Para ve mevzuat | 17-19 | 5 dk | Kasa, raporlar, fatura, talepler |
+| Para ve mevzuat | 17-18 | 5 dk | Kasa, raporlar, fatura |
 | Yönetim ve altyapı | 20-23 | 5 dk | Yetkiler, altyapı, veri |
 | Kurulum ve maliyet | 24-26 | 4 dk | Ne gerekiyor, ne tutuyor |
 
