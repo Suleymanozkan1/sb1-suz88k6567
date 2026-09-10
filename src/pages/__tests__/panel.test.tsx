@@ -435,6 +435,46 @@ describe('Gelir gider kayıtları', () => {
     expect(screen.getAllByText('Rezervasyon').length).toBeGreaterThan(0);
   });
 
+  it('çelik kasa bakiyesi ayrı bir kart olarak durur', async () => {
+    seedIfEmpty();
+    renderPanel('/panel/kasa');
+
+    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+    // İki bakiye ayrı: muhasebe kasası ile kasadaki gerçek para toplanmaz.
+    // "Çelik Kasa" hem kartta hem hareket defteri başlığında geçiyor.
+    expect(screen.getByText('Kasa Bakiyesi')).toBeInTheDocument();
+    expect(screen.getByText('Çelik Kasa', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Çelik Kasa Hareketleri' })).toBeInTheDocument();
+  });
+
+  it('her satırda çelik kasa düğmeleri bulunur', async () => {
+    seedIfEmpty();
+    renderPanel('/panel/kasa');
+
+    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+    expect(screen.getAllByRole('button', { name: /^Çelik kasaya ekle:/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /^Çelik kasadan çıkar:/ }).length).toBeGreaterThan(0);
+  });
+
+  it('kasaya eklenen kayıt bakiyeyi büyütür ve düğme kapanır', async () => {
+    const user = userEvent.setup();
+    clearAll();
+    seedIfEmpty();
+    renderPanel('/panel/kasa');
+
+    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+    const ekle = screen.getAllByRole('button', { name: /^Çelik kasaya ekle:/ })[0];
+    await user.click(ekle);
+
+    // Aynı satır ikinci kez yazılamaz; çift sayım kasadaki parayı bozardı.
+    await waitFor(() => expect(
+      screen.getAllByRole('button', { name: /^Çelik kasaya ekle:/ })[0],
+    ).toBeDisabled());
+
+    const defter = screen.getByRole('table', { name: 'Çelik kasa hareketleri' });
+    expect(within(defter).getAllByRole('row').length).toBeGreaterThan(1);
+  });
+
   it('geçersiz tutarı reddeder', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/kasa');
@@ -457,7 +497,9 @@ describe('Gelir gider kayıtları', () => {
     const user = userEvent.setup();
     renderPanel('/panel/kasa');
     await user.selectOptions(await screen.findByLabelText('Tür filtresi'), 'Gider');
-    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
+    // Ekranda iki tablo var: gelir/gider kayıtları ve çelik kasa hareketleri.
+    const tablo = screen.getByRole('table', { name: 'Gelir ve gider kayıtları' });
+    const rows = within(tablo).getAllByRole('row').slice(1);
     rows.forEach((row) => expect(row.textContent).toContain('Gider'));
   });
 });

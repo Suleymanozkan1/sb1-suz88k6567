@@ -11,27 +11,27 @@ tek tek yazılıdır.
 | Katman | Test | Fonksiyon kapsamı | Satır kapsamı |
 |---|---|---|---|
 | `api/` (sunucu uçları) | 253 birim | **%100** (55/55) | %99,9 |
-| `src/lib/` (iş mantığı) | 320 birim | **%100** (251/251) | %99,7 |
-| `src/lib/repo/` (veri erişimi) | 213 birim | **%100** (166/166) | %99,5 |
+| `src/lib/` (iş mantığı) | 352 birim | **%100** (273/273) | %99,7 |
+| `src/lib/repo/` (veri erişimi) | 229 birim | **%100** (175/175) | %99,5 |
 | `worker/` (yönlendirme, cron) | 14 birim | **%100** (3/3) | %100 |
-| Ekranlar (React) | 49 tümleşik + 115 uçtan uca | akış bazlı, aşağıda | — |
+| Ekranlar (React) | 55 tümleşik + 121 uçtan uca | akış bazlı, aşağıda | — |
 | `mobil/src/` | 133 birim (2 atlandı) | %98,9 (`veri.ts`) | %97,4 |
-| Veritabanı (RLS, tetikleyici, fonksiyon) | 10 SQL paketi | — | — |
+| Veritabanı (RLS, tetikleyici, fonksiyon) | 11 SQL paketi | — | — |
 
-**Ölçülen 475 fonksiyonun 475'i çalıştırılıyor; testi olmayan fonksiyon
+**Ölçülen 497 fonksiyonun 497'si çalıştırılıyor; testi olmayan fonksiyon
 kalmadı.**
 
-Toplam: **885 web birim testi**, **133 mobil testi** (2'si atlandı),
-**115 uçtan uca test**, **10 SQL test paketi**.
+Toplam: **923 web birim testi**, **133 mobil testi** (2'si atlandı),
+**121 uçtan uca test**, **11 SQL test paketi**.
 
 ## 2. Çalıştırma
 
 ```bash
 npm run typecheck            # tsc, hata yok
 npm run lint                 # eslint, 0 hata
-npm test                     # 885 birim + tümleşik test
+npm test                     # 923 birim + tümleşik test
 npm run build                # üretim derlemesi
-npm run e2e                  # 115 Playwright testi (Chromium)
+npm run e2e                  # 121 Playwright testi (Chromium)
 
 cd mobil && npx tsc --noEmit && npx jest    # 133 mobil testi
 
@@ -74,6 +74,7 @@ gövdesinde ya da hata metninde geçmiyor.
 | `invoice.ts` | `invoice.test.ts` | KDV, yuvarlama, TCKN / VKN doğrulaması, fatura numarası |
 | `sablon.ts` | `sablon.test.ts` | Yer tutucu doldurma, GSM-7 indirgeme, SMS parça ölçümü |
 | `reports.ts` | `reports.test.ts`, `kasaGeliri.test.ts` | Rapor toplamları, CSV kaçışları, Excel için BOM; rezervasyondan türetilen kasa satırları (kapora + tahsilat, iptal edilenin dışarıda kalması, sahipsiz tahsilatın yok sayılması) |
+| `celikKasa.ts` | `celikKasa.test.ts` | Kasa bakiyesi, satır bazlı net, çift kayıt engeli, ters yönün yazılabilmesi, gelir/gider silinince hareketin düşmesi |
 | `program.ts` | `program.test.ts` | Çizelge kurulumu: yalnızca dolu günlerin satır olması, bir salonu boş olan günün atılmaması, aralıktaki gün sayısının ayrıca bildirilmesi, gündüz töreninin geceden önce gelmesi, aynı gün iki törenin ayrılması, iptal edilenin çizelgeye girmemesi |
 | `docx.ts` | `docx.test.ts` | ZIP yapısı (CRC32 referans değerleri, merkez dizin), XML kaçışları, boş hücrenin paragrafsız kalmaması, Word MIME türü |
 | `programDocx.ts` | `programDocx.test.ts` | Word çıktısı: renk dönüşümü, saat bandı, ek notlar bölümü, dosya adındaki tarih aralığı, ekranda görünen satırların birebir kâğıda inmesi |
@@ -117,7 +118,7 @@ hangi akışla kapsandığını gösterir.
 | Rezervasyonlar | Arama, filtre, yeni kayıt, düzenleme, silme kilidi |
 | Rezervasyon detayı | Tahsilat ekleme, kalan bakiye, tahsilatın kalanı aşamaması, hatırlatma taslağı |
 | Sözleşme / Makbuz | Çıktı görünümü, tutarların taşınması, on altı maddelik şartlar, menü içeriğinin sağ sütuna basılması, boş alanın hiç yazılmaması |
-| Kasa | Gelir / gider ekleme, listeye ve bakiyeye yansıma; rezervasyon tahsilatlarının sözleşme numarası ve taraflarla görünmesi, türetilmiş satırın silinememesi |
+| Kasa | Gelir / gider ekleme, listeye ve bakiyeye yansıma; rezervasyon tahsilatlarının sözleşme numarası ve taraflarla görünmesi, türetilmiş satırın silinememesi; çelik kasanın ayrı kart olarak durması, her satırdaki iki düğme, kasaya eklenince düğmenin kapanması, giriş-çıkış sonrası netin sıfırlanması, hareketin defterden silinmesi |
 | Faturalar | Fatura oluşturma, tutar hesabı, durum |
 | Raporlar | Sekme geçişi, toplamların kasa ve rezervasyon verisiyle tutarlılığı |
 | Program raporu | Salon sütunları, tarih aralığının çizelgeye yansıması, boş günlerin listelenmemesi, kayıt bulunmayan aralıkta gün sayısının bildirilmesi, aynı gün iki törenin saat bandıyla ayrılması, ek notların saklanması, Word indirme ve boş aralıkta düğmenin kapanması |
@@ -178,6 +179,7 @@ koşulduklarında birbirlerinin tohum verisiyle çakışırlar.
 | `08_is_emri_tedarikci_test.sql` | İş emri satırları, tedarikçi ataması, bağlı tedarikçinin silinememesi |
 | `09_hatirlatma_test.sql` | Vadesi gelen hatırlatmanın kuyruğa alınması, aynı hatırlatmanın ikinci kez gitmemesi, tutarın kapora dahil hesaplanması |
 | `10_dusurulen_tablolar_test.sql` | `0013` göçünün doğrulaması: düşmesi gerekenlerin düştüğü **ve** kullanılan hiçbir tabloya dokunulmadığı |
+| `12_celik_kasa_test.sql` | `0015` göçü: çift kayıt engeli, ters yönün yazılabilmesi, geçersiz tutarın reddi, tanımsız kaynak türünün reddi, güncellemeye kapalı olması, iki bakiyenin ayrı kalması, işletme silinince hareketlerin düşmesi |
 | `11_sozlesme_alanlari_ve_seri_test.sql` | `0014` göçü: dört alanın isteğe bağlı eklenmesi, hatalı TC'nin reddi, numaranın veritabanınca atanması, dokuzdan ona sayısal geçiş, güncellemede numaranın korunması, kimlik numarasının herkese açık sorguya sızmaması, sayacın yazmaya kapalı olması |
 
 ## 9. Kapsanmayanlar ve gerekçeleri

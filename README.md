@@ -69,7 +69,7 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | `/panel/rezervasyonlar/yeni`, `/:id`, `/:id/duzenle` | Detaylı rezervasyon kaydı, tahsilat yönetimi |
 | `/panel/rezervasyonlar/:id/sozlesme` | Yazdırılabilir salon kiralama sözleşmesi: bilgi sütunu, menü içeriği ve 16 maddelik şartlar |
 | `/panel/musteriler` | Rezervasyonlardan türetilen müşteri listesi |
-| `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi; rezervasyon tahsilatları sözleşme numarası ve taraflarla birlikte |
+| `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi, çelik kasa; rezervasyon tahsilatları sözleşme numarası ve taraflarla birlikte |
 | `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
 | `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
 | `/panel/salonlar` | Salon tanımları, bir işletmede birden çok salon |
@@ -140,7 +140,7 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
    `0009_nikah_yazimi.sql` → `0010_hatirlatma_sablonlari.sql` →
    `0011_kisa_hatirlatma_metinleri.sql` → `0012_hatirlatmada_kapora.sql` →
    `0013_kullanilmayan_tablolari_dusur.sql` →
-   `0014_sozlesme_alanlari_ve_seri.sql`
+   `0014_sozlesme_alanlari_ve_seri.sql` → `0015_celik_kasa.sql`
 
    Sıra önemlidir: `0006` ve `0008` bugün kullanılmayan iki tabloyu
    oluşturur, `0013` ikisini de düşürür. Aradaki göçler o tablolara
@@ -230,8 +230,9 @@ done
 | `09_hatirlatma_test.sql` | 14 | Otomatik hatırlatma, mükerrer gönderim engeli, kapora dahil tutar |
 | `10_dusurulen_tablolar_test.sql` | 9 | `0013` göçü: düşenler düştü, kullanılanlara dokunulmadı |
 | `11_sozlesme_alanlari_ve_seri_test.sql` | 9 | `0014` göçü: saat/TC alanları, sıralı sözleşme numarası, sayaç yazmaya kapalı |
+| `12_celik_kasa_test.sql` | 9 | `0015` göçü: çift kayıt engeli, ters yönün yazılabilmesi, geçersiz tutarın reddi, güncellemeye kapalı olması, iki bakiyenin ayrı kalması |
 
-Toplam **121 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
+Toplam **130 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
 `BASARISIZ:` ile başlayan bir hata görürseniz test gerçekten düşmüştür.
 
 `04_backup_restore_test.sql` yedeği temiz bir şemaya gerçekten geri yükler ve
@@ -521,6 +522,40 @@ işletmenin şehrinden üretilir; metne sabit bir il yazılmamıştır.
 tetikleyici), istemci değil; panel ile mobil uygulama aynı numarayı iki kayda
 veremez. Yıl değişince sıra 1'den başlar, numaranın kendisi yılı taşıdığı için
 çakışma olmaz. Bir kayıt bir kez numara alır, sonradan değişmez.
+
+## Çelik kasa
+
+İşletmenin bir de fiziksel kasası var ve içindeki para, gelir/gider
+kayıtlarından çıkan muhasebe bakiyesiyle aynı değil: havaleyle gelen
+tahsilat kasaya girmez, kasadan alınıp bankaya yatırılan para kasadan çıkar
+ama gelir kaydı yerinde durur.
+
+Bu yüzden çelik kasa **ayrı bir hareket defteridir**. Kasa bakiyesi
+(gelir − gider) hesabına hiçbir yerde karışmaz; iki bakiye Gelir/Gider
+ekranında yan yana durur ve çelik kasa kartı kendi simgesi ve kesikli
+çerçevesiyle ayrılır.
+
+**Düğmeler.** Gelir/gider tablosundaki her satırda "Ekle" ve "Çıkar"
+düğmeleri var; rezervasyondan türeyen tahsilat satırlarında da. Düğme,
+satırın kendi tutarını kasaya yazar. Kısmi tutar alınmaz: satırın anlamını
+bulanıklaştırır ve kasadaki parayı gelir/gider kaydından koparırdı.
+
+**Çift sayım engeli.** Bir satır kasaya en çok bir kez girer ve en çok bir
+kez çıkar; aynı yönde ikinci kayıt hem arayüzde hem veritabanında
+reddedilir. İki kez tıklamaktan doğan çift sayım, akşam sayımda tutmayan
+bir fark bırakırdı.
+
+Bir satır hem girip hem çıkabilir: nakit alınan para kasaya girer, ertesi
+gün bankaya yatırılınca kasadan çıkar. O satırın kasaya net etkisi sıfır
+olur ve tabloda `0,00 ₺` görünür.
+
+**Düzeltme.** Yanlış işlenen hareket, tablonun altındaki **Çelik Kasa
+Hareketleri** defterinden silinir; gelir/gider kaydına dokunulmaz.
+Hareketler güncellenemez (veritabanında `update` yetkisi verilmemiştir):
+düzeltmenin kendisi de defterde iz bırakmalıdır.
+
+Bir gelir/gider kaydı silinirse ona bağlı kasa hareketi de düşer; kalsaydı
+kasada kaynağı görünmeyen bir tutar dururdu.
 
 ## İş emri ve tedarikçiler
 

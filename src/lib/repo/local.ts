@@ -13,7 +13,7 @@ import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
   EventTask, Hall, Menu, Payment, Reservation, ReservationVendor,
-  SeatingTable, SmsConsent, SmsLogEntry, Vendor,
+  SafeMovement, SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   SmsQueueEntry, User,
 } from '../../types';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
@@ -26,6 +26,7 @@ function businesses(): Business[] { return read<Business[]>(KEYS.businesses, [])
 function reservations(): Reservation[] { return read<Reservation[]>(KEYS.reservations, []); }
 function payments(): Payment[] { return read<Payment[]>(KEYS.payments, []); }
 function cash(): CashFlowEntry[] { return read<CashFlowEntry[]>(KEYS.cashflow, []); }
+function safeMoves(): SafeMovement[] { return read<SafeMovement[]>(KEYS.safeMovements, []); }
 function consents(): SmsConsent[] { return read<SmsConsent[]>(KEYS.consents, []); }
 function queue(): SmsQueueEntry[] { return read<SmsQueueEntry[]>(KEYS.queue, []); }
 function invoices(): Invoice[] { return read<Invoice[]>(KEYS.invoices, []); }
@@ -234,6 +235,7 @@ export const localRepo: Repository = {
     write(KEYS.reservations, reservations().filter((r) => r.businessId !== id));
     write(KEYS.payments, payments().filter((p) => !removed.includes(p.reservationId)));
     write(KEYS.cashflow, cash().filter((c) => c.businessId !== id));
+    write(KEYS.safeMovements, safeMoves().filter((m) => m.businessId !== id));
   },
 
   async listReservations(businessId) {
@@ -324,7 +326,40 @@ export const localRepo: Repository = {
 
   async addCashFlow(entry) { write(KEYS.cashflow, [...cash(), entry]); },
 
-  async deleteCashFlow(id) { write(KEYS.cashflow, cash().filter((c) => c.id !== id)); },
+  async deleteCashFlow(id) {
+    write(KEYS.cashflow, cash().filter((c) => c.id !== id));
+    // Satır silinince ona bağlı çelik kasa hareketi de düşer; kalsaydı
+    // kasada kaynağı görünmeyen bir tutar dururdu.
+    write(KEYS.safeMovements, safeMoves().filter(
+      (m) => !(m.sourceKind === 'cash_flow' && m.sourceId === id),
+    ));
+  },
+
+  async listSafeMovements(businessId) {
+    return wait(safeMoves()
+      .filter((m) => m.businessId === businessId)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)));
+  },
+
+  async addSafeMovement(movement) {
+    // Veritabanındaki benzersizlik kısıtının karşılığı: bir satır aynı
+    // yönde ikinci kez kasaya yazılamaz.
+    const cift = safeMoves().find(
+      (m) => m.businessId === movement.businessId
+             && m.sourceKind === movement.sourceKind
+             && m.sourceId === movement.sourceId
+             && m.direction === movement.direction,
+    );
+    if (cift) {
+      throw new RepoError(`Bu kayıt çelik kasaya zaten ${movement.direction.toLocaleLowerCase('tr-TR')} olarak işlendi.`);
+    }
+    if (movement.amount <= 0) throw new RepoError('Çelik kasa tutarı sıfırdan büyük olmalıdır.');
+    write(KEYS.safeMovements, [...safeMoves(), movement]);
+  },
+
+  async deleteSafeMovement(id) {
+    write(KEYS.safeMovements, safeMoves().filter((m) => m.id !== id));
+  },
 
   async getColorSettings(businessId) {
     const map = read<Record<string, ColorSetting[]>>(KEYS.colors, {});
