@@ -342,18 +342,30 @@ export const localRepo: Repository = {
   },
 
   async addSafeMovement(movement) {
-    // Veritabanındaki benzersizlik kısıtının karşılığı: bir satır aynı
-    // yönde ikinci kez kasaya yazılamaz.
-    const cift = safeMoves().find(
-      (m) => m.businessId === movement.businessId
-             && m.sourceKind === movement.sourceKind
-             && m.sourceId === movement.sourceId
-             && m.direction === movement.direction,
-    );
-    if (cift) {
-      throw new RepoError(`Bu kayıt çelik kasaya zaten ${movement.direction.toLocaleLowerCase('tr-TR')} olarak işlendi.`);
-    }
     if (movement.amount <= 0) throw new RepoError('Çelik kasa tutarı sıfırdan büyük olmalıdır.');
+
+    // Veritabanındaki tetikleyicinin karşılığı: karar satırın netine bakar.
+    // Para kasadayken tekrar "ekle" çift sayımdır; kasada yokken "çıkar"
+    // kasayı eksiye düşürür. Girip çıktıktan sonra yeniden eklenebilir.
+    const net = safeMoves()
+      .filter((m) => m.businessId === movement.businessId
+                     && m.sourceKind === movement.sourceKind
+                     && m.sourceId === movement.sourceId)
+      .reduce((t, m) => t + (m.direction === 'Giriş' ? m.amount : -m.amount), 0);
+
+    if (movement.direction === 'Giriş') {
+      if (net > 0) {
+        throw new RepoError('Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.');
+      }
+    } else {
+      if (net <= 0) {
+        throw new RepoError('Bu kayıt çelik kasada değil; önce kasaya ekleyin.');
+      }
+      if (movement.amount > net) {
+        throw new RepoError('Çelik kasadan, o kayıt için kasaya giren tutardan fazlası çıkarılamaz.');
+      }
+    }
+
     write(KEYS.safeMovements, [...safeMoves(), movement]);
   },
 
