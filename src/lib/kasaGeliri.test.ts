@@ -12,7 +12,7 @@ import type { Payment, Reservation } from '../types';
 
 function rez(over: Partial<Reservation>): Reservation {
   return {
-    id: 'r1', businessId: 'b1', hallId: 'h1', code: '20261',
+    id: 'r1', businessId: 'b1', hallId: 'h1', code: '2026-1',
     customerName: 'Zuhal Rana', customerPhone: '5330000001',
     date: '2026-09-12', slot: 'Gece', organizationType: 'Düğün',
     guestCount: 300, totalAmount: 100000, deposit: 30000, currency: 'TL',
@@ -60,11 +60,11 @@ describe('reservationIncome', () => {
 
   it('tahsilatları sözleşme numarası ve taraflarla yazar', () => {
     const satirlar = reservationIncome(
-      [rez({ code: '202612', secondPersonName: 'Mustafa Sezgin' })],
+      [rez({ code: '2026-12', secondPersonName: 'Mustafa Sezgin' })],
       [odeme({})],
     );
     const tahsilat = satirlar.find((s) => s.category === 'Tahsilat')!;
-    expect(tahsilat.contractNo).toBe('202612');
+    expect(tahsilat.contractNo).toBe('2026-12');
     expect(tahsilat.parties).toBe('Zuhal Rana / Mustafa Sezgin');
     expect(tahsilat.customerName).toBe('Zuhal Rana');
     expect(tahsilat.method).toBe('Nakit');
@@ -109,7 +109,7 @@ describe('reservationIncome', () => {
 
   it('birden çok rezervasyonu birlikte toplar', () => {
     const satirlar = reservationIncome(
-      [rez({ id: 'a', code: '20261' }), rez({ id: 'b', code: '20262', deposit: 10000 })],
+      [rez({ id: 'a', code: '2026-1' }), rez({ id: 'b', code: '2026-2', deposit: 10000 })],
       [odeme({ id: 'p1', reservationId: 'a' }), odeme({ id: 'p2', reservationId: 'b', amount: 5000 })],
     );
     expect(satirlar.length).toBe(4);

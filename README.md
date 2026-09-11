@@ -182,12 +182,17 @@ Denetim kaydı (`audit_log`) bilerek korunur: düşen tablolara ait geçmiş
 satırlar "kim neyi ne zaman değiştirdi" sorusunun cevabıdır.
 
 `0014` rezervasyona dört isteğe bağlı alan ekler (`start_time`, `end_time`,
-`identity_no`, `second_phone`) ve sözleşme numarasını rastgele (`SA-2026-4821`)
-yerine yıl + sıra biçimine (`20261`, `20262`, …) geçirir. Numarayı artık
-veritabanı atar: `code` boş gönderilirse tetikleyici sıradaki numarayı yazar,
-böylece panel ile mobil uygulama aynı numarayı iki kayda veremez. **Mevcut
-kayıtların numarası değişmez**; basılmış sözleşmelerin üstündeki numara ile
-kayıt arasındaki bağ korunur.
+`identity_no`, `second_phone`) ve sözleşme numarasını rastgele bir koddan
+yıl + sıra biçimine geçirir; `0018` bu numaraya tire koyar: **`2026-1`,
+`2026-2`, …**. Tire, yıl ile sırayı gözle ayırıyor — tiresiz yazıldığında
+`20261` ile `202610` bir bakışta ayırt edilmiyordu.
+
+Numarayı veritabanı atar: `code` boş gönderilirse tetikleyici sıradaki
+numarayı yazar, böylece panel ile mobil uygulama aynı numarayı iki kayda
+veremez. Sayaç tiresiz yazılmış eski numaraları da diziye katar; aksi hâlde
+aynı yılın hem `20261` hem `2026-1` diye iki ayrı birinci sözleşmesi olurdu.
+**Mevcut kayıtların numarası değişmez**; basılmış sözleşmelerin üstündeki
+numara ile kayıt arasındaki bağ korunur.
 
 `identity_no` TC kimlik numarasıdır ve KVKK kapsamında kişisel veridir:
 yalnızca sözleşme çıktısında görünür, herkese açık kod doğrulama ekranına

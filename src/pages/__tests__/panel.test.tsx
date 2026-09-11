@@ -205,9 +205,9 @@ describe('Yeni rezervasyon formu', () => {
     await waitFor(async () => expect(await getReservations(BIZ)).toHaveLength(before + 1), { timeout: 4000 });
     const created = (await getReservations(BIZ)).find((r: Reservation) => r.customerName === 'Yeni Çift');
     expect(created?.totalAmount).toBe(120000);
-    // Sözleşme numarası yıl + sıra: tohumdaki eski biçimli kodlar diziyi
+    // Sözleşme numarası yıl-sıra: tohumdaki eski biçimli kodlar diziyi
     // etkilemez, ilk yeni kayıt yılın 1'incisidir.
-    expect(created?.code).toMatch(new RegExp(`^${new Date().getFullYear()}[0-9]{1,9}$`));
+    expect(created?.code).toMatch(new RegExp(`^${new Date().getFullYear()}-[0-9]{1,9}$`));
     const smsAfter = await getSmsLog(BIZ);
     expect(smsAfter.length).toBe(smsBefore + 1);
     expect(smsAfter[0].kind).toBe('Rezervasyon');

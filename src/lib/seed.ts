@@ -162,7 +162,7 @@ export function seedIfEmpty(): void {
   const paid: Payment[] = [];
 
   // Sözleşme numarası yıl başına 1'den başlar; tek bir sayaçla üretilirse
-  // 2027'nin ilk kaydı 20279 gibi görünürdü.
+  // 2027'nin ilk kaydı 2027-9 gibi görünürdü.
   const siralar = new Map<number, number>();
   const siraAl = (yil: number) => {
     const sonraki = (siralar.get(yil) ?? 0) + 1;
@@ -195,7 +195,7 @@ export function seedIfEmpty(): void {
       businessId: i % 5 === 4 ? 'biz_demo2' : businessId,
       hallId: i % 5 === 4 ? 'hall_demo3' : i % 3 === 1 ? 'hall_demo2' : 'hall_demo1',
       menuId: i % 5 === 4 ? 'menu_demo4' : i % 4 === 3 ? 'menu_demo3' : 'menu_demo1',
-      code: `${d.getFullYear()}${siraAl(d.getFullYear())}`,
+      code: `${d.getFullYear()}-${siraAl(d.getFullYear())}`,
       customerName: name, customerPhone: phone, customerEmail: '',
       // Çift isimli kayıtlarda ikinci kişi sözleşmede "Gelin ve Damat"
       // satırında görünür.
@@ -279,7 +279,7 @@ export function seedIfEmpty(): void {
       businessId,
       hallId: h.hall,
       menuId: h.menu,
-      code: `${new Date().getFullYear()}${siraAl(new Date().getFullYear())}`,
+      code: `${new Date().getFullYear()}-${siraAl(new Date().getFullYear())}`,
       customerName: h.ad,
       customerPhone: h.tel,
       secondPersonName: h.ikinci,
@@ -363,7 +363,7 @@ export function seedIfEmpty(): void {
 
   write(KEYS.sms, [{
     id: 'sms_seed_0', businessId, to: '5321234567',
-    body: 'Sayin Ahmet & Elif Yilmaz, rezervasyonunuz kayit edilmistir. Kod: SA-2026-1000',
+    body: 'Sayin Ahmet & Elif Yilmaz, rezervasyonunuz kayit edilmistir. Kod: 2026-1',
     kind: 'Rezervasyon' as const, sentAt: addDays(todayIso(), -30) + 'T10:00:00.000Z',
   }]);
 }

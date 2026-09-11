@@ -3,7 +3,7 @@ import { degerler, doldur, hazirla, olc, sadelestir } from './sablon';
 import type { Payment, Reservation } from '../types';
 
 const rezervasyon: Reservation = {
-  id: 'r1', businessId: 'b1', code: 'SA-2026-4141',
+  id: 'r1', businessId: 'b1', code: '2026-41',
   customerName: 'Ayşe Yılmaz', customerPhone: '5321234567',
   date: '2026-09-16', slot: 'Gece', organizationType: 'Düğün',
   guestCount: 320, totalAmount: 210000, deposit: 60000, currency: 'TL',
@@ -82,7 +82,7 @@ describe('rezervasyondan değer çıkarma', () => {
   it('tarih ve müşteri bilgisini taşır', () => {
     const d = degerler(rezervasyon, [], 'Grand Sahra', 'Kristal Salon');
     expect(d['musteri']).toBe('Ayşe Yılmaz');
-    expect(d['kod']).toBe('SA-2026-4141');
+    expect(d['kod']).toBe('2026-41');
     expect(d['salon']).toBe('Kristal Salon');
     expect(d['seans']).toBe('Gece');
   });
@@ -162,7 +162,7 @@ describe('varsayılan hatırlatma metinleri', () => {
   const ENKOTU = {
     musteri: 'Şeyma Nur & Muhammed Çağatay Yıldırım',
     tarih: '16.09.2026', seans: 'Gündüz', salon: 'Zümrüt Balo Salonu',
-    kod: 'SA-2026-4141', tutar: '210.000,00', odenen: '60.000,00', kalan: '150.000,00',
+    kod: '2026-41', tutar: '210.000,00', odenen: '60.000,00', kalan: '150.000,00',
   };
 
   it.each(SABLONLAR)('tek SMSe sığar: %s', (govde) => {

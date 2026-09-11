@@ -67,7 +67,7 @@ describe('Kod Doğrulama', () => {
       status: 'Kesin Rezervasyon', colorKey: 'dugun', services: [], createdAt: '', updatedAt: '',
     });
     const code = kayit.code;
-    expect(code).toMatch(/^[0-9]{5,}$/);
+    expect(code).toMatch(/^[0-9]{4}-[0-9]{1,9}$/);
 
     const user = userEvent.setup();
     renderAt('/kod-dogrulama', <KodDogrulama />);
