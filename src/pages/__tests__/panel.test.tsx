@@ -500,6 +500,64 @@ describe('Gelir gider kayıtları', () => {
     expect(cikar()).toBeEnabled();
   });
 
+  /**
+   * Çelik kasa kartındaki tutarı okur.
+   *
+   * Etiketin hemen ardındaki paragraf değeri taşıyor; kartı metinden
+   * bulmak, iki kasa kartı yan yana dururken hangisine baktığımızı
+   * belirsiz bırakırdı.
+   */
+  function kasaKartiTutari(): number {
+    const etiket = screen.getByText('Çelik Kasa', { selector: 'p' });
+    const deger = etiket.nextElementSibling?.textContent ?? '';
+    return Number(deger.replace(/[^0-9,-]/g, '').replace(/\./g, '').replace(',', '.'));
+  }
+
+  it('gider satırı kasadan öder ve kasayı azaltır', async () => {
+    // Bildirilen hata: nakit ödenen gider "Ekle" ile kasayı ARTIRIYORDU.
+    const user = userEvent.setup();
+    clearAll();
+    seedIfEmpty();
+    renderPanel('/panel/kasa');
+
+    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+
+    // Gider satırında düğmeler "Öde" ve "Geri al"; "Ekle" hiç yok.
+    const ode = screen.getAllByRole('button', { name: /^Çelik kasadan öde:/ })[0];
+    const geriAl = screen.getAllByRole('button', { name: /^Çelik kasaya geri al:/ })[0];
+    expect(ode).toBeEnabled();
+    expect(geriAl).toBeDisabled();
+
+    const kasaOnce = kasaKartiTutari();
+    await user.click(ode);
+
+    await waitFor(() => expect(
+      screen.getAllByRole('button', { name: /^Çelik kasadan öde:/ })[0],
+    ).toBeDisabled());
+    expect(kasaKartiTutari()).toBeLessThan(kasaOnce);
+    expect(screen.getAllByRole('button', { name: /^Çelik kasaya geri al:/ })[0]).toBeEnabled();
+  });
+
+  it('kasadan ödenen gider geri alınınca kasa eski hâline döner', async () => {
+    const user = userEvent.setup();
+    clearAll();
+    seedIfEmpty();
+    renderPanel('/panel/kasa');
+
+    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+    const kasaOnce = kasaKartiTutari();
+
+    await user.click(screen.getAllByRole('button', { name: /^Çelik kasadan öde:/ })[0]);
+    await waitFor(() => expect(
+      screen.getAllByRole('button', { name: /^Çelik kasaya geri al:/ })[0],
+    ).toBeEnabled());
+    await user.click(screen.getAllByRole('button', { name: /^Çelik kasaya geri al:/ })[0]);
+
+    await waitFor(() => expect(kasaKartiTutari()).toBe(kasaOnce));
+    // Tur tamamlandı: gider yeniden kasadan ödenebilir.
+    expect(screen.getAllByRole('button', { name: /^Çelik kasadan öde:/ })[0]).toBeEnabled();
+  });
+
   it('geçersiz tutarı reddeder', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/kasa');

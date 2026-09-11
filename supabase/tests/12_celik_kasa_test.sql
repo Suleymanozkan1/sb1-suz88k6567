@@ -11,6 +11,7 @@
 --   6. İşletme silinince hareketleri de düşüyor mu?
 --   7. Hareketler güncellenebiliyor mu? (güncellenmemeli)
 --   8. Kasa bakiyesi gelir/gider bakiyesinden ayrı mı?
+--   9. GİDER satırı kasadan mı çıkıyor? (kasaya girmemeli)
 --
 -- İkinci madde asıl sebep: iki kez tıklamaktan doğan çift sayım, kasadaki
 -- parayı olduğundan farklı gösterir ve akşam sayımda tutmayan bir fark
@@ -202,6 +203,77 @@ do $$ begin
           'Kapanis', 'cash_flow', current_setting('test.cf'));
 end $$;
 
+\echo '=== 3e) GIDER satiri kasadan CIKMALI, kasaya GIRMEMELI ==='
+do $$
+declare v_gider uuid; v_hata boolean := false; v_net numeric;
+begin
+  -- Bildirilen hata: nakit odenen maas "kasaya ekle" ile kasayi ARTIRIYORDU.
+  insert into public.cash_flow (business_id, kind, date, category, amount, description)
+  values (current_setting('test.biz')::uuid, 'Gider', date '2030-05-11', 'Personel Maaş', 7500, 'Maas')
+  returning id into v_gider;
+  perform set_config('test.gider', v_gider::text, false);
+
+  -- Giderin dogal yonu cikis; ilk hareket olarak giris kabul edilmemeli.
+  begin
+    insert into public.safe_movements (business_id, date, direction, amount, description, source_kind, source_id)
+    values (current_setting('test.biz')::uuid, date '2030-05-11', 'Giriş', 7500,
+            'Gider · Personel Maaş', 'cash_flow', v_gider::text);
+  exception when sqlstate 'DT001' then v_hata := true; end;
+  if not v_hata then
+    raise exception 'BASARISIZ: gider kasaya giris olarak yazildi';
+  end if;
+
+  -- Dogru hareket: kasadan cikis.
+  insert into public.safe_movements (business_id, date, direction, amount, description, source_kind, source_id)
+  values (current_setting('test.biz')::uuid, date '2030-05-11', 'Çıkış', 7500,
+          'Gider · Personel Maaş', 'cash_flow', v_gider::text);
+
+  select coalesce(sum(case when direction = 'Giriş' then amount else -amount end), 0) into v_net
+  from public.safe_movements
+  where business_id = current_setting('test.biz')::uuid and source_id = v_gider::text;
+
+  if v_net <> -7500 then
+    raise exception 'BASARISIZ: gider kasayi % kadar etkiledi, -7500 bekleniyordu', v_net;
+  end if;
+end $$;
+
+\echo '=== 3f) Odenmis gider IKINCI KEZ odenemez, GERI ALINABILIR ==='
+do $$
+declare v_hata boolean := false; v_net numeric;
+begin
+  begin
+    insert into public.safe_movements (business_id, date, direction, amount, source_kind, source_id)
+    values (current_setting('test.biz')::uuid, date '2030-05-11', 'Çıkış', 7500,
+            'cash_flow', current_setting('test.gider'));
+  exception when sqlstate 'DT001' then v_hata := true; end;
+  if not v_hata then
+    raise exception 'BASARISIZ: ayni gider kasadan iki kez dusuldu';
+  end if;
+
+  -- Geri alinandan fazlasi olmamali.
+  v_hata := false;
+  begin
+    insert into public.safe_movements (business_id, date, direction, amount, source_kind, source_id)
+    values (current_setting('test.biz')::uuid, date '2030-05-12', 'Giriş', 9000,
+            'cash_flow', current_setting('test.gider'));
+  exception when sqlstate 'DT001' then v_hata := true; end;
+  if not v_hata then
+    raise exception 'BASARISIZ: gider kasaya fazlasiyla geri alindi';
+  end if;
+
+  insert into public.safe_movements (business_id, date, direction, amount, description, source_kind, source_id)
+  values (current_setting('test.biz')::uuid, date '2030-05-12', 'Giriş', 7500,
+          'Gider iadesi', 'cash_flow', current_setting('test.gider'));
+
+  select coalesce(sum(case when direction = 'Giriş' then amount else -amount end), 0) into v_net
+  from public.safe_movements
+  where business_id = current_setting('test.biz')::uuid
+    and source_id = current_setting('test.gider');
+  if v_net <> 0 then
+    raise exception 'BASARISIZ: geri alma neti sifirlamadi (%)', v_net;
+  end if;
+end $$;
+
 \echo '=== 4) Sifir ve eksi tutar REDDEDILMELI ==='
 do $$
 declare v_sifir boolean := false; v_eksi boolean := false;
@@ -273,8 +345,10 @@ begin
   select coalesce(sum(case when direction = 'Giriş' then amount else -amount end), 0) into v_kasa
   from public.safe_movements where business_id = current_setting('test.biz')::uuid;
 
-  -- Muhasebe 5000 (tek gelir), kasa 30000 (kapora girdi, digeri girip cikti).
-  if v_muhasebe <> 5000 or v_kasa <> 30000 then
+  -- Muhasebe -2500 (5000 gelir - 7500 gider), kasa 30000: kapora kasada
+  -- durur, elle girilen gelir girip cikmis, gider odenip geri alinmistir.
+  -- Iki sayinin birbirini tutmamasi bu tasarimin ta kendisi.
+  if v_muhasebe <> -2500 or v_kasa <> 30000 then
     raise exception 'BASARISIZ: bakiyeler beklenen degil (muhasebe %, kasa %)', v_muhasebe, v_kasa;
   end if;
 end $$;

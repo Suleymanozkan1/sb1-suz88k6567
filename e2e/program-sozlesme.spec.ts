@@ -284,6 +284,42 @@ test.describe('Çelik kasa', () => {
     await expect(defter.locator('tbody tr')).toHaveCount(once + 3);
   });
 
+  test('gider kasadan ödenir, kasayı azaltır ve geri alınabilir', async ({ page }) => {
+    await login(page);
+    await kasaAc(page);
+
+    // Bildirilen hata: nakit ödenen gider "Ekle" ile kasayı ARTIRIYORDU ve
+    // kasadan düşülemiyordu. Gider satırında artık "Ekle" düğmesi yok.
+    const satir = page.locator('table tbody tr').filter({
+      has: page.getByRole('button', { name: /^Çelik kasadan öde:/ }),
+    }).first();
+    const ode = satir.getByRole('button', { name: /^Çelik kasadan öde:/ });
+    const geriAl = satir.getByRole('button', { name: /^Çelik kasaya geri al:/ });
+
+    await expect(ode).toBeEnabled();
+    await expect(geriAl).toBeDisabled();
+    await expect(satir.getByRole('button', { name: /^Çelik kasaya ekle:/ })).toHaveCount(0);
+
+    // Kartın bakiyesi ikinci paragrafta; "Giren / Çıkan" özeti her hareketle
+    // değiştiği için karşılaştırma yalnızca bakiye üzerinden yapılıyor.
+    const kasaBakiye = page.locator('.card').filter({ hasText: 'Çelik Kasa' })
+      .locator('p').nth(1);
+    const tutar = async () => Number(
+      (await kasaBakiye.innerText()).replace(/[^0-9,-]/g, '').replace(/\./g, '').replace(',', '.'),
+    );
+    const once = await tutar();
+
+    await ode.click();
+    await expect(ode).toBeDisabled();
+    await expect(geriAl).toBeEnabled();
+    // Asıl kontrol: gider kasayı AZALTMALI.
+    expect(await tutar()).toBeLessThan(once);
+
+    await geriAl.click();
+    await expect(ode).toBeEnabled();
+    expect(await tutar()).toBe(once);
+  });
+
   test('yanlış işlenen hareket defterden silinir', async ({ page }) => {
     await login(page);
     await kasaAc(page);
