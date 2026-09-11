@@ -154,6 +154,58 @@ export function slotReport(reservations: Reservation[], balance: BalanceLookup):
   return [...map.entries()].map(([slot, list]) => ({ slot, ...summarize(list, balance) }));
 }
 
+export interface ChannelRow extends Totals {
+  /** Kanal adı; kaydedilmemişse "Belirtilmemiş". */
+  channel: string;
+  detail: string;
+  /** Toplam kayıt içindeki payı, yüzde. */
+  share: number;
+}
+
+/** Kanalı kaydedilmemiş rezervasyonlar raporda bu başlık altında toplanır. */
+export const KANAL_BELIRTILMEMIS = 'Belirtilmemiş';
+
+/**
+ * Müşteri bize hangi kanaldan ulaştı raporu.
+ *
+ * "Yıl sonunda 100 düğünün kaçı Instagram'dan geldi" sorusunun cevabı.
+ *
+ * Kanalı boş bırakılmış kayıtlar gizlenmiyor, "Belirtilmemiş" olarak
+ * sayılıyor: gizlenseler yüzdeler yalnızca doldurulmuş kayıtlar üzerinden
+ * hesaplanır ve Instagram gerçekte olduğundan güçlü görünürdü. Belirtilmemiş
+ * satırının kendisi de bir bilgidir -- alanın ne kadar doldurulduğunu söyler.
+ *
+ * Referans ve "Diğer" kanallarında açıklama ayrı bir satır yapmıyor: 40
+ * farklı tavsiye edenin adı 40 satırlık bir rapor üretirdi. Açıklamalar tek
+ * satırda toplanıp yan sütunda gösteriliyor.
+ */
+export function channelReport(reservations: Reservation[], balance: BalanceLookup): ChannelRow[] {
+  const map = new Map<string, Reservation[]>();
+  reservations.forEach((r) => {
+    const kanal = r.sourceChannel ?? KANAL_BELIRTILMEMIS;
+    const list = map.get(kanal) ?? [];
+    list.push(r);
+    map.set(kanal, list);
+  });
+
+  const toplamAdet = reservations.length;
+  return [...map.entries()]
+    .map(([channel, list]) => {
+      const detaylar = [...new Set(
+        list.map((r) => r.sourceDetail?.trim()).filter((d): d is string => Boolean(d)),
+      )];
+      return {
+        channel,
+        detail: detaylar.join(', '),
+        share: toplamAdet > 0 ? (list.length / toplamAdet) * 100 : 0,
+        ...summarize(list, balance),
+      };
+    })
+    // Çok getiren kanal başta. Eşitlikte ciroya bakılıyor; iki kanal aynı
+    // sayıda kayıt getirdiyse hangisinin daha değerli olduğu budur.
+    .sort((a, b) => b.count - a.count || b.total - a.total);
+}
+
 /**
  * Kasa ekranında görünen, rezervasyondan türetilmiş gelir satırı.
  *

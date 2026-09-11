@@ -61,6 +61,12 @@ export const KEYS = {
   cashflow: 'cashflow',
   /** Çelik kasa (fiziksel kasa) hareket defteri */
   safeMovements: 'celik-kasa',
+  /** Müşteri adayları */
+  leads: 'musteri-adaylari',
+  /** Adayların iletişim geçmişi */
+  leadMessages: 'aday-mesajlari',
+  /** Adayların durum değişiklikleri */
+  leadStatusHistory: 'aday-durum-gecmisi',
   colors: 'colors',
   sms: 'sms',
   consents: 'consents',

@@ -1322,3 +1322,117 @@ describe('listeleme eşlemeleri', () => {
     expect(ikinci.cost).toBe(0);
   });
 });
+
+describe('müşteri adayları', () => {
+  it('satırı ekranın beklediği alanlara çevirir', async () => {
+    yanitla('customer_leads', { data: [{
+      id: 'l1', business_id: 'b1', name: 'Ömer Ay', phone: '5332642537',
+      email: null, guest_count: 1000, event_date: null,
+      event_date_text: 'Mayıs ilk hafta', organization_type: 'Düğün',
+      source: 'WhatsApp', source_detail: null, status: 'Aranmadı',
+      assigned_to: null, next_followup_at: null, last_contact_at: null,
+      reservation_id: null, note: null,
+      created_at: '2026-09-11T15:00:00Z', updated_at: '2026-09-11T15:00:00Z',
+    }] });
+
+    const [l] = await repo.listLeads('b1');
+
+    expect(l).toMatchObject({
+      id: 'l1', name: 'Ömer Ay', phone: '5332642537', guestCount: 1000,
+      eventDateText: 'Mayıs ilk hafta', source: 'WhatsApp', status: 'Aranmadı',
+    });
+    // Boş alanlar undefined değil boş metin: ekran her zaman bir şey basıyor.
+    expect(l.email).toBe('');
+    expect(l.assignedTo).toBeUndefined();
+  });
+
+  it('eksik kişi sayısını null bırakır, sıfır yapmaz', async () => {
+    // Sıfır yapılsaydı "0 kişi" diye bir aday görünürdü.
+    yanitla('customer_leads', { data: [{ id: 'l1', business_id: 'b1', guest_count: null }] });
+    const [l] = await repo.listLeads('b1');
+    expect(l.guestCount).toBeNull();
+  });
+
+  it('yalnızca kendi işletmesinin adaylarını ister', async () => {
+    await repo.listLeads('b1');
+    expect(islem(cagri('customer_leads'), 'eq')?.arg).toEqual(['business_id', 'b1']);
+  });
+
+  it('kaydederken sütun adlarına çevirir', async () => {
+    yanitla('customer_leads', { data: { id: 'l1', business_id: 'b1' } });
+    await repo.saveLead({
+      id: 'l1', businessId: 'b1', name: 'Ömer Ay', phone: '5332642537', email: '',
+      guestCount: 1000, eventDate: '', eventDateText: 'Mayıs ilk hafta',
+      organizationType: 'Düğün', source: 'WhatsApp', sourceDetail: '',
+      status: 'Aranmadı', nextFollowupAt: '', lastContactAt: '', note: '',
+      createdAt: '', updatedAt: '',
+    });
+    const govde = islem(cagri('customer_leads'), 'upsert')?.arg[0] as Record<string, unknown>;
+    expect(govde).toMatchObject({
+      business_id: 'b1', name: 'Ömer Ay', phone: '5332642537',
+      event_date_text: 'Mayıs ilk hafta', source: 'WhatsApp', status: 'Aranmadı',
+    });
+    // Boş tarih null gider; '' bir tarih değil.
+    expect(govde.event_date).toBeNull();
+    expect(govde.next_followup_at).toBeNull();
+  });
+
+  it('aynı telefondaki ikinci adayı anlaşılır metinle reddeder', async () => {
+    // 23505: benzersiz indeks. Bu bir hata değil, tam da engellenmek istenen
+    // durum; çağıran mevcut kaydı kullanmalı.
+    yanitla('customer_leads', { error: { code: '23505', message: 'duplicate key' } });
+    await expect(repo.saveLead({
+      id: 'l1', businessId: 'b1', name: '', phone: '5332642537', email: '',
+      guestCount: null, eventDate: '', eventDateText: '', organizationType: '',
+      source: 'WhatsApp', sourceDetail: '', status: 'Aranmadı',
+      nextFollowupAt: '', lastContactAt: '', note: '', createdAt: '', updatedAt: '',
+    })).rejects.toThrow(/zaten var/);
+  });
+
+  it('iletişim geçmişini eskiden yeniye ister', async () => {
+    await repo.listLeadMessages('l1');
+    expect(islem(cagri('customer_lead_messages'), 'order')?.arg)
+      .toEqual(['created_at', { ascending: true }]);
+  });
+
+  it('durum geçmişini yeniden eskiye ister', async () => {
+    await repo.listLeadStatusHistory('l1');
+    expect(islem(cagri('customer_lead_status_history'), 'order')?.arg)
+      .toEqual(['created_at', { ascending: false }]);
+  });
+
+  it('hataları kendi metniyle çevirir', async () => {
+    yanitla('customer_leads', { error: HATA });
+    yanitla('customer_lead_messages', { error: HATA });
+    await expect(repo.listLeads('b1')).rejects.toThrow('Müşteri adayları alınamadı.');
+    await expect(repo.deleteLead('l1')).rejects.toThrow('Müşteri adayı silinemedi.');
+    await expect(repo.listLeadMessages('l1')).rejects.toThrow('İletişim geçmişi alınamadı.');
+  });
+});
+
+describe('rezervasyon ulaşım kanalı', () => {
+  it('kanalı ve açıklamayı sütunlara çevirir', async () => {
+    yanitla('reservations', { data: [{
+      id: 'r1', business_id: 'b1', source_channel: 'Referans', source_detail: 'Ayşe Yılmaz',
+    }] });
+    const [r] = await repo.listReservations('b1');
+    expect(r.sourceChannel).toBe('Referans');
+    expect(r.sourceDetail).toBe('Ayşe Yılmaz');
+  });
+
+  it('kanal seçilmemişse null yazar', async () => {
+    yanitla('reservations', { data: [{ id: 'r1', business_id: 'b1' }] });
+    await repo.saveReservation({
+      id: 'r1', businessId: 'b1', hallId: 'h1', code: '2026-1',
+      customerName: 'Ayşe', customerPhone: '5321112233', date: '2026-09-12',
+      slot: 'Gece', organizationType: 'Düğün', guestCount: 300,
+      totalAmount: 250000, deposit: 60000, currency: 'TL',
+      status: 'Kesin Rezervasyon', colorKey: 'dugun', services: [],
+      createdAt: '', updatedAt: '', sourceChannel: undefined, sourceDetail: '  ',
+    });
+    const govde = islem(cagri('reservations'), 'upsert')?.arg[0] as Record<string, unknown>;
+    expect(govde.source_channel).toBeNull();
+    // Yalnızca boşluktan ibaret açıklama da boş sayılır.
+    expect(govde.source_detail).toBeNull();
+  });
+});

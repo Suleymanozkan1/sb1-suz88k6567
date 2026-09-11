@@ -18,6 +18,8 @@ import Raporlar from '../app/Raporlar';
 import RenkAyarlari from '../app/RenkAyarlari';
 import Musteriler from '../app/Musteriler';
 import SmsKayitlari from '../app/SmsKayitlari';
+import MusteriAdaylari from '../app/MusteriAdaylari';
+import MusteriAdayiDetay from '../app/MusteriAdayiDetay';
 import UyeGirisi from '../UyeGirisi';
 
 import { clearAll, KEYS, write } from '../../lib/storage';
@@ -57,6 +59,8 @@ function renderPanel(path: string) {
             <Route path="renk-ayarlari" element={<RenkAyarlari />} />
             <Route path="musteriler" element={<Musteriler />} />
             <Route path="sms" element={<SmsKayitlari />} />
+            <Route path="musteri-adaylari" element={<MusteriAdaylari />} />
+            <Route path="musteri-adaylari/:id" element={<MusteriAdayiDetay />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -668,5 +672,106 @@ describe('SMS kayıtları', () => {
     renderPanel('/panel/sms');
     await user.selectOptions(await screen.findByLabelText('Mesaj türü'), 'Doğrulama');
     expect(await screen.findByText('SMS kaydı bulunamadı.')).toBeInTheDocument();
+  });
+});
+
+describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
+  it('kanal raporu sekmesi kanalları ve payları gösterir', async () => {
+    seedIfEmpty();
+    renderPanel('/panel/raporlar?tab=kanal');
+
+    expect(await screen.findByText('Ulaşım kanalı')).toBeInTheDocument();
+    expect(await screen.findByText('Instagram')).toBeInTheDocument();
+    // Kanalı boş bırakılan kayıtlar gizlenmiyor; payları bozmasın diye sayılıyor.
+    expect(screen.getByText('Belirtilmemiş')).toBeInTheDocument();
+    expect(screen.getAllByText(/^%\d/).length).toBeGreaterThan(0);
+  });
+
+  it('yeni rezervasyon formunda kanal seçilebilir', async () => {
+    renderPanel('/panel/rezervasyonlar/yeni');
+    const secim = await screen.findByLabelText('Bize nereden ulaştı?');
+    expect(secim).toBeInTheDocument();
+    expect(within(secim as HTMLSelectElement).getByRole('option', { name: 'Düğün.com' }))
+      .toBeInTheDocument();
+  });
+
+  it('Diğer seçilip açıklama yazılmazsa kayıt reddedilir', async () => {
+    const user = userEvent.setup();
+    seedIfEmpty();
+    renderPanel('/panel/rezervasyonlar/yeni');
+
+    await screen.findByLabelText('Bize nereden ulaştı?');
+    // Kanal dışındaki alanlar doğru doldurulmuş olmalı ki düşen tek kural
+    // kanal açıklaması olsun.
+    await user.type(document.getElementById('customerName')!, 'Kanal Denemesi');
+    await user.type(document.getElementById('customerPhone')!, '5321112233');
+    await user.clear(document.getElementById('guestCount')!);
+    await user.type(document.getElementById('guestCount')!, '200');
+    await user.clear(document.getElementById('totalAmount')!);
+    await user.type(document.getElementById('totalAmount')!, '100000');
+    await user.selectOptions(screen.getByLabelText('Bize nereden ulaştı?'), 'Diğer');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    expect(await screen.findByText('Diğer seçildiğinde nereden ulaştığını yazınız.'))
+      .toBeInTheDocument();
+  });
+
+  it('müşteri adayları ekranı adayları ve durumlarını gösterir', async () => {
+    seedIfEmpty();
+    renderPanel('/panel/musteri-adaylari');
+
+    expect(await screen.findByRole('heading', { name: 'Müşteri Adayları' })).toBeInTheDocument();
+    expect(screen.getByText('Ömer Ay')).toBeInTheDocument();
+    expect(screen.getAllByText('Aranmadı').length).toBeGreaterThan(0);
+  });
+
+  it('geciken takip listede vurgulanır', async () => {
+    // Gecikmiş iş, günlük işin içinde kaybolmamalı.
+    seedIfEmpty();
+    renderPanel('/panel/musteri-adaylari');
+    await screen.findByRole('heading', { name: 'Müşteri Adayları' });
+    expect(screen.getByText('Takip tarihi geçti.')).toBeInTheDocument();
+  });
+
+  it('durum süzgeci listeyi daraltır', async () => {
+    const user = userEvent.setup();
+    seedIfEmpty();
+    renderPanel('/panel/musteri-adaylari');
+    await screen.findByRole('heading', { name: 'Müşteri Adayları' });
+
+    await user.selectOptions(screen.getByLabelText('Durum filtresi'), 'Ulaşılamadı');
+    await waitFor(() => expect(screen.queryByText('Ömer Ay')).not.toBeInTheDocument());
+    expect(screen.getByText('Elif Kara')).toBeInTheDocument();
+  });
+
+  it('aday kartında durum değiştirilince geçmişe işlenir', async () => {
+    const user = userEvent.setup();
+    clearAll();
+    seedIfEmpty();
+    renderPanel('/panel/musteri-adaylari/lead_seed_1');
+
+    await screen.findByRole('heading', { name: 'Ömer Ay' });
+    await user.selectOptions(screen.getByLabelText('Durum'), 'Arandı');
+
+    // Kim, ne zaman, neyden neye: geçmiş tetikleyiciyle yazılıyor.
+    expect(await screen.findByText(/Durum "Aranmadı" → "Arandı"/)).toBeInTheDocument();
+  });
+
+  it('WhatsApp\'ta Aç bağlantısı wa.me adresine gider', async () => {
+    // Bu Cloud API değil: tarayıcıda konuşmayı açar, mesajı personel yazar.
+    seedIfEmpty();
+    renderPanel('/panel/musteri-adaylari/lead_seed_1');
+
+    const bag = await screen.findByRole('link', { name: /WhatsApp'ta Aç/ });
+    expect(bag).toHaveAttribute('href', 'https://wa.me/905332642537');
+  });
+
+  it('dashboard müşteri takip özetini gösterir', async () => {
+    seedIfEmpty();
+    renderPanel('/panel');
+
+    expect(await screen.findByRole('heading', { name: 'Müşteri takip' })).toBeInTheDocument();
+    expect(screen.getByText('Bugün aranacak')).toBeInTheDocument();
+    expect(screen.getByText('Geciken takip')).toBeInTheDocument();
   });
 });

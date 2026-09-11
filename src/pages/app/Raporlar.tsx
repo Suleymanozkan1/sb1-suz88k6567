@@ -5,7 +5,10 @@ import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { useBusinesses, useHalls, useMenus, useReservationsWithBalances } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
-import { balanceReport, downloadCsv, monthReport, programReport, slotReport, summarize, toCsv, withinRange } from '../../lib/reports';
+import {
+  balanceReport, channelReport, downloadCsv, monthReport, programReport,
+  slotReport, summarize, toCsv, withinRange,
+} from '../../lib/reports';
 import { addDays, formatDate, formatMoney, formatNumber, formatPhone, todayIso } from '../../lib/format';
 import { buildProgram, programIsEmpty } from '../../lib/program';
 import { downloadProgramDocx } from '../../lib/programDocx';
@@ -13,7 +16,7 @@ import ProgramCizelgesi from '../../components/ProgramCizelgesi';
 import { KEYS, read, write } from '../../lib/storage';
 import { IconDownload, IconPrint } from '../../components/Icons';
 
-type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans';
+type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans' | 'kanal';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'cizelge', label: 'Program raporu' },
@@ -23,6 +26,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'ay', label: 'Ay bazlı rapor' },
   { key: 'bakiye', label: 'Alacak bakiyesi' },
   { key: 'seans', label: 'Gündüz / Gece' },
+  { key: 'kanal', label: 'Ulaşım kanalı' },
 ];
 
 const TAB_KEYS = TABS.map((t) => t.key);
@@ -59,6 +63,7 @@ export default function Raporlar() {
   const months = useMemo(() => monthReport(scoped, balance), [scoped, balance]);
   const balances = useMemo(() => balanceReport(scoped, balance), [scoped, balance]);
   const slots = useMemo(() => slotReport(scoped, balance), [scoped, balance]);
+  const channels = useMemo(() => channelReport(scoped, balance), [scoped, balance]);
 
   const aktifIsletmeAdi =
     businesses.find((b) => b.id === user?.activeBusinessId)?.name ?? businesses[0]?.name ?? 'Program';
@@ -96,6 +101,14 @@ export default function Raporlar() {
         balances.map((b) => [
           b.reservation.code, formatDate(b.reservation.date), b.reservation.customerName,
           formatPhone(b.reservation.customerPhone), b.reservation.totalAmount, b.paid, b.remaining,
+        ]),
+      );
+    } else if (tab === 'kanal') {
+      csv = toCsv(
+        ['Kanal', 'Adet', 'Pay (%)', 'Açıklama', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan'],
+        channels.map((k) => [
+          k.channel, k.count, k.share.toFixed(1), k.detail,
+          k.guests, k.total, k.collected, k.remaining,
         ]),
       );
     } else {
@@ -319,7 +332,7 @@ export default function Raporlar() {
               </table>
             </div>
           )
-        ) : (
+        ) : tab === 'seans' ? (
           <Table
             headers={['Seans', 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan']}
             rows={slots.map((s) => [
@@ -327,6 +340,26 @@ export default function Raporlar() {
               formatMoney(s.total, currency), formatMoney(s.collected, currency), formatMoney(s.remaining, currency),
             ])}
           />
+        ) : (
+          <>
+            <Table
+              headers={['Kanal', 'Adet', 'Pay', 'Açıklama', 'Davetli', 'Toplam', 'Tahsilat']}
+              rows={channels.map((k) => [
+                k.channel, formatNumber(k.count), `%${k.share.toFixed(1)}`,
+                k.detail || '-', formatNumber(k.guests),
+                formatMoney(k.total, currency), formatMoney(k.collected, currency),
+              ])}
+            />
+            {/*
+              Kanalı boş bırakılmış kayıtlar gizlenmiyor. Gizlenselerdi
+              yüzdeler yalnızca doldurulmuş kayıtlar üzerinden hesaplanır ve
+              Instagram gerçekte olduğundan güçlü görünürdü.
+            */}
+            <p className="mt-3 text-xs text-brand-muted">
+              Kanalı kaydedilmemiş rezervasyonlar &quot;Belirtilmemiş&quot; satırında sayılır.
+              Bu satırın büyüklüğü, alanın ne kadar doldurulduğunu gösterir.
+            </p>
+          </>
         )}
       </section>
     </QueryBoundary>

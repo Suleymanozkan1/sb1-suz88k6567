@@ -29,6 +29,8 @@ const Musteriler = lazy(() => import('./pages/app/Musteriler'));
 const Isletmeler = lazy(() => import('./pages/app/Isletmeler'));
 const Kullanicilar = lazy(() => import('./pages/app/Kullanicilar'));
 const SmsKayitlari = lazy(() => import('./pages/app/SmsKayitlari'));
+const MusteriAdaylari = lazy(() => import('./pages/app/MusteriAdaylari'));
+const MusteriAdayiDetay = lazy(() => import('./pages/app/MusteriAdayiDetay'));
 const Ayarlar = lazy(() => import('./pages/app/Ayarlar'));
 const DenetimKaydi = lazy(() => import('./pages/app/DenetimKaydi'));
 const IzinYonetimi = lazy(() => import('./pages/app/IzinYonetimi'));
@@ -106,6 +108,8 @@ export default function App() {
             <Route path="hatirlatmalar" element={<Hatirlatmalar />} />
             <Route path="tedarikciler" element={<Tedarikciler />} />
             <Route path="sms" element={<SmsKayitlari />} />
+            <Route path="musteri-adaylari" element={<MusteriAdaylari />} />
+            <Route path="musteri-adaylari/:id" element={<MusteriAdayiDetay />} />
             <Route path="izinler" element={<IzinYonetimi />} />
             <Route path="denetim" element={<DenetimKaydi />} />
             <Route path="sistem" element={<SistemDurumu />} />

@@ -562,6 +562,135 @@ düzeltmenin kendisi de defterde iz bırakmalıdır.
 Bir gelir/gider kaydı silinirse ona bağlı kasa hareketi de düşer; kalsaydı
 kasada kaynağı görünmeyen bir tutar dururdu.
 
+## Ulaşım kanalı ve kanal raporu
+
+Rezervasyon formunda **"Bize nereden ulaştı?"** alanı var: Instagram,
+Düğün.com, Google, Referans, Diğer. Referansta tavsiye edenin adı, "Diğer"de
+açıklama yazılır; açıklama **Diğer için zorunludur** — raporda "Diğer 23
+kayıt" satırını görüp içine bakamamak, alanı hiç tutmamakla aynı kapıya
+çıkar.
+
+Kanal serbest metin değil sabit bir listedir: serbest metin "Instagram",
+"instagram", "İnstagram" diye üç ayrı kanal üretip yıl sonu raporunu
+anlamsız kılardı.
+
+`Raporlar → Ulaşım kanalı` sekmesi kanal başına adet, pay, davetli, ciro ve
+tahsilatı veriyor; CSV olarak da iniyor. Kanalı boş bırakılmış kayıtlar
+gizlenmiyor, **"Belirtilmemiş"** olarak sayılıyor: gizlenselerdi yüzdeler
+yalnızca doldurulmuş kayıtlar üzerinden hesaplanır ve Instagram gerçekte
+olduğundan güçlü görünürdü. O satırın büyüklüğü ayrıca alanın ne kadar
+doldurulduğunu söylüyor.
+
+Alan hem panelde hem mobil uygulamada var.
+
+## WhatsApp Business bağlantısı
+
+İşletmenin WhatsApp numarasına yazılan mesajlar `Panel → Müşteri Adayları`
+ekranına düşer. Mesaj çözümlenir (ad, telefon, e-posta, tarih, kişi sayısı,
+organizasyon türü) ve bir **müşteri adayı** açılır — durumu `Aranmadı`.
+
+**Aynı numaradan gelen ikinci mesaj yeni bir aday AÇMAZ**, mevcut adayın
+iletişim geçmişine eklenir. Yoksa "bu müşteri daha önce arandı mı" sorusu
+cevapsız kalırdı. Eşleştirme telefona, yoksa e-postaya bakar; mesajı
+gönderen numara metinde yazandan güvenilir sayılır.
+
+Mevcut adayın dolu alanları **ezilmez**: personelin elle düzelttiği bir adı,
+gelen mesajdaki çözümleme yanlışıyla bozmak kaydı kötüleştirirdi. Yalnızca
+boş alanlar doldurulur.
+
+### Takip
+
+Her adayın bir **durumu** (Aranmadı → Arandı → … → Rezervasyona Döndü),
+bir **sorumlu personeli** ve bir **sonraki takip tarihi** var. Durum
+değişiklikleri veritabanı tetikleyicisiyle geçmişe yazılır — kim, ne zaman,
+neyden neye. İstemci bu kaydı atlayamaz.
+
+İletişim geçmişi silinmez ve düzeltilemez: düzeltilebilen bir geçmiş, geçmiş
+değildir. Yetkiler de buna göre: kullanıcı mesaj ekler, düzeltemez ve
+silemez; durum geçmişini yalnızca okur.
+
+Dashboard'daki **Müşteri takip** kutuları (yeni, bugün aranacak, geciken
+takip, ulaşılamayan, tekrar aranacak, teklif gönderilen, rezervasyona dönen,
+olumsuz) listeye süzgeçle gider. Geciken takip ile bugün aranacak ayrı
+duruyor: ikisi tek sayıda toplanınca gecikmiş iş, günlük işin içinde
+kaybolur.
+
+### Rezervasyona dönüşüm
+
+`Rezervasyona Dönüştür` düğmesi adayın bilgilerini rezervasyon formuna
+taşır; bilgiler yeniden yazılmaz. Kayıt açılınca aday `Rezervasyona Döndü`
+olur ve rezervasyona bağlanır, böylece dönüşüm takip edilebilir. Araya bir
+taslak rezervasyon konmuyor: vazgeçilen her adayda yarım bir kayıt kalırdı.
+
+Çözülemeyen tarih ifadesi ("Mayıs ilk hafta") nota geçiyor; bilgi
+kaybolmuyor.
+
+Çözümleme satır **sırasına değil içeriğine** bakar. Sıraya güvenmek iki
+yerde kırılıyordu: araya bir fiyat sorusu girdiğinde "dördüncü satır tarih"
+kuralı bozuluyor, telefonu unutup e-postayı önce yazan müşteri bütün
+alanları bir kaydırıyordu.
+
+Çözümleyici emin olamadığını **uydurmuyor**, boş bırakıp ham metni not
+olarak taşıyor. "Mayısın ilk haftası" gibi gün taşımayan bir ifade tarihe
+çevrilmiyor: uydurulan bir gün, salonun o gün dolu sanılmasına yol açardı.
+Mesajın aslı her talepte açılabilir durumda duruyor.
+
+### Kurulum (Meta tarafı — sizde)
+
+1. [Meta for Developers](https://developers.facebook.com/) üzerinde bir
+   uygulama açın ve **WhatsApp** ürününü ekleyin.
+2. Sahra'nın sabit numarasını WhatsApp Business hesabına bağlayıp
+   doğrulayın. Numara başka bir WhatsApp hesabında kayıtlıysa önce oradan
+   düşürülmesi gerekir.
+3. Webhook adresi olarak `https://<alanadınız>/api/whatsapp` verin,
+   **Verify token** alanına kendi belirlediğiniz uzun bir dizeyi yazın ve
+   `messages` alanına abone olun.
+4. Aynı dizeyi sunucuda `WHATSAPP_VERIFY_TOKEN`, uygulamanın **App Secret**
+   değerini `WHATSAPP_APP_SECRET` olarak tanımlayın.
+5. Panelde numarayı işletmeye bağlayın: Meta'nın verdiği
+   **Phone number ID** değeri `whatsapp_accounts` tablosuna işletmeyle
+   birlikte yazılır. Bu eşleme olmadan gelen mesaj kaydedilmez — hangi
+   işletmeye ait olduğu bilinmeyen satır kimsenin göremeyeceği bir kayıt
+   olurdu.
+
+### WhatsApp Web ile Cloud API aynı şey değildir
+
+İkisi mimaride ayrı duruyor ve karıştırılmamalı:
+
+| | WhatsApp Web (`wa.me`) | Cloud API (`/api/whatsapp-gonder`) |
+|---|---|---|
+| Ne yapar | Tarayıcıda konuşmayı açar | Sunucudan mesaj gönderir |
+| Mesajı kim yazar | Personel | Program |
+| Ücret | Yok | Konuşma başına ücretli |
+| Zaman kısıtı | Yok | **24 saatlik hizmet penceresi** |
+| Kurulum | Gerekmez | Meta onayı + kalıcı jeton |
+
+Aday kartındaki **"WhatsApp'ta Aç"** düğmesi `wa.me` bağlantısıdır — API
+değildir.
+
+**24 saat kuralı:** müşterinin son mesajından sonraki 24 saat içinde serbest
+metin gönderilebilir. Pencere kapandıysa yalnızca Meta'nın onayladığı bir
+şablon gönderilebilir; serbest metin denemesi reddedilir. Uç nokta pencereyi
+kontrol edip kapalıysa `409` ile açıkça bildiriyor — sessizce düşen bir
+mesaj, gönderildi sanılır ve müşteri cevapsız bekler.
+
+`WHATSAPP_TOKEN` ve `WHATSAPP_PHONE_ID` yalnızca mesaj **göndermek** için
+gerekir; mesaj almak ikisi olmadan da çalışır.
+
+### Güvenlik
+
+Webhook adresi herkese açıktır; Meta'nın ulaşabilmesi için başka türlüsü
+mümkün değil. Bu yüzden gelen her isteğin `x-hub-signature-256` imzası
+`WHATSAPP_APP_SECRET` ile doğrulanır ve karşılaştırma sabit zamanlı yapılır.
+İmza doğrulanmasaydı isteyen istediği kadar sahte talep yazar, kanal raporu
+da rezervasyon listesi de çöple dolardı. `WHATSAPP_APP_SECRET` tanımlı
+değilse uç nokta hiç çalışmaz.
+
+**KVKK:** aday kaydında ve mesajlarda ad, telefon ve e-posta bulunur —
+kişisel veridir. Mesajın aslı da saklanır, çünkü çözümleme yanlış yaptığında
+doğrusu ancak aslına bakılarak bulunur. Aydınlatma metnine işlendi; aday
+işletme tarafından silinebilir, silinince geçmişi de düşer.
+
 ## İş emri ve tedarikçiler
 
 **Etkinlik iş emri.** Organizasyon gününün saat saat planıdır: hangi iş, ne

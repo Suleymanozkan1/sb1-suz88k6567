@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
@@ -7,11 +7,14 @@ import { errorMessage } from '../../lib/authHelpers';
 import { kurusToLira, menuTotalKurus } from '../../lib/seating';
 import {
   useHalls, useMenus, useReservation, useReservations, useSaveReservation, useSendSms,
+  useLead, useSaveLead,
 } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, todayIso } from '../../lib/format';
-import { ORGANIZATION_TYPES, ORG_TO_COLOR_KEY, SERVICE_OPTIONS } from '../../data/constants';
-import type { OrganizationType, Reservation, ReservationStatus, SessionSlot } from '../../types';
+import { LEAD_CHANNELS, ORGANIZATION_TYPES, ORG_TO_COLOR_KEY, SERVICE_OPTIONS } from '../../data/constants';
+import type {
+  LeadChannel, OrganizationType, Reservation, ReservationStatus, SessionSlot,
+} from '../../types';
 
 const STATUSES: ReservationStatus[] = ['Ön Rezervasyon', 'Kesin Rezervasyon', 'Tamamlandı', 'İptal'];
 
@@ -35,6 +38,8 @@ interface FormState {
   status: ReservationStatus;
   note: string;
   address: string;
+  sourceChannel: LeadChannel | '';
+  sourceDetail: string;
   services: string[];
 }
 
@@ -58,6 +63,8 @@ const EMPTY: FormState = {
   status: 'Kesin Rezervasyon',
   note: '',
   address: '',
+  sourceChannel: '',
+  sourceDetail: '',
   services: [],
 };
 
@@ -77,6 +84,34 @@ export default function RezervasyonForm() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [conflictWarning, setConflictWarning] = useState('');
   const [saveError, setSaveError] = useState('');
+
+  /*
+    WhatsApp talebinden gelen alanlar.
+
+    Talep bir taslak rezervasyon olarak yazılmıyor: vazgeçilen her talepte
+    yarım bir kayıt kalırdı. Alanlar adres satırında taşınıp forma
+    dolduruluyor, kaydeden kişi görüp onaylıyor.
+  */
+  const [aramaParam] = useSearchParams();
+  const adayId = aramaParam.get('aday') ?? '';
+  const { data: aday } = useLead(adayId || undefined);
+  const adayiKaydet = useSaveLead();
+
+  useEffect(() => {
+    if (id || !adayId) return;
+    setForm((f) => ({
+      ...f,
+      customerName: aramaParam.get('ad') ?? f.customerName,
+      customerPhone: aramaParam.get('telefon') ?? f.customerPhone,
+      customerEmail: aramaParam.get('eposta') ?? f.customerEmail,
+      date: aramaParam.get('tarih') ?? f.date,
+      guestCount: aramaParam.get('davetli') ?? f.guestCount,
+      organizationType: (aramaParam.get('tur') as OrganizationType | null) ?? f.organizationType,
+      sourceChannel: (aramaParam.get('kanal') as LeadChannel | null) ?? f.sourceChannel,
+      sourceDetail: aramaParam.get('kanalDetay') ?? f.sourceDetail,
+      note: aramaParam.get('not') ?? f.note,
+    }));
+  }, [id, adayId, aramaParam]);
 
   useEffect(() => {
     if (!id || !existing) return;
@@ -100,6 +135,8 @@ export default function RezervasyonForm() {
       status: existing.status,
       note: existing.note ?? '',
       address: existing.address ?? '',
+      sourceChannel: existing.sourceChannel ?? '',
+      sourceDetail: existing.sourceDetail ?? '',
       services: existing.services,
     });
   }, [id, existing]);
@@ -178,6 +215,11 @@ export default function RezervasyonForm() {
 
     const deposit = Number(form.deposit || 0);
     if (!Number.isFinite(deposit) || deposit < 0) e.deposit = 'Geçerli bir kapora tutarı giriniz.';
+    // "Diğer 23 kayıt" satırını raporda görüp içine bakamamak, alanı hiç
+    // tutmamakla aynı kapıya çıkar.
+    if (form.sourceChannel === 'Diğer' && !form.sourceDetail.trim()) {
+      e.sourceDetail = 'Diğer seçildiğinde nereden ulaştığını yazınız.';
+    }
     else if (Number.isFinite(total) && deposit > total) e.deposit = 'Kapora, toplam tutardan büyük olamaz.';
 
     setErrors(e);
@@ -220,6 +262,8 @@ export default function RezervasyonForm() {
       colorKey: ORG_TO_COLOR_KEY[form.organizationType] ?? 'diger',
       note: form.note.trim() || undefined,
       address: form.address.trim() || undefined,
+      sourceChannel: form.sourceChannel || undefined,
+      sourceDetail: form.sourceDetail.trim() || undefined,
       services: form.services,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -239,6 +283,19 @@ export default function RezervasyonForm() {
           reservationId: saved.id,
         });
       }
+      // Aday "Rezervasyona Döndü" olup kayda bağlanıyor; bağlanmasaydı aynı
+      // adaydan ikinci bir rezervasyon açmak serbest kalır ve dönüşüm
+      // takip edilemezdi. Bağlamanın hatası kaydın kendisini geçersiz
+      // kılmaz, o yüzden kaydı düşürmüyor.
+      if (adayId && aday) {
+        try {
+          await adayiKaydet.mutateAsync({
+            ...aday, status: 'Rezervasyona Döndü', reservationId: saved.id,
+            lastContactAt: new Date().toISOString(),
+          });
+        } catch { /* kayıt açıldı; aday durumu sonradan elle kapatılabilir */ }
+      }
+
       navigate(`/panel/rezervasyonlar/${saved.id}`, { replace: true });
     } catch (e) {
       setSaveError(errorMessage(e));
@@ -309,6 +366,39 @@ export default function RezervasyonForm() {
             </Field>
             <Field id="address" label="Adres" className="md:col-span-2">
               <input id="address" className="field-input" value={form.address} onChange={(e) => update('address', e.target.value)} />
+            </Field>
+            {/*
+              Ulaşım kanalı: yıl sonunda "100 düğünün kaçı Instagram'dan
+              geldi" sorusunun cevabı buradan çıkıyor. Kayıt açılırken
+              sorulması gerekiyor; sonradan kimse hatırlamıyor.
+            */}
+            <Field id="sourceChannel" label="Bize nereden ulaştı?">
+              <select
+                id="sourceChannel"
+                className="field-input"
+                value={form.sourceChannel}
+                onChange={(e) => update('sourceChannel', e.target.value as LeadChannel | '')}
+              >
+                <option value="">Seçilmedi</option>
+                {LEAD_CHANNELS.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </Field>
+            <Field
+              id="sourceDetail"
+              label={form.sourceChannel === 'Referans' ? 'Tavsiye eden (varsa)' : 'Kanal açıklaması'}
+              error={errors.sourceDetail}
+              hint={form.sourceChannel === 'Diğer' ? 'Diğer seçildiğinde bu alan zorunludur.' : undefined}
+            >
+              <input
+                id="sourceDetail"
+                className="field-input"
+                value={form.sourceDetail}
+                disabled={form.sourceChannel !== 'Referans' && form.sourceChannel !== 'Diğer'}
+                placeholder={form.sourceChannel === 'Referans' ? 'Ayşe Yılmaz' : 'Tabela, fuar, tanıdık esnaf...'}
+                onChange={(e) => update('sourceDetail', e.target.value)}
+                aria-describedby={form.sourceChannel === 'Diğer' ? 'sourceDetail-hint' : undefined}
+                aria-invalid={Boolean(errors.sourceDetail)}
+              />
             </Field>
           </div>
         </fieldset>

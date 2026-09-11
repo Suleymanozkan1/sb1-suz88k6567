@@ -308,9 +308,19 @@ export async function isDurumu(id: string, tamam: boolean): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** Müşteri bize hangi kanaldan ulaştı. Panelle aynı sabit liste. */
+export type UlasimKanali = 'Instagram' | 'Düğün.com' | 'Google' | 'Referans' | 'Diğer';
+
+export const ULASIM_KANALLARI: UlasimKanali[] = [
+  'Instagram', 'Düğün.com', 'Google', 'Referans', 'Diğer',
+];
+
 export interface YeniRezervasyon {
   musteri: string; telefon: string; tarih: string; seans: string; tur: string;
   salon: string; davetli: number; toplam: number; kapora: number; durum: string;
+  /** Boş bırakılabilir; kanal raporunda "Belirtilmemiş" olarak sayılır. */
+  kanal?: UlasimKanali | '';
+  kanalDetay?: string;
 }
 
 /**
@@ -344,6 +354,8 @@ export async function rezervasyonEkle(girdi: YeniRezervasyon): Promise<string | 
     total_amount: girdi.toplam,
     deposit: girdi.kapora,
     status: girdi.durum,
+    source_channel: girdi.kanal || null,
+    source_detail: girdi.kanalDetay?.trim() || null,
   }).select('id').single();
 
   if (error) throw new Error(error.message);

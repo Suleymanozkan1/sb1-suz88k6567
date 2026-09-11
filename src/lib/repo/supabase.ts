@@ -8,6 +8,7 @@ import type {
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, Permission, Reservation, SafeMovement, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
+  CustomerLead, LeadMessage, LeadStatusChange,
 } from '../../types';
 import { computeInvoice } from '../invoice';
 
@@ -108,6 +109,8 @@ function toReservation(row: Row): Reservation {
     colorKey: (row.color_key as string) ?? 'diger',
     note: (row.note as string) ?? undefined,
     address: (row.address as string) ?? undefined,
+    sourceChannel: (row.source_channel as Reservation['sourceChannel']) ?? undefined,
+    sourceDetail: (row.source_detail as string) ?? undefined,
     services: (row.services as string[]) ?? [],
     createdAt: (row.created_at as string) ?? '',
     updatedAt: (row.updated_at as string) ?? '',
@@ -127,6 +130,58 @@ function fromReservation(r: Reservation) {
     guest_count: r.guestCount, total_amount: r.totalAmount, deposit: r.deposit,
     currency: r.currency, status: r.status, color_key: r.colorKey,
     note: r.note || null, address: r.address || null, services: r.services,
+    source_channel: r.sourceChannel || null, source_detail: r.sourceDetail?.trim() || null,
+  };
+}
+
+function toLead(row: Row): CustomerLead {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    name: (row.name as string) ?? '',
+    phone: (row.phone as string) ?? '',
+    email: (row.email as string) ?? '',
+    guestCount: row.guest_count === null || row.guest_count === undefined
+      ? null : Number(row.guest_count),
+    eventDate: (row.event_date as string) ?? '',
+    eventDateText: (row.event_date_text as string) ?? '',
+    organizationType: (row.organization_type as string) ?? '',
+    source: (row.source as CustomerLead['source']) ?? 'Manuel',
+    sourceDetail: (row.source_detail as string) ?? '',
+    status: (row.status as CustomerLead['status']) ?? 'Aranmadı',
+    assignedTo: (row.assigned_to as string) ?? undefined,
+    nextFollowupAt: (row.next_followup_at as string) ?? '',
+    lastContactAt: (row.last_contact_at as string) ?? '',
+    reservationId: (row.reservation_id as string) ?? undefined,
+    note: (row.note as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
+    updatedAt: (row.updated_at as string) ?? '',
+  };
+}
+
+function fromLead(l: CustomerLead) {
+  return {
+    id: l.id, business_id: l.businessId, name: l.name, phone: l.phone, email: l.email,
+    guest_count: l.guestCount, event_date: l.eventDate || null,
+    event_date_text: l.eventDateText, organization_type: l.organizationType,
+    source: l.source, source_detail: l.sourceDetail, status: l.status,
+    assigned_to: l.assignedTo ?? null, next_followup_at: l.nextFollowupAt || null,
+    last_contact_at: l.lastContactAt || null, reservation_id: l.reservationId ?? null,
+    note: l.note,
+  };
+}
+
+function toLeadMessage(row: Row): LeadMessage {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    leadId: String(row.lead_id),
+    direction: (row.direction as LeadMessage['direction']) ?? 'olay',
+    channel: (row.channel as LeadMessage['channel']) ?? 'sistem',
+    body: (row.body as string) ?? '',
+    waMessageId: (row.wa_message_id as string) ?? undefined,
+    actorEmail: (row.actor_email as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
   };
 }
 
@@ -627,6 +682,69 @@ export const supabaseRepo: Repository = {
   async deleteSafeMovement(id) {
     const { error } = await db().from('safe_movements').delete().eq('id', id);
     if (error) fail('Çelik kasa hareketi silinemedi.', error);
+  },
+
+  async listLeads(businessId) {
+    const { data, error } = await db().from('customer_leads')
+      .select('*').eq('business_id', businessId).order('updated_at', { ascending: false });
+    if (error) fail('Müşteri adayları alınamadı.', error);
+    return (data ?? []).map(toLead);
+  },
+
+  async getLead(id) {
+    const { data, error } = await db().from('customer_leads')
+      .select('*').eq('id', id).maybeSingle();
+    if (error) fail('Müşteri adayı alınamadı.', error);
+    return data ? toLead(data) : null;
+  },
+
+  async saveLead(lead) {
+    const { data, error } = await db().from('customer_leads')
+      .upsert(fromLead(lead)).select().single();
+    if (error) {
+      // 23505: aynı numarada bir aday zaten var. Bu bir hata değil, tam da
+      // engellenmek istenen durum; çağıran mevcut kaydı kullanmalı.
+      if ((error as { code?: string }).code === '23505') {
+        throw new RepoError('Bu telefon numarasıyla kayıtlı bir müşteri adayı zaten var.');
+      }
+      fail('Müşteri adayı kaydedilemedi.', error);
+    }
+    return toLead(data);
+  },
+
+  async deleteLead(id) {
+    const { error } = await db().from('customer_leads').delete().eq('id', id);
+    if (error) fail('Müşteri adayı silinemedi.', error);
+  },
+
+  async listLeadMessages(leadId) {
+    const { data, error } = await db().from('customer_lead_messages')
+      .select('*').eq('lead_id', leadId).order('created_at', { ascending: true });
+    if (error) fail('İletişim geçmişi alınamadı.', error);
+    return (data ?? []).map(toLeadMessage);
+  },
+
+  async addLeadMessage(message) {
+    const { error } = await db().from('customer_lead_messages').insert({
+      id: message.id, business_id: message.businessId, lead_id: message.leadId,
+      direction: message.direction, channel: message.channel, body: message.body,
+      wa_message_id: message.waMessageId ?? null, actor_email: message.actorEmail,
+    });
+    if (error) fail('İletişim kaydı yazılamadı.', error);
+  },
+
+  async listLeadStatusHistory(leadId) {
+    const { data, error } = await db().from('customer_lead_status_history')
+      .select('*').eq('lead_id', leadId).order('created_at', { ascending: false });
+    if (error) fail('Durum geçmişi alınamadı.', error);
+    return (data ?? []).map((row) => ({
+      id: String(row.id),
+      leadId: String(row.lead_id),
+      fromStatus: (row.from_status as LeadStatusChange['fromStatus']) ?? null,
+      toStatus: row.to_status as LeadStatusChange['toStatus'],
+      actorEmail: (row.actor_email as string) ?? '',
+      createdAt: (row.created_at as string) ?? '',
+    }));
   },
 
   async getColorSettings(businessId) {

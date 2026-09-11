@@ -17,6 +17,8 @@ import otp from '../api/otp';
 import reminders from '../api/reminders';
 import smsQueue from '../api/sms-queue';
 import sms from '../api/sms';
+import whatsapp from '../api/whatsapp';
+import whatsappGonder from '../api/whatsapp-gonder';
 
 type Isleyici = (request: Request) => Promise<Response>;
 
@@ -35,6 +37,8 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/sms': sms,
   '/api/sms-queue': smsQueue,
   '/api/reminders': reminders,
+  '/api/whatsapp': whatsapp,
+  '/api/whatsapp-gonder': whatsappGonder,
 };
 
 /**

@@ -5,7 +5,10 @@ import { Alan, Secim } from '../../src/bilesenler/duzen';
 import { BolumBasligi, Dugme, Kart, Yazi } from '../../src/bilesenler/temel';
 import { bugunIso, tutar } from '../../src/bicim';
 import { aralik, renk } from '../../src/tema';
-import { menuler, rezervasyonEkle, salonlar, tanitim, type Menu, type Salon } from '../../src/veri';
+import {
+  menuler, rezervasyonEkle, salonlar, tanitim, ULASIM_KANALLARI,
+  type Menu, type Salon, type UlasimKanali,
+} from '../../src/veri';
 
 const TURLER = ['Düğün', 'Nişan', 'Kına', 'Sünnet', 'Nikâh', 'Kokteyl'];
 const SEANSLAR = ['Gündüz', 'Gece'];
@@ -38,6 +41,10 @@ export default function YeniRezervasyon() {
   const [toplam, setToplam] = useState('');
   const [kapora, setKapora] = useState('');
   const [durum, setDurum] = useState('Ön Rezervasyon');
+  // Ulaşım kanalı: yıl sonu kanal raporunun kaynağı. Kayıt açılırken
+  // sorulmazsa sonradan kimse hatırlamıyor.
+  const [kanal, setKanal] = useState<UlasimKanali | ''>('');
+  const [kanalDetay, setKanalDetay] = useState('');
 
   const [hata, setHata] = useState('');
   const [kaydediliyor, setKaydediliyor] = useState(false);
@@ -80,12 +87,18 @@ export default function YeniRezervasyon() {
     const kaporaKurus = kapora.trim() ? Math.round(sayi(kapora) * 100) : 0;
     if (!Number.isFinite(kaporaKurus) || kaporaKurus < 0) { setHata('Geçerli bir kapora giriniz.'); return; }
     if (kaporaKurus > tutarKurus) { setHata('Kapora toplam tutarı aşamaz.'); return; }
+    // "Diğer 23 kayıt" satırını raporda görüp içine bakamamak, alanı hiç
+    // tutmamakla aynı kapıya çıkar.
+    if (kanal === 'Diğer' && !kanalDetay.trim()) {
+      setHata('Diğer seçildiğinde nereden ulaştığını yazınız.'); return;
+    }
 
     setKaydediliyor(true);
     try {
       const id = await rezervasyonEkle({
         musteri: musteri.trim(), telefon: tel, tarih, seans, tur,
         salon, davetli: kisi, toplam: tutarKurus, kapora: kaporaKurus, durum,
+        kanal, kanalDetay,
       });
       yonlendir.replace(id ? `/rezervasyon/${id}` : '/kayitlar');
     } catch (e) {
@@ -131,6 +144,23 @@ export default function YeniRezervasyon() {
         ) : null}
 
         <Alan etiket="Davetli sayısı" deger={davetli} degistir={setDavetli} ipucu="300" klavye="number-pad" />
+
+        <View style={{ marginTop: aralik.m }}>
+          <Yazi tur="minik" renkli={renk.metinSolgun}>BİZE NEREDEN ULAŞTI</Yazi>
+          <Secim
+            secenekler={['-', ...ULASIM_KANALLARI]}
+            secili={kanal || '-'}
+            sec={(v) => setKanal(v === '-' ? '' : (v as UlasimKanali))}
+          />
+        </View>
+        {kanal === 'Referans' || kanal === 'Diğer' ? (
+          <Alan
+            etiket={kanal === 'Referans' ? 'Tavsiye eden (varsa)' : 'Kanal açıklaması'}
+            deger={kanalDetay}
+            degistir={setKanalDetay}
+            ipucu={kanal === 'Referans' ? 'Ayşe Yılmaz' : 'Tabela, fuar, tanıdık esnaf...'}
+          />
+        ) : null}
       </Kart>
 
       <BolumBasligi>Tutar</BolumBasligi>

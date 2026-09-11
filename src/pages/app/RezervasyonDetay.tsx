@@ -169,6 +169,13 @@ export default function RezervasyonDetay() {
             <Info label="Davetli Sayısı" value={`${reservation.guestCount} kişi`} />
             <Info label="Durum" value={reservation.status} />
             <Info label="Adres" value={reservation.address || '-'} className="sm:col-span-2" />
+            <Info
+              label="Bize nereden ulaştı"
+              value={reservation.sourceChannel
+                ? `${reservation.sourceChannel}${reservation.sourceDetail ? ` · ${reservation.sourceDetail}` : ''}`
+                : '-'}
+              className="sm:col-span-2"
+            />
             <Info label="Not" value={reservation.note || '-'} className="sm:col-span-2" />
           </dl>
 

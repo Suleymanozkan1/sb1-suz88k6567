@@ -22,6 +22,7 @@ const NAV = [
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
   { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser, ownerOnly: true },
   { to: '/panel/hatirlatmalar', label: 'Hatırlatmalar', icon: IconBell },
+  { to: '/panel/musteri-adaylari', label: 'Müşteri Adayları', icon: IconMessage },
   { to: '/panel/sms', label: 'SMS Kayıtları', icon: IconMessage },
   { to: '/panel/izinler', label: 'İYS İzinleri', icon: IconCheck },
   { to: '/panel/denetim', label: 'Denetim Kaydı', icon: IconShield },

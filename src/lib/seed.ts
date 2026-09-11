@@ -7,7 +7,10 @@
 import { KEYS, read, write } from './storage';
 import { addDays, toIso, todayIso } from './format';
 import { DEFAULT_COLOR_SETTINGS, ORG_TO_COLOR_KEY, OWNER_PERMISSIONS } from '../data/constants';
-import type { Business, CashFlowEntry, Hall, Menu, Payment, Reservation, SafeMovement, User, Vendor } from '../types';
+import type {
+  Business, CashFlowEntry, Hall, LeadChannel, Menu, Payment, Reservation,
+  CustomerLead, SafeMovement, User, Vendor,
+} from '../types';
 
 export { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS };
 
@@ -158,6 +161,15 @@ export function seedIfEmpty(): void {
     ...demoVendors,
   ]);
 
+  /*
+    Tanıtımdaki kanal dağılımı. Gerçek bir salonun dağılımına yakın:
+    Instagram başta, bir kısmı hiç kaydedilmemiş.
+  */
+  const KANAL_DAGILIMI: (LeadChannel | undefined)[] = [
+    'Instagram', 'Instagram', 'Düğün.com', 'Google', 'Referans',
+    'Instagram', undefined, 'Diğer', 'Google', undefined,
+  ];
+
   const list: Reservation[] = [];
   const paid: Payment[] = [];
 
@@ -196,6 +208,13 @@ export function seedIfEmpty(): void {
       hallId: i % 5 === 4 ? 'hall_demo3' : i % 3 === 1 ? 'hall_demo2' : 'hall_demo1',
       menuId: i % 5 === 4 ? 'menu_demo4' : i % 4 === 3 ? 'menu_demo3' : 'menu_demo1',
       code: `${d.getFullYear()}-${siraAl(d.getFullYear())}`,
+      // Kanal dağılımı tanıtımda da anlamlı olsun: rapor boş bir tabloyla
+      // açılırsa özelliğin ne işe yaradığı anlaşılmıyor. Bir kısmı bilerek
+      // boş bırakılıyor; "Belirtilmemiş" satırı da raporun bir parçası.
+      sourceChannel: KANAL_DAGILIMI[i % KANAL_DAGILIMI.length],
+      sourceDetail: KANAL_DAGILIMI[i % KANAL_DAGILIMI.length] === 'Referans'
+        ? 'Önceki müşteri tavsiyesi'
+        : KANAL_DAGILIMI[i % KANAL_DAGILIMI.length] === 'Diğer' ? 'Tabela' : undefined,
       customerName: name, customerPhone: phone, customerEmail: '',
       // Çift isimli kayıtlarda ikinci kişi sözleşmede "Gelin ve Damat"
       // satırında görünür.
@@ -360,6 +379,62 @@ export function seedIfEmpty(): void {
     });
   }
   write(KEYS.safeMovements, kasaHareketleri);
+
+  /*
+    Tanıtım müşteri adayları.
+
+    Farklı durumlarda ve farklı eksikliklerde: takip ekranının ve
+    dashboard sayımlarının boş bir tabloyla açılması özelliğin ne işe
+    yaradığını anlatmıyor. Biri bugün aranacak, biri gecikmiş.
+  */
+  const adaylar: CustomerLead[] = [
+    {
+      id: 'lead_seed_1', businessId, name: 'Ömer Ay', phone: '5332642537',
+      email: 'oay685126@gmail.com', guestCount: 1000, eventDate: '',
+      eventDateText: 'Mayısın ilk haftası', organizationType: 'Düğün',
+      source: 'Instagram', sourceDetail: 'WhatsApp hattına yönlendirildi',
+      status: 'Aranmadı', nextFollowupAt: todayIso(), lastContactAt: now,
+      note: 'Fiyat tahminen yemekli ve yemeksiz', createdAt: now, updatedAt: now,
+    },
+    {
+      id: 'lead_seed_2', businessId, name: 'Elif Kara', phone: '5551112233',
+      email: '', guestCount: 250, eventDate: addDays(todayIso(), 120),
+      eventDateText: '', organizationType: 'Nişan',
+      source: 'WhatsApp', sourceDetail: '', status: 'Ulaşılamadı',
+      nextFollowupAt: addDays(todayIso(), -3), lastContactAt: now,
+      note: 'İki kez arandı, açmadı.', createdAt: now, updatedAt: now,
+    },
+    {
+      id: 'lead_seed_3', businessId, name: 'Burak Şen', phone: '5449998877',
+      email: 'burak@ornek.com', guestCount: 400, eventDate: addDays(todayIso(), 200),
+      eventDateText: '', organizationType: 'Düğün',
+      source: 'Web Sitesi', sourceDetail: '', status: 'Teklif Gönderildi',
+      nextFollowupAt: addDays(todayIso(), 4), lastContactAt: now,
+      note: '', createdAt: now, updatedAt: now,
+    },
+  ];
+  write(KEYS.leads, adaylar);
+
+  write(KEYS.leadMessages, adaylar.flatMap((a) => ([
+    {
+      id: `${a.id}_m1`, businessId, leadId: a.id, direction: 'gelen' as const,
+      channel: 'whatsapp' as const,
+      body: a.id === 'lead_seed_1'
+        ? 'Ömer Ay\np:+905332642537\noay685126@gmail.com\nFiyat tahminen yemekli ve yemeksiz\n1000\nMayısın ilk haftası\ndüğün'
+        : 'Merhaba, salon hakkında bilgi alabilir miyim?',
+      actorEmail: '', createdAt: now,
+    },
+    {
+      id: `${a.id}_m2`, businessId, leadId: a.id, direction: 'olay' as const,
+      channel: 'sistem' as const, body: 'Müşteri adayı oluşturuldu.',
+      actorEmail: '', createdAt: now,
+    },
+  ])));
+
+  write(KEYS.leadStatusHistory, adaylar.map((a) => ({
+    id: `${a.id}_d1`, leadId: a.id, fromStatus: null,
+    toStatus: a.status, actorEmail: '', createdAt: now,
+  })));
 
   write(KEYS.sms, [{
     id: 'sms_seed_0', businessId, to: '5321234567',

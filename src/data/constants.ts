@@ -1,4 +1,4 @@
-import type { ColorSetting, OrganizationType, Permission } from '../types';
+import type { ColorSetting, LeadChannel, OrganizationType, Permission } from '../types';
 
 /** İşletme kayıt formlarındaki 81 il + yurt dışı seçenekleri */
 export const CITIES: string[] = [
@@ -95,6 +95,14 @@ export const HEARD_FROM: string[] = [
 
 export const ORGANIZATION_TYPES: OrganizationType[] = [
   'Düğün', 'Sünnet', 'Nişan', 'Kına', 'Konferans', 'Kokteyl', 'Nikâh', 'Doğum Günü', 'Toplantı', 'Diğer',
+];
+
+/**
+ * Ulaşım kanalları. Sıra ekranda göründüğü sıradır; en sık kullanılan
+ * başta duruyor ki liste her seferinde baştan taranmasın.
+ */
+export const LEAD_CHANNELS: LeadChannel[] = [
+  'Instagram', 'Düğün.com', 'Google', 'Referans', 'Diğer',
 ];
 
 export const CURRENCIES: { value: string; label: string; symbol: string }[] = [

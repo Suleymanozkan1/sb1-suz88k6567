@@ -31,6 +31,7 @@ describe('sır sızıntısı', () => {
     const yasak = [
       'SUPABASE_SERVICE_ROLE_KEY', 'service_role', 'NETGSM_PASS', 'OTP_SECRET',
       'PARASUT_CLIENT_SECRET', 'PARASUT_PASSWORD', 'IYS_PASSWORD', 'CRON_SECRET',
+      'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN', 'WHATSAPP_TOKEN',
     ];
     const bulunan: string[] = [];
     for (const d of DOSYALAR) {
@@ -139,6 +140,7 @@ const paketVar = (() => { try { return statSync(PAKET).isDirectory(); } catch { 
     const yasak = [
       'SUPABASE_SERVICE_ROLE_KEY', 'NETGSM_PASS', 'OTP_SECRET',
       'PARASUT_CLIENT_SECRET', 'PARASUT_PASSWORD', 'IYS_PASSWORD', 'CRON_SECRET',
+      'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN', 'WHATSAPP_TOKEN',
     ];
     const bulunan: string[] = [];
     for (const d of paketDosyalari(PAKET)) {
