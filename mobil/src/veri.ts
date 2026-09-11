@@ -43,6 +43,39 @@ const db = () => supabase!;
 /** Etkin işletme; tanıtımda sabit. Panelde olduğu gibi tek işletme seçilidir. */
 export const ISLETME = { id: 'demo', ad: 'Grand Sahra Düğün ve Davet Salonu' };
 
+let isletmeBellek: string | null = null;
+
+/**
+ * Oturumdaki kullanıcının etkin işletmesi.
+ *
+ * `business_id` yazan her tabloda zorunlu bir sütun; sabit bir değer
+ * göndermek kaydın hiç açılmamasına yol açar. Profilden okunur ve bellekte
+ * tutulur: her yazma öncesi ek bir gidiş dönüş yapılmaz.
+ */
+export async function aktifIsletmeId(): Promise<string> {
+  if (tanitim) return ISLETME.id;
+  if (isletmeBellek) return isletmeBellek;
+
+  const { data: oturum } = await db().auth.getUser();
+  const kullanici = oturum?.user;
+  if (!kullanici) throw new Error('Oturum bulunamadı.');
+
+  const { data, error } = await db().from('profiles')
+    .select('active_business_id, owner_id, id').eq('id', kullanici.id).maybeSingle();
+  if (error) throw new Error(`İşletme bilgisi okunamadı. (${error.message})`);
+
+  const profil = data as unknown as { active_business_id: string | null } | null;
+  if (!profil?.active_business_id) throw new Error('Etkin işletme seçili değil.');
+
+  isletmeBellek = profil.active_business_id;
+  return isletmeBellek;
+}
+
+/** Oturum değişince önbellek düşer; başka bir hesabın işletmesine yazılmasın. */
+export function isletmeBellegiTemizle(): void {
+  isletmeBellek = null;
+}
+
 /* ═══ Rezervasyon ═════════════════════════════════════════════════ */
 
 export interface Rezervasyon {
@@ -372,7 +405,7 @@ const ORNEK_KASA: KasaSatiri[] = [
 export function kasaOzeti(): Promise<KasaOzet> {
   const alacak = ORNEK.reduce((t, r) => t + Math.max(0, r.toplam - r.tahsilat), 0);
   return sorgu({ gelir: 46_750_000, gider: 8_700_000, bakiye: 38_050_000, alacak }, async () => {
-    const { data, error } = await db().from('cash_entries').select('kind, amount');
+    const { data, error } = await db().from('cash_flow').select('kind, amount');
     const satirlar = denetle(data, error, 'Kasa okunamadı.');
     let gelir = 0, gider = 0;
     for (const s of satirlar) {
@@ -392,15 +425,20 @@ export function kasaOzeti(): Promise<KasaOzet> {
 
 export function kasaHareketleri(limit = 50): Promise<KasaSatiri[]> {
   return sorgu(ORNEK_KASA, async () => {
-    const { data, error } = await db().from('cash_entries')
-      .select('id, date, kind, title, category, amount')
+    const { data, error } = await db().from('cash_flow')
+      .select('id, date, kind, description, category, amount')
       .order('date', { ascending: false }).limit(limit);
     return denetle(data, error, 'Kasa hareketleri okunamadı.').map((s) => {
       const k = s as unknown as {
         id: string; date: string; kind: 'Gelir' | 'Gider';
-        title: string; category: string | null; amount: number;
+        description: string | null; category: string | null; amount: number;
       };
-      return { id: k.id, tarih: k.date, tur: k.kind, baslik: k.title, kategori: k.category ?? '', tutar: k.amount };
+      // Başlık boşsa kategori kullanılır: defterde adsız bir satır kalmasın.
+      return {
+        id: k.id, tarih: k.date, tur: k.kind,
+        baslik: k.description?.trim() || k.category || '-',
+        kategori: k.category ?? '', tutar: k.amount,
+      };
     });
   });
 }
@@ -409,9 +447,134 @@ export async function kasaEkle(
   tur: 'Gelir' | 'Gider', baslik: string, kategori: string, tutar: number,
 ): Promise<void> {
   if (tanitim) return;
-  const { error } = await db().from('cash_entries').insert({
-    kind: tur, title: baslik, category: kategori, amount: tutar, date: bugunIso(),
+  // business_id zorunlu bir sütun; gönderilmezse kayıt hiç açılmaz.
+  const { error } = await db().from('cash_flow').insert({
+    business_id: await aktifIsletmeId(),
+    kind: tur, description: baslik, category: kategori, amount: tutar, date: bugunIso(),
   });
+  if (error) throw new Error(error.message);
+}
+
+/* ═══ Çelik kasa ══════════════════════════════════════════════════ */
+
+/**
+ * Çelik kasa (fiziksel kasa).
+ *
+ * İşletmenin kasasındaki gerçek para, gelir/gider kayıtlarından çıkan
+ * muhasebe bakiyesiyle aynı değildir: havaleyle gelen tahsilat kasaya
+ * girmez, kasadan alınıp bankaya yatırılan para kasadan çıkar ama gelir
+ * kaydı yerinde durur. Bu yüzden ayrı bir hareket defteridir ve iki bakiye
+ * hiçbir yerde toplanmaz.
+ */
+export type KasaYonu = 'Giriş' | 'Çıkış';
+
+export interface KasaHareketi {
+  id: string; tarih: string; yon: KasaYonu; tutar: number;
+  aciklama: string; kaynakTuru: 'cash_flow' | 'reservation'; kaynakId: string;
+}
+
+const ORNEK_CELIK: KasaHareketi[] = [
+  { id: 'ck1', tarih: gunEkle(-1), yon: 'Giriş', tutar: 4_000_000,
+    aciklama: 'Gelir · Rezervasyon · Kapora tahsilatı', kaynakTuru: 'cash_flow', kaynakId: 'k1' },
+  { id: 'ck2', tarih: gunEkle(-2), yon: 'Çıkış', tutar: 1_850_000,
+    aciklama: 'Gider · Tedarikçi · Mutfak tedariki', kaynakTuru: 'cash_flow', kaynakId: 'k2' },
+  { id: 'ck3', tarih: gunEkle(-9), yon: 'Çıkış', tutar: 640_000,
+    aciklama: 'Gider · Sabit gider · Elektrik ve su', kaynakTuru: 'cash_flow', kaynakId: 'k5' },
+];
+
+/** Kasadaki para: girişler eksi çıkışlar. */
+export function celikKasaBakiyesi(hareketler: KasaHareketi[]): number {
+  return hareketler.reduce((t, h) => t + (h.yon === 'Giriş' ? h.tutar : -h.tutar), 0);
+}
+
+/** Bir gelir/gider satırının kasaya net etkisi. */
+export function kaynakNeti(hareketler: KasaHareketi[], kaynakId: string): number {
+  return celikKasaBakiyesi(hareketler.filter((h) => h.kaynakId === kaynakId));
+}
+
+/**
+ * Satırın kasadaki doğal yönü.
+ *
+ * Gelir kasaya girer, gider kasadan çıkar. Yönü kullanıcının seçimine
+ * bırakmak, nakit ödenen bir maaşı kasaya para giriyormuş gibi işlemeye
+ * izin verirdi.
+ */
+export function dogalYon(tur: 'Gelir' | 'Gider'): KasaYonu {
+  return tur === 'Gider' ? 'Çıkış' : 'Giriş';
+}
+
+/**
+ * Bu satır kasaya bu yönde işlenebilir mi?
+ *
+ * Doğal yön ancak net sıfırken; karşı yön ancak satırın kasada bir etkisi
+ * varken yazılır. Böylece girip çıkan satır yeniden işlenebilir ama aynı
+ * hareket arka arkaya iki kez yazılamaz. Panelde de, veritabanı
+ * tetikleyicisinde de aynı kural duruyor.
+ */
+export function kasayaIslenebilir(
+  hareketler: KasaHareketi[], kaynakId: string, yon: KasaYonu, tur: 'Gelir' | 'Gider',
+): boolean {
+  const net = kaynakNeti(hareketler, kaynakId);
+  const dogal = dogalYon(tur);
+  if (yon === dogal) return net === 0;
+  return dogal === 'Giriş' ? net > 0 : net < 0;
+}
+
+export function celikKasaHareketleri(limit = 100): Promise<KasaHareketi[]> {
+  return sorgu(ORNEK_CELIK, async () => {
+    const { data, error } = await db().from('safe_movements')
+      .select('id, date, direction, amount, description, source_kind, source_id')
+      .order('date', { ascending: false }).limit(limit);
+    return denetle(data, error, 'Çelik kasa hareketleri okunamadı.').map((s) => {
+      const h = s as unknown as {
+        id: string; date: string; direction: KasaYonu; amount: number;
+        description: string | null; source_kind: 'cash_flow' | 'reservation'; source_id: string;
+      };
+      return {
+        id: h.id, tarih: h.date, yon: h.direction, tutar: h.amount,
+        aciklama: h.description ?? '', kaynakTuru: h.source_kind, kaynakId: h.source_id,
+      };
+    });
+  });
+}
+
+/**
+ * Bir gelir/gider satırını çelik kasaya işler.
+ *
+ * Tutar satırın kendi tutarıdır: kısmi giriş, satırın anlamını bulanıklaştırır
+ * ve kasadaki parayı gelir/gider kaydından koparırdı. Kuralı sunucu da
+ * uyguluyor; buradaki kontrol kullanıcıya anlaşılır bir mesaj vermek için.
+ */
+export async function celikKasayaIsle(
+  satir: KasaSatiri, yon: KasaYonu, mevcut: KasaHareketi[],
+): Promise<void> {
+  if (!kasayaIslenebilir(mevcut, satir.id, yon, satir.tur)) {
+    throw new Error(satir.tur === 'Gider'
+      ? (yon === 'Çıkış'
+        ? 'Bu gider çelik kasadan zaten düşülmüş; önce geri alın.'
+        : 'Bu gider çelik kasadan düşülmemiş; geri alınacak bir şey yok.')
+      : (yon === 'Giriş'
+        ? 'Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.'
+        : 'Bu kayıt çelik kasada değil; önce kasaya ekleyin.'));
+  }
+  if (tanitim) return;
+
+  const { error } = await db().from('safe_movements').insert({
+    business_id: await aktifIsletmeId(),
+    date: satir.tarih,
+    direction: yon,
+    amount: satir.tutar,
+    description: `${satir.tur} · ${satir.kategori || satir.baslik}`,
+    source_kind: 'cash_flow',
+    source_id: satir.id,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Yanlış işlenen hareketi defterden siler; gelir/gider kaydına dokunmaz. */
+export async function celikKasaHareketiSil(id: string): Promise<void> {
+  if (tanitim) return;
+  const { error } = await db().from('safe_movements').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
 
@@ -517,16 +680,17 @@ const ORNEK_FATURA: Fatura[] = [
 
 export function faturalar(limit = 50): Promise<Fatura[]> {
   return sorgu(ORNEK_FATURA, async () => {
+    // Tutarlar şemada kuruş olarak durur; mobil de kuruş taşır, çevrim yok.
     const { data, error } = await db().from('invoices')
-      .select('id, invoice_no, buyer_name, issued_at, base_amount, vat_amount, total_amount, status, kind')
-      .order('issued_at', { ascending: false }).limit(limit);
+      .select('id, invoice_number, buyer_name, issue_date, base_kurus, vat_kurus, total_kurus, status, kind')
+      .order('issue_date', { ascending: false }).limit(limit);
     return denetle(data, error, 'Faturalar okunamadı.').map((s) => {
       const f = s as unknown as {
-        id: string; invoice_no: string | null; buyer_name: string; issued_at: string;
-        base_amount: number; vat_amount: number; total_amount: number; status: string; kind: string;
+        id: string; invoice_number: string | null; buyer_name: string; issue_date: string;
+        base_kurus: number; vat_kurus: number; total_kurus: number; status: string; kind: string;
       };
-      return { id: f.id, no: f.invoice_no ?? '-', musteri: f.buyer_name, tarih: f.issued_at,
-        matrah: f.base_amount, kdv: f.vat_amount, toplam: f.total_amount, durum: f.status, tur: f.kind };
+      return { id: f.id, no: f.invoice_number ?? '-', musteri: f.buyer_name, tarih: f.issue_date,
+        matrah: f.base_kurus, kdv: f.vat_kurus, toplam: f.total_kurus, durum: f.status, tur: f.kind };
     });
   });
 }
@@ -692,7 +856,7 @@ export async function mesajGonder(
 ): Promise<{ kuyruga: boolean; gerekce: string }> {
   if (tanitim) return { kuyruga: true, gerekce: '' };
   const { data, error } = await db().rpc('enqueue_sms', {
-    p_business_id: ISLETME.id, p_phone: telefon, p_body: metin,
+    p_business_id: await aktifIsletmeId(), p_phone: telefon, p_body: metin,
     p_kind: tur, p_category: sinif, p_reservation_id: rezervasyonId ?? null,
   });
   if (error) throw new Error(error.message);
@@ -733,47 +897,57 @@ const ORNEK_SISTEM: SistemDurumu = {
 
 export function kullanicilar(): Promise<Kullanici[]> {
   return sorgu(ORNEK_KULLANICI, async () => {
+    // Şemada kullanıcıyı askıya alan bir sütun yok: hesap ya vardır ya
+    // silinmiştir. Listede görünen her hesap kullanılabilir durumdadır.
     const { data, error } = await db().from('profiles')
-      .select('id, full_name, email, role, is_active').order('full_name');
+      .select('id, full_name, email, role').order('full_name');
     return denetle(data, error, 'Kullanıcılar okunamadı.').map((s) => {
-      const u = s as unknown as {
-        id: string; full_name: string; email: string; role: string; is_active: boolean;
-      };
+      const u = s as unknown as { id: string; full_name: string; email: string; role: string };
       return { id: u.id, ad: u.full_name, eposta: u.email,
-        rol: u.role === 'owner' ? 'Yönetici' : 'Personel', aktif: u.is_active !== false };
+        rol: u.role === 'owner' ? 'Yönetici' : 'Personel', aktif: true };
     });
   });
 }
 
 export function denetimKaydi(limit = 50): Promise<DenetimSatiri[]> {
   return sorgu(ORNEK_DENETIM, async () => {
+    // Denetim kaydı kimliği e-posta ile tutar; ad ayrıca saklanmaz.
     const { data, error } = await db().from('audit_log')
-      .select('id, created_at, actor_name, action, table_name, record_label')
+      .select('id, created_at, actor_email, action, table_name, summary')
       .order('created_at', { ascending: false }).limit(limit);
     return denetle(data, error, 'Denetim kaydı okunamadı.').map((s) => {
       const a = s as unknown as {
-        id: string; created_at: string; actor_name: string | null;
-        action: string; table_name: string; record_label: string | null;
+        id: string; created_at: string; actor_email: string | null;
+        action: string; table_name: string; summary: string | null;
       };
-      return { id: a.id, tarih: a.created_at.slice(0, 10), kullanici: a.actor_name ?? '-',
-        islem: a.action, tablo: a.table_name, kayit: a.record_label ?? '' };
+      return { id: a.id, tarih: a.created_at.slice(0, 10), kullanici: a.actor_email ?? '-',
+        islem: a.action, tablo: a.table_name, kayit: a.summary ?? '' };
     });
   });
+}
+
+/** Yedek durumunu ekranda okunur hâle getirir; şemada kısa kodlar tutulur. */
+function yedekEtiketi(durum: string | undefined): string {
+  if (durum === 'basarili') return 'Başarılı';
+  if (durum === 'basarisiz') return 'Başarısız';
+  if (durum === 'calisiyor') return 'Sürüyor';
+  return '-';
 }
 
 export function sistemDurumu(): Promise<SistemDurumu> {
   return sorgu(ORNEK_SISTEM, async () => {
     const [{ data: yedek }, { data: kuyruk }, { data: izin }] = await Promise.all([
-      db().from('backups').select('created_at, status').order('created_at', { ascending: false }).limit(1),
+      db().from('backup_runs').select('started_at, status')
+        .order('started_at', { ascending: false }).limit(1),
       db().from('sms_queue').select('status'),
       db().from('sms_consents').select('iys_synced_at'),
     ]);
-    const y = (yedek ?? [])[0] as unknown as { created_at: string; status: string } | undefined;
+    const y = (yedek ?? [])[0] as unknown as { started_at: string; status: string } | undefined;
     const k = (kuyruk ?? []) as unknown as { status: string }[];
     const i = (izin ?? []) as unknown as { iys_synced_at: string | null }[];
     return {
-      sonYedek: y?.created_at?.slice(0, 10) ?? '-',
-      yedekDurum: y?.status ?? '-',
+      sonYedek: y?.started_at?.slice(0, 10) ?? '-',
+      yedekDurum: yedekEtiketi(y?.status),
       kuyrukBekleyen: k.filter((x) => x.status === 'bekliyor').length,
       kuyrukBasarisiz: k.filter((x) => x.status === 'basarisiz').length,
       iysBekleyen: i.filter((x) => x.iys_synced_at === null).length,
