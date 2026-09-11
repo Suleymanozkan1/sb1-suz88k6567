@@ -79,6 +79,7 @@ export const KVKK_NOTICE: LegalDoc = {
         'Hesap verileri: ad soyad, e-posta adresi, cep telefonu ve işletme unvanı.',
         'İşlem güvenliği verileri: IP adresi, giriş denemeleri ve oturum kayıtları.',
         'Müşteri kayıtları: işletmenin kendi müşterilerine ait olarak sisteme girdiği ad, telefon, adres ve organizasyon bilgileri. İşletme, salon kiralama sözleşmesini düzenlemek için sözleşmeyi imzalayanın TC kimlik numarasını da kaydedebilir; bu alan isteğe bağlıdır ve yalnızca sözleşme çıktısında yer alır, herkese açık rezervasyon kodu sorgulama ekranında hiçbir koşulda gösterilmez. Bu verilerde veri sorumlusu işletmenin kendisidir; Sahra Takip veri işleyen sıfatıyla hareket eder.',
+        'Müşteri adayları ve WhatsApp yazışmaları: işletme WhatsApp Business bağlantısını kurduysa, işletmenin numarasına yazılan mesajlar sisteme kaydedilir ve bir müşteri adayı oluşturulur. Adayın adı, telefonu, e-postası, etkinlik bilgileri ile mesajların kendisi saklanır. Mesajın aslı, çözümleme hatalı olduğunda doğrusunun bulunabilmesi için tutulur. Bu veriler yalnızca müşteri adayını takip etmek ve rezervasyona dönüştürmek için işlenir; aday işletme tarafından silinebilir, silindiğinde iletişim geçmişi de silinir.',
       ],
     },
     {

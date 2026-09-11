@@ -96,7 +96,7 @@ function islem(c: Cagri, ad: string) {
 }
 
 const REZ_SATIRI = {
-  id: 'r1', code: 'SA-2026-0001', customer_name: 'Ayşe Yılmaz',
+  id: 'r1', code: '2026-1', customer_name: 'Ayşe Yılmaz',
   customer_phone: '5321112233', date: '2026-09-12',
   start_time: '19:00:00', end_time: '23:00:00', slot: 'Gece',
   organization_type: 'Düğün', guest_count: 300, total_amount: 25_000_000,
@@ -116,7 +116,7 @@ describe('rezervasyon eşlemesi', () => {
     const [r] = await veri.tumKayitlar();
 
     expect(r).toEqual({
-      id: 'r1', kod: 'SA-2026-0001', musteri: 'Ayşe Yılmaz', telefon: '5321112233',
+      id: 'r1', kod: '2026-1', musteri: 'Ayşe Yılmaz', telefon: '5321112233',
       tarih: '2026-09-12', seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: '#47b2e4',
       salon: 'Kristal Salon', davetli: 300, toplam: 25_000_000,
       kapora: 6_000_000, tahsilat: 6_000_000, durum: 'Kesin Rezervasyon',

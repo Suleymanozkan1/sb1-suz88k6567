@@ -11,6 +11,7 @@ import type {
   Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
   EventTask, Vendor, ReservationVendor,
   SafeMovement, SmsLogEntry, SmsQueueEntry, SystemHealth, User,
+  CustomerLead, LeadMessage, LeadStatusChange,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
 
@@ -129,6 +130,23 @@ export interface Repository {
    */
   addSafeMovement(movement: SafeMovement): Promise<void>;
   deleteSafeMovement(id: string): Promise<void>;
+
+  /* -- müşteri adayları ------------------------------------------------ */
+  listLeads(businessId: string): Promise<CustomerLead[]>;
+  getLead(id: string): Promise<CustomerLead | null>;
+  /**
+   * Adayı açar ya da aynı telefondaki mevcut adayı günceller.
+   *
+   * Aynı numaradan ikinci mesaj yeni bir aday AÇMAMALI: konuşmanın tamamı
+   * tek kişinin altında toplanmalı. Eşleştirme telefona, yoksa e-postaya
+   * bakar.
+   */
+  saveLead(lead: CustomerLead): Promise<CustomerLead>;
+  deleteLead(id: string): Promise<void>;
+
+  listLeadMessages(leadId: string): Promise<LeadMessage[]>;
+  addLeadMessage(message: LeadMessage): Promise<void>;
+  listLeadStatusHistory(leadId: string): Promise<LeadStatusChange[]>;
 
   /* -- renk ayarları -------------------------------------------------- */
   getColorSettings(businessId: string): Promise<ColorSetting[]>;

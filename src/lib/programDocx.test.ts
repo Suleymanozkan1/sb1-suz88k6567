@@ -26,7 +26,7 @@ const RENKLER: ColorSetting[] = [
 
 function rez(over: Partial<Reservation>): Reservation {
   return {
-    id: 'r1', businessId: 'b1', hallId: 'h1', code: '20261',
+    id: 'r1', businessId: 'b1', hallId: 'h1', code: '2026-1',
     customerName: 'Zuhal Rana', customerPhone: '5330000001',
     date: '2026-09-12', slot: 'Gece', organizationType: 'Düğün',
     guestCount: 300, totalAmount: 1, deposit: 0, currency: 'TL',
@@ -42,7 +42,7 @@ function cizelge(reservations: Reservation[]) {
 }
 
 const ETKINLIK: ProgramEvent = {
-  reservationId: 'r1', contractNo: '20261', parties: 'ZUHAL RANA / MUSTAFA',
+  reservationId: 'r1', contractNo: '2026-1', parties: 'ZUHAL RANA / MUSTAFA',
   organizationType: 'Düğün', guestCount: 300, menuLine: 'MENÜ-2+ORKESTRA',
   timeLabel: '19:00-23:00', slot: 'Gece', note: '', status: 'Kesin Rezervasyon',
   color: '#00b050',

@@ -120,28 +120,28 @@ const TUR_RENK: Record<string, string> = {
 };
 
 const ORNEK: Rezervasyon[] = [
-  { id: '1', kod: 'SA-2026-4141', musteri: 'Zeynep & Can Arslan', telefon: '5321234567',
+  { id: '1', kod: '2026-1', musteri: 'Zeynep & Can Arslan', telefon: '5321234567',
     tarih: gunEkle(0), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
     davetli: 320, toplam: 21_000_000, tahsilat: 6_000_000, kapora: 4_000_000, durum: 'Kesin Rezervasyon' },
-  { id: '2', kod: 'SA-2026-7683', musteri: 'Deniz & Kaan Şen', telefon: '5309876543',
+  { id: '2', kod: '2026-2', musteri: 'Deniz & Kaan Şen', telefon: '5309876543',
     tarih: gunEkle(0), seans: 'Gündüz', saat: '13:00-17:00', tur: 'Nikâh', renk: TUR_RENK['Nikâh']!, salon: 'Zümrüt Salon',
     davetli: 150, toplam: 9_500_000, tahsilat: 9_500_000, kapora: 6_333_334, durum: 'Tamamlandı' },
-  { id: '3', kod: 'SA-2026-9736', musteri: 'Melis Ailesi', telefon: '5551112233',
+  { id: '3', kod: '2026-3', musteri: 'Melis Ailesi', telefon: '5551112233',
     tarih: gunEkle(2), seans: 'Gece', saat: '19:00-23:00', tur: 'Kına', renk: TUR_RENK['Kına']!, salon: 'Kristal Salon',
     davetli: 200, toplam: 12_000_000, tahsilat: 3_000_000, kapora: 2_000_000, durum: 'Kesin Rezervasyon' },
-  { id: '4', kod: 'SA-2026-7446', musteri: 'Ayşe & Mert Yıldız', telefon: '5323334455',
+  { id: '4', kod: '2026-4', musteri: 'Ayşe & Mert Yıldız', telefon: '5323334455',
     tarih: gunEkle(5), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
     davetli: 280, toplam: 18_000_000, tahsilat: 8_000_000, kapora: 5_333_334, durum: 'Kesin Rezervasyon' },
-  { id: '5', kod: 'SA-2026-2210', musteri: 'Ece & Kerem Aydın', telefon: '5445556677',
+  { id: '5', kod: '2026-5', musteri: 'Ece & Kerem Aydın', telefon: '5445556677',
     tarih: gunEkle(9), seans: 'Gündüz', saat: '13:00-17:00', tur: 'Nişan', renk: TUR_RENK['Nişan']!, salon: 'Zümrüt Salon',
     davetli: 80, toplam: 5_500_000, tahsilat: 1_500_000, kapora: 1_000_000, durum: 'Ön Rezervasyon' },
-  { id: '6', kod: 'SA-2026-3382', musteri: 'Gül & Emre Doğan', telefon: '5337778899',
+  { id: '6', kod: '2026-6', musteri: 'Gül & Emre Doğan', telefon: '5337778899',
     tarih: gunEkle(14), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
     davetli: 400, toplam: 26_000_000, tahsilat: 0, kapora: 0, durum: 'Ön Rezervasyon' },
-  { id: '7', kod: 'SA-2026-5518', musteri: 'Sude & Barış Kaya', telefon: '5362223344',
+  { id: '7', kod: '2026-7', musteri: 'Sude & Barış Kaya', telefon: '5362223344',
     tarih: gunEkle(21), seans: 'Gece', saat: '19:00-23:00', tur: 'Sünnet', renk: TUR_RENK['Sünnet']!, salon: 'Zümrüt Salon',
     davetli: 180, toplam: 9_000_000, tahsilat: 2_500_000, kapora: 1_666_667, durum: 'Kesin Rezervasyon' },
-  { id: '8', kod: 'SA-2026-6094', musteri: 'Nur & Onur Çetin', telefon: '5354445566',
+  { id: '8', kod: '2026-8', musteri: 'Nur & Onur Çetin', telefon: '5354445566',
     tarih: gunEkle(-12), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
     davetli: 260, toplam: 16_500_000, tahsilat: 16_500_000, kapora: 11_000_000, durum: 'Tamamlandı' },
 ];
@@ -308,9 +308,19 @@ export async function isDurumu(id: string, tamam: boolean): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** Müşteri bize hangi kanaldan ulaştı. Panelle aynı sabit liste. */
+export type UlasimKanali = 'Instagram' | 'Düğün.com' | 'Google' | 'Referans' | 'Diğer';
+
+export const ULASIM_KANALLARI: UlasimKanali[] = [
+  'Instagram', 'Düğün.com', 'Google', 'Referans', 'Diğer',
+];
+
 export interface YeniRezervasyon {
   musteri: string; telefon: string; tarih: string; seans: string; tur: string;
   salon: string; davetli: number; toplam: number; kapora: number; durum: string;
+  /** Boş bırakılabilir; kanal raporunda "Belirtilmemiş" olarak sayılır. */
+  kanal?: UlasimKanali | '';
+  kanalDetay?: string;
 }
 
 /**
@@ -344,6 +354,8 @@ export async function rezervasyonEkle(girdi: YeniRezervasyon): Promise<string | 
     total_amount: girdi.toplam,
     deposit: girdi.kapora,
     status: girdi.durum,
+    source_channel: girdi.kanal || null,
+    source_detail: girdi.kanalDetay?.trim() || null,
   }).select('id').single();
 
   if (error) throw new Error(error.message);
@@ -740,7 +752,7 @@ export interface Sablon {
 }
 
 const ORNEK_SMS: SmsKaydi[] = [
-  { id: 'sm1', telefon: '5321234567', metin: 'Sayın Zeynep & Can Arslan, rezervasyonunuz alınmıştır. Kod: SA-2026-4141',
+  { id: 'sm1', telefon: '5321234567', metin: 'Sayın Zeynep & Can Arslan, rezervasyonunuz alınmıştır. Kod: 2026-1',
     tur: 'Rezervasyon', durum: 'Gönderildi', sinif: 'islem', tarih: gunEkle(-32), gerekce: '' },
   { id: 'sm2', telefon: '5323334455', metin: 'Sayın Ayşe & Mert Yıldız, organizasyonunuz yaklaşıyor.',
     tur: 'Hatırlatma', durum: 'Gönderildi', sinif: 'islem', tarih: gunEkle(-2), gerekce: '' },
@@ -883,9 +895,9 @@ const ORNEK_KULLANICI: Kullanici[] = [
 ];
 
 const ORNEK_DENETIM: DenetimSatiri[] = [
-  { id: 'd1', tarih: gunEkle(0), kullanici: 'Demo Kullanıcı', islem: 'Güncelleme', tablo: 'Rezervasyon', kayit: 'SA-2026-4141' },
+  { id: 'd1', tarih: gunEkle(0), kullanici: 'Demo Kullanıcı', islem: 'Güncelleme', tablo: 'Rezervasyon', kayit: '2026-1' },
   { id: 'd2', tarih: gunEkle(0), kullanici: 'Serap Aksoy', islem: 'Ekleme', tablo: 'Tahsilat', kayit: '20.000,00 ₺' },
-  { id: 'd3', tarih: gunEkle(-1), kullanici: 'Demo Kullanıcı', islem: 'Ekleme', tablo: 'Rezervasyon', kayit: 'SA-2026-5518' },
+  { id: 'd3', tarih: gunEkle(-1), kullanici: 'Demo Kullanıcı', islem: 'Ekleme', tablo: 'Rezervasyon', kayit: '2026-7' },
   { id: 'd4', tarih: gunEkle(-2), kullanici: 'Demo Kullanıcı', islem: 'Güncelleme', tablo: 'Şablon', kayit: 'Tarih hatırlatması' },
 ];
 

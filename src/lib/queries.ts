@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
-  Payment, Reservation, SafeMovement, SmsLogEntry,
+  Payment, Reservation, SafeMovement, SmsLogEntry, CustomerLead, LeadMessage,
 } from '../types';
 
 export const keys = {
@@ -23,6 +23,10 @@ export const keys = {
   payments: (businessId: string) => ['payments', businessId] as const,
   cashFlow: (businessId: string) => ['cashFlow', businessId] as const,
   safeMovements: (businessId: string) => ['safeMovements', businessId] as const,
+  leads: (businessId: string) => ['leads', businessId] as const,
+  lead: (id: string) => ['lead', id] as const,
+  leadMessages: (leadId: string) => ['leadMessages', leadId] as const,
+  leadStatusHistory: (leadId: string) => ['leadStatusHistory', leadId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
   audit: (ownerId: string) => ['audit', ownerId] as const,
@@ -106,6 +110,40 @@ export function useSafeMovements() {
     queryKey: keys.safeMovements(businessId),
     queryFn: () => repo.listSafeMovements(businessId),
     enabled: Boolean(businessId),
+  });
+}
+
+/** Müşteri adayları. */
+export function useLeads() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.leads(businessId),
+    queryFn: () => repo.listLeads(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useLead(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.lead(id ?? ''),
+    queryFn: () => repo.getLead(id!),
+    enabled: Boolean(id),
+  });
+}
+
+export function useLeadMessages(leadId: string | undefined) {
+  return useQuery({
+    queryKey: keys.leadMessages(leadId ?? ''),
+    queryFn: () => repo.listLeadMessages(leadId!),
+    enabled: Boolean(leadId),
+  });
+}
+
+export function useLeadStatusHistory(leadId: string | undefined) {
+  return useQuery({
+    queryKey: keys.leadStatusHistory(leadId ?? ''),
+    queryFn: () => repo.listLeadStatusHistory(leadId!),
+    enabled: Boolean(leadId),
   });
 }
 
@@ -406,6 +444,10 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.payments(businessId) });
     qc.invalidateQueries({ queryKey: keys.cashFlow(businessId) });
     qc.invalidateQueries({ queryKey: keys.safeMovements(businessId) });
+    qc.invalidateQueries({ queryKey: keys.leads(businessId) });
+    qc.invalidateQueries({ queryKey: ['lead'] });
+    qc.invalidateQueries({ queryKey: ['leadMessages'] });
+    qc.invalidateQueries({ queryKey: ['leadStatusHistory'] });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
     qc.invalidateQueries({ queryKey: keys.colors(businessId) });
     qc.invalidateQueries({ queryKey: keys.businesses(ownerId) });
@@ -479,6 +521,30 @@ export function useDeleteSafeMovement() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => repo.deleteSafeMovement(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSaveLead() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (lead: CustomerLead) => repo.saveLead(lead),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteLead() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteLead(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useAddLeadMessage() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (message: LeadMessage) => repo.addLeadMessage(message),
     onSuccess: invalidate,
   });
 }

@@ -360,3 +360,131 @@ test.describe('İşletme ekleme', () => {
     await expect(page.locator('#active-business')).toContainText('Sahra Bahçe Salonu');
   });
 });
+
+test.describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
+  test('kanal raporu kanalları, payları ve Belirtilmemiş satırını gösterir', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/raporlar?tab=kanal');
+    await expect(page.getByRole('heading', { name: 'Raporlar' })).toBeVisible();
+
+    await expect(page.getByRole('cell', { name: 'Instagram' })).toBeVisible();
+    // Kanalı boş kayıtlar gizlenseydi yüzdeler yalnızca doldurulmuş
+    // kayıtlar üzerinden hesaplanır ve Instagram olduğundan güçlü görünürdü.
+    await expect(page.getByRole('cell', { name: 'Belirtilmemiş' })).toBeVisible();
+    await expect(page.getByText(/^%\d/).first()).toBeVisible();
+  });
+
+  test('yeni rezervasyonda kanal kaydedilir ve detayda görünür', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/rezervasyonlar/yeni');
+
+    await page.locator('#hallId').selectOption({ index: 1 });
+    await page.locator('#customerName').fill('Kanal Denemesi');
+    await page.locator('#customerPhone').fill('5339990011');
+    await page.locator('#date').fill('2029-09-20');
+    await page.locator('#guestCount').fill('180');
+    await page.locator('#totalAmount').fill('90000');
+    await page.locator('#sourceChannel').selectOption('Referans');
+    await page.locator('#sourceDetail').fill('Ayşe Yılmaz');
+    await page.getByRole('button', { name: /Kaydet/ }).click();
+
+    await page.waitForURL(/\/panel\/rezervasyonlar\/(?!yeni$)[^/]+$/);
+    await expect(page.getByRole('heading', { name: 'Rezervasyon Bilgileri' })).toBeVisible();
+    await expect(page.getByText('Referans · Ayşe Yılmaz')).toBeVisible();
+  });
+
+  test('Diğer seçilip açıklama yazılmazsa kayıt reddedilir', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/rezervasyonlar/yeni');
+
+    await page.locator('#hallId').selectOption({ index: 1 });
+    await page.locator('#customerName').fill('Açıklamasız Diğer');
+    await page.locator('#customerPhone').fill('5339990022');
+    await page.locator('#date').fill('2029-09-21');
+    await page.locator('#guestCount').fill('120');
+    await page.locator('#totalAmount').fill('60000');
+    await page.locator('#sourceChannel').selectOption('Diğer');
+    await page.getByRole('button', { name: /Kaydet/ }).click();
+
+    await expect(page.getByText('Diğer seçildiğinde nereden ulaştığını yazınız.')).toBeVisible();
+    // Kayıt açılmamalı: adres hâlâ formda kalmalı.
+    await expect(page).toHaveURL(/\/rezervasyonlar\/yeni/);
+  });
+
+  test('müşteri adayı listesi durum ve gecikme gösterir', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari');
+    await expect(page.getByRole('heading', { name: 'Müşteri Adayları' })).toBeVisible();
+
+    await expect(page.getByText('Ömer Ay')).toBeVisible();
+    // Gecikmiş iş, günlük işin içinde kaybolmamalı.
+    await expect(page.getByText('Takip tarihi geçti.')).toBeVisible();
+  });
+
+  test('dashboard müşteri takip kutusu listeye süzgeçle gider', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel');
+    await expect(page.getByRole('heading', { name: 'Müşteri takip' })).toBeVisible();
+
+    await page.getByRole('link', { name: /Geciken takip/ }).click();
+    await page.waitForURL(/musteri-adaylari\?suzgec=geciken/);
+    // Tıklanan kutu ile açılan listenin farklı şey göstermesi güveni bozardı.
+    await expect(page.getByRole('button', { name: 'Geciken takip' })).toHaveClass(/bg-brand/);
+    await expect(page.getByText('Elif Kara')).toBeVisible();
+  });
+
+  test('durum değiştirilince iletişim geçmişine işlenir', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari/lead_seed_1');
+    await expect(page.getByRole('heading', { name: 'Ömer Ay' })).toBeVisible();
+
+    await page.getByLabel('Durum').selectOption('Arandı');
+    await expect(page.getByText(/Durum "Aranmadı" → "Arandı"/)).toBeVisible();
+
+    // Kim, ne zaman, neyden neye: geçmiş ayrıca durum listesinde de duruyor.
+    await page.getByText(/Durum değişiklikleri/).click();
+    await expect(page.getByText(/Aranmadı → Arandı/)).toBeVisible();
+  });
+
+  test("WhatsApp'ta Aç wa.me adresine gider, Cloud API'ye değil", async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari/lead_seed_1');
+    const bag = page.getByRole('link', { name: /WhatsApp'ta Aç/ });
+    await expect(bag).toHaveAttribute('href', 'https://wa.me/905332642537');
+    await expect(bag).toHaveAttribute('target', '_blank');
+  });
+
+  test('görüşme notu geçmişe eklenir', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari/lead_seed_1');
+    await page.getByLabel('Görüşme notu').fill('Müşteri ile görüşüldü, fiyat verildi.');
+    await page.getByRole('button', { name: 'Ekle' }).click();
+    await expect(page.getByText('Müşteri ile görüşüldü, fiyat verildi.')).toBeVisible();
+  });
+
+  test('aday rezervasyona dönüşür ve kayda bağlanır', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari/lead_seed_1');
+    await page.getByRole('button', { name: 'Rezervasyona Dönüştür' }).click();
+
+    await page.waitForURL(/\/rezervasyonlar\/yeni\?/);
+    // Bilgiler yeniden yazılmıyor.
+    await expect(page.locator('#customerName')).toHaveValue('Ömer Ay');
+    await expect(page.locator('#customerPhone')).toHaveValue('5332642537');
+    await expect(page.locator('#guestCount')).toHaveValue('1000');
+    await expect(page.locator('#sourceChannel')).toHaveValue('Instagram');
+    // Çözülemeyen tarih ifadesi nota geçiyor; bilgi kaybolmamalı.
+    await expect(page.locator('#note')).toHaveValue(/Mayısın ilk haftası/);
+
+    await page.locator('#hallId').selectOption({ index: 1 });
+    await page.locator('#date').fill('2029-05-02');
+    await page.locator('#totalAmount').fill('250000');
+    await page.getByRole('button', { name: /Kaydet/ }).click();
+    await page.waitForURL(/\/panel\/rezervasyonlar\/(?!yeni$)[^/]+$/);
+
+    // Aday kapanmış ve kayda bağlanmış olmalı.
+    await page.goto('/panel/musteri-adaylari/lead_seed_1');
+    await expect(page.getByLabel('Durum')).toHaveValue('Rezervasyona Döndü');
+    await expect(page.getByRole('link', { name: 'Oluşturuldu' })).toBeVisible();
+  });
+});

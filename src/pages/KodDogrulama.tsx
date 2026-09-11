@@ -58,7 +58,7 @@ export default function KodDogrulama() {
             <input
               id="rez-kod"
               className="field-input font-mono uppercase"
-              placeholder="SA-2026-0000"
+              placeholder="2026-1"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               aria-invalid={Boolean(error)}

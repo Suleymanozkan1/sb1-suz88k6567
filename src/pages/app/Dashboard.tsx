@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import StatCard from '../../components/StatCard';
 import { useAuth } from '../../context/AuthContext';
-import { useCashFlow, useReservationsWithBalances } from '../../lib/queries';
+import { useCashFlow, useLeads, useReservationsWithBalances } from '../../lib/queries';
+import { leadOzeti } from '../../lib/lead';
+import type { CustomerLead } from '../../types';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, formatNumber, todayIso } from '../../lib/format';
 import { lastMonthsReport, programReport, summarize } from '../../lib/reports';
@@ -13,6 +15,7 @@ import { MONTH_NAMES } from '../../data/constants';
 export default function Dashboard() {
   const { user } = useAuth();
   const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
+  const { data: adaylar = [] } = useLeads();
   const cashQuery = useCashFlow();
   const today = todayIso();
   const currency = user?.currency ?? 'TL';
@@ -62,6 +65,18 @@ export default function Dashboard() {
         <StatCard label="Kalan alacak" value={formatMoney(totals.remaining, currency)} hint="Tüm açık kayıtlar" icon={IconWallet} tone="danger" />
         <StatCard label="Kasa bakiyesi" value={formatMoney(cashBalance, currency)} hint="Gelir - Gider" icon={IconUsers} tone={cashBalance >= 0 ? 'success' : 'danger'} />
       </div>
+
+      {/*
+        Müşteri takip özeti. Geciken takip ile bugün aranacak ayrı duruyor:
+        ikisi tek sayıda toplanınca gecikmiş iş, günlük işin içinde kaybolur.
+      */}
+      <section className="card mt-6 p-5" aria-labelledby="lead-title">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 id="lead-title" className="font-heading text-lg font-bold text-brand">Müşteri takip</h2>
+          <Link to="/panel/musteri-adaylari" className="text-sm">Tümü →</Link>
+        </div>
+        <LeadOzetKutulari adaylar={adaylar} />
+      </section>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <section className="card p-5 lg:col-span-2" aria-labelledby="upcoming-title">
@@ -195,5 +210,35 @@ function Summary({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-brand-muted">{label}</p>
       <p className="mt-1 font-heading text-lg font-bold text-brand">{value}</p>
     </div>
+  );
+}
+
+/** Dashboard'daki müşteri takip sayıları; her biri listedeki bir süzgece gider. */
+function LeadOzetKutulari({ adaylar }: { adaylar: CustomerLead[] }) {
+  const ozet = leadOzeti(adaylar);
+  const kutular: { etiket: string; deger: number; adres: string; vurgu?: string }[] = [
+    { etiket: 'Yeni (aranmadı)', deger: ozet.yeni, adres: '/panel/musteri-adaylari?durum=Aranmadı' },
+    { etiket: 'Bugün aranacak', deger: ozet.bugun, adres: '/panel/musteri-adaylari?suzgec=bugun', vurgu: 'text-[#92600e]' },
+    { etiket: 'Geciken takip', deger: ozet.geciken, adres: '/panel/musteri-adaylari?suzgec=geciken', vurgu: 'text-[#b91c1c]' },
+    { etiket: 'Ulaşılamayan', deger: ozet.ulasilamayan, adres: '/panel/musteri-adaylari?durum=Ulaşılamadı' },
+    { etiket: 'Tekrar aranacak', deger: ozet.tekrarAranacak, adres: '/panel/musteri-adaylari?durum=Tekrar Aranacak' },
+    { etiket: 'Teklif gönderilen', deger: ozet.teklif, adres: '/panel/musteri-adaylari?durum=Teklif Gönderildi' },
+    { etiket: 'Rezervasyona dönen', deger: ozet.rezervasyon, adres: '/panel/musteri-adaylari?durum=Rezervasyona Döndü', vurgu: 'text-[#15803d]' },
+    { etiket: 'Olumsuz', deger: ozet.olumsuz, adres: '/panel/musteri-adaylari?durum=Olumsuz' },
+  ];
+
+  return (
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {kutular.map((k) => (
+        <li key={k.etiket}>
+          <Link to={k.adres} className="block rounded-lg border border-line px-3 py-2.5 hover:border-brand">
+            <span className="block text-xs text-brand-muted">{k.etiket}</span>
+            <span className={`mt-0.5 block font-heading text-xl font-bold ${k.vurgu ?? 'text-brand'}`}>
+              {k.deger}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }

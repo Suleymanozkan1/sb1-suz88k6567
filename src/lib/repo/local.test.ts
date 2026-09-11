@@ -4,7 +4,7 @@ import { KEYS, clearAll, write } from '../storage';
 import { seedIfEmpty, DEMO_CREDENTIALS, DEFAULT_COLOR_SETTINGS } from '../seed';
 import { contractSequence, nextContractCode, normalizeEmail, uid } from '../ids';
 import { makeBalanceLookup, remainingBalance, totalPaid } from '../money';
-import type { Reservation } from '../../types';
+import type { CustomerLead, Reservation } from '../../types';
 
 const BIZ = 'biz_test';
 
@@ -139,14 +139,14 @@ describe('kod doğrulama', () => {
   it('telefon numarasını maskeler ve ödeme bilgisi sızdırmaz', async () => {
     await localRepo.saveBusiness({ id: BIZ, ownerId: 'o1', name: 'Test Salonu', category: '',
       city: 'İstanbul', district: 'Kadıköy', phone: '', capacity: 0, currency: 'TL' });
-    const r = await localRepo.saveReservation(makeReservation({ code: 'SA-2026-9999', customerPhone: '5321234567' }));
+    const r = await localRepo.saveReservation(makeReservation({ code: '2020-9999', customerPhone: '5321234567' }));
 
-    const found = await localRepo.verifyCode('sa-2026-9999');
+    const found = await localRepo.verifyCode('2020-9999');
     expect(found).not.toBeNull();
     expect(found!.customerPhone).toBe('532*****67');
     expect(found!.businessName).toBe('Test Salonu');
     expect(found).not.toHaveProperty('deposit');
-    expect(r.code).toBe('SA-2026-9999');
+    expect(r.code).toBe('2020-9999');
   });
 
   it('bulunmayan kod için null döner', async () => {
@@ -218,35 +218,42 @@ describe('SMS kayıtları', () => {
 });
 
 describe('kimlik yardımcıları', () => {
-  it('sözleşme numarası yıl + sıra biçimindedir', () => {
-    expect(nextContractCode([], 2026)).toBe('20261');
-    expect(nextContractCode(['20261'], 2026)).toBe('20262');
-    expect(nextContractCode(['20261', '20262', '20263'], 2026)).toBe('20264');
+  it('sözleşme numarası yıl-sıra biçimindedir', () => {
+    expect(nextContractCode([], 2026)).toBe('2026-1');
+    expect(nextContractCode(['2026-1'], 2026)).toBe('2026-2');
+    expect(nextContractCode(['2026-1', '2026-2', '2026-3'], 2026)).toBe('2026-4');
   });
 
-  it('sıra sayısal olarak ilerler: 20269 sonrası 202610 gelir', () => {
-    // Metin sıralaması "202610" < "20269" der; numara sayıya çevrilmezse
+  it('sıra sayısal olarak ilerler: 2026-9 sonrası 2026-10 gelir', () => {
+    // Metin sıralaması "2026-10" < "2026-9" der; numara sayıya çevrilmezse
     // dizi dokuzuncu sözleşmede takılır.
-    expect(nextContractCode(['20269'], 2026)).toBe('202610');
-    expect(nextContractCode(['202610', '20269'], 2026)).toBe('202611');
+    expect(nextContractCode(['2026-9'], 2026)).toBe('2026-10');
+    expect(nextContractCode(['2026-10', '2026-9'], 2026)).toBe('2026-11');
   });
 
-  it('eski biçimli kodlar diziyi geriye çekmez', () => {
-    expect(nextContractCode(['SA-2026-4821', '20263'], 2026)).toBe('20264');
-    expect(nextContractCode(['SA-2026-4821'], 2026)).toBe('20261');
+  it('tiresiz yazılmış eski numaralar da diziye dahildir', () => {
+    // 0014 numarayı tiresiz üretiyordu. Sayılmasalardı aynı yılın hem
+    // "20261" hem "2026-1" diye iki ayrı birinci sözleşmesi olurdu.
+    expect(nextContractCode(['20263'], 2026)).toBe('2026-4');
+    expect(contractSequence('20262', 2026)).toBe(2);
+  });
+
+  it('biçime uymayan kodlar diziyi geriye çekmez', () => {
+    expect(nextContractCode(['SA-2026-4821', '2026-3'], 2026)).toBe('2026-4');
+    expect(nextContractCode(['SA-2026-4821'], 2026)).toBe('2026-1');
   });
 
   it('başka yılın numaraları bu yılın dizisine karışmaz', () => {
-    expect(nextContractCode(['20257', '20261'], 2026)).toBe('20262');
-    expect(contractSequence('20257', 2026)).toBeNull();
-    expect(contractSequence('20262', 2026)).toBe(2);
+    expect(nextContractCode(['2025-7', '2026-1'], 2026)).toBe('2026-2');
+    expect(contractSequence('2025-7', 2026)).toBeNull();
+    expect(contractSequence('2026-2', 2026)).toBe(2);
   });
 
   it('dokuz haneden uzun sıra taşma riskiyle okunmaz', () => {
     // Number('9999999999') güvenli aralıkta olsa da kod alanına elle
     // yazılmış uzun bir değer diziyi ele geçirmemeli.
-    expect(contractSequence('20261234567890', 2026)).toBeNull();
-    expect(nextContractCode(['20261234567890', '20262'], 2026)).toBe('20263');
+    expect(contractSequence('2026-1234567890', 2026)).toBeNull();
+    expect(nextContractCode(['2026-1234567890', '2026-2'], 2026)).toBe('2026-3');
   });
 
   it('e-postayı locale-bağımsız normalleştirir', () => {
@@ -626,5 +633,94 @@ describe('tedarikçiler', () => {
     const atamalar = await localRepo.listReservationVendors(r.id);
     expect(atamalar).toHaveLength(1);
     expect(atamalar[0]).toMatchObject({ cost: 15000, arriveAt: '18:30' });
+  });
+});
+
+describe('müşteri adayları', () => {
+  beforeEach(() => { clearAll(); });
+
+  const aday = (over: Partial<CustomerLead> = {}): CustomerLead => ({
+    id: 'lead1', businessId: BIZ, name: 'Ömer Ay', phone: '5332642537',
+    email: 'omer@ornek.com', guestCount: 1000, eventDate: '', eventDateText: 'Mayıs ilk hafta',
+    organizationType: 'Düğün', source: 'WhatsApp', sourceDetail: '',
+    status: 'Aranmadı', nextFollowupAt: '', lastContactAt: '', note: '',
+    createdAt: '2026-09-01T10:00:00.000Z', updatedAt: '2026-09-01T10:00:00.000Z', ...over,
+  });
+
+  it('adayı yazar ve geri verir', async () => {
+    await localRepo.saveLead(aday());
+    const liste = await localRepo.listLeads(BIZ);
+    expect(liste).toHaveLength(1);
+    expect(liste[0]).toMatchObject({ name: 'Ömer Ay', status: 'Aranmadı' });
+  });
+
+  it('aynı telefonla ikinci aday açılamaz', async () => {
+    // Aynı numaradan gelen ikinci mesaj yeni bir kayıt açsaydı "bu müşteri
+    // daha önce arandı mı" sorusu cevapsız kalırdı.
+    await localRepo.saveLead(aday());
+    await expect(localRepo.saveLead(aday({ id: 'lead2' })))
+      .rejects.toThrow(/zaten var/);
+  });
+
+  it('telefonsuz iki aday çakışma saymaz', async () => {
+    await localRepo.saveLead(aday({ id: 'a', phone: '' }));
+    await localRepo.saveLead(aday({ id: 'b', phone: '' }));
+    expect(await localRepo.listLeads(BIZ)).toHaveLength(2);
+  });
+
+  it('durum değişince geçmişe satır yazar', async () => {
+    await localRepo.saveLead(aday());
+    await localRepo.saveLead(aday({ status: 'Arandı' }));
+
+    const gecmis = await localRepo.listLeadStatusHistory('lead1');
+    expect(gecmis).toHaveLength(2);
+    expect(gecmis[0]).toMatchObject({ fromStatus: 'Aranmadı', toStatus: 'Arandı' });
+    expect(gecmis[1]).toMatchObject({ fromStatus: null, toStatus: 'Aranmadı' });
+  });
+
+  it('durum değişmediyse geçmişe satır yazmaz', async () => {
+    await localRepo.saveLead(aday());
+    await localRepo.saveLead(aday({ note: 'not güncellendi' }));
+    expect(await localRepo.listLeadStatusHistory('lead1')).toHaveLength(1);
+  });
+
+  it('oluşturulma tarihi güncellemede korunur', async () => {
+    await localRepo.saveLead(aday());
+    const once = (await localRepo.listLeads(BIZ))[0].createdAt;
+    await localRepo.saveLead(aday({ status: 'Arandı' }));
+    expect((await localRepo.listLeads(BIZ))[0].createdAt).toBe(once);
+  });
+
+  it('iletişim geçmişini eskiden yeniye sıralar', async () => {
+    await localRepo.saveLead(aday());
+    await localRepo.addLeadMessage({
+      id: 'm2', businessId: BIZ, leadId: 'lead1', direction: 'olay', channel: 'sistem',
+      body: 'ikinci', actorEmail: '', createdAt: '2026-09-02T10:00:00.000Z',
+    });
+    await localRepo.addLeadMessage({
+      id: 'm1', businessId: BIZ, leadId: 'lead1', direction: 'gelen', channel: 'whatsapp',
+      body: 'ilk', actorEmail: '', createdAt: '2026-09-01T10:00:00.000Z',
+    });
+    const gecmis = await localRepo.listLeadMessages('lead1');
+    expect(gecmis.map((m) => m.body)).toEqual(['ilk', 'ikinci']);
+  });
+
+  it('aday silinince geçmişi de düşer', async () => {
+    await localRepo.saveLead(aday());
+    await localRepo.addLeadMessage({
+      id: 'm1', businessId: BIZ, leadId: 'lead1', direction: 'gelen', channel: 'whatsapp',
+      body: 'x', actorEmail: '', createdAt: '2026-09-01T10:00:00.000Z',
+    });
+    await localRepo.deleteLead('lead1');
+
+    expect(await localRepo.listLeads(BIZ)).toEqual([]);
+    expect(await localRepo.listLeadMessages('lead1')).toEqual([]);
+    expect(await localRepo.listLeadStatusHistory('lead1')).toEqual([]);
+  });
+
+  it('başka işletmenin adayını vermez', async () => {
+    await localRepo.saveLead(aday());
+    await localRepo.saveLead(aday({ id: 'x', businessId: 'biz_baska', phone: '5559998877' }));
+    expect(await localRepo.listLeads(BIZ)).toHaveLength(1);
   });
 });

@@ -87,7 +87,7 @@ describe('varsayılan hatırlatma metinleri', () => {
   const ENKOTU = {
     musteri: 'Şeyma Nur & Muhammed Çağatay Yıldırım',
     tarih: '16.09.2026', seans: 'Gündüz', salon: 'Zümrüt Balo Salonu',
-    kod: 'SA-2026-4141', tutar: '210.000,00', odenen: '60.000,00', kalan: '150.000,00',
+    kod: '2026-1', tutar: '210.000,00', odenen: '60.000,00', kalan: '150.000,00',
   };
 
   it.each(SABLONLAR)('tek SMSe sığar: %s', (govde) => {

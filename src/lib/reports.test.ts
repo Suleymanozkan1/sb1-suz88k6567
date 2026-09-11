@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  balanceReport, downloadCsv, lastMonthsReport, monthReport, programReport,
-  slotReport, summarize, toCsv, withinRange,
+  balanceReport, channelReport, downloadCsv, KANAL_BELIRTILMEMIS, lastMonthsReport,
+  monthReport, programReport, slotReport, summarize, toCsv, withinRange,
 } from './reports';
 import { uid } from './ids';
 import { makeBalanceLookup } from './money';
@@ -13,7 +13,7 @@ function make(over: Partial<Reservation> = {}): Reservation {
   return {
     id: uid('res'),
     businessId: 'biz_test', hallId: 'hall_test',
-    code: 'SA-2026-0001',
+    code: '2026-1',
     customerName: 'Müşteri',
     customerPhone: '5321112233',
     date: '2026-03-10',
@@ -269,5 +269,73 @@ describe('downloadCsv', () => {
     downloadCsv('rapor.csv', 'Ad;Tutar');
 
     expect(parcalar[0]).toEqual(['\ufeffAd;Tutar']);
+  });
+});
+
+
+describe('channelReport', () => {
+  const bakiye = { paid: () => 0, remaining: (r: Reservation) => r.totalAmount };
+  const k = (over: Partial<Reservation>) => make(over);
+
+  it('kanal başına sayar ve payı yüzde olarak verir', () => {
+    const rapor = channelReport([
+      k({ id: '1', sourceChannel: 'Instagram' }),
+      k({ id: '2', sourceChannel: 'Instagram' }),
+      k({ id: '3', sourceChannel: 'Google' }),
+      k({ id: '4', sourceChannel: 'Düğün.com' }),
+    ], bakiye);
+
+    expect(rapor.map((r) => [r.channel, r.count])).toEqual([
+      ['Instagram', 2], ['Google', 1], ['Düğün.com', 1],
+    ]);
+    expect(rapor[0].share).toBe(50);
+  });
+
+  it('kanalı boş kayıtları gizlemez, Belirtilmemiş sayar', () => {
+    // Gizlenseler yüzdeler yalnızca doldurulmuş kayıtlar üzerinden
+    // hesaplanır ve Instagram gerçekte olduğundan güçlü görünürdü.
+    const rapor = channelReport([
+      k({ id: '1', sourceChannel: 'Instagram' }),
+      k({ id: '2' }),
+      k({ id: '3' }),
+    ], bakiye);
+
+    const bos = rapor.find((r) => r.channel === KANAL_BELIRTILMEMIS);
+    expect(bos?.count).toBe(2);
+    expect(rapor.find((r) => r.channel === 'Instagram')?.share).toBeCloseTo(33.3, 1);
+  });
+
+  it('açıklamaları tek satırda toplar, ayrı kanal yapmaz', () => {
+    // 40 farklı tavsiye edenin adı 40 satırlık bir rapor üretirdi.
+    const rapor = channelReport([
+      k({ id: '1', sourceChannel: 'Referans', sourceDetail: 'Ayşe' }),
+      k({ id: '2', sourceChannel: 'Referans', sourceDetail: 'Mehmet' }),
+      k({ id: '3', sourceChannel: 'Referans', sourceDetail: 'Ayşe' }),
+    ], bakiye);
+
+    expect(rapor).toHaveLength(1);
+    expect(rapor[0].count).toBe(3);
+    // Tekrar eden ad iki kez yazılmıyor.
+    expect(rapor[0].detail).toBe('Ayşe, Mehmet');
+  });
+
+  it('çok getiren kanal başta, eşitlikte ciro belirler', () => {
+    const rapor = channelReport([
+      k({ id: '1', sourceChannel: 'Google', totalAmount: 100000 }),
+      k({ id: '2', sourceChannel: 'Instagram', totalAmount: 20000 }),
+    ], bakiye);
+    expect(rapor[0].channel).toBe('Google');
+  });
+
+  it('kayıt yoksa boş rapor verir', () => {
+    expect(channelReport([], bakiye)).toEqual([]);
+  });
+
+  it('ciro ve davetli toplamlarını taşır', () => {
+    const rapor = channelReport([
+      k({ id: '1', sourceChannel: 'Instagram', totalAmount: 50000, guestCount: 300 }),
+      k({ id: '2', sourceChannel: 'Instagram', totalAmount: 30000, guestCount: 200 }),
+    ], bakiye);
+    expect(rapor[0]).toMatchObject({ total: 80000, guests: 500, count: 2 });
   });
 });

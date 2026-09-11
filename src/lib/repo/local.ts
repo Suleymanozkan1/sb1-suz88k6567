@@ -14,6 +14,7 @@ import type {
   Business, CashFlowEntry, CashFlowKind, ColorSetting, EnqueueResult, Invoice,
   EventTask, Hall, Menu, Payment, Reservation, ReservationVendor,
   SafeDirection, SafeMovement, SeatingTable, SmsConsent, SmsLogEntry, Vendor,
+  CustomerLead, LeadMessage, LeadStatusChange,
   SmsQueueEntry, User,
 } from '../../types';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
@@ -26,6 +27,11 @@ function businesses(): Business[] { return read<Business[]>(KEYS.businesses, [])
 function reservations(): Reservation[] { return read<Reservation[]>(KEYS.reservations, []); }
 function payments(): Payment[] { return read<Payment[]>(KEYS.payments, []); }
 function cash(): CashFlowEntry[] { return read<CashFlowEntry[]>(KEYS.cashflow, []); }
+function leads(): CustomerLead[] { return read<CustomerLead[]>(KEYS.leads, []); }
+function leadMessages(): LeadMessage[] { return read<LeadMessage[]>(KEYS.leadMessages, []); }
+function statusHistory(): LeadStatusChange[] {
+  return read<LeadStatusChange[]>(KEYS.leadStatusHistory, []);
+}
 function safeMoves(): SafeMovement[] { return read<SafeMovement[]>(KEYS.safeMovements, []); }
 
 /**
@@ -392,6 +398,76 @@ export const localRepo: Repository = {
 
   async deleteSafeMovement(id) {
     write(KEYS.safeMovements, safeMoves().filter((m) => m.id !== id));
+  },
+
+  async listLeads(businessId) {
+    return wait(leads()
+      .filter((l) => l.businessId === businessId)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+  },
+
+  async getLead(id) {
+    return wait(leads().find((l) => l.id === id) ?? null);
+  },
+
+  async saveLead(lead) {
+    const hepsi = leads();
+    // Aynı numaradan ikinci kayıt açılmamalı; veritabanındaki benzersiz
+    // indeksin karşılığı.
+    const cakisan = hepsi.find((l) => l.id !== lead.id
+      && l.businessId === lead.businessId
+      && l.phone.trim() !== '' && l.phone === lead.phone);
+    if (cakisan) {
+      throw new RepoError('Bu telefon numarasıyla kayıtlı bir müşteri adayı zaten var.');
+    }
+
+    const now = new Date().toISOString();
+    const eski = hepsi.find((l) => l.id === lead.id);
+    const kayit: CustomerLead = {
+      ...lead,
+      createdAt: eski?.createdAt || lead.createdAt || now,
+      updatedAt: now,
+    };
+    write(KEYS.leads, eski
+      ? hepsi.map((l) => (l.id === lead.id ? kayit : l))
+      : [...hepsi, kayit]);
+
+    // Durum değiştiyse geçmişe yaz; veritabanındaki tetikleyicinin karşılığı.
+    if (!eski || eski.status !== kayit.status) {
+      write(KEYS.leadStatusHistory, [...statusHistory(), {
+        id: uid('durum'), leadId: kayit.id,
+        fromStatus: eski ? eski.status : null,
+        toStatus: kayit.status, actorEmail: '', createdAt: now,
+      }]);
+    }
+    return wait(kayit);
+  },
+
+  async deleteLead(id) {
+    write(KEYS.leads, leads().filter((l) => l.id !== id));
+    write(KEYS.leadMessages, leadMessages().filter((m) => m.leadId !== id));
+    write(KEYS.leadStatusHistory, statusHistory().filter((h) => h.leadId !== id));
+  },
+
+  async listLeadMessages(leadId) {
+    return wait(leadMessages()
+      .filter((m) => m.leadId === leadId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+  },
+
+  async addLeadMessage(message) {
+    write(KEYS.leadMessages, [...leadMessages(), message]);
+  },
+
+  async listLeadStatusHistory(leadId) {
+    // Aynı milisaniyede iki değişiklik olabiliyor; damga eşitse yazılma
+    // sırası karar veriyor. Yoksa geçmiş kendi içinde ters görünürdü.
+    const hepsi = statusHistory();
+    return wait(hepsi
+      .map((h, i) => ({ h, i }))
+      .filter((x) => x.h.leadId === leadId)
+      .sort((a, b) => b.h.createdAt.localeCompare(a.h.createdAt) || b.i - a.i)
+      .map((x) => x.h));
   },
 
   async getColorSettings(businessId) {

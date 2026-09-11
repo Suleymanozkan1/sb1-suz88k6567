@@ -25,7 +25,7 @@ const RENKLER: ColorSetting[] = [
 
 function rez(over: Partial<Reservation>): Reservation {
   return {
-    id: 'r1', businessId: 'b1', hallId: 'h1', code: '20261',
+    id: 'r1', businessId: 'b1', hallId: 'h1', code: '2026-1',
     customerName: 'Zuhal Rana', customerPhone: '5330000001',
     date: '2026-09-12', slot: 'Gece', organizationType: 'Düğün',
     guestCount: 300, totalAmount: 100000, deposit: 0, currency: 'TL',
@@ -265,9 +265,9 @@ describe('buildProgram', () => {
   });
 
   it('sözleşme numarasını ve davetli sayısını taşır', () => {
-    const t = cizelge([rez({ code: '202612', guestCount: 450 })]);
+    const t = cizelge([rez({ code: '2026-12', guestCount: 450 })]);
     const e = t.rows[0].cells[0].events[0];
-    expect(e.contractNo).toBe('202612');
+    expect(e.contractNo).toBe('2026-12');
     expect(e.guestCount).toBe(450);
   });
 });

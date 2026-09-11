@@ -17,6 +17,14 @@ export type OrganizationType =
 /** Gündüz / Gece seans ayrımı: orijinal sistemdeki "gündüz ve gece" takibi */
 export type SessionSlot = 'Gündüz' | 'Gece';
 
+/**
+ * Müşteri işletmeye hangi kanaldan ulaştı.
+ *
+ * Sabit bir liste: serbest metin "Instagram", "instagram", "İnstagram" diye
+ * üç ayrı kanal üretip yıl sonu raporunu anlamsız kılardı.
+ */
+export type LeadChannel = 'Instagram' | 'Düğün.com' | 'Google' | 'Referans' | 'Diğer';
+
 export type ReservationStatus = 'Ön Rezervasyon' | 'Kesin Rezervasyon' | 'Tamamlandı' | 'İptal';
 
 export interface Payment {
@@ -63,6 +71,10 @@ export interface Reservation {
   note?: string;
   services: string[];
   address?: string;
+  /** Müşteri bize hangi kanaldan ulaştı; yıl sonu kanal raporunun kaynağı. */
+  sourceChannel?: LeadChannel;
+  /** Referansta tavsiye edenin adı, "Diğer"de açıklama. */
+  sourceDetail?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -179,6 +191,95 @@ export interface SafeMovement {
   sourceKind: 'cash_flow' | 'reservation';
   /** cash_flow kimliği ya da "kapora:<id>" / "tahsilat:<id>" */
   sourceId: string;
+  createdAt: string;
+}
+
+/** Müşteri adayının nereden geldiği. */
+export type LeadSource = 'Instagram' | 'WhatsApp' | 'Web Sitesi' | 'Telefon' | 'Manuel' | 'Diğer';
+
+export const LEAD_SOURCES: LeadSource[] = [
+  'Instagram', 'WhatsApp', 'Web Sitesi', 'Telefon', 'Manuel', 'Diğer',
+];
+
+/**
+ * Müşteri adayının takip durumu.
+ *
+ * Sıra, akışın kendisi: aranmamış bir aday soldan sağa ilerliyor. Ekranda
+ * da bu sırayla görünüyor ki personel listede aradığını yerinde bulsun.
+ */
+export type LeadStatus =
+  | 'Aranmadı'
+  | 'Arandı'
+  | 'Ulaşılamadı'
+  | 'Tekrar Aranacak'
+  | 'Tekrar Arandı'
+  | "WhatsApp'tan İletişim Kuruldu"
+  | 'İletişim Sağlandı'
+  | 'Teklif Gönderildi'
+  | 'Rezervasyona Döndü'
+  | 'Olumsuz'
+  | 'İptal';
+
+export const LEAD_STATUSES: LeadStatus[] = [
+  'Aranmadı', 'Arandı', 'Ulaşılamadı', 'Tekrar Aranacak', 'Tekrar Arandı',
+  "WhatsApp'tan İletişim Kuruldu", 'İletişim Sağlandı', 'Teklif Gönderildi',
+  'Rezervasyona Döndü', 'Olumsuz', 'İptal',
+];
+
+/**
+ * Müşteri adayı.
+ *
+ * Rezervasyona dönüşmemiş kişi de takip edilebilsin diye ayrı bir kayıt.
+ * Müşteriler ekranı rezervasyonlardan türetilen bir görünümdür ve öyle
+ * kalıyor; aday oraya karışmıyor.
+ */
+export interface CustomerLead {
+  id: string;
+  businessId: string;
+  name: string;
+  /** On haneye indirgenmiş numara. Aynı kişinin iki kayda düşmemesi buna bağlı. */
+  phone: string;
+  email: string;
+  guestCount: number | null;
+  /** ISO tarih; çözülemediyse boş. */
+  eventDate: string;
+  /** "Mayısın ilk haftası" gibi çözülemeyen ifade. Uydurulmuş bir güne yeğdir. */
+  eventDateText: string;
+  organizationType: string;
+  source: LeadSource;
+  sourceDetail: string;
+  status: LeadStatus;
+  assignedTo?: string;
+  nextFollowupAt: string;
+  lastContactAt: string;
+  reservationId?: string;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type LeadMessageDirection = 'gelen' | 'giden' | 'olay';
+
+/** İletişim geçmişindeki bir satır: mesaj ya da sistem olayı. */
+export interface LeadMessage {
+  id: string;
+  businessId: string;
+  leadId: string;
+  direction: LeadMessageDirection;
+  channel: 'whatsapp' | 'telefon' | 'eposta' | 'sistem';
+  body: string;
+  waMessageId?: string;
+  actorEmail: string;
+  createdAt: string;
+}
+
+/** Durum değişikliği kaydı; tetikleyici yazar, istemci atlayamaz. */
+export interface LeadStatusChange {
+  id: string;
+  leadId: string;
+  fromStatus: LeadStatus | null;
+  toStatus: LeadStatus;
+  actorEmail: string;
   createdAt: string;
 }
 

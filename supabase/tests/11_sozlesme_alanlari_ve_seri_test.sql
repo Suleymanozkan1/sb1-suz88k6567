@@ -5,9 +5,10 @@
 --   1. Dört yeni sütun eklendi mi, hepsi isteğe bağlı mı?
 --   2. TC kimlik numarası biçim kontrolü tutuyor mu?
 --   3. Kod boş gönderilince veritabanı sıradaki numarayı atıyor mu?
---   4. Numara sayısal ilerliyor mu (20269 sonrası 202610)?
+--   4. Numara sayısal ilerliyor mu (2026-9 sonrası 2026-10)?
 --   5. Mevcut bir kaydın numarası güncellemede korunuyor mu?
---   6. Eski biçimli kodlar (SA-2026-4821) diziyi geriye çekiyor mu?
+--   6. Biçime uymayan kodlar (SA-2026-4821) diziyi geriye çekiyor mu?
+--   6b. Tiresiz eski numaralar (20261) diziye dahil mi?
 --   7. Kimlik numarası herkese açık kod sorgulamasına sızıyor mu?
 --
 -- Üçüncü madde asıl sebep: numarayı istemci üretseydi panel ile mobil
@@ -93,8 +94,8 @@ begin
           'Düğün', 300, 100000, '12345678901', '5331111111', time '19:00', time '23:00')
   returning code into v_kod;
 
-  if v_kod <> v_yil || '1' then
-    raise exception 'BASARISIZ: ilk numara % olmali, % geldi', v_yil || '1', v_kod;
+  if v_kod <> v_yil || '-1' then
+    raise exception 'BASARISIZ: ilk numara % olmali, % geldi', v_yil || '-1', v_kod;
   end if;
 
   insert into public.reservations
@@ -105,8 +106,8 @@ begin
           'Düğün', 200, 50000)
   returning code into v_kod;
 
-  if v_kod <> v_yil || '2' then
-    raise exception 'BASARISIZ: ikinci numara % olmali, % geldi', v_yil || '2', v_kod;
+  if v_kod <> v_yil || '-2' then
+    raise exception 'BASARISIZ: ikinci numara % olmali, % geldi', v_yil || '-2', v_kod;
   end if;
 end $$;
 
@@ -129,9 +130,9 @@ begin
           'Düğün', 100, 1000)
   returning code into v_kod;
 
-  -- Metin siralamasi "202610" < "20269" der; sayiya cevrilmezse dizi burada takilir.
-  if v_kod <> v_yil || '10' then
-    raise exception 'BASARISIZ: onuncu numara % olmali, % geldi', v_yil || '10', v_kod;
+  -- Metin siralamasi "2026-10" < "2026-9" der; sayiya cevrilmezse dizi burada takilir.
+  if v_kod <> v_yil || '-10' then
+    raise exception 'BASARISIZ: onuncu numara % olmali, % geldi', v_yil || '-10', v_kod;
   end if;
 end $$;
 
@@ -177,8 +178,36 @@ begin
           'Düğün', 100, 1000)
   returning code into v_kod;
 
-  if v_kod <> v_yil || '11' then
-    raise exception 'BASARISIZ: eski bicimli kod diziyi bozdu, % geldi', v_kod;
+  if v_kod <> v_yil || '-11' then
+    raise exception 'BASARISIZ: bicime uymayan kod diziyi bozdu, % geldi', v_kod;
+  end if;
+end $$;
+
+\echo '=== 6b) TIRESIZ eski numara diziye DAHIL olmali ==='
+do $$
+declare
+  v_yil text := extract(year from current_date)::text;
+  v_kod text;
+begin
+  -- 0014 numarayi tiresiz uretiyordu. Sayilmasaydi ayni yil icinde hem
+  -- "20261" hem "2026-1" diye iki ayri birinci sozlesme olurdu.
+  insert into public.reservations
+    (business_id, hall_id, code, customer_name, customer_phone, date, slot,
+     organization_type, guest_count, total_amount)
+  values (current_setting('test.biz')::uuid, current_setting('test.hall')::uuid,
+          v_yil || '40', 'Tiresiz Eski', '5330000097', date '2030-04-06', 'Gece',
+          'Düğün', 100, 1000);
+
+  insert into public.reservations
+    (business_id, hall_id, code, customer_name, customer_phone, date, slot,
+     organization_type, guest_count, total_amount)
+  values (current_setting('test.biz')::uuid, current_setting('test.hall')::uuid,
+          null, 'Tiresizden Sonra', '5330000096', date '2030-04-07', 'Gece',
+          'Düğün', 100, 1000)
+  returning code into v_kod;
+
+  if v_kod <> v_yil || '-41' then
+    raise exception 'BASARISIZ: tiresiz numara diziye katilmadi, % geldi', v_kod;
   end if;
 end $$;
 
