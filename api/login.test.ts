@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * Giriş uç noktası. Testlerin amacı, girişi sunucudan geçirmenin tek
@@ -11,16 +11,18 @@ const ESKI_ENV = { ...process.env };
 async function handlerYukle(env: Record<string, string | undefined> = {}) {
   process.env = {
     ...ESKI_ENV,
-    SUPABASE_URL: 'https://ornek.supabase.co',
-    VITE_SUPABASE_URL: undefined,
-    SUPABASE_ANON_KEY: 'anon-anahtari',
-    VITE_SUPABASE_ANON_KEY: undefined,
-    SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+    PGRST_URL: 'http://veri.yerel',
+    JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
     ...env,
   };
   vi.resetModules();
   return (await import('./login')).default;
 }
+
+const KULLANICI = '11111111-1111-1111-1111-111111111111';
+const DOGRU_SIFRE = 'dogru-sifre-1234';
+/** DOGRU_SIFRE'nin scrypt karması; beforeAll içinde üretiliyor. */
+let DOGRU_KARMA = '';
 
 interface Senaryo {
   /** login_lock_status RPC yanıtı; null ise boş dizi döner */
@@ -29,8 +31,13 @@ interface Senaryo {
   kilitSonra?: { locked: boolean; failed_count: number; retry_after_seconds: number } | null;
   /** check_rate_limit yanıtı */
   sinirAsildi?: boolean;
-  /** Supabase auth yanıtı */
-  auth?: { status: number; body: unknown } | 'aglaHata';
+  /**
+   * kimlik_bul yanıtı: kullanıcı satırı, kullanıcı yoksa null,
+   * veritabanına ulaşılamıyorsa 'aglaHata'.
+   */
+  kimlik?: { id: string; encrypted_password: string } | null | 'aglaHata';
+  /** oturum_ac çağrısı düşsün mü */
+  oturumHatasi?: boolean;
 }
 
 function fetchTakli(senaryo: Senaryo) {
@@ -52,10 +59,16 @@ function fetchTakli(senaryo: Senaryo) {
     if (adres.endsWith('/rpc/record_login_attempt')) {
       return new Response('null');
     }
-    if (adres.includes('/auth/v1/token')) {
-      if (senaryo.auth === 'aglaHata') throw new Error('bağlantı koptu');
-      const auth = senaryo.auth ?? { status: 200, body: { access_token: 'at', refresh_token: 'rt' } };
-      return new Response(JSON.stringify(auth.body), { status: auth.status });
+    if (adres.endsWith('/rpc/kimlik_bul')) {
+      if (senaryo.kimlik === 'aglaHata') throw new Error('bağlantı koptu');
+      const satir = senaryo.kimlik === undefined
+        ? { id: KULLANICI, encrypted_password: DOGRU_KARMA }
+        : senaryo.kimlik;
+      return new Response(JSON.stringify(satir ? [satir] : []));
+    }
+    if (adres.endsWith('/rpc/oturum_ac')) {
+      if (senaryo.oturumHatasi) return new Response('hata', { status: 500 });
+      return new Response(JSON.stringify(KULLANICI));
     }
     return new Response('{}');
   }));
@@ -71,6 +84,12 @@ function istek(govde: unknown, basliklar: Record<string, string> = {}, method = 
   });
 }
 
+beforeAll(async () => {
+  process.env.JWT_SECRET = 'test-icin-en-az-otuz-iki-karakterlik-sir';
+  const { sifreyiKarmala } = await import('./_kimlik');
+  DOGRU_KARMA = await sifreyiKarmala(DOGRU_SIFRE);
+});
+
 beforeEach(() => { vi.unstubAllGlobals(); });
 afterEach(() => { process.env = { ...ESKI_ENV }; vi.unstubAllGlobals(); });
 
@@ -83,7 +102,7 @@ describe('giriş uç noktası, istek doğrulaması', () => {
   });
 
   it('sunucu yapılandırması eksikse 500 döner', async () => {
-    const handler = await handlerYukle({ SUPABASE_URL: undefined, VITE_SUPABASE_URL: undefined });
+    const handler = await handlerYukle({ JWT_SECRET: undefined });
     fetchTakli({});
     const yanit = await handler(istek({ email: 'a@b.com', password: 'x' }));
     expect(yanit.status).toBe(500);
@@ -125,7 +144,7 @@ describe('giriş uç noktası, hız sınırı ve kilit', () => {
     expect(yanit.status).toBe(429);
     expect(yanit.headers.get('retry-after')).toBe('300');
     // Sınır aşıldıysa kimlik doğrulamaya hiç gidilmemeli.
-    expect(cagrilar.some((c) => c.adres.includes('/auth/v1/token'))).toBe(false);
+    expect(cagrilar.some((c) => c.adres.endsWith('/rpc/kimlik_bul'))).toBe(false);
   });
 
   it('hız sınırı IP başına ve 5 dakikalık pencerede uygulanır', async () => {
@@ -148,7 +167,7 @@ describe('giriş uç noktası, hız sınırı ve kilit', () => {
 
     expect(yanit.status).toBe(423);
     await expect(yanit.json()).resolves.toMatchObject({ locked: true, retryAfterSeconds: 300 });
-    expect(cagrilar.some((c) => c.adres.includes('/auth/v1/token'))).toBe(false);
+    expect(cagrilar.some((c) => c.adres.endsWith('/rpc/kimlik_bul'))).toBe(false);
   });
 
   it('kilit süresini yukarı yuvarlayarak dakikaya çevirir', async () => {
@@ -171,10 +190,17 @@ describe('giriş uç noktası, kimlik doğrulama', () => {
     const handler = await handlerYukle();
     const cagrilar = fetchTakli({});
 
-    const yanit = await handler(istek({ email: 'demo@sahratakip.com', password: 'sifre' }));
+    const yanit = await handler(istek({ email: 'demo@sahratakip.com', password: DOGRU_SIFRE }));
 
     expect(yanit.status).toBe(200);
-    await expect(yanit.json()).resolves.toEqual({ accessToken: 'at', refreshToken: 'rt' });
+    const oturum = await yanit.json() as { accessToken: string; refreshToken: string };
+    // Erişim jetonu kullanıcının kimliğini taşımalı: RLS buna dayanıyor.
+    const talepler = JSON.parse(
+      Buffer.from(oturum.accessToken.split('.')[1], 'base64url').toString(),
+    ) as { sub: string; role: string };
+    expect(talepler.sub).toBe(KULLANICI);
+    expect(talepler.role).toBe('authenticated');
+    expect(oturum.refreshToken.length).toBeGreaterThan(20);
 
     // Başarılı deneme de kaydedilmeli; kilit sayacı ancak böyle sıfırlanır.
     const kayit = cagrilar.find((c) => c.adres.endsWith('/rpc/record_login_attempt'));
@@ -186,19 +212,19 @@ describe('giriş uç noktası, kimlik doğrulama', () => {
   it('e-postanın başındaki ve sonundaki boşluğu kırpar', async () => {
     const handler = await handlerYukle();
     const cagrilar = fetchTakli({});
-    await handler(istek({ email: '  demo@sahratakip.com  ', password: 'sifre' }));
-    const auth = cagrilar.find((c) => c.adres.includes('/auth/v1/token'));
-    expect((auth?.govde as { email: string }).email).toBe('demo@sahratakip.com');
+    await handler(istek({ email: '  demo@sahratakip.com  ', password: DOGRU_SIFRE }));
+    const arama = cagrilar.find((c) => c.adres.endsWith('/rpc/kimlik_bul'));
+    expect((arama?.govde as { p_email: string }).p_email).toBe('demo@sahratakip.com');
   });
 
   it('hatalı şifrede 401 döner, denemeyi kaydeder ve belirteç sızdırmaz', async () => {
     const handler = await handlerYukle();
     const cagrilar = fetchTakli({
-      auth: { status: 400, body: { error: 'invalid_grant' } },
+      kilit: null,
       kilitSonra: { locked: false, failed_count: 2, retry_after_seconds: 0 },
     });
 
-    const yanit = await handler(istek({ email: 'a@b.com', password: 'yanlis' }));
+    const yanit = await handler(istek({ email: 'a@b.com', password: 'kesinlikle-yanlis' }));
 
     expect(yanit.status).toBe(401);
     const govde = await yanit.json() as Record<string, unknown>;
@@ -212,7 +238,6 @@ describe('giriş uç noktası, kimlik doğrulama', () => {
   it('kalan hak negatife düşmez', async () => {
     const handler = await handlerYukle();
     fetchTakli({
-      auth: { status: 400, body: {} },
       kilitSonra: { locked: false, failed_count: 9, retry_after_seconds: 0 },
     });
     const govde = await (await handler(istek({ email: 'a@b.com', password: 'x' }))).json();
@@ -221,25 +246,35 @@ describe('giriş uç noktası, kimlik doğrulama', () => {
 
   it('kilit durumu okunamazsa kalan hak null döner', async () => {
     const handler = await handlerYukle();
-    fetchTakli({ auth: { status: 400, body: {} }, kilitSonra: null });
+    fetchTakli({ kilitSonra: null });
     const govde = await (await handler(istek({ email: 'a@b.com', password: 'x' }))).json();
     expect((govde as { remainingAttempts: number | null }).remainingAttempts).toBeNull();
   });
 
   it('kimlik servisine ulaşılamazsa 502 döner', async () => {
     const handler = await handlerYukle();
-    fetchTakli({ auth: 'aglaHata' });
+    fetchTakli({ kimlik: 'aglaHata' });
     const yanit = await handler(istek({ email: 'a@b.com', password: 'x' }));
     expect(yanit.status).toBe(502);
     await expect(yanit.json()).resolves.toEqual({ error: 'Kimlik doğrulama servisine ulaşılamadı.' });
   });
 
-  it('yanıtta belirteç yoksa 502 döner', async () => {
+  it('oturum açılamazsa 502 döner', async () => {
     const handler = await handlerYukle();
-    fetchTakli({ auth: { status: 200, body: { access_token: 'at' } } });
-    const yanit = await handler(istek({ email: 'a@b.com', password: 'x' }));
+    fetchTakli({ oturumHatasi: true });
+    const yanit = await handler(istek({ email: 'a@b.com', password: DOGRU_SIFRE }));
     expect(yanit.status).toBe(502);
-    await expect(yanit.json()).resolves.toEqual({ error: 'Oturum bilgisi alınamadı.' });
+    await expect(yanit.json()).resolves.toEqual({ error: 'Oturum başlatılamadı.' });
+  });
+
+  it('kayıtlı olmayan e-postada da şifre karşılaştırması yapar', async () => {
+    // Yanıt süresi farkı "bu e-posta kayıtlı mı" sorusunu cevaplasaydı,
+    // saldırgan hesap listesi çıkarabilirdi.
+    const handler = await handlerYukle();
+    fetchTakli({ kimlik: null });
+    const yanit = await handler(istek({ email: 'yok@ornek.com', password: 'x' }));
+    expect(yanit.status).toBe(401);
+    await expect(yanit.json()).resolves.toMatchObject({ error: 'E-posta veya şifreniz hatalı.' });
   });
 
   it('service_role anahtarını hiçbir yanıtta sızdırmaz', async () => {

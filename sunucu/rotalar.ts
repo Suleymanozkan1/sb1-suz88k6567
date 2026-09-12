@@ -11,6 +11,7 @@ import invoice from '../api/invoice';
 import iys from '../api/iys';
 import login from '../api/login';
 import otp from '../api/otp';
+import oturum from '../api/oturum';
 import reminders from '../api/reminders';
 import smsQueue from '../api/sms-queue';
 import sms from '../api/sms';
@@ -26,6 +27,7 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/iys': iys,
   '/api/login': login,
   '/api/otp': otp,
+  '/api/oturum': oturum,
   '/api/sms': sms,
   '/api/sms-queue': smsQueue,
   '/api/reminders': reminders,

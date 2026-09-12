@@ -12,9 +12,8 @@ const ESKI_ENV = { ...process.env };
 async function moduluYukle(env: Record<string, string | undefined> = {}) {
   process.env = {
     ...ESKI_ENV,
-    SUPABASE_URL: 'https://ornek.supabase.co',
-    VITE_SUPABASE_URL: undefined,
-    SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+    PGRST_URL: 'http://veri.yerel',
+        JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
     WHATSAPP_TOKEN: 'jeton',
     WHATSAPP_PHONE_ID: '111222333',
     ...env,

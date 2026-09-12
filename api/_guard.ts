@@ -5,8 +5,7 @@
  * yayınlamaz; yalnızca diğer fonksiyonlar tarafından içe aktarılır.
  */
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { callRpc, isDbConfigured } from './_db';
 
 export const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 
@@ -17,27 +16,23 @@ export function json(data: unknown, status = 200, extraHeaders: Record<string, s
   });
 }
 
-/** Güvenlik fonksiyonları yalnızca service_role ile çağrılabilir. */
+/**
+ * Güvenlik fonksiyonları yalnızca service_role ile çağrılabilir.
+ *
+ * Yapılandırma artık `_db` ile ORTAK. Önce iki ayrı yerde okunuyordu;
+ * biri güncellenip diğeri unutulduğunda hız sınırı ve giriş kilidi
+ * sessizce devre dışı kalır, sistem çalışmaya devam ettiği için de
+ * fark edilmezdi.
+ */
 export function isGuardConfigured(): boolean {
-  return Boolean(SUPABASE_URL && SERVICE_KEY);
+  return isDbConfigured();
 }
 
 /** Postgres fonksiyonunu service_role yetkisiyle çağırır. */
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T | null> {
   if (!isGuardConfigured()) return null;
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
-      method: 'POST',
-      headers: {
-        ...JSON_HEADERS,
-        apikey: SERVICE_KEY!,
-        authorization: `Bearer ${SERVICE_KEY}`,
-      },
-      body: JSON.stringify(args),
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) return null;
-    return (await response.json()) as T;
+    return await callRpc<T>(fn, args);
   } catch {
     return null;
   }
@@ -46,11 +41,14 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T | nu
 /**
  * İstemci IP adresi.
  *
- * Cloudflare `cf-connecting-ip` başlığını kendisi yazar ve istemcinin
- * gönderdiği değeri ezer; bu yüzden önce ona bakılır. `x-forwarded-for`
- * istemci tarafından uydurulabildiği için tek başına güvenilmez: saldırgan
- * her istekte farklı bir değer göndererek hız sınırını ve giriş kilidini
- * atlatabilirdi.
+ * Ters vekil (nginx) `x-forwarded-for` başlığını kendisi yazar. Başlık
+ * istemci tarafından da uydurulabildiği için vekilin bu başlığı EZMESİ
+ * gerekir; ezmezse saldırgan her istekte farklı bir değer göndererek hız
+ * sınırını ve giriş kilidini atlatabilir. Kurulum belgesindeki nginx
+ * yapılandırması bunu `proxy_set_header` ile sağlıyor.
+ *
+ * `cf-connecting-ip` hâlâ okunuyor: önüne Cloudflare gibi bir ağ
+ * konursa çalışmaya devam etsin.
  */
 export function clientIp(request: Request): string {
   const cloudflare = request.headers.get('cf-connecting-ip');

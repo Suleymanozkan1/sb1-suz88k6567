@@ -2,16 +2,24 @@
  * Giriş uç noktası.
  *
  * Girişi sunucudan geçirmenin amacı, art arda başarısız denemelerde hesabı
- * geçici olarak kilitlemektir. İstemci doğrudan Supabase'e gitseydi bu kilit
- * uygulanamazdı; kilit mantığı yalnızca service_role ile çağrılabilen
+ * geçici olarak kilitlemektir. İstemci veritabanına doğrudan gitseydi bu
+ * kilit uygulanamazdı; kilit mantığı yalnızca service_role ile çağrılabilen
  * veritabanı fonksiyonlarında yaşar.
+ *
+ * Şifre doğrulaması BURADA yapılıyor, veritabanında değil: şifreyi sorgu
+ * olarak göndermek onu sorgu günlüklerine düşme riskine atardı. Veritabanı
+ * yalnızca karmayı veriyor, karşılaştırmayı scrypt ile bu süreç yapıyor.
  */
 import {
   clientIp, enforceRateLimit, json, loginLockStatus, recordLoginAttempt, tooManyRequests,
 } from './_guard';
+import { callRpc, isDbConfigured } from './_db';
+import {
+  ERISIM_OMRU_SANIYE, YENILEME_OMRU_GUN, erisimJetonuUret, kimlikYapilandirildiMi,
+  sifreDogru, yenilemeJetonuUret, yenilemeKarmasi,
+} from './_kimlik';
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-const ANON_KEY = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
+interface KimlikSatiri { id: string; encrypted_password: string | null }
 
 /** Kilit süresini dakikaya yuvarlar (kullanıcıya göstermek için) */
 function minutes(seconds: number): number {
@@ -22,7 +30,7 @@ export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return json({ error: 'Yalnızca POST desteklenir.' }, 405);
   }
-  if (!SUPABASE_URL || !ANON_KEY) {
+  if (!kimlikYapilandirildiMi() || !isDbConfigured()) {
     return json({ error: 'Sunucu yapılandırması eksik.' }, 500);
   }
 
@@ -55,20 +63,25 @@ export default async function handler(request: Request): Promise<Response> {
     }, 423);
   }
 
-  // 3) Supabase'e kimlik doğrulama
-  let authResponse: Response;
+  // 3) Kimlik doğrulama
+  let kimlik: KimlikSatiri | undefined;
   try {
-    authResponse = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', apikey: ANON_KEY },
-      body: JSON.stringify({ email, password }),
-      signal: AbortSignal.timeout(10_000),
-    });
+    const satirlar = await callRpc<KimlikSatiri[]>('kimlik_bul', { p_email: email });
+    kimlik = Array.isArray(satirlar) ? satirlar[0] : undefined;
   } catch {
     return json({ error: 'Kimlik doğrulama servisine ulaşılamadı.' }, 502);
   }
 
-  if (!authResponse.ok) {
+  /*
+    Kullanıcı yoksa da şifre karşılaştırması yapılıyormuş gibi davranmak
+    gerekir; aksi hâlde yanıt süresi farkı "bu e-posta kayıtlı mı"
+    sorusunu cevaplar ve saldırgan hesap listesi çıkarabilir.
+  */
+  const karma = kimlik?.encrypted_password
+    ?? '$scrypt$16384$8$1$Y3VtbXk$Y3VtbXljdW1teWN1bW15Y3VtbXljdW1teQ==';
+  const dogru = await sifreDogru(password, karma);
+
+  if (!kimlik || !dogru) {
     await recordLoginAttempt(email, ip, false);
     const after = await loginLockStatus(email);
 
@@ -80,16 +93,24 @@ export default async function handler(request: Request): Promise<Response> {
     }, 401);
   }
 
-  const session = (await authResponse.json()) as {
-    access_token?: string; refresh_token?: string;
-  };
-  if (!session.access_token || !session.refresh_token) {
-    return json({ error: 'Oturum bilgisi alınamadı.' }, 502);
+  // 4) Oturum aç
+  const yenileme = yenilemeJetonuUret();
+  const biter = new Date(Date.now() + YENILEME_OMRU_GUN * 24 * 60 * 60 * 1000);
+  try {
+    await callRpc('oturum_ac', {
+      p_user_id: kimlik.id,
+      p_token_hash: yenilemeKarmasi(yenileme),
+      p_expires: biter.toISOString(),
+      p_agent: (request.headers.get('user-agent') ?? '').slice(0, 200),
+    });
+  } catch {
+    return json({ error: 'Oturum başlatılamadı.' }, 502);
   }
 
   await recordLoginAttempt(email, ip, true);
   return json({
-    accessToken: session.access_token,
-    refreshToken: session.refresh_token,
+    accessToken: erisimJetonuUret(kimlik.id),
+    refreshToken: yenileme,
+    expiresIn: ERISIM_OMRU_SANIYE,
   });
 }

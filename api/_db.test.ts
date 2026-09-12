@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, readFileSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const KOK = mkdtempSync(join(tmpdir(), 'sahra-yedek-'));
 
 /**
  * `_db.ts` yapılandırmayı modül yüklenirken bir kez okur. Bu yüzden her
@@ -27,42 +32,31 @@ function fetchTakli(...yanitlar: Response[]) {
 }
 
 const YAPILI = {
-  SUPABASE_URL: 'https://ornek.supabase.co',
-  SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
-  VITE_SUPABASE_URL: undefined,
+  PGRST_URL: 'http://veri.yerel',
+  JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
+  YEDEK_DIZINI: undefined as string | undefined,
 };
 
-const YAPILANDIRILMAMIS = {
-  SUPABASE_URL: undefined,
-  VITE_SUPABASE_URL: undefined,
-  SUPABASE_SERVICE_ROLE_KEY: undefined,
-};
+const YAPILANDIRILMAMIS = { JWT_SECRET: undefined };
 
 beforeEach(() => { vi.unstubAllGlobals(); });
 afterEach(() => { process.env = { ...ESKI_ENV }; vi.unstubAllGlobals(); });
 
 describe('isDbConfigured', () => {
-  it('URL ve service_role anahtarı varsa doğru döner', async () => {
+  it('imza sırrı varsa doğru döner', async () => {
     const db = await moduluYukle(YAPILI);
     expect(db.isDbConfigured()).toBe(true);
   });
 
-  it('VITE_SUPABASE_URL yedeğini kullanır', async () => {
-    const db = await moduluYukle({
-      SUPABASE_URL: undefined,
-      VITE_SUPABASE_URL: 'https://yedek.supabase.co',
-      SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
-    });
-    expect(db.isDbConfigured()).toBe(true);
-  });
-
-  it('anahtar yoksa yanlış döner', async () => {
-    const db = await moduluYukle({ ...YAPILI, SUPABASE_SERVICE_ROLE_KEY: undefined });
+  it('sır yoksa yanlış döner', async () => {
+    const db = await moduluYukle(YAPILANDIRILMAMIS);
     expect(db.isDbConfigured()).toBe(false);
   });
 
-  it('URL yoksa yanlış döner', async () => {
-    const db = await moduluYukle(YAPILANDIRILMAMIS);
+  it('sır çok kısaysa yanlış döner', async () => {
+    // Kısa bir imza anahtarı deneme yanılmayla bulunabilir; jeton
+    // üretilebilseydi herkes service_role yetkisi alırdı.
+    const db = await moduluYukle({ ...YAPILI, JWT_SECRET: 'kisa' });
     expect(db.isDbConfigured()).toBe(false);
   });
 });
@@ -82,12 +76,17 @@ describe('callRpc', () => {
     const sonuc = await db.callRpc<{ ok: number }>('kuyruk_isle', { p_limit: 5 });
 
     expect(sonuc).toEqual({ ok: 1 });
-    expect(cagrilar[0].url).toBe('https://ornek.supabase.co/rest/v1/rpc/kuyruk_isle');
+    expect(cagrilar[0].url).toBe('http://veri.yerel/rpc/kuyruk_isle');
     expect(cagrilar[0].init?.method).toBe('POST');
     const basliklar = cagrilar[0].init?.headers as Record<string, string>;
-    expect(basliklar.apikey).toBe('service-anahtari');
-    expect(basliklar.authorization).toBe('Bearer service-anahtari');
     expect(cagrilar[0].init?.body).toBe(JSON.stringify({ p_limit: 5 }));
+
+    // Yetki, service_role talebiyle imzalanmış bir jetonla taşınıyor.
+    const jeton = basliklar.authorization.replace('Bearer ', '');
+    const govde = JSON.parse(Buffer.from(jeton.split('.')[1], 'base64url').toString());
+    expect(govde.role).toBe('service_role');
+    // Ömrü kısa: yığın dökümüne düşen bir jeton uzun süre kullanılamasın.
+    expect(govde.exp - govde.iat).toBeLessThanOrEqual(300);
   });
 
   it('başarısız yanıtta durum kodunu ve gövdeyi hataya taşır', async () => {
@@ -109,7 +108,7 @@ describe('selectRows', () => {
     const cagrilar = fetchTakli(new Response(JSON.stringify([{ id: 'a' }]), { status: 200 }));
 
     await expect(db.selectRows('reservations?select=id')).resolves.toEqual([{ id: 'a' }]);
-    expect(cagrilar[0].url).toBe('https://ornek.supabase.co/rest/v1/reservations?select=id');
+    expect(cagrilar[0].url).toBe('http://veri.yerel/reservations?select=id');
     expect(cagrilar[0].init?.method).toBeUndefined();
   });
 
@@ -173,30 +172,37 @@ describe('insertRow', () => {
 });
 
 describe('uploadToStorage', () => {
-  it('yapılandırma eksikken hata verir', async () => {
-    const db = await moduluYukle(YAPILANDIRILMAMIS);
-    await expect(db.uploadToStorage('yedekler', 'a.json', '{}'))
-      .rejects.toThrow('Veritabanı yapılandırması eksik.');
-  });
-
-  it('kovaya x-upsert ile yazar', async () => {
-    const db = await moduluYukle(YAPILI);
-    const cagrilar = fetchTakli(new Response('', { status: 200 }));
-
+  it('yedeği diske yazar', async () => {
+    const db = await moduluYukle({ ...YAPILI, YEDEK_DIZINI: KOK });
     await db.uploadToStorage('yedekler', '2026/01.json', '{"a":1}');
 
-    expect(cagrilar[0].url)
-      .toBe('https://ornek.supabase.co/storage/v1/object/yedekler/2026/01.json');
-    const basliklar = cagrilar[0].init?.headers as Record<string, string>;
-    expect(basliklar['x-upsert']).toBe('true');
-    expect(cagrilar[0].init?.body).toBe('{"a":1}');
+    const hedef = join(KOK, 'yedekler', '2026', '01.json');
+    expect(readFileSync(hedef, 'utf8')).toBe('{"a":1}');
   });
 
-  it('başarısız yanıtta gövdeyi hataya taşır', async () => {
-    const db = await moduluYukle(YAPILI);
-    fetchTakli(new Response('kova yok', { status: 404 }));
-    await expect(db.uploadToStorage('yok', 'a.json', '{}'))
-      .rejects.toThrow('Depolamaya yazılamadı (404): kova yok');
+  it('dosyayı yalnızca sahibinin okuyabileceği izinle yazar', async () => {
+    // Yedek müşteri adı ve telefonu içeriyor; sunucudaki başka bir
+    // kullanıcı okuyabilseydi kişisel veri sızardı.
+    const db = await moduluYukle({ ...YAPILI, YEDEK_DIZINI: KOK });
+    await db.uploadToStorage('yedekler', 'izin.json', '{}');
+
+    const mod = statSync(join(KOK, 'yedekler', 'izin.json')).mode & 0o777;
+    expect(mod & 0o077).toBe(0);
+  });
+
+  it('aynı dosyayı yeniden yazar', async () => {
+    const db = await moduluYukle({ ...YAPILI, YEDEK_DIZINI: KOK });
+    await db.uploadToStorage('yedekler', 'tekrar.json', '{"v":1}');
+    await db.uploadToStorage('yedekler', 'tekrar.json', '{"v":2}');
+    expect(readFileSync(join(KOK, 'yedekler', 'tekrar.json'), 'utf8')).toBe('{"v":2}');
+  });
+
+  it('ağa hiç çıkmaz', async () => {
+    // Yedek artık dışarı gitmiyor; sunucudan ayrılmaması KVKK açısından da iyi.
+    const db = await moduluYukle({ ...YAPILI, YEDEK_DIZINI: KOK });
+    const cagrilar = fetchTakli();
+    await db.uploadToStorage('yedekler', 'ag.json', '{}');
+    expect(cagrilar).toHaveLength(0);
   });
 });
 

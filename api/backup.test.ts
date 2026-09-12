@@ -1,4 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+/** Yedek artık Supabase Storage'a değil sunucu diskine yazılıyor. */
+let KOK = '';
 
 /**
  * Günlük yedekleme görevi.
@@ -16,9 +22,9 @@ async function handlerYukle(env: Record<string, string | undefined> = {}) {
     ...ESKI_ENV,
     CRON_SECRET: SIR,
     BACKUP_BUCKET: 'yedekler',
-    SUPABASE_URL: 'https://ornek.supabase.co',
-    VITE_SUPABASE_URL: undefined,
-    SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+    PGRST_URL: 'http://veri.yerel',
+    JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
+    YEDEK_DIZINI: KOK,
     ...env,
   };
   vi.resetModules();
@@ -27,13 +33,26 @@ async function handlerYukle(env: Record<string, string | undefined> = {}) {
 
 interface Senaryo {
   sahipler?: { id: string }[] | 'hata';
-  /** Bu sahip kimlikleri için depolamaya yazma başarısız olsun */
+  /**
+   * Bu sahip kimlikleri için diske yazma başarısız olsun.
+   *
+   * Hedef dizinin yerine bir DOSYA konuyor: `mkdir` ENOTDIR ile düşüyor.
+   * Gerçekçi bir arıza (dolu disk, izin sorunu) ile aynı yoldan geçiyor.
+   */
   yuklemeHatasi?: string[];
   /** backup_runs satırı açılamasın */
   kayitAcilamasin?: boolean;
 }
 
 function fetchTakli(senaryo: Senaryo = {}) {
+  // Diske yazmayı düşürmek için hedef dizinin yerine bir DOSYA konuyor;
+  // mkdir EEXIST ile düşüyor, gerçek bir arızayla aynı yoldan geçiyor.
+  const kova = process.env.BACKUP_BUCKET ?? 'yedekler';
+  for (const sahip of senaryo.yuklemeHatasi ?? []) {
+    mkdirSync(join(KOK, kova), { recursive: true });
+    writeFileSync(join(KOK, kova, sahip), 'dizin degil');
+  }
+
   const cagrilar: { adres: string; yontem: string; govde: unknown }[] = [];
 
   vi.stubGlobal('fetch', vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
@@ -43,24 +62,17 @@ function fetchTakli(senaryo: Senaryo = {}) {
     try { govde = ham ? JSON.parse(ham) : undefined; } catch { govde = ham; }
     cagrilar.push({ adres, yontem: init?.method ?? 'GET', govde });
 
-    if (adres.includes('/rest/v1/profiles')) {
+    if (adres.includes('/profiles')) {
       if (senaryo.sahipler === 'hata') return new Response('izin yok', { status: 403 });
       return new Response(JSON.stringify(senaryo.sahipler ?? [{ id: 'sahip-1' }]));
     }
-    if (adres.includes('/rest/v1/backup_runs') && init?.method === 'POST') {
+    if (adres.includes('/backup_runs') && init?.method === 'POST') {
       if (senaryo.kayitAcilamasin) return new Response('', { status: 500 });
       return new Response(JSON.stringify([{ id: 'kosu-1' }]), { status: 201 });
     }
-    if (adres.includes('/rest/v1/backup_runs')) return new Response(null, { status: 204 });
+    if (adres.includes('/backup_runs')) return new Response(null, { status: 204 });
     if (adres.endsWith('/rpc/export_owner_data')) return new Response(JSON.stringify({ rezervasyonlar: [] }));
     if (adres.endsWith('/rpc/backup_row_counts')) return new Response(JSON.stringify({ rezervasyonlar: 0 }));
-    if (adres.includes('/storage/v1/object/')) {
-      const sahip = adres.split('/object/yedekler/')[1]?.split('/')[0];
-      if (senaryo.yuklemeHatasi?.includes(sahip ?? '')) {
-        return new Response('kova yok', { status: 404 });
-      }
-      return new Response('', { status: 200 });
-    }
     return new Response('{}');
   }));
 
@@ -74,8 +86,10 @@ function istek(yetkili = true): Request {
   });
 }
 
-beforeEach(() => { vi.unstubAllGlobals(); });
-afterEach(() => { process.env = { ...ESKI_ENV }; vi.unstubAllGlobals(); });
+beforeEach(() => {
+  KOK = mkdtempSync(join(tmpdir(), 'sahra-yedek-')); vi.unstubAllGlobals(); });
+afterEach(() => {
+  if (KOK) rmSync(KOK, { recursive: true, force: true }); process.env = { ...ESKI_ENV }; vi.unstubAllGlobals(); });
 
 describe('yedekleme görevi, yetkilendirme', () => {
   it('cron sırrı olmadan çağrılamaz', async () => {
@@ -93,7 +107,7 @@ describe('yedekleme görevi, yetkilendirme', () => {
 
   it('veritabanı yapılandırması eksikse 500 döner', async () => {
     const handler = await handlerYukle({
-      SUPABASE_URL: undefined, VITE_SUPABASE_URL: undefined, SUPABASE_SERVICE_ROLE_KEY: undefined,
+      JWT_SECRET: undefined,
     });
     fetchTakli();
     expect((await handler(istek())).status).toBe(500);
@@ -105,7 +119,7 @@ describe('yedekleme görevi, akış', () => {
     const handler = await handlerYukle();
     const cagrilar = fetchTakli();
     await handler(istek());
-    const sorgu = cagrilar.find((c) => c.adres.includes('/rest/v1/profiles'));
+    const sorgu = cagrilar.find((c) => c.adres.includes('/profiles'));
     expect(sorgu?.adres).toContain('role=eq.owner');
   });
 
@@ -120,9 +134,9 @@ describe('yedekleme görevi, akış', () => {
       total: 1, failed: 0, results: [{ ownerId: 'sahip-1', ok: true }],
     });
 
-    const yukleme = cagrilar.find((c) => c.adres.includes('/storage/v1/object/'))!;
+    // Yedek artık ağa değil sunucu diskine yazılıyor.
     const bugun = new Date().toISOString().slice(0, 10);
-    expect(yukleme.adres).toContain(`/object/yedekler/sahip-1/${bugun}.json`);
+    expect(existsSync(join(KOK, 'yedekler', 'sahip-1', `${bugun}.json`))).toBe(true);
 
     const kapanis = cagrilar.filter((c) => c.adres.includes('backup_runs') && c.yontem === 'PATCH').at(-1);
     expect(kapanis?.govde).toMatchObject({
@@ -134,9 +148,9 @@ describe('yedekleme görevi, akış', () => {
 
   it('kova adı ortam değişkeninden okunur', async () => {
     const handler = await handlerYukle({ BACKUP_BUCKET: 'baska-kova' });
-    const cagrilar = fetchTakli();
+    fetchTakli();
     await handler(istek());
-    expect(cagrilar.some((c) => c.adres.includes('/object/baska-kova/'))).toBe(true);
+    expect(existsSync(join(KOK, 'baska-kova'))).toBe(true);
   });
 
   it('yükleme başarısız olursa koşuyu başarısız işaretler ve 500 döner', async () => {

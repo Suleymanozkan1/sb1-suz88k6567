@@ -15,9 +15,8 @@ async function handlerYukle(env: Record<string, string | undefined> = {}) {
   process.env = {
     ...ESKI_ENV,
     CRON_SECRET: SIR,
-    SUPABASE_URL: 'https://ornek.supabase.co',
-    VITE_SUPABASE_URL: undefined,
-    SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+    PGRST_URL: 'http://veri.yerel',
+        JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
     PARASUT_OAUTH_URL: 'https://parasut.test',
     PARASUT_API_URL: 'https://parasut.test/v4',
     PARASUT_CLIENT_ID: 'istemci',
@@ -67,15 +66,15 @@ function fetchTakli(senaryo: Senaryo = {}) {
     try { govde = init?.body ? JSON.parse(String(init.body)) : undefined; } catch { govde = init?.body; }
     cagrilar.push({ adres, yontem, govde });
 
-    if (adres.includes('/rest/v1/invoices?status=eq.taslak')) {
+    if (adres.includes('/invoices?status=eq.taslak')) {
       if (senaryo.taslaklar === 'hata') return new Response('izin yok', { status: 403 });
       return new Response(JSON.stringify(senaryo.taslaklar ?? [taslak()]));
     }
-    if (adres.includes('/rest/v1/invoice_lines')) {
+    if (adres.includes('/invoice_lines')) {
       const id = /invoice_id=eq\.([^&]+)/.exec(adres)![1];
       return new Response(JSON.stringify(senaryo.satirsiz?.includes(id) ? [] : [SATIR]));
     }
-    if (adres.includes('/rest/v1/invoices')) return new Response(null, { status: 204 });
+    if (adres.includes('/invoices')) return new Response(null, { status: 204 });
 
     if (adres.endsWith('/oauth/token')) {
       return new Response(JSON.stringify({
@@ -128,7 +127,7 @@ describe('fatura uç noktası, giriş kontrolleri', () => {
 
   it('veritabanı yapılandırması eksikse 500 döner', async () => {
     const handler = await handlerYukle({
-      SUPABASE_URL: undefined, VITE_SUPABASE_URL: undefined, SUPABASE_SERVICE_ROLE_KEY: undefined,
+      JWT_SECRET: undefined,
     });
     fetchTakli();
     expect((await handler(istek())).status).toBe(500);
@@ -141,7 +140,7 @@ describe('fatura uç noktası, giriş kontrolleri', () => {
     expect(yanit.status).toBe(200);
     await expect(yanit.json()).resolves
       .toEqual({ sent: 0, failed: 0, reason: 'einvoice_not_configured' });
-    expect(cagrilar.some((c) => c.adres.includes('/rest/v1/invoices'))).toBe(false);
+    expect(cagrilar.some((c) => c.adres.includes('/invoices'))).toBe(false);
   });
 
   it('elle tetiklemede hız sınırı uygulanır, cron tetiklemesinde uygulanmaz', async () => {
@@ -186,7 +185,7 @@ describe('fatura uç noktası, gönderim', () => {
     expect(yanit.status).toBe(200);
     await expect(yanit.json()).resolves.toEqual({ sent: 1, failed: 0 });
 
-    const yazma = cagrilar.filter((c) => c.adres.includes('/rest/v1/invoices?id=eq.inv-1'));
+    const yazma = cagrilar.filter((c) => c.adres.includes('/invoices?id=eq.inv-1'));
     expect(yazma.at(-1)?.govde).toMatchObject({
       status: 'gonderildi', provider_ref: 'satis-1', provider_error: null,
     });
@@ -200,7 +199,7 @@ describe('fatura uç noktası, gönderim', () => {
 
     await handler(istek());
 
-    const kilit = cagrilar.find((c) => c.adres.includes('/rest/v1/invoices?id=eq.inv-1&status=eq.taslak'));
+    const kilit = cagrilar.find((c) => c.adres.includes('/invoices?id=eq.inv-1&status=eq.taslak'));
     expect(kilit).toBeDefined();
     expect(kilit?.govde).toEqual({ status: 'gonderiliyor' });
   });
@@ -215,7 +214,7 @@ describe('fatura uç noktası, gönderim', () => {
     await expect(yanit.json()).resolves.toEqual({ sent: 0, failed: 1 });
     expect(cagrilar.some((c) => c.adres.endsWith('/sales_invoices'))).toBe(false);
 
-    const geri = cagrilar.filter((c) => c.adres.includes('/rest/v1/invoices?id=eq.inv-1')).at(-1);
+    const geri = cagrilar.filter((c) => c.adres.includes('/invoices?id=eq.inv-1')).at(-1);
     expect(geri?.govde).toEqual({ status: 'taslak', provider_error: 'Faturada satır bulunmuyor.' });
   });
 
@@ -228,7 +227,7 @@ describe('fatura uç noktası, gönderim', () => {
     expect(yanit.status).toBe(207);
     await expect(yanit.json()).resolves.toEqual({ sent: 0, failed: 1 });
 
-    const geri = cagrilar.filter((c) => c.adres.includes('/rest/v1/invoices?id=eq.inv-1')).at(-1);
+    const geri = cagrilar.filter((c) => c.adres.includes('/invoices?id=eq.inv-1')).at(-1);
     const govde = geri?.govde as { status: string; provider_error: string };
     expect(govde.status).toBe('taslak');
     expect(govde.provider_error).toContain('Alıcı bilgisi eksik');
@@ -255,7 +254,7 @@ describe('fatura uç noktası, gönderim', () => {
     const handler = await handlerYukle();
     const cagrilar = fetchTakli({ taslaklar: [] });
     await handler(istek());
-    const sorgu = cagrilar.find((c) => c.adres.includes('/rest/v1/invoices?status=eq.taslak'));
+    const sorgu = cagrilar.find((c) => c.adres.includes('/invoices?status=eq.taslak'));
     expect(sorgu?.adres).toContain('limit=25');
   });
 

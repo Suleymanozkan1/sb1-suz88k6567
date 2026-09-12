@@ -16,9 +16,8 @@ async function moduluYukle(env: Record<string, string | undefined> = {}) {
   process.env = {
     ...ESKI_ENV,
     CRON_SECRET: SIR,
-    SUPABASE_URL: 'https://ornek.supabase.co',
-    VITE_SUPABASE_URL: undefined,
-    SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+    PGRST_URL: 'http://veri.yerel',
+        JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
     IYS_BASE_URL: 'https://iys.test',
     IYS_USERNAME: 'iys-kullanici',
     IYS_PASSWORD: 'gizli-iys-sifresi',
@@ -81,14 +80,14 @@ function fetchTakli(senaryo: Senaryo = {}) {
       }
       return new Response('{}', { status: 200 });
     }
-    if (adres.includes('/rest/v1/sms_consents?iys_synced_at=is.null')) {
+    if (adres.includes('/sms_consents?iys_synced_at=is.null')) {
       return new Response(JSON.stringify(senaryo.bekleyen ?? []));
     }
-    if (adres.includes('/rest/v1/sms_consents?phone=eq.')) {
+    if (adres.includes('/sms_consents?phone=eq.')) {
       const telefon = /phone=eq\.(\d+)/.exec(adres)![1];
       return new Response(JSON.stringify(senaryo.yerelKayitlar?.[telefon] ?? []));
     }
-    if (adres.includes('/rest/v1/sms_consents')) return new Response(null, { status: 204 });
+    if (adres.includes('/sms_consents')) return new Response(null, { status: 204 });
     return new Response('{}');
   }));
 
@@ -129,7 +128,7 @@ describe('iys görevi, giriş kontrolleri', () => {
 
   it('veritabanı yapılandırması eksikse 500 döner', async () => {
     const iys = await moduluYukle({
-      SUPABASE_URL: undefined, VITE_SUPABASE_URL: undefined, SUPABASE_SERVICE_ROLE_KEY: undefined,
+      JWT_SECRET: undefined,
     });
     fetchTakli();
     expect((await iys.default(istek())).status).toBe(500);
