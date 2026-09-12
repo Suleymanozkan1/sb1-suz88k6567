@@ -87,13 +87,26 @@ describe('oturum saklama', () => {
   });
 
   it('yalnızca https adresli sunucu kabul edilir', () => {
-    expect(kaynak).toContain("SUPABASE_URL.startsWith('https://')");
+    // Düz metin bağlantı üzerinden oturum jetonu taşımak, jetonun ağda
+    // okunabilmesi demektir.
+    expect(kaynak).toContain("API_KOK.startsWith('https://')");
   });
 
-  it('oturum adres çubuğundan okunmaz', () => {
-    // detectSessionInUrl mobilde açık kalırsa, uygulamaya gelen bir derin
-    // bağlantı içindeki belirteç oturum olarak kabul edilebilir.
-    expect(kaynak).toContain('detectSessionInUrl: false');
+  it('jeton derin bağlantıdan okunmaz', () => {
+    /*
+      Oturum yalnızca güvenli depodan ve /api/oturum yanıtından geliyor.
+      Uygulamaya gelen bir derin bağlantının içeriği jeton olarak kabul
+      edilseydi, kullanıcıya gönderilen sahte bir bağlantı oturum
+      devraldırabilirdi.
+    */
+    expect(kaynak).not.toMatch(/Linking|initialURL|getInitialURL/);
+    expect(kaynak).not.toMatch(/location\.hash|location\.search/);
+  });
+
+  it('jeton yenileme sunucudan geçer', () => {
+    // Yenileme dönüşümlü: sunucu eski jetonu tüketiyor, böylece çalınan
+    // bir jeton ikinci kez kullanılamıyor.
+    expect(kaynak).toContain('/api/oturum');
   });
 });
 

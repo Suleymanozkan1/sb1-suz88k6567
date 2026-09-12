@@ -99,6 +99,20 @@ describe('sorgu kurulumu', () => {
       .toContain('resolution=merge-duplicates');
   });
 
+  it('upsert çakışma sütunlarını adrese koyar', async () => {
+    /*
+      Verilmezse PostgREST çakışmayı BİRİNCİL ANAHTARA göre çözer.
+      sms_consents tablosunun anahtarı otomatik üretilen bir uuid,
+      benzersizliği ise (business_id, phone) üzerinde: sütunlar
+      belirtilmezse her çağrı yeni bir uuid ile eklemeye çalışır ve
+      güncelleme yerine çakışma hatası alınır.
+    */
+    const c = fetchTakli({ body: '[]' });
+    await db().from('sms_consents')
+      .upsert({ phone: '5321112233' }, { onConflict: 'business_id,phone' });
+    expect(decodeURIComponent(c[0].url)).toContain('on_conflict=business_id,phone');
+  });
+
   it('update PATCH gönderir', async () => {
     const c = fetchTakli();
     await db().from('halls').update({ capacity: 150 }).eq('id', 'h1');

@@ -1,6 +1,13 @@
 /**
  * PostgREST istemcisi.
  *
+ * DİKKAT: Bu dosya `src/lib/postgrest.ts` ile BİREBİR AYNI olmalıdır.
+ * Mobil paketi kendi başına paketleniyor ve üst dizinden içe aktarım
+ * yapamıyor, bu yüzden kopya tutuluyor. `__tests__/postgrest-kopya.test.ts`
+ * ikisinin ayrışmasını engelliyor: birinde düzeltilen bir hata ötekinde
+ * açık kalırsa, mobil ile web farklı davranır ve fark ancak biri
+ * bozulduğunda anlaşılır.
+ *
  * `@supabase/supabase-js` yerine geçiyor. Supabase'in istemcisi zaten
  * PostgREST'in önüne geçen bir sarmalayıcıydı; burada yalnızca gerçekten
  * kullanılan 13 işlem var. Sözleşme (`{ data, error }`) aynı tutuldu:

@@ -55,22 +55,26 @@ function kurucu(tablo: string) {
 
 const istemci = {
   from: (tablo: string) => kurucu(tablo),
-  // Etkin işletme profilden okunuyor; yazma yapan her sorgu buradan geçiyor.
-  auth: {
-    getUser: () => Promise.resolve({ data: { user: durum.kullanici }, error: null }),
-  },
   rpc: (ad: string, arg: unknown) => {
     durum.rpcler.push({ ad, arg });
     return Promise.resolve({ data: durum.rpcYanit, error: null });
   },
 };
 
+jest.mock('../src/postgrest', () => ({
+  postgrestIstemci: () => istemci,
+}));
+
+/*
+  Oturum katmanı taklit ediliyor. Etkin işletme profilden okunuyor ve
+  kimlik jetondan geliyor; testte gerçek bir jeton üretmek yerine
+  doğrudan kimlik veriliyor.
+*/
 jest.mock('../src/supabase', () => ({
-  get supabase() { return istemci; },
   yapilandirildi: true,
-  SUPABASE_URL: 'https://ornek.supabase.co',
-  SUPABASE_ANON: 'anon',
   API_KOK: 'https://sahratakip.com',
+  gecerliJeton: () => Promise.resolve('taklit-jeton'),
+  kullaniciId: () => durum.kullanici?.id ?? null,
 }));
 
 import * as veri from '../src/veri';

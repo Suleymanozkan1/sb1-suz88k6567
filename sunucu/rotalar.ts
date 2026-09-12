@@ -15,6 +15,7 @@ import oturum from '../api/oturum';
 import reminders from '../api/reminders';
 import smsQueue from '../api/sms-queue';
 import sms from '../api/sms';
+import sifre from '../api/sifre';
 import whatsapp from '../api/whatsapp';
 import whatsappGonder from '../api/whatsapp-gonder';
 
@@ -29,6 +30,7 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/otp': otp,
   '/api/oturum': oturum,
   '/api/sms': sms,
+  '/api/sifre': sifre,
   '/api/sms-queue': smsQueue,
   '/api/reminders': reminders,
   '/api/whatsapp': whatsapp,
