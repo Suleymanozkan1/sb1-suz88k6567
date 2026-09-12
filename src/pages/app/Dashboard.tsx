@@ -2,59 +2,100 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import StatCard from '../../components/StatCard';
+import KasaDagilimKarti from '../../components/KasaDagilimKarti';
 import { useAuth } from '../../context/AuthContext';
 import {
   useCashFlow, useLeadStatuses, useLeads, useReservationsWithBalances,
 } from '../../lib/queries';
 import { leadOzeti, toplamAday } from '../../lib/lead';
+import { kasaDagilimi, kasaHareketleri } from '../../lib/kasa';
 import type { CustomerLead, LeadStatusDef } from '../../types';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, formatNumber, todayIso } from '../../lib/format';
-import { lastMonthsReport, programReport, summarize } from '../../lib/reports';
-import { IconCalendar, IconPlus, IconUsers, IconWallet } from '../../components/Icons';
+import { programReport, reservationIncome, summarize } from '../../lib/reports';
+import { IconCalendar, IconPlus, IconWallet } from '../../components/Icons';
 import { MONTH_NAMES } from '../../data/constants';
 
+/**
+ * Özet sayfası.
+ *
+ * Yalnızca İÇİNDE BULUNULAN AYI gösterir. Geçmiş dönem toplamları,
+ * yıllık ciro ve dönem karşılaştırmaları Raporlar ekranına taşındı:
+ * günlük işini yapmak için ekranı açan personelin önünde duran her
+ * geçmiş dönem rakamı, bugün yapılacak işi aşağı itiyordu.
+ */
 export default function Dashboard() {
   const { user } = useAuth();
-  const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
+  const { reservations, payments, colors, balance, isLoading, error } = useReservationsWithBalances();
   const { data: adaylar = [] } = useLeads();
   const { data: adayDurumlari = [] } = useLeadStatuses();
   const cashQuery = useCashFlow();
   const today = todayIso();
   const currency = user?.currency ?? 'TL';
 
+  const ayOneki = today.slice(0, 7);
+  const ayAdi = MONTH_NAMES[new Date().getMonth()];
+
   const active = useMemo(() => reservations.filter((r) => r.status !== 'İptal'), [reservations]);
-  const upcoming = useMemo(
-    () => active.filter((r) => r.date >= today).sort((a, b) => a.date.localeCompare(b.date)),
-    [active, today],
+
+  /** Bu ay GERÇEKLEŞEN organizasyonlar. */
+  const ayinKayitlari = useMemo(
+    () => active.filter((r) => r.date.startsWith(ayOneki)),
+    [active, ayOneki],
   );
 
-  const thisMonthPrefix = today.slice(0, 7);
-  const thisMonth = useMemo(() => active.filter((r) => r.date.startsWith(thisMonthPrefix)), [active, thisMonthPrefix]);
+  /*
+    Bu ay AÇILAN kayıtlar ayrı bir soru: "bu ay kaç düğün sattık" ile
+    "bu ay kaç düğün var" aynı şey değil. İkisi tek sayıda toplanınca
+    satış performansı, takvim yoğunluğunun içinde kaybolur.
+  */
+  const aySatilan = useMemo(
+    () => active.filter((r) => (r.createdAt || '').slice(0, 7) === ayOneki),
+    [active, ayOneki],
+  );
 
-  const totals = useMemo(() => summarize(active, balance), [active, balance]);
-  const monthTotals = useMemo(() => summarize(thisMonth, balance), [thisMonth, balance]);
+  /** Bu ayın YAKLAŞAN organizasyonları: bugün ve sonrası. */
+  const yaklasan = useMemo(
+    () => ayinKayitlari.filter((r) => r.date >= today).sort((a, b) => a.date.localeCompare(b.date)),
+    [ayinKayitlari, today],
+  );
+  const yaklasanKisi = useMemo(
+    () => yaklasan.reduce((s, r) => s + (r.guestCount || 0), 0),
+    [yaklasan],
+  );
+
+  const ayToplam = useMemo(() => summarize(ayinKayitlari, balance), [ayinKayitlari, balance]);
 
   const cash = useMemo(() => cashQuery.data ?? [], [cashQuery.data]);
-  const cashBalance = useMemo(
-    () => cash.reduce((sum, c) => sum + (c.kind === 'Gelir' ? c.amount : -c.amount), 0),
-    [cash],
+  const rezervasyonGelirleri = useMemo(
+    () => reservationIncome(reservations, payments),
+    [reservations, payments],
+  );
+  /*
+    Kasa durumu TÜM zamanları kapsıyor, ayı değil: kasada duran para,
+    hangi ay girdiğine bakmaksızın oradadır. Aylık kesit gösterilseydi
+    ayın ilk günü kasa sıfır görünürdü.
+  */
+  const dagilim = useMemo(
+    () => kasaDagilimi(kasaHareketleri(cash, rezervasyonGelirleri)),
+    [cash, rezervasyonGelirleri],
   );
 
-  const byProgram = useMemo(() => programReport(active, balance).slice(0, 5), [active, balance]);
-  // Bugünden geriye 6 takvim ayı; kaydı olmayan aylar 0 olarak gösterilir.
-  const byMonth = useMemo(() => lastMonthsReport(active, 6, today, balance), [active, today, balance]);
-  const maxMonth = Math.max(1, ...byMonth.map((m) => m.count));
+  const ayinProgramlari = useMemo(
+    () => programReport(ayinKayitlari, balance),
+    [ayinKayitlari, balance],
+  );
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
       <Seo title="Özet - Sahra Takip Panel" noindex />
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-bold text-brand">Hoş geldiniz, {user?.fullName}</h1>
           <p className="text-sm text-brand-muted">
-            {MONTH_NAMES[new Date().getMonth()]} {new Date().getFullYear()} özeti
+            {ayAdi} {new Date().getFullYear()} özeti · geçmiş dönemler{' '}
+            <Link to="/panel/raporlar">Raporlar</Link> bölümünde
           </p>
         </div>
         <Link to="/panel/rezervasyonlar/yeni" className="btn-primary text-white hover:text-white">
@@ -62,11 +103,44 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Bu ay rezervasyon" value={formatNumber(monthTotals.count)} hint={`Toplam ${formatNumber(totals.count)} kayıt`} icon={IconCalendar} tone="accent" />
-        <StatCard label="Bu ay ciro" value={formatMoney(monthTotals.total, currency)} hint={`Tahsil edilen ${formatMoney(monthTotals.collected, currency)}`} icon={IconWallet} tone="brand" />
-        <StatCard label="Kalan alacak" value={formatMoney(totals.remaining, currency)} hint="Tüm açık kayıtlar" icon={IconWallet} tone="danger" />
-        <StatCard label="Kasa bakiyesi" value={formatMoney(cashBalance, currency)} hint="Gelir - Gider" icon={IconUsers} tone={cashBalance >= 0 ? 'success' : 'danger'} />
+      <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard
+            label={`${ayAdi} ayı toplam program`}
+            value={`${formatNumber(ayinKayitlari.length)} kayıt`}
+            hint={`${formatNumber(yaklasan.length)} tanesi bugün ve sonrasında`}
+            icon={IconCalendar}
+            tone="accent"
+          />
+          <StatCard
+            label="Bu ay satılan düğün"
+            value={formatNumber(aySatilan.length)}
+            hint={`${ayAdi} ayında açılan sözleşme sayısı`}
+            icon={IconPlus}
+            tone="brand"
+          />
+          <StatCard
+            label={`${ayAdi} ayı cirosu`}
+            value={formatMoney(ayToplam.total, currency)}
+            hint={`Tahsil edilen ${formatMoney(ayToplam.collected, currency)}`}
+            icon={IconWallet}
+            tone="brand"
+          />
+          <StatCard
+            label="Bu ayın kalan alacağı"
+            value={formatMoney(ayToplam.remaining, currency)}
+            hint={`${ayAdi} ayı organizasyonlarından`}
+            icon={IconWallet}
+            tone={ayToplam.remaining > 0 ? 'danger' : 'success'}
+          />
+        </div>
+
+        {/*
+          Kasa durumu sağ üstte ve dağılımı şifreyle açılıyor: salonun
+          kasasında ne kadar nakit olduğu, ekranın yanından geçen herkesin
+          göreceği bir bilgi olmamalı.
+        */}
+        <KasaDagilimKarti dagilim={dagilim} currency={currency} email={user?.email} />
       </div>
 
       {/*
@@ -81,35 +155,39 @@ export default function Dashboard() {
         <LeadOzetKutulari adaylar={adaylar} durumlar={adayDurumlari} />
       </section>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <section className="card p-5 lg:col-span-2" aria-labelledby="upcoming-title">
           <div className="mb-4 flex items-center justify-between">
-            <h2 id="upcoming-title" className="font-heading text-lg font-bold text-brand">Yaklaşan organizasyonlar</h2>
+            <h2 id="upcoming-title" className="font-heading text-lg font-bold text-brand">
+              {ayAdi} ayı yaklaşan organizasyonları
+            </h2>
             <Link to="/panel/rezervasyonlar" className="text-sm">Tümü →</Link>
           </div>
 
-          {upcoming.length === 0 ? (
+          {yaklasan.length === 0 ? (
             <p className="py-8 text-center text-sm text-brand-muted">
-              Yaklaşan rezervasyon kaydı bulunmuyor.{' '}
+              {ayAdi} ayında kalan organizasyon bulunmuyor.{' '}
               <Link to="/panel/rezervasyonlar/yeni">Yeni rezervasyon ekleyin</Link>.
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-sm">
+              <table className="w-full min-w-[640px] text-sm">
+                <caption className="sr-only">{ayAdi} ayı yaklaşan organizasyonları</caption>
                 <thead>
                   <tr className="border-b border-line text-left text-xs uppercase text-brand-muted">
                     <th className="pb-2 font-medium">Tarih</th>
                     <th className="pb-2 font-medium">Müşteri</th>
                     <th className="pb-2 font-medium">Organizasyon</th>
+                    <th className="pb-2 text-right font-medium">Kişi</th>
                     <th className="pb-2 text-right font-medium">Kalan</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {upcoming.slice(0, 8).map((r) => {
+                  {yaklasan.map((r) => {
                     const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
                     return (
                       <tr key={r.id} className="border-b border-line/60 last:border-0">
-                        <td className="py-2.5 whitespace-nowrap text-brand">
+                        <td className="whitespace-nowrap py-2.5 text-brand">
                           {formatDate(r.date)}
                           <span className="ml-1 text-xs text-brand-muted">{r.slot}</span>
                         </td>
@@ -122,6 +200,7 @@ export default function Dashboard() {
                             {r.organizationType}
                           </span>
                         </td>
+                        <td className="py-2.5 text-right text-brand">{formatNumber(r.guestCount)}</td>
                         <td className="py-2.5 text-right font-medium text-brand">
                           {formatMoney(balance.remaining(r), r.currency)}
                         </td>
@@ -129,19 +208,33 @@ export default function Dashboard() {
                     );
                   })}
                 </tbody>
+                {/*
+                  Toplam kişi sayısı tablonun altında: mutfak ve servis
+                  planlaması bu sayıya bakıyor, satır satır toplamak
+                  gerekmemeli.
+                */}
+                <tfoot>
+                  <tr className="border-t-2 border-line font-medium text-brand">
+                    <td className="pt-2.5" colSpan={3}>Toplam kişi sayısı</td>
+                    <td className="pt-2.5 text-right">{formatNumber(yaklasanKisi)}</td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
         </section>
 
         <section className="card p-5" aria-labelledby="program-title">
-          <h2 id="program-title" className="mb-4 font-heading text-lg font-bold text-brand">Program dağılımı</h2>
-          {byProgram.length === 0 ? (
-            <p className="py-6 text-center text-sm text-brand-muted">Kayıt bulunmuyor.</p>
+          <h2 id="program-title" className="mb-4 font-heading text-lg font-bold text-brand">
+            {ayAdi} ayı program dağılımı
+          </h2>
+          {ayinProgramlari.length === 0 ? (
+            <p className="py-6 text-center text-sm text-brand-muted">Bu ay kayıt bulunmuyor.</p>
           ) : (
             <ul className="space-y-3">
-              {byProgram.map((p) => {
-                const max = Math.max(...byProgram.map((x) => x.count));
+              {ayinProgramlari.map((p) => {
+                const max = Math.max(...ayinProgramlari.map((x) => x.count));
                 const color = colors.find((c) => c.label === p.organizationType)?.color ?? '#47b2e4';
                 return (
                   <li key={p.organizationType}>
@@ -149,7 +242,10 @@ export default function Dashboard() {
                       <span>{p.organizationType}</span>
                       <span>{p.count} kayıt</span>
                     </div>
-                    <div className="h-2 rounded bg-surface">
+                    <div
+                      className="h-2 rounded bg-surface"
+                      title={`${p.organizationType}: ${p.count} kayıt · ${formatMoney(p.total, currency)}`}
+                    >
                       <div className="h-full rounded" style={{ width: `${(p.count / max) * 100}%`, background: color }} />
                     </div>
                   </li>
@@ -159,60 +255,7 @@ export default function Dashboard() {
           )}
         </section>
       </div>
-
-      <section className="card mt-6 p-5" aria-labelledby="month-title">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 id="month-title" className="font-heading text-lg font-bold text-brand">Son 6 ay</h2>
-          <Link to="/panel/raporlar" className="text-sm">Detaylı rapor →</Link>
-        </div>
-        {byMonth.length === 0 ? (
-          <p className="py-6 text-center text-sm text-brand-muted">Kayıt bulunmuyor.</p>
-        ) : (
-          <div className="flex h-48 items-end gap-3">
-            {byMonth.map((m) => (
-              <div key={m.label} className="flex flex-1 flex-col items-center gap-2">
-                <span className="text-xs font-medium text-brand">{m.count}</span>
-                <div
-                  className="w-full rounded-t bg-accent-ink transition-all"
-                  style={{ height: `${Math.max(4, (m.count / maxMonth) * 130)}px` }}
-                  title={`${m.label}: ${m.count} rezervasyon`}
-                />
-                <span className="text-center text-[10px] leading-tight text-brand-muted">{m.label}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="card mt-6 p-5">
-        <h2 className="mb-3 font-heading text-lg font-bold text-brand">Tahsilat özeti</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Summary label="Toplam sözleşme tutarı" value={formatMoney(totals.total, currency)} />
-          <Summary label="Tahsil edilen" value={formatMoney(totals.collected, currency)} />
-          <Summary label="Kalan alacak" value={formatMoney(totals.remaining, currency)} />
-        </div>
-        <div className="mt-4 h-3 overflow-hidden rounded-full bg-surface">
-          <div
-            className="h-full bg-success"
-            style={{ width: `${totals.total > 0 ? (totals.collected / totals.total) * 100 : 0}%` }}
-            role="progressbar"
-            aria-valuenow={totals.total > 0 ? Math.round((totals.collected / totals.total) * 100) : 0}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Tahsilat oranı"
-          />
-        </div>
-      </section>
     </QueryBoundary>
-  );
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md bg-surface p-4">
-      <p className="text-xs text-brand-muted">{label}</p>
-      <p className="mt-1 font-heading text-lg font-bold text-brand">{value}</p>
-    </div>
   );
 }
 
@@ -241,6 +284,7 @@ function LeadOzetKutulari(
                 ? `/panel/musteri-adaylari?durum=${encodeURIComponent(k.durumKodu)}`
                 : `/panel/musteri-adaylari?suzgec=${k.anahtar}`}
               className="block rounded-lg border border-line px-3 py-2.5 hover:border-brand"
+              title={`${k.etiket}: ${k.deger} aday`}
             >
               <span className="block text-xs text-brand-muted">{k.etiket}</span>
               <span className={`mt-0.5 block font-heading text-xl font-bold ${VURGU[k.ton]}`}>

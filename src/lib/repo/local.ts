@@ -11,9 +11,9 @@ import { nextContractCode, normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
-  Business, CashFlowEntry, CashFlowKind, ColorSetting, EnqueueResult, Invoice,
+  Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
   EventTask, Hall, Menu, Payment, Reservation, ReservationVendor,
-  SafeDirection, SafeMovement, SeatingTable, SmsConsent, SmsLogEntry, Vendor,
+  SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
   SmsQueueEntry, User,
 } from '../../types';
@@ -36,7 +36,6 @@ function statusHistory(): LeadStatusChange[] {
 function leadStatuses(): LeadStatusDef[] {
   return read<LeadStatusDef[]>(KEYS.leadStatuses, []);
 }
-function safeMoves(): SafeMovement[] { return read<SafeMovement[]>(KEYS.safeMovements, []); }
 
 /**
  * Hareketi doğuran satır gelir mi gider mi?
@@ -46,11 +45,6 @@ function safeMoves(): SafeMovement[] { return read<SafeMovement[]>(KEYS.safeMove
  * gelir varsayılır: kasaya işlenemeyecek bir kayıttır ve diğer kurallar
  * zaten devreye girer.
  */
-function kaynakTuru(movement: SafeMovement): CashFlowKind {
-  if (movement.sourceKind === 'reservation') return 'Gelir';
-  const kayit = cash().find((c) => c.id === movement.sourceId);
-  return kayit?.kind ?? 'Gelir';
-}
 function consents(): SmsConsent[] { return read<SmsConsent[]>(KEYS.consents, []); }
 function queue(): SmsQueueEntry[] { return read<SmsQueueEntry[]>(KEYS.queue, []); }
 function invoices(): Invoice[] { return read<Invoice[]>(KEYS.invoices, []); }
@@ -259,7 +253,6 @@ export const localRepo: Repository = {
     write(KEYS.reservations, reservations().filter((r) => r.businessId !== id));
     write(KEYS.payments, payments().filter((p) => !removed.includes(p.reservationId)));
     write(KEYS.cashflow, cash().filter((c) => c.businessId !== id));
-    write(KEYS.safeMovements, safeMoves().filter((m) => m.businessId !== id));
   },
 
   async listReservations(businessId) {
@@ -352,57 +345,8 @@ export const localRepo: Repository = {
 
   async deleteCashFlow(id) {
     write(KEYS.cashflow, cash().filter((c) => c.id !== id));
-    // Satır silinince ona bağlı çelik kasa hareketi de düşer; kalsaydı
-    // kasada kaynağı görünmeyen bir tutar dururdu.
-    write(KEYS.safeMovements, safeMoves().filter(
-      (m) => !(m.sourceKind === 'cash_flow' && m.sourceId === id),
-    ));
   },
 
-  async listSafeMovements(businessId) {
-    return wait(safeMoves()
-      .filter((m) => m.businessId === businessId)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)));
-  },
-
-  async addSafeMovement(movement) {
-    if (movement.amount <= 0) throw new RepoError('Çelik kasa tutarı sıfırdan büyük olmalıdır.');
-
-    // Veritabanındaki tetikleyicinin karşılığı: karar satırın türüne ve
-    // şu anki netine bakar. Gelir kasaya girer, gider kasadan çıkar; ters
-    // yön ancak satırın kasada bir etkisi varken bir düzeltme/karşı hareket
-    // olarak yazılabilir. Böylece girip çıkan satır yeniden işlenebilir ama
-    // aynı hareket arka arkaya iki kez yazılamaz.
-    const dogal: SafeDirection = kaynakTuru(movement) === 'Gider' ? 'Çıkış' : 'Giriş';
-    const net = safeMoves()
-      .filter((m) => m.businessId === movement.businessId
-                     && m.sourceKind === movement.sourceKind
-                     && m.sourceId === movement.sourceId)
-      .reduce((t, m) => t + (m.direction === 'Giriş' ? m.amount : -m.amount), 0);
-
-    if (movement.direction === dogal) {
-      if (net !== 0) {
-        throw new RepoError(dogal === 'Çıkış'
-          ? 'Bu gider çelik kasadan zaten düşülmüş; önce geri alın.'
-          : 'Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.');
-      }
-    } else {
-      if (dogal === 'Giriş' ? net <= 0 : net >= 0) {
-        throw new RepoError(dogal === 'Çıkış'
-          ? 'Bu gider çelik kasadan düşülmemiş; geri alınacak bir şey yok.'
-          : 'Bu kayıt çelik kasada değil; önce kasaya ekleyin.');
-      }
-      if (movement.amount > Math.abs(net)) {
-        throw new RepoError('Çelik kasada o kayıt için duran tutardan fazlası işlenemez.');
-      }
-    }
-
-    write(KEYS.safeMovements, [...safeMoves(), movement]);
-  },
-
-  async deleteSafeMovement(id) {
-    write(KEYS.safeMovements, safeMoves().filter((m) => m.id !== id));
-  },
 
   async listLeads(businessId) {
     return wait(leads()

@@ -631,11 +631,13 @@ describe('tahsilat ve kasa', () => {
   it('kasa kaydını sütun adlarına çevirir', async () => {
     await repo.addCashFlow({
       id: 'c1', businessId: 'b1', kind: 'Gider', date: '2026-01-01',
-      category: 'Kira', amount: 1000, description: '', reservationId: '', createdAt: '',
+      category: 'Kira', amount: 1000, method: 'Havale/EFT',
+      description: '', reservationId: '', createdAt: '',
     });
     expect(islem(cagri('cash_flow'), 'insert')?.arg[0]).toEqual({
       business_id: 'b1', kind: 'Gider', date: '2026-01-01',
-      category: 'Kira', amount: 1000, description: null, reservation_id: null,
+      category: 'Kira', amount: 1000, method: 'Havale/EFT',
+      description: null, reservation_id: null,
     });
   });
 
@@ -649,100 +651,6 @@ describe('tahsilat ve kasa', () => {
 
 /* ------------------------------------------------------------ çelik kasa */
 
-describe('çelik kasa', () => {
-  it('hareketleri işletmeye göre ve tarihe göre ister', async () => {
-    await repo.listSafeMovements('b1');
-    const c = cagri('safe_movements');
-    expect(islem(c, 'eq')?.arg).toEqual(['business_id', 'b1']);
-    expect(islem(c, 'order')?.arg).toEqual(['date', { ascending: false }]);
-  });
-
-  it('satırı ekranın beklediği alanlara çevirir', async () => {
-    yanitla('safe_movements', {
-      data: [{
-        id: 'k1', business_id: 'b1', date: '2026-01-01', direction: 'Çıkış',
-        amount: 1500.5, description: 'Bankaya yatırıldı', source_kind: 'cash_flow',
-        source_id: 'c1', created_at: '2026-01-01T08:00:00Z',
-      }],
-    });
-
-    const [m] = await repo.listSafeMovements('b1');
-
-    expect(m).toEqual({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Çıkış',
-      amount: 1500.5, description: 'Bankaya yatırıldı', sourceKind: 'cash_flow',
-      sourceId: 'c1', createdAt: '2026-01-01T08:00:00Z',
-    });
-  });
-
-  it('eksik alanları varsayılana çeker', async () => {
-    yanitla('safe_movements', { data: [{ id: 'k1', business_id: 'b1' }] });
-    const [m] = await repo.listSafeMovements('b1');
-    expect(m).toMatchObject({ direction: 'Giriş', amount: 0, sourceKind: 'cash_flow' });
-  });
-
-  it('hareketi sütun adlarına çevirir', async () => {
-    await repo.addSafeMovement({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: 'Gelir · Tahsilat', sourceKind: 'reservation',
-      sourceId: 'kapora:r1', createdAt: '',
-    });
-    expect(islem(cagri('safe_movements'), 'insert')?.arg[0]).toEqual({
-      business_id: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: 'Gelir · Tahsilat', source_kind: 'reservation',
-      source_id: 'kapora:r1',
-    });
-  });
-
-  it('net kuralını çiğneyen hareketi veritabanının metniyle reddeder', async () => {
-    // DT001: tetikleyici. Para kasadayken tekrar "ekle" çift sayım olurdu;
-    // mesaj kullanıcıya ne yapması gerektiğini söylüyor, sarmalamıyoruz.
-    yanitla('safe_movements', {
-      error: { code: 'DT001', message: 'Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.' },
-    });
-    await expect(repo.addSafeMovement({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: '', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
-    })).rejects.toThrow('Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.');
-  });
-
-  it('aynı anda gelen ikinci isteği düşürür', async () => {
-    // 23505: (yön, sıra) benzersizliği. Tetikleyici tek başına eşzamanlı iki
-    // isteği ayıramaz; ikisi de neti sıfır görür.
-    yanitla('safe_movements', { error: { code: '23505', message: 'duplicate key' } });
-    await expect(repo.addSafeMovement({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: '', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
-    })).rejects.toThrow('Bu kayıt çelik kasaya az önce işlendi; sayfayı yenileyip bakın.');
-  });
-
-  it('diğer yazma hatalarını kendi metniyle çevirir', async () => {
-    yanitla('safe_movements', { error: HATA });
-    await expect(repo.addSafeMovement({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: '', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
-    })).rejects.toThrow('Çelik kasa hareketi eklenemedi.');
-
-    await expect(repo.listSafeMovements('b1')).rejects.toThrow('Çelik kasa hareketleri alınamadı.');
-    await expect(repo.deleteSafeMovement('k1')).rejects.toThrow('Çelik kasa hareketi silinemedi.');
-  });
-
-  it('hareketi kimliğine göre siler', async () => {
-    await repo.deleteSafeMovement('k1');
-    expect(islem(cagri('safe_movements'), 'eq')?.arg).toEqual(['id', 'k1']);
-  });
-
-  it('gelir/gider kaydı silinince ona bağlı hareket de düşer', async () => {
-    // Kalsaydı kasada kaynağı görünmeyen bir tutar dururdu.
-    await repo.deleteCashFlow('c1');
-    const c = cagri('safe_movements');
-    expect(c).toBeDefined();
-    expect(c!.islemler.filter((i) => i.ad === 'eq').map((i) => i.arg)).toEqual([
-      ['source_kind', 'cash_flow'],
-      ['source_id', 'c1'],
-    ]);
-  });
-});
 
 /* --------------------------------------------------------- renk ayarları */
 

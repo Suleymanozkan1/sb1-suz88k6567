@@ -526,39 +526,35 @@ tetikleyici), istemci değil; panel ile mobil uygulama aynı numarayı iki kayda
 veremez. Yıl değişince sıra 1'den başlar, numaranın kendisi yılı taşıdığı için
 çakışma olmaz. Bir kayıt bir kez numara alır, sonradan değişmez.
 
-## Çelik kasa
+## Kasa durumu ve ödeme tipi
 
-İşletmenin bir de fiziksel kasası var ve içindeki para, gelir/gider
-kayıtlarından çıkan muhasebe bakiyesiyle aynı değil: havaleyle gelen
-tahsilat kasaya girmez, kasadan alınıp bankaya yatırılan para kasadan çıkar
-ama gelir kaydı yerinde durur.
+İşletmenin kasasında duran paranın ne kadarının **nerede** olduğu,
+paranın zaten taşıdığı ödeme tipinden çıkar. Her gelir/gider satırı ve her
+rezervasyon tahsilatı bir tip taşıyor: Nakit, Kredi Kartı, Havale/EFT, Çek,
+Senet.
 
-Bu yüzden çelik kasa **ayrı bir hareket defteridir**. Kasa bakiyesi
-(gelir − gider) hesabına hiçbir yerde karışmaz; iki bakiye Gelir/Gider
-ekranında yan yana durur ve çelik kasa kartı kendi simgesi ve kesikli
-çerçevesiyle ayrılır.
+Önceki sürümde bu bilgi **çelik kasa** adlı ayrı bir defterde elle
+işaretleniyordu. Uygulamada ikinci bir muhasebe demekti: her satır iki kez
+elleniyor, unutulan her işaret kasayı olduğundan farklı gösteriyordu.
+Kaldırıldı; yerine geçen dağılım elle bakım istemiyor.
 
-**Düğmeler.** Gelir/gider tablosundaki her satırda "Ekle" ve "Çıkar"
-düğmeleri var; rezervasyondan türeyen tahsilat satırlarında da. Düğme,
-satırın kendi tutarını kasaya yazar. Kısmi tutar alınmaz: satırın anlamını
-bulanıklaştırır ve kasadaki parayı gelir/gider kaydından koparırdı.
+**Kasa Durumu kartı** Özet sayfasının sağ üstünde. Toplam açıkta, dağılım
+şifreyle açılıyor: salonun kasasında ne kadar nakit olduğu, ekranın yanından
+geçen herkesin göreceği bir bilgi olmamalı. Şifre kullanıcının **kendi hesap
+parolasıdır** ve sunucuda doğrulanır — sistemde ikinci bir sır saklanmıyor.
 
-**Çift sayım engeli.** Bir satır kasaya en çok bir kez girer ve en çok bir
-kez çıkar; aynı yönde ikinci kayıt hem arayüzde hem veritabanında
-reddedilir. İki kez tıklamaktan doğan çift sayım, akşam sayımda tutmayan
-bir fark bırakırdı.
+Kart bir güvenlik duvarı değil, bir perde. Gerçek koruma yetki sisteminde:
+`kasa.goruntule` yetkisi olmayan kullanıcıya kart hiç gönderilmiyor.
 
-Bir satır hem girip hem çıkabilir: nakit alınan para kasaya girer, ertesi
-gün bankaya yatırılınca kasadan çıkar. O satırın kasaya net etkisi sıfır
-olur ve tabloda `0,00 ₺` görünür.
+**Çek ve senet kasa toplamına girmez.** İkisi de henüz tahsil edilmemiş bir
+vaattir; kasadaki parayla toplanırsa kasa olduğundan büyük görünür ve
+gerçekte olmayan bir paraya göre karar alınır. Tutarları varsa ayrıca
+"henüz tahsil edilmedi" notuyla gösterilir.
 
-**Düzeltme.** Yanlış işlenen hareket, tablonun altındaki **Çelik Kasa
-Hareketleri** defterinden silinir; gelir/gider kaydına dokunulmaz.
-Hareketler güncellenemez (veritabanında `update` yetkisi verilmemiştir):
-düzeltmenin kendisi de defterde iz bırakmalıdır.
-
-Bir gelir/gider kaydı silinirse ona bağlı kasa hareketi de düşer; kalsaydı
-kasada kaynağı görünmeyen bir tutar dururdu.
+**Tipi bilinmeyen kayıtlar** ayrı bir satırda toplanır. Ödeme tipi alanı
+sonradan eklendi ve eski satırların tipi gerçekten bilinmiyor; hepsine
+"Nakit" varsaymak uydurma bir veri üretir, dağılımı sessizce yanlış
+gösterirdi. Toplamdan düşülmez — para gerçekten kasada.
 
 ## Ulaşım kanalı ve kanal raporu
 

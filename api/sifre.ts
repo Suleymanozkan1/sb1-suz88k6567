@@ -1,9 +1,10 @@
 /**
- * Şifre değiştirme ve sıfırlama.
+ * Şifre değiştirme, sıfırlama ve doğrulama.
  *
- * İki işlem var:
+ * Üç işlem var:
  *   islem: 'degistir'  mevcut şifreyi doğrular, yenisini yazar
  *   islem: 'sifirla'   sıfırlama isteği alır
+ *   islem: 'dogrula'   şifreyi yalnızca DOĞRULAR, hiçbir şey yazmaz
  *
  * Şifre doğrulaması burada yapılıyor, veritabanında değil: şifreyi
  * sorgu olarak göndermek onu sorgu günlüklerine düşme riskine atardı.
@@ -50,6 +51,30 @@ export default async function handler(request: Request): Promise<Response> {
       ok: true,
       mesaj: 'Bu adres kayıtlıysa sıfırlama yönergesi gönderilecektir.',
     });
+  }
+
+  /*
+    Yalnızca doğrulama: kasa dağılımı gibi perde arkası bilgileri açarken
+    kullanılıyor. Ayrı bir "kasa şifresi" SAKLANMIYOR -- saklansaydı
+    sistemde ikinci bir sır, dolayısıyla ikinci bir sızma yüzeyi olurdu.
+    Kullanıcı kendi parolasını giriyor.
+
+    Hız sınırı yukarıda zaten uygulandı; bu uç deneme yanılmaya açık
+    olduğu için oradan geçmeden buraya gelinmiyor.
+  */
+  if (govde.islem === 'dogrula') {
+    const girilen = govde.mevcut ?? '';
+    let k: KimlikSatiri | undefined;
+    try {
+      const satirlar = await callRpc<KimlikSatiri[]>('kimlik_bul', { p_email: email });
+      k = Array.isArray(satirlar) ? satirlar[0] : undefined;
+    } catch {
+      return json({ error: 'Kimlik doğrulama servisine ulaşılamadı.' }, 502);
+    }
+    if (!k?.encrypted_password || !(await sifreDogru(girilen, k.encrypted_password))) {
+      return json({ error: 'Şifreniz hatalı.' }, 401);
+    }
+    return json({ ok: true });
   }
 
   if (govde.islem !== 'degistir') return json({ error: 'Geçersiz işlem.' }, 400);

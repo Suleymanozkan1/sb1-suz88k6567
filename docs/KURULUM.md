@@ -67,6 +67,17 @@ Sıra önemlidir ve atlanamaz:
 - `0021` çekirdek tablo yetkilerini verir, bu yüzden 0001-0020'den sonra.
 - `0023` durum tablosunu kurar ve `customer_leads.status` kolonunu enum'dan
   koda çevirir; kendi yetkilerini kendi veriyor.
+- `0024` gelir/gider satırlarına ödeme tipi ekler ve **çelik kasa tablosunu
+  düşürür**.
+
+> **`0024` geri alınamaz.** `safe_movements` tablosu düşürüldüğü için çelik
+> kasa hareket geçmişi silinir. Göçü uygulamadan önce yedek alın:
+>
+> ```bash
+> sudo -u postgres pg_dump sahra > sahra-0024-oncesi.sql
+> ```
+>
+> Gelir/gider kayıtları, rezervasyonlar ve tahsilatlar etkilenmez.
 
 PostgREST'in bağlanacağı role şifre verin:
 

@@ -16,7 +16,7 @@ import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult,
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
-  Payment, Permission, Reservation, SafeMovement, SmsConsent, SmsLogEntry, SmsQueueEntry,
+  Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
 } from '../../types';
@@ -148,6 +148,7 @@ function toReservation(row: Row): Reservation {
     guestCount: Number(row.guest_count ?? 0),
     totalAmount: Number(row.total_amount ?? 0),
     deposit: Number(row.deposit ?? 0),
+    depositMethod: (row.deposit_method as Reservation['depositMethod']) ?? undefined,
     currency: (row.currency as Reservation['currency']) ?? 'TL',
     status: (row.status as Reservation['status']) ?? 'Kesin Rezervasyon',
     colorKey: (row.color_key as string) ?? 'diger',
@@ -172,6 +173,7 @@ function fromReservation(r: Reservation) {
     date: r.date, start_time: r.startTime || null, end_time: r.endTime || null,
     slot: r.slot, organization_type: r.organizationType,
     guest_count: r.guestCount, total_amount: r.totalAmount, deposit: r.deposit,
+    deposit_method: r.depositMethod ?? null,
     currency: r.currency, status: r.status, color_key: r.colorKey,
     note: r.note || null, address: r.address || null, services: r.services,
     source_channel: r.sourceChannel || null, source_detail: r.sourceDetail?.trim() || null,
@@ -264,19 +266,6 @@ function hesabaCevir(row: Row): WhatsappAccount {
   };
 }
 
-function toSafeMovement(row: Row): SafeMovement {
-  return {
-    id: String(row.id),
-    businessId: String(row.business_id),
-    date: (row.date as string) ?? '',
-    direction: (row.direction as SafeMovement['direction']) ?? 'Giriş',
-    amount: Number(row.amount ?? 0),
-    description: (row.description as string) ?? '',
-    sourceKind: (row.source_kind as SafeMovement['sourceKind']) ?? 'cash_flow',
-    sourceId: (row.source_id as string) ?? '',
-    createdAt: (row.created_at as string) ?? '',
-  };
-}
 
 function toInvoice(row: Row): Invoice {
   return {
@@ -343,6 +332,7 @@ function toCashFlow(row: Row): CashFlowEntry {
     date: (row.date as string) ?? '',
     category: (row.category as string) ?? '',
     amount: Number(row.amount ?? 0),
+    method: (row.method as CashFlowEntry['method']) ?? undefined,
     description: (row.description as string) ?? undefined,
     reservationId: (row.reservation_id as string) ?? undefined,
     createdAt: (row.created_at as string) ?? '',
@@ -766,7 +756,8 @@ export const supabaseRepo: Repository = {
   async addCashFlow(entry) {
     const { error } = await db().from('cash_flow').insert({
       ...kimlikAlani(entry.id), business_id: entry.businessId, kind: entry.kind, date: entry.date,
-      category: entry.category, amount: entry.amount, description: entry.description || null,
+      category: entry.category, amount: entry.amount, method: entry.method ?? null,
+      description: entry.description || null,
       reservation_id: entry.reservationId || null,
     });
     if (error) fail('Kayıt eklenemedi.', error);
@@ -775,43 +766,8 @@ export const supabaseRepo: Repository = {
   async deleteCashFlow(id) {
     const { error } = await db().from('cash_flow').delete().eq('id', id);
     if (error) fail('Kayıt silinemedi.', error);
-    // Satır silinince ona bağlı çelik kasa hareketi de düşer; kalsaydı
-    // kasada kaynağı görünmeyen bir tutar dururdu.
-    const { error: kasaError } = await db().from('safe_movements')
-      .delete().eq('source_kind', 'cash_flow').eq('source_id', id);
-    if (kasaError) fail('Çelik kasa hareketi silinemedi.', kasaError);
   },
 
-  async listSafeMovements(businessId) {
-    const { data, error } = await db().from('safe_movements')
-      .select('*').eq('business_id', businessId).order('date', { ascending: false });
-    if (error) fail('Çelik kasa hareketleri alınamadı.', error);
-    return (data ?? []).map(toSafeMovement);
-  },
-
-  async addSafeMovement(movement) {
-    const { error } = await db().from('safe_movements').insert({
-      ...kimlikAlani(movement.id), business_id: movement.businessId, date: movement.date,
-      direction: movement.direction, amount: movement.amount,
-      description: movement.description, source_kind: movement.sourceKind,
-      source_id: movement.sourceId,
-    });
-    if (error) {
-      const kod = (error as { code?: string }).code;
-      // DT001: tetikleyici net kuralını çiğneyen hareketi durdurdu; mesajı
-      // zaten okunabilir. 23505: aynı anda gelen iki istekten ikincisi.
-      if (kod === 'DT001') throw new RepoError(error.message);
-      if (kod === '23505') {
-        throw new RepoError('Bu kayıt çelik kasaya az önce işlendi; sayfayı yenileyip bakın.');
-      }
-      fail('Çelik kasa hareketi eklenemedi.', error);
-    }
-  },
-
-  async deleteSafeMovement(id) {
-    const { error } = await db().from('safe_movements').delete().eq('id', id);
-    if (error) fail('Çelik kasa hareketi silinemedi.', error);
-  },
 
   async listLeads(businessId) {
     const { data, error } = await db().from('customer_leads')

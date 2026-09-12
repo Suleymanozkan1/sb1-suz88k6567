@@ -93,14 +93,36 @@ describe('Özet ekranı', () => {
   it('karşılama başlığını ve istatistik kartlarını gösterir', async () => {
     renderPanel('/panel');
     expect(await screen.findByRole('heading', { name: /Hoş geldiniz/ })).toBeInTheDocument();
-    expect(screen.getByText('Bu ay rezervasyon')).toBeInTheDocument();
-    expect(screen.getAllByText(/Kalan alacak/i).length).toBeGreaterThan(0);
-    expect(screen.getByText('Kasa bakiyesi')).toBeInTheDocument();
+    // Özet yalnızca içinde bulunulan ayı gösteriyor; başlıklar ay adını taşır.
+    expect(screen.getByText(/ayı toplam program/)).toBeInTheDocument();
+    expect(screen.getByText('Bu ay satılan düğün')).toBeInTheDocument();
+    expect(screen.getAllByText(/Kalan alacağı/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: 'Kasa Durumu' })).toBeInTheDocument();
   });
 
-  it('yaklaşan organizasyonları listeler', async () => {
+  it('yaklaşan organizasyonları bu ayla sınırlı listeler', async () => {
     renderPanel('/panel');
-    expect(await screen.findByRole('heading', { name: 'Yaklaşan organizasyonlar' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /ayı yaklaşan organizasyonları/ }))
+      .toBeInTheDocument();
+  });
+
+  it('yaklaşan organizasyonlar toplam kişi sayısını gösterir', async () => {
+    renderPanel('/panel');
+    await screen.findByRole('heading', { name: /ayı yaklaşan organizasyonları/ });
+    // Mutfak ve servis planlaması bu sayıya bakıyor.
+    expect(screen.queryByText('Toplam kişi sayısı')).toBeTruthy();
+  });
+
+  it('geçmiş dönem bölümleri özette YOKTUR', async () => {
+    /*
+      Son 6 ay grafiği ve tahsilat özeti bilerek kaldırıldı: günlük işini
+      yapmak için ekranı açan personelin önünde duran geçmiş dönem
+      rakamları, bugün yapılacak işi aşağı itiyordu.
+    */
+    renderPanel('/panel');
+    await screen.findByRole('heading', { name: /Hoş geldiniz/ });
+    expect(screen.queryByRole('heading', { name: 'Son 6 ay' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Tahsilat özeti' })).toBeNull();
   });
 });
 
@@ -417,7 +439,10 @@ describe('Gelir gider kayıtları', () => {
     renderPanel('/panel/kasa');
     expect(await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' })).toBeInTheDocument();
     expect(screen.getByText('Toplam Gelir')).toBeInTheDocument();
-    expect(screen.getByText('Kasa Bakiyesi')).toBeInTheDocument();
+    expect(screen.getByText('Süzgeçteki Bakiye')).toBeInTheDocument();
+    // Çelik kasa kaldırıldı; yerini ödeme tipi dağılımı aldı.
+    expect(screen.getByRole('heading', { name: 'Kasa Durumu' })).toBeInTheDocument();
+    expect(screen.queryByText('Çelik Kasa')).toBeNull();
   });
 
   it('rezervasyon tahsilatlarını sözleşme numarası ve taraflarla listeler', async () => {
@@ -441,128 +466,12 @@ describe('Gelir gider kayıtları', () => {
     expect(screen.getAllByText('Rezervasyon').length).toBeGreaterThan(0);
   });
 
-  it('çelik kasa bakiyesi ayrı bir kart olarak durur', async () => {
-    seedIfEmpty();
-    renderPanel('/panel/kasa');
 
-    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
-    // İki bakiye ayrı: muhasebe kasası ile kasadaki gerçek para toplanmaz.
-    // "Çelik Kasa" hem kartta hem hareket defteri başlığında geçiyor.
-    expect(screen.getByText('Kasa Bakiyesi')).toBeInTheDocument();
-    expect(screen.getByText('Çelik Kasa', { selector: 'p' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Çelik Kasa Hareketleri' })).toBeInTheDocument();
-  });
 
-  it('her satırda çelik kasa düğmeleri bulunur', async () => {
-    seedIfEmpty();
-    renderPanel('/panel/kasa');
 
-    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
-    expect(screen.getAllByRole('button', { name: /^Çelik kasaya ekle:/ }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: /^Çelik kasadan çıkar:/ }).length).toBeGreaterThan(0);
-  });
 
-  it('kasaya eklenen kayıt bakiyeyi büyütür ve düğme kapanır', async () => {
-    const user = userEvent.setup();
-    clearAll();
-    seedIfEmpty();
-    renderPanel('/panel/kasa');
 
-    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
-    const ekle = screen.getAllByRole('button', { name: /^Çelik kasaya ekle:/ })[0];
-    await user.click(ekle);
 
-    // Aynı satır ikinci kez yazılamaz; çift sayım kasadaki parayı bozardı.
-    await waitFor(() => expect(
-      screen.getAllByRole('button', { name: /^Çelik kasaya ekle:/ })[0],
-    ).toBeDisabled());
-
-    const defter = screen.getByRole('table', { name: 'Çelik kasa hareketleri' });
-    expect(within(defter).getAllByRole('row').length).toBeGreaterThan(1);
-  });
-
-  it('girip çıkan kayıt kasaya yeniden eklenebilir', async () => {
-    // Para kasa ile banka arasında bir kez değil sürekli gidip gelir;
-    // satırın bir tur sonra kilitlenmesi kullanıcının bildirdiği hataydı.
-    const user = userEvent.setup();
-    clearAll();
-    seedIfEmpty();
-    renderPanel('/panel/kasa');
-
-    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
-    const ekle = () => screen.getAllByRole('button', { name: /^Çelik kasaya ekle:/ })[0];
-    const cikar = () => screen.getAllByRole('button', { name: /^Çelik kasadan çıkar:/ })[0];
-
-    await user.click(ekle());
-    await waitFor(() => expect(ekle()).toBeDisabled());
-    await user.click(cikar());
-
-    // Tur tamamlandı: satır yeniden eklenebilir olmalı.
-    await waitFor(() => expect(ekle()).toBeEnabled());
-    expect(cikar()).toBeDisabled();
-
-    await user.click(ekle());
-    await waitFor(() => expect(ekle()).toBeDisabled());
-    expect(cikar()).toBeEnabled();
-  });
-
-  /**
-   * Çelik kasa kartındaki tutarı okur.
-   *
-   * Etiketin hemen ardındaki paragraf değeri taşıyor; kartı metinden
-   * bulmak, iki kasa kartı yan yana dururken hangisine baktığımızı
-   * belirsiz bırakırdı.
-   */
-  function kasaKartiTutari(): number {
-    const etiket = screen.getByText('Çelik Kasa', { selector: 'p' });
-    const deger = etiket.nextElementSibling?.textContent ?? '';
-    return Number(deger.replace(/[^0-9,-]/g, '').replace(/\./g, '').replace(',', '.'));
-  }
-
-  it('gider satırı kasadan öder ve kasayı azaltır', async () => {
-    // Bildirilen hata: nakit ödenen gider "Ekle" ile kasayı ARTIRIYORDU.
-    const user = userEvent.setup();
-    clearAll();
-    seedIfEmpty();
-    renderPanel('/panel/kasa');
-
-    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
-
-    // Gider satırında düğmeler "Öde" ve "Geri al"; "Ekle" hiç yok.
-    const ode = screen.getAllByRole('button', { name: /^Çelik kasadan öde:/ })[0];
-    const geriAl = screen.getAllByRole('button', { name: /^Çelik kasaya geri al:/ })[0];
-    expect(ode).toBeEnabled();
-    expect(geriAl).toBeDisabled();
-
-    const kasaOnce = kasaKartiTutari();
-    await user.click(ode);
-
-    await waitFor(() => expect(
-      screen.getAllByRole('button', { name: /^Çelik kasadan öde:/ })[0],
-    ).toBeDisabled());
-    expect(kasaKartiTutari()).toBeLessThan(kasaOnce);
-    expect(screen.getAllByRole('button', { name: /^Çelik kasaya geri al:/ })[0]).toBeEnabled();
-  });
-
-  it('kasadan ödenen gider geri alınınca kasa eski hâline döner', async () => {
-    const user = userEvent.setup();
-    clearAll();
-    seedIfEmpty();
-    renderPanel('/panel/kasa');
-
-    await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
-    const kasaOnce = kasaKartiTutari();
-
-    await user.click(screen.getAllByRole('button', { name: /^Çelik kasadan öde:/ })[0]);
-    await waitFor(() => expect(
-      screen.getAllByRole('button', { name: /^Çelik kasaya geri al:/ })[0],
-    ).toBeEnabled());
-    await user.click(screen.getAllByRole('button', { name: /^Çelik kasaya geri al:/ })[0]);
-
-    await waitFor(() => expect(kasaKartiTutari()).toBe(kasaOnce));
-    // Tur tamamlandı: gider yeniden kasadan ödenebilir.
-    expect(screen.getAllByRole('button', { name: /^Çelik kasadan öde:/ })[0]).toBeEnabled();
-  });
 
   it('geçersiz tutarı reddeder', async () => {
     const user = userEvent.setup();

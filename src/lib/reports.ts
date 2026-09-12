@@ -1,6 +1,6 @@
 /** Rapor hesaplamaları: program bazlı, ay bazlı, tarih aralığı, alacak bakiyesi */
 import { MONTH_NAMES } from '../data/constants';
-import type { OrganizationType, Payment, Reservation } from '../types';
+import type { OrganizationType, Payment, PaymentMethod, Reservation } from '../types';
 
 /**
  * Tahsilat/bakiye çözücüsü. `makeBalanceLookup` bunu üretir; raporlar
@@ -227,7 +227,8 @@ export interface ReservationIncomeRow {
   customerName: string;
   /** İkinci kişi varsa "Ahmet Yılmaz / Elif Kaya" biçiminde tam ad */
   parties: string;
-  method?: string;
+  /** Paranın hangi kanaldan geldiği. Eski kayıtlarda boş olabilir. */
+  method?: PaymentMethod;
 }
 
 /** Sözleşmedeki taraflar: ikinci kişi varsa iki isim birlikte yazılır. */
@@ -265,6 +266,9 @@ export function reservationIncome(
         contractNo: r.code,
         customerName: r.customerName,
         parties: contractParties(r),
+        // Kapora da bir tahsilattır ve kasaya girer; kanalı taşınmazsa
+        // kasa dağılımında salonun en büyük nakit girişi görünmez olur.
+        method: r.depositMethod,
       });
     }
   }

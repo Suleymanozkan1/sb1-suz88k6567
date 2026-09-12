@@ -127,7 +127,6 @@ describe('şema uyumu', () => {
     // Ayrıştırıcı bozulursa test sessizce "hiç uyuşmazlık yok" demesin.
     expect(sema.size).toBeGreaterThan(20);
     expect(sema.get('cash_flow')).toContain('description');
-    expect(sema.get('safe_movements')).toContain('direction');
     // Sonradan eklenen sütunlar da görülmeli.
     expect(sema.get('reservations')).toContain('identity_no');
     // Ayrılmış sözcük olduğu için tırnaklı tanımlanan sütun da sayılmalı.

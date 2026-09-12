@@ -10,7 +10,7 @@ import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus,   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
   Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
   EventTask, Vendor, ReservationVendor,
-  SafeMovement, SmsLogEntry, SmsQueueEntry, SystemHealth, User,
+  SmsLogEntry, SmsQueueEntry, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
@@ -118,18 +118,6 @@ export interface Repository {
   listCashFlow(businessId: string): Promise<CashFlowEntry[]>;
   addCashFlow(entry: CashFlowEntry): Promise<void>;
   deleteCashFlow(id: string): Promise<void>;
-
-  /* -- çelik kasa ------------------------------------------------------ */
-  listSafeMovements(businessId: string): Promise<SafeMovement[]>;
-  /**
-   * Kasaya giriş ya da çıkış yazar.
-   *
-   * Bir gelir/gider satırı aynı yönde ikinci kez yazılamaz; veritabanındaki
-   * benzersizlik kısıtının karşılığıdır. İki kez tıklamaktan doğan çift
-   * sayım, kasadaki parayı olduğundan farklı gösterirdi.
-   */
-  addSafeMovement(movement: SafeMovement): Promise<void>;
-  deleteSafeMovement(id: string): Promise<void>;
 
   /* -- müşteri adayları ------------------------------------------------ */
   listLeads(businessId: string): Promise<CustomerLead[]>;

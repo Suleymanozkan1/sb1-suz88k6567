@@ -27,12 +27,32 @@ export type LeadChannel = 'Instagram' | 'Düğün.com' | 'Google' | 'Referans' |
 
 export type ReservationStatus = 'Ön Rezervasyon' | 'Kesin Rezervasyon' | 'Tamamlandı' | 'İptal';
 
+/**
+ * Paranın hangi kanaldan geçtiği.
+ *
+ * Hem rezervasyon tahsilatlarında hem gelir/gider satırlarında AYNI tip
+ * kullanılıyor: kasa dağılımı ikisini toplayarak çıkıyor ve iki ayrı
+ * liste, aynı paranın iki yerde farklı sınıflanmasına yol açardı.
+ *
+ * Veritabanındaki `payment_method` enum'uyla birebir aynı sırada.
+ */
+export type PaymentMethod = 'Nakit' | 'Kredi Kartı' | 'Havale/EFT' | 'Çek' | 'Senet';
+
+/**
+ * Kasa dağılımında gösterilen kanallar.
+ *
+ * Çek ve senet burada YOK: ikisi de henüz tahsil edilmemiş bir vaattir,
+ * kasadaki parayla toplanırsa kasa olduğundan büyük görünür. Tutarları
+ * varsa ayrıca "Tahsil edilmemiş" olarak gösteriliyor.
+ */
+export const KASA_KANALLARI: PaymentMethod[] = ['Nakit', 'Kredi Kartı', 'Havale/EFT'];
+
 export interface Payment {
   id: string;
   reservationId: string;
   date: string; // ISO yyyy-mm-dd
   amount: number;
-  method: 'Nakit' | 'Kredi Kartı' | 'Havale/EFT' | 'Çek' | 'Senet';
+  method: PaymentMethod;
   note?: string;
   createdAt: string;
 }
@@ -65,6 +85,8 @@ export interface Reservation {
   guestCount: number;
   totalAmount: number;
   deposit: number; // Kapora
+  /** Kaporanın hangi kanaldan alındığı. Eski kayıtlarda boş. */
+  depositMethod?: PaymentMethod;
   currency: Currency;
   status: ReservationStatus;
   colorKey: string; // Rezervasyon Renk Ayarları ile eşleşen anahtar
@@ -164,33 +186,16 @@ export interface CashFlowEntry {
   date: string;
   category: string;
   amount: number;
+  /**
+   * Paranın hangi kanaldan girdiği/çıktığı.
+   *
+   * Boş olabilir: ödeme tipi alanı sonradan eklendi ve eski satırların
+   * tipi bilinmiyor. Hepsine "Nakit" varsaymak uydurma bir veri üretir,
+   * kasa dağılımını yanlış gösterirdi.
+   */
+  method?: PaymentMethod;
   description?: string;
   reservationId?: string;
-  createdAt: string;
-}
-
-/** Çelik kasa hareketinin yönü */
-export type SafeDirection = 'Giriş' | 'Çıkış';
-
-/**
- * Çelik kasa (fiziksel kasa) hareketi.
- *
- * Kasa bakiyesi (gelir - gider) muhasebe hesabıdır; çelik kasa ise
- * kasadaki gerçek paradır. Havaleyle gelen tahsilat kasaya girmez,
- * kasadan alınıp bankaya yatırılan para kasadan çıkar ama gelir kaydı
- * yerinde durur. Bu yüzden iki bakiye ayrı tutulur.
- */
-export interface SafeMovement {
-  id: string;
-  businessId: string;
-  date: string;
-  direction: SafeDirection;
-  amount: number;
-  description: string;
-  /** Hareketi doğuran gelir/gider satırının türü */
-  sourceKind: 'cash_flow' | 'reservation';
-  /** cash_flow kimliği ya da "kapora:<id>" / "tahsilat:<id>" */
-  sourceId: string;
   createdAt: string;
 }
 

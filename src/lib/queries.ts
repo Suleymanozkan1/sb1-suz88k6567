@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
-  Payment, Reservation, SafeMovement, SmsLogEntry, CustomerLead, LeadMessage,
+  Payment, Reservation, SmsLogEntry, CustomerLead, LeadMessage,
   LeadStatusDef, WhatsappAccount,
 } from '../types';
 
@@ -23,7 +23,6 @@ export const keys = {
   reservation: (id: string) => ['reservation', id] as const,
   payments: (businessId: string) => ['payments', businessId] as const,
   cashFlow: (businessId: string) => ['cashFlow', businessId] as const,
-  safeMovements: (businessId: string) => ['safeMovements', businessId] as const,
   leads: (businessId: string) => ['leads', businessId] as const,
   lead: (id: string) => ['lead', id] as const,
   leadMessages: (leadId: string) => ['leadMessages', leadId] as const,
@@ -106,15 +105,6 @@ export function useCashFlow() {
   });
 }
 
-/** Çelik kasa hareketleri. Kasa bakiyesinden ayrı bir defterdir. */
-export function useSafeMovements() {
-  const businessId = useActiveBusinessId();
-  return useQuery({
-    queryKey: keys.safeMovements(businessId),
-    queryFn: () => repo.listSafeMovements(businessId),
-    enabled: Boolean(businessId),
-  });
-}
 
 /** Müşteri adayları. */
 export function useLeads() {
@@ -463,7 +453,6 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.reservations(businessId) });
     qc.invalidateQueries({ queryKey: keys.payments(businessId) });
     qc.invalidateQueries({ queryKey: keys.cashFlow(businessId) });
-    qc.invalidateQueries({ queryKey: keys.safeMovements(businessId) });
     qc.invalidateQueries({ queryKey: keys.leads(businessId) });
     qc.invalidateQueries({ queryKey: ['lead'] });
     qc.invalidateQueries({ queryKey: ['leadMessages'] });
@@ -531,21 +520,7 @@ export function useDeleteCashFlow() {
   });
 }
 
-export function useAddSafeMovement() {
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: (movement: SafeMovement) => repo.addSafeMovement(movement),
-    onSuccess: invalidate,
-  });
-}
 
-export function useDeleteSafeMovement() {
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: (id: string) => repo.deleteSafeMovement(id),
-    onSuccess: invalidate,
-  });
-}
 
 export function useWhatsappAccount() {
   const businessId = useActiveBusinessId();
