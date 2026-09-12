@@ -14,7 +14,7 @@ import type { Business, Currency } from '../../types';
 
 const EMPTY = {
   name: '', category: CATEGORIES[0], city: '', district: '', phone: '',
-  capacity: '', currency: 'TL' as Currency, address: '', about: '',
+  capacity: '', currency: 'TL' as Currency, address: '', about: '', reportEmail: '',
 };
 
 export default function Isletmeler() {
@@ -57,6 +57,7 @@ export default function Isletmeler() {
     setForm({
       name: b.name, category: b.category, city: b.city, district: b.district, phone: b.phone,
       capacity: String(b.capacity), currency: b.currency, address: b.address ?? '', about: b.about ?? '',
+      reportEmail: b.reportEmail ?? '',
     });
     setError('');
     setShowForm(true);
@@ -85,6 +86,7 @@ export default function Isletmeler() {
       currency: form.currency,
       address: form.address.trim() || undefined,
       about: form.about.trim() || undefined,
+      reportEmail: form.reportEmail.trim(),
         createdAt: editing?.createdAt,
       });
       setShowForm(false);
@@ -180,6 +182,20 @@ export default function Isletmeler() {
             <div className="md:col-span-2">
               <label htmlFor="bz-address" className="field-label">Adres</label>
               <input id="bz-address" className="field-input" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
+            </div>
+            {/*
+              Aylık raporun gideceği adres (madde 24). Kullanıcı bazlı
+              aç/kapat ayarı Kullanıcılar ekranında; ikisi ayrı durmasaydı
+              raporu kapatmak adresi de silmek olurdu.
+            */}
+            <div className="md:col-span-2">
+              <label htmlFor="bz-report-email" className="field-label">
+                Aylık rapor e-postası
+              </label>
+              <input id="bz-report-email" type="email" className="field-input"
+                placeholder="rapor@ornek.com"
+                value={form.reportEmail}
+                onChange={(e) => setForm((f) => ({ ...f, reportEmail: e.target.value }))} />
             </div>
             <div className="md:col-span-2 lg:col-span-3">
               <label htmlFor="bz-about" className="field-label">Açıklama</label>

@@ -461,6 +461,8 @@ export interface Business {
   facebook?: string;
   instagram?: string;
   about?: string;
+  /** Ay sonu raporunun gönderileceği adres (madde 24). Boşsa gönderilmez. */
+  reportEmail?: string;
   createdAt: string;
 }
 
@@ -485,6 +487,14 @@ export interface User {
   instagram?: string;
   createdAt: string;
   activeBusinessId: string;
+  /**
+   * Ay sonu raporu bu kullanıcı için üretilsin mi (madde 24).
+   *
+   * Raporun GİDECEĞİ adres ayrı bir ayar (işletmenin rapor e-postası):
+   * tek alanda birleştirilselerdi raporu kapatmak adresi de silmek
+   * olurdu ve sahibi bir ay kapattığında adresi yeniden yazardı.
+   */
+  monthlyReport?: boolean;
 }
 
 export type Permission =

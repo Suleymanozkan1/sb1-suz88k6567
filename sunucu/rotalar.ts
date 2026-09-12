@@ -13,6 +13,7 @@ import login from '../api/login';
 import otp from '../api/otp';
 import oturum from '../api/oturum';
 import reminders from '../api/reminders';
+import monthlyReport from '../api/monthly-report';
 import smsQueue from '../api/sms-queue';
 import sms from '../api/sms';
 import sifre from '../api/sifre';
@@ -34,6 +35,7 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/sifre': sifre,
   '/api/sms-queue': smsQueue,
   '/api/reminders': reminders,
+  '/api/monthly-report': monthlyReport,
   '/api/whatsapp': whatsapp,
   /*
     Meta panelinde webhook adresi olarak daha çok bu yol yazılıyor; iki
@@ -58,6 +60,12 @@ export const CRON_GOREVLERI: Record<string, keyof typeof ROTALAR> = {
   // Hatırlatmalar sabah taranır; kuralın kendi saat alanı gün içinde
   // hangi saatten sonra gönderileceğine karar verir.
   '0 7 * * *': '/api/reminders',
+  /*
+    Aylık rapor ayın ilk günü çıkar (madde 24) ve BİTEN ayın özetini
+    verir. Saat 6: hatırlatmalardan önce, günün ilk işi olsun ve rapor
+    yöneticinin sabah kutusunda dursun.
+  */
+  '0 6 1 * *': '/api/monthly-report',
 };
 
 /**

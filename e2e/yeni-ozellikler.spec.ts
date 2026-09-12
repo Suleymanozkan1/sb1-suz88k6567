@@ -435,3 +435,53 @@ test('Hızlı yanıt kaydedilir ve müşteri kartında kullanılır', async ({ p
   await page.getByRole('button', { name: 'Yemekli fiyat' }).click();
   await expect(page.locator('#lead-note')).toHaveValue('Yemekli fiyatimiz kisi basi 1.250 TL');
 });
+
+/**
+ * Maddeler 21, 23, 24: fatura müşteri seçimi ve görüntüleme, salon
+ * bazlı rapor, aylık rapor anahtarı.
+ */
+test('Faturada kayıtlı müşteriden doldurma ve görüntüleme çalışır', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/faturalar');
+
+  await page.getByRole('button', { name: 'Kayıtlı Müşterilerden Seç' }).click();
+  const secim = page.getByRole('region', { name: 'Kayıtlı müşteriler' });
+  await expect(secim).toBeVisible();
+
+  // Arama listeyi daraltır, seçim formu doldurur.
+  const ilkAd = (await secim.locator('li p').first().textContent())?.trim() ?? '';
+  await secim.getByRole('button', { name: 'Seç' }).first().click();
+  await expect(page.locator('#fb-name')).toHaveValue(ilkAd);
+  // Tutar rezervasyondan geliyor ama kilitli değil (madde 21).
+  await expect(page.locator('#ln-price-0')).not.toBeDisabled();
+
+  // Fatura kesilince listede rezervasyon sütunu ve görüntüleme bağlantısı
+  // görünür; sözleşme numarası satırdan okunabilmeli (madde 21).
+  await page.getByRole('button', { name: 'Faturayı oluştur ve gönder' }).first().click();
+  await expect(page.getByRole('columnheader', { name: 'Rezervasyon' })).toBeVisible();
+  await page.getByRole('link', { name: 'Görüntüle' }).first().click();
+  await expect(page).toHaveURL(/\/panel\/faturalar\/[^/]+$/);
+  await expect(page.getByRole('heading', { name: /Fatura/ })).toBeVisible();
+});
+
+test('Salon bazlı rapor ayrı ayrı ve toplam gösterir', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/raporlar');
+  await page.getByRole('tab', { name: 'Salon bazlı rapor' }).click();
+
+  await expect(page.getByRole('columnheader', { name: 'Salon' })).toBeVisible();
+  await expect(page.getByText('Seçilen salonların toplamı')).toBeVisible();
+
+  // Salon süzgeci bütün raporları birden daraltıyor.
+  const suzgec = page.getByRole('group', { name: 'Salonlar' });
+  await expect(suzgec).toBeVisible();
+});
+
+test('Kullanıcıya aylık rapor anahtarı eklenir', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/kullanicilar');
+
+  await expect(page.getByRole('columnheader', { name: 'Aylık Rapor' })).toBeVisible();
+  await page.getByRole('button', { name: /Yeni Kullanıcı/ }).click();
+  await expect(page.getByLabel(/Aylık rapor gönderilsin/)).not.toBeChecked();
+});

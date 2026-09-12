@@ -19,7 +19,7 @@ import ProgramCizelgesi from '../../components/ProgramCizelgesi';
 import { KEYS, read, write } from '../../lib/storage';
 import { IconDownload, IconPrint } from '../../components/Icons';
 
-type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans' | 'kanal' | 'donusum';
+type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans' | 'kanal' | 'salon' | 'donusum';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'cizelge', label: 'Program raporu' },
@@ -32,6 +32,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'bakiye', label: 'Gelecek Kaporalar ve Ödemeler' },
   { key: 'seans', label: 'Gündüz / Gece' },
   { key: 'kanal', label: 'Ulaşım kanalı' },
+  { key: 'salon', label: 'Salon bazlı rapor' },
   { key: 'donusum', label: 'Görüşme ve dönüşüm' },
 ];
 
@@ -61,10 +62,33 @@ export default function Raporlar() {
   // Notlar bu tarayıcıda saklanır: rapor her açılışta yeniden yazılmasın.
   useEffect(() => { write(KEYS.programNotes, notlar); }, [notlar]);
 
+  /*
+    Salon süzgeci (madde 23). Boş küme "hepsi" demek: kullanıcı bütün
+    kutucukları kaldırdığında rapor boşalmıyor, tümüne dönüyor -- boş bir
+    rapor ekranı kullanıcıya hiçbir şey anlatmıyordu.
+  */
+  const [seciliSalonlar, setSeciliSalonlar] = useState<string[]>([]);
+
   const scoped = useMemo(
-    () => reservations.filter((r) => r.status !== 'İptal' && withinRange(r.date, { from, to })),
-    [reservations, from, to],
+    () => reservations.filter((r) => r.status !== 'İptal'
+      && withinRange(r.date, { from, to })
+      && (seciliSalonlar.length === 0 || seciliSalonlar.includes(r.hallId))),
+    [reservations, from, to, seciliSalonlar],
   );
+
+  /**
+   * Salon bazlı kırılım (madde 23): seçilen salonlar AYRI AYRI, altında
+   * toplam. Yalnızca toplam gösterilseydi "hangi salon kazandırıyor"
+   * sorusu cevapsız kalırdı.
+   */
+  const salonKirilimi = useMemo(() => {
+    const kapsam = seciliSalonlar.length > 0
+      ? halls.filter((h) => seciliSalonlar.includes(h.id))
+      : halls;
+    return kapsam
+      .map((h) => ({ hall: h, ...summarize(scoped.filter((r) => r.hallId === h.id), balance) }))
+      .filter((s) => s.count > 0);
+  }, [halls, seciliSalonlar, scoped, balance]);
 
   const totals = useMemo(() => summarize(scoped, balance), [scoped, balance]);
   const programs = useMemo(() => programReport(scoped, balance), [scoped, balance]);
@@ -134,6 +158,13 @@ export default function Raporlar() {
           b.lastPayment ? b.lastPayment.amount : '',
           b.lastPayment?.method ?? '',
           b.remaining,
+        ]),
+      );
+    } else if (tab === 'salon') {
+      csv = toCsv(
+        ['Salon', 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan'],
+        salonKirilimi.map((s) => [
+          s.hall.name, s.count, s.guests, s.total, s.collected, s.remaining,
         ]),
       );
     } else if (tab === 'donusum') {
@@ -225,6 +256,44 @@ export default function Raporlar() {
           )}
         </div>
       </form>
+
+      {/*
+        Salon seçimi (madde 23). Bütün raporları birden süzüyor: tek bir
+        sekmeye bağlansaydı kullanıcı ay raporunda salon 1'i, ciro
+        raporunda hepsini görür ve iki rakamı yan yana koyduğunda
+        birbirini tutmadığını sanırdı.
+      */}
+      {halls.length > 1 && (
+        <fieldset className="no-print mb-4">
+          <legend className="field-label">Salonlar</legend>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {halls.map((h) => (
+              <label key={h.id} className="flex items-center gap-2 text-sm text-brand">
+                <input
+                  type="checkbox"
+                  checked={seciliSalonlar.length === 0 || seciliSalonlar.includes(h.id)}
+                  onChange={(e) => setSeciliSalonlar((onceki) => {
+                    // Boş küme "hepsi" demek; ilk kaldırmada diğerleri
+                    // seçili kalsın diye tam listeden düşülüyor.
+                    const temel = onceki.length === 0 ? halls.map((x) => x.id) : onceki;
+                    const yeni = e.target.checked
+                      ? [...new Set([...temel, h.id])]
+                      : temel.filter((id) => id !== h.id);
+                    return yeni.length === halls.length ? [] : yeni;
+                  })}
+                />
+                {h.name}
+              </label>
+            ))}
+            {seciliSalonlar.length > 0 && (
+              <button type="button" className="text-xs text-brand-muted underline hover:text-brand"
+                onClick={() => setSeciliSalonlar([])}>
+                Tüm salonlar
+              </button>
+            )}
+          </div>
+        </fieldset>
+      )}
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Mini label="Rezervasyon" value={formatNumber(totals.count)} />
@@ -399,6 +468,33 @@ export default function Raporlar() {
               </div>
             </>
           )
+        ) : tab === 'salon' ? (
+          salonKirilimi.length === 0 ? (
+            <p className="py-10 text-center text-sm text-brand-muted">
+              Seçilen aralıkta kayıt bulunmuyor.
+            </p>
+          ) : (
+            <>
+              <Table
+                headers={['Salon', 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan']}
+                rows={salonKirilimi.map((s) => [
+                  s.hall.name, formatNumber(s.count), formatNumber(s.guests),
+                  formatMoney(s.total, currency), formatMoney(s.collected, currency),
+                  formatMoney(s.remaining, currency),
+                ])}
+              />
+              {/*
+                Seçilen salonların toplamı ayrı satırda: madde 23 hem
+                "ayrı ayrı" hem "toplam" istiyor ve iki sayı bir arada
+                durmadan karşılaştırma yapılamıyor.
+              */}
+              <dl className="mt-4 grid gap-3 rounded-lg bg-surface p-4 sm:grid-cols-3">
+                <Ozet etiket="Seçilen salonların toplamı" deger={formatMoney(totals.total, currency)} />
+                <Ozet etiket="Tahsil edilen" deger={formatMoney(totals.collected, currency)} />
+                <Ozet etiket="Kalan alacak" deger={formatMoney(totals.remaining, currency)} />
+              </dl>
+            </>
+          )
         ) : tab === 'donusum' ? (
           donusum.length === 0 ? (
             <p className="py-10 text-center text-sm text-brand-muted">
@@ -502,4 +598,14 @@ function vadeMetni(b: BalanceRow): string {
   if (b.daysLeft < 0) return `${Math.abs(b.daysLeft)} gün gecikti`;
   if (b.daysLeft === 0) return 'Bugün';
   return `${b.daysLeft} gün kaldı`;
+}
+
+/** Salon raporunun altındaki toplam kutucukları. */
+function Ozet({ etiket, deger }: { etiket: string; deger: string }) {
+  return (
+    <div>
+      <dt className="text-xs uppercase tracking-wide text-brand-muted">{etiket}</dt>
+      <dd className="mt-0.5 font-heading text-lg font-bold text-brand">{deger}</dd>
+    </div>
+  );
 }

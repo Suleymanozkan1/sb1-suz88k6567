@@ -95,6 +95,7 @@ function toUser(row: Row): User {
     currency: (row.currency as User['currency']) ?? 'TL',
     facebook: (row.facebook as string) ?? undefined,
     instagram: (row.instagram as string) ?? undefined,
+    monthlyReport: Boolean(row.monthly_report),
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     activeBusinessId: (row.active_business_id as string) ?? '',
   };
@@ -115,6 +116,7 @@ function toBusiness(row: Row): Business {
     facebook: (row.facebook as string) ?? undefined,
     instagram: (row.instagram as string) ?? undefined,
     about: (row.about as string) ?? undefined,
+    reportEmail: (row.report_email as string) ?? '',
     createdAt: (row.created_at as string) ?? '',
   };
 }
@@ -734,7 +736,10 @@ export const supabaseRepo: Repository = {
       );
     }
     const { error } = await db().from('profiles')
-      .update({ full_name: input.fullName, mobile: input.mobile, permissions: input.permissions })
+      .update({
+        full_name: input.fullName, mobile: input.mobile, permissions: input.permissions,
+        ...(input.monthlyReport === undefined ? {} : { monthly_report: input.monthlyReport }),
+      })
       .eq('id', input.id);
     if (error) fail('Kullanıcı kaydedilemedi.', error);
   },
@@ -758,6 +763,7 @@ export const supabaseRepo: Repository = {
       phone: business.phone, capacity: business.capacity, currency: business.currency,
       address: business.address || null, facebook: business.facebook || null,
       instagram: business.instagram || null, about: business.about || null,
+      report_email: business.reportEmail ?? '',
     }).select().single();
     if (error) fail('İşletme kaydedilemedi.', error);
     return toBusiness(data);

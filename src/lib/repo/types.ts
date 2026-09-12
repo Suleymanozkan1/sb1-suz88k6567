@@ -23,6 +23,8 @@ export interface StaffInput {
   password?: string;
   mobile: string;
   permissions: Permission[];
+  /** Ay sonu raporu bu kullanıcı için üretilsin mi (madde 24). */
+  monthlyReport?: boolean;
 }
 
 /** Kod doğrulama sayfasının herkese açık olarak görebildiği alanlar */

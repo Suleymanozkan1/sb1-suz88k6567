@@ -324,6 +324,7 @@ export const localRepo: Repository = {
       permissions: input.permissions,
       city: owner.city, district: owner.district, category: owner.category,
       capacity: owner.capacity, currency: owner.currency,
+      monthlyReport: input.monthlyReport ?? existing?.monthlyReport ?? false,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
       activeBusinessId: owner.activeBusinessId,
     };

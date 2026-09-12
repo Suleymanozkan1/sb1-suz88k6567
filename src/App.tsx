@@ -40,6 +40,7 @@ const DenetimKaydi = lazy(() => import('./pages/app/DenetimKaydi'));
 const IzinYonetimi = lazy(() => import('./pages/app/IzinYonetimi'));
 const SistemDurumu = lazy(() => import('./pages/app/SistemDurumu'));
 const Faturalar = lazy(() => import('./pages/app/Faturalar'));
+const FaturaDetay = lazy(() => import('./pages/app/FaturaDetay'));
 
 function PanelLoading() {
   return (
@@ -102,6 +103,7 @@ export default function App() {
             <Route path="rezervasyonlar/:id/makbuz" element={<Makbuz />} />
             <Route path="kasa" element={<Kasa />} />
             <Route path="faturalar" element={<Faturalar />} />
+            <Route path="faturalar/:id" element={<FaturaDetay />} />
             <Route path="raporlar" element={<Raporlar />} />
             <Route path="renk-ayarlari" element={<RenkAyarlari />} />
             <Route path="musteriler" element={<Musteriler />} />
