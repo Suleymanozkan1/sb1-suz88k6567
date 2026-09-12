@@ -12,9 +12,10 @@ import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
   useAddPayment, useDeletePayment, useDeleteReservation,
-  useReservation, useReservationsWithBalances, useUpdatePayment,
+  useReservation, useReservationsWithBalances, useUpdatePayment, useWeather,
 } from '../../lib/queries';
 import { kasayaGirdiMi } from '../../lib/odemeOlayi';
+import { havaMetni, tahminBul } from '../../lib/hava';
 import OdemeGecmisi from '../../components/OdemeGecmisi';
 import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
@@ -33,6 +34,7 @@ export default function RezervasyonDetay() {
   const updatePaymentMutation = useUpdatePayment();
   const deletePaymentMutation = useDeletePayment();
   const deleteReservationMutation = useDeleteReservation();
+  const { data: havaTahminleri = [] } = useWeather();
   const [actionError, setActionError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
@@ -240,6 +242,16 @@ export default function RezervasyonDetay() {
             <Info label="Organizasyon" value={reservation.organizationType} />
             <Info label="Davetli Sayısı" value={`${reservation.guestCount} kişi`} />
             <Info label="Durum" value={reservation.status} />
+            {/*
+              Organizasyon gününün hava tahmini (madde 29). Sağlayıcı
+              uzak tarihlere tahmin vermiyor; o zaman rakam değil AÇIK
+              BİR MESAJ yazıyor. Boş bırakılsaydı alan hiç doldurulmamış
+              gibi görünürdü.
+            */}
+            <Info
+              label="Hava durumu"
+              value={havaMetni(tahminBul(havaTahminleri, reservation.date))}
+            />
             <Info label="Adres" value={reservation.address || '-'} className="sm:col-span-2" />
             <Info
               label="Bize nereden ulaştı"

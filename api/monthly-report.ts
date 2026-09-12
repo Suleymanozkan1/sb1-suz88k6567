@@ -16,6 +16,11 @@
  */
 import { callRpc, isAuthorizedCron, isDbConfigured, insertRow, selectRows } from './_db';
 import { json } from './_guard';
+/*
+  Gönderim ortak modülde: anket e-postası (madde 31) da aynı kapıdan
+  çıkıyor. İki kopya olsaydı biri düzeltilip diğeri unutulurdu.
+*/
+import { epostaGonder } from './_eposta';
 
 interface IsletmeSatiri {
   id: string;
@@ -60,39 +65,6 @@ export function raporMetni(isletme: string, donem: string, o: Ozet): string {
     `Görüşülen müşteri   : ${o.aday}`,
     `Rezervasyona dönen  : ${o.donusen}`,
   ].join('\n');
-}
-
-/**
- * E-posta gönderimi.
- *
- * Sağlayıcı ortam değişkeniyle geliyor; koda gömülmedi. Tanımlı değilse
- * gönderim yapılmadığı AÇIKÇA bildiriliyor, başarılı gibi gösterilmiyor.
- */
-async function epostaGonder(
-  alici: string, konu: string, metin: string,
-): Promise<{ sent: boolean; detail: string }> {
-  const url = process.env.MAIL_API_URL;
-  const key = process.env.MAIL_API_KEY;
-  const from = process.env.MAIL_FROM;
-
-  if (!url || !key || !from) {
-    return { sent: false, detail: 'E-posta sağlayıcısı tanımlı değil (MAIL_API_URL/KEY/FROM).' };
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ from, to: alici, subject: konu, text: metin }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!response.ok) {
-      return { sent: false, detail: `Sağlayıcı ${response.status} döndü.` };
-    }
-    return { sent: true, detail: '' };
-  } catch (error) {
-    return { sent: false, detail: String(error) };
-  }
 }
 
 export default async function handler(request: Request): Promise<Response> {

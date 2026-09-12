@@ -164,7 +164,7 @@ test.describe('İstemci tarafı güvenlik', () => {
     for (const parca of parcalar) {
       const code = fs.readFileSync(path.join(dizin, parca), 'utf-8');
       expect(code, `${parca} sunucu sırrı içeriyor`)
-        .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET|PARASUT_CLIENT_SECRET|PARASUT_PASSWORD|WHATSAPP_APP_SECRET|WHATSAPP_ACCESS_TOKEN|WHATSAPP_VERIFY_TOKEN|MAIL_API_KEY/i);
+        .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET|PARASUT_CLIENT_SECRET|PARASUT_PASSWORD|WHATSAPP_APP_SECRET|WHATSAPP_ACCESS_TOKEN|WHATSAPP_VERIFY_TOKEN|MAIL_API_KEY|KUR_API_KEY|ACCUWEATHER_API_KEY/i);
     }
   });
 });

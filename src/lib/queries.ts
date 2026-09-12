@@ -13,7 +13,7 @@ import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
   Payment, PaymentAlert, PaymentAlertRecipient, Reservation, SmsLogEntry, CustomerLead, LeadMessage,
-  LeadStatusDef, QuickReply, ReservationExpense, WhatsappAccount,
+  LeadStatusDef, QuickReply, ReservationExpense, WhatsappAccount, SpecialDay,
 } from '../types';
 
 export const keys = {
@@ -49,6 +49,15 @@ export const keys = {
   templates: (businessId: string) => ['templates', businessId] as const,
   reminderRules: (businessId: string) => ['reminder-rules', businessId] as const,
   tasks: (reservationId: string) => ['tasks', reservationId] as const,
+  /*
+    Kur ÖNBELLEK ANAHTARI işletmeye bağlı DEĞİL: kurlar herkes için aynı
+    ve tek bir satır kümesi. İşletmeye bağlansaydı aynı veri her işletme
+    için ayrı çekilirdi.
+  */
+  exchangeRates: () => ['exchangeRates'] as const,
+  weather: (businessId: string) => ['weather', businessId] as const,
+  specialDays: (businessId: string) => ['specialDays', businessId] as const,
+  surveys: (businessId: string) => ['surveys', businessId] as const,
   vendors: (businessId: string) => ['vendors', businessId] as const,
   resVendors: (reservationId: string) => ['resVendors', reservationId] as const,
 };
@@ -495,6 +504,8 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.paymentAlerts(businessId) });
     qc.invalidateQueries({ queryKey: keys.paymentAlertRecipients(businessId) });
     qc.invalidateQueries({ queryKey: keys.quickReplies(businessId) });
+    qc.invalidateQueries({ queryKey: keys.specialDays(businessId) });
+    qc.invalidateQueries({ queryKey: keys.surveys(businessId) });
     qc.invalidateQueries({ queryKey: keys.errorReports(ownerId) });
     qc.invalidateQueries({ queryKey: keys.whatsappAccount(businessId) });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
@@ -626,6 +637,75 @@ export function useAddErrorReport() {
     mutationFn: (input: { path: string; message: string; userAgent: string }) =>
       repo.addErrorReport({ ...input, businessId: businessId || undefined }),
     onSuccess: invalidate,
+  });
+}
+
+/* ----------------------------------------- döviz, hava, özel gün, anket */
+
+/**
+ * Kur önbelleği (madde 28).
+ *
+ * Sağlayıcıya istek ATMIYOR: satırları sunucudaki zamanlanmış görev
+ * dolduruyor, buradan yalnızca okunuyor. Tarayıcıdan çekilseydi API
+ * anahtarı istemciye inerdi.
+ *
+ * Beş dakikada bir tazeleniyor; görev de o sıklıkta çalışıyor, daha
+ * sıkı sormak aynı satırı tekrar tekrar okumak olurdu.
+ */
+export function useExchangeRates() {
+  return useQuery({
+    queryKey: keys.exchangeRates(),
+    queryFn: () => repo.listExchangeRates(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** İşletmenin hava tahminleri (madde 29). Satır yoksa tahmin de yok. */
+export function useWeather() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.weather(businessId),
+    queryFn: () => repo.listWeather(businessId),
+    enabled: Boolean(businessId),
+    staleTime: 15 * 60_000,
+  });
+}
+
+export function useSpecialDays() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.specialDays(businessId),
+    queryFn: () => repo.listSpecialDays(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveSpecialDay() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    // İşletme kimliği BURADA basılıyor: ekrandan boş gelirse kayıt
+    // ortak gün gibi görünür ve kimsenin silemeyeceği bir satır olurdu.
+    mutationFn: (gun: SpecialDay) => repo.saveSpecialDay({ ...gun, businessId }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteSpecialDay() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteSpecialDay(id),
+    onSuccess: invalidate,
+  });
+}
+
+/** Deneyim anketi sonuçları (madde 31). */
+export function useSurveys() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.surveys(businessId),
+    queryFn: () => repo.listSurveys(businessId),
+    enabled: Boolean(businessId),
   });
 }
 

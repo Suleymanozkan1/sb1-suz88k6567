@@ -16,11 +16,12 @@ import type {
   ErrorReport, PaymentEventKind, QuickReply, Reservation, ReservationExpense, ReservationVendor,
   SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
-  SmsQueueEntry, User,
+  SmsQueueEntry, User, ExchangeRate, WeatherForecast, SpecialDay, Survey,
 } from '../../types';
 import { ODEME_OLAYLARI, VARSAYILAN_LEAD_DURUMLARI } from '../../types';
 import { odemeOlaylari } from '../odemeOlayi';
 import { takipTarihi } from '../lead';
+import { resmiTatiller } from '../ozelGun';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
 
 const wait = <T,>(value: T): Promise<T> => Promise.resolve(value);
@@ -65,6 +66,30 @@ function hataBildirimleri(): ErrorReport[] {
 
 function hizliYanitlar(): QuickReply[] {
   return read<QuickReply[]>(KEYS.quickReplies, []);
+}
+
+/**
+ * Takvimdeki özel günler.
+ *
+ * Gerçek kurulumda ortak resmî tatilleri göçte veritabanı tohumluyor.
+ * Tanıtım kipinde veritabanı yok; aynı SABİT TARİHLİ liste burada, ilk
+ * okumada bir kez yazılıyor. Uydurma veri değil: bu günler kanunla
+ * belirli ve her yıl aynı. Dini günler ve okul tarihleri burada da YOK,
+ * onlar panelden giriliyor.
+ */
+function ozelGunler(): SpecialDay[] {
+  const kayitli = read<SpecialDay[] | null>(KEYS.specialDays, null);
+  if (kayitli) return kayitli;
+
+  const yil = new Date().getFullYear();
+  const tohum: SpecialDay[] = [];
+  for (let i = 0; i <= 3; i += 1) {
+    for (const t of resmiTatiller(yil + i)) {
+      tohum.push({ ...t, id: uid('ozel-gun'), createdAt: new Date().toISOString() });
+    }
+  }
+  write(KEYS.specialDays, tohum);
+  return tohum;
 }
 
 function odemeOlaylariKaydi(): PaymentEvent[] {
@@ -634,6 +659,60 @@ export const localRepo: Repository = {
       createdAt: new Date().toISOString(),
     };
     write(KEYS.errorReports, [...hataBildirimleri(), kayit]);
+  },
+
+  /*
+    Kur ve hava durumu SUNUCUDAN geliyor; tanıtım kipinde sağlayıcı da
+    zamanlanmış görev de yok. Boş liste dönüyor ve ekran "veri yok"
+    diyor -- örnek bir kur yazılsaydı gerçek sanılırdı ve salon sahibi
+    ona bakarak fiyat verirdi.
+  */
+  async listExchangeRates() {
+    return wait<ExchangeRate[]>([]);
+  },
+
+  async listWeather() {
+    return wait<WeatherForecast[]>([]);
+  },
+
+  async listSpecialDays(businessId) {
+    return wait(ozelGunler()
+      .filter((g) => !g.businessId || g.businessId === businessId)
+      .sort((a, b) => a.day.localeCompare(b.day) || a.label.localeCompare(b.label, 'tr')));
+  },
+
+  async saveSpecialDay(gun) {
+    // Ortak günler düzenlenemez: herkesin takviminde duruyorlar.
+    if (!gun.businessId) throw new RepoError('Ortak günler değiştirilemez.');
+
+    const hepsi = ozelGunler();
+    const ayni = hepsi.find((g) => g.id !== gun.id
+      && g.businessId === gun.businessId && g.day === gun.day
+      && g.label.trim().toLocaleLowerCase('tr') === gun.label.trim().toLocaleLowerCase('tr'));
+    if (ayni) throw new RepoError('Bu gün için aynı isimde bir kayıt zaten var.');
+
+    const yeni = hepsi.some((g) => g.id === gun.id)
+      ? hepsi.map((g) => (g.id === gun.id ? gun : g))
+      : [...hepsi, gun];
+    write(KEYS.specialDays, yeni);
+    return wait(gun);
+  },
+
+  async deleteSpecialDay(id) {
+    const hepsi = ozelGunler();
+    const hedef = hepsi.find((g) => g.id === id);
+    if (hedef && !hedef.businessId) throw new RepoError('Ortak günler silinemez.');
+    write(KEYS.specialDays, hepsi.filter((g) => g.id !== id));
+  },
+
+  /*
+    Anketleri organizasyondan bir hafta sonra zamanlanmış görev açıyor.
+    Tanıtım kipinde o görev çalışmadığı için liste boş; örnek bir anket
+    sonucu yazmak "müşteriler 4,6 puan verdi" gibi uydurma bir rakam
+    üretirdi.
+  */
+  async listSurveys() {
+    return wait<Survey[]>([]);
   },
 
   async listQuickReplies(businessId) {

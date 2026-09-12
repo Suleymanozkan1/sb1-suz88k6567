@@ -20,6 +20,7 @@ import type {
   Permission, QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
+  ExchangeCode, ExchangeRate, WeatherForecast, SpecialDay, SpecialDayKind, Survey,
 } from '../../types';
 import { VARSAYILAN_BASLANGIC_DURUMU } from '../../types';
 import { computeInvoice } from '../invoice';
@@ -117,6 +118,8 @@ function toBusiness(row: Row): Business {
     instagram: (row.instagram as string) ?? undefined,
     about: (row.about as string) ?? undefined,
     reportEmail: (row.report_email as string) ?? '',
+    weatherLocation: (row.weather_location as string) ?? '',
+    surveyEmail: (row.survey_email as string) ?? '',
     lockSeconds: Number(row.lock_seconds ?? 120),
     createdAt: (row.created_at as string) ?? '',
   };
@@ -232,6 +235,76 @@ function fromLead(l: CustomerLead) {
     option_date: l.optionDate || null,
     meeting_date: l.meetingDate || null,
     request_text: l.requestText, note: l.note,
+  };
+}
+
+/**
+ * Sayısal alanlar PostgREST'ten METİN gelebiliyor (numeric tipler
+ * hassasiyet kaybetmesin diye). Doğrudan kullanılsaydı "32.15" + 1
+ * işlemi "32.151" olurdu.
+ */
+function sayi(deger: unknown): number {
+  const n = Number(deger);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Boş bırakılabilen sayısal alan: yokluk 0 ile karıştırılmamalı. */
+function sayiVeyaYok(deger: unknown): number | undefined {
+  if (deger === null || deger === undefined || deger === '') return undefined;
+  const n = Number(deger);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function toExchangeRate(row: Row): ExchangeRate {
+  return {
+    code: row.code as ExchangeCode,
+    buy: sayi(row.buy),
+    sell: sayi(row.sell),
+    quotedAt: (row.quoted_at as string) ?? '',
+    fetchedAt: (row.fetched_at as string) ?? '',
+  };
+}
+
+function toWeather(row: Row): WeatherForecast {
+  return {
+    businessId: (row.business_id as string) ?? '',
+    day: (row.day as string) ?? '',
+    minC: sayiVeyaYok(row.min_c),
+    maxC: sayiVeyaYok(row.max_c),
+    currentC: sayiVeyaYok(row.current_c),
+    summary: (row.summary as string) ?? '',
+    icon: (row.icon as string) ?? '',
+    fetchedAt: (row.fetched_at as string) ?? '',
+  };
+}
+
+function toSpecialDay(row: Row): SpecialDay {
+  return {
+    id: String(row.id),
+    // null = ortak gün; undefined'a çevriliyor ki arayüz tek şeye baksın.
+    businessId: (row.business_id as string) ?? undefined,
+    day: (row.day as string) ?? '',
+    label: (row.label as string) ?? '',
+    kind: (row.kind as SpecialDayKind) ?? 'ozel',
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toSurvey(row: Row): Survey {
+  return {
+    id: String(row.id),
+    businessId: (row.business_id as string) ?? '',
+    reservationId: (row.reservation_id as string) ?? '',
+    /*
+      Jeton PANELE ÇEKİLMİYOR. Anket bağlantısının tamamı, o bağlantıyı
+      açan herkesin başkasının anketini cevaplamasına yeter; ekranda
+      durmasına gerek yok.
+    */
+    sentAt: (row.sent_at as string) ?? undefined,
+    answeredAt: (row.answered_at as string) ?? undefined,
+    scores: (row.scores as Record<string, number>) ?? undefined,
+    comment: (row.comment as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
   };
 }
 
@@ -765,6 +838,8 @@ export const supabaseRepo: Repository = {
       address: business.address || null, facebook: business.facebook || null,
       instagram: business.instagram || null, about: business.about || null,
       report_email: business.reportEmail ?? '',
+      weather_location: business.weatherLocation ?? '',
+      survey_email: business.surveyEmail ?? '',
       lock_seconds: business.lockSeconds ?? 120,
     }).select().single();
     if (error) fail('İşletme kaydedilemedi.', error);
@@ -991,6 +1066,77 @@ export const supabaseRepo: Repository = {
       wa_message_id: message.waMessageId ?? null, actor_email: message.actorEmail,
     });
     if (error) fail('İletişim kaydı yazılamadı.', error);
+  },
+
+  async listExchangeRates() {
+    const { data, error } = await db().from('exchange_rates').select('*').order('code');
+    if (error) fail('Kurlar okunamadı.', error);
+    return (data ?? []).map(toExchangeRate);
+  },
+
+  async listWeather(businessId) {
+    const { data, error } = await db().from('weather_forecasts')
+      .select('*').eq('business_id', businessId).order('day');
+    if (error) fail('Hava durumu okunamadı.', error);
+    return (data ?? []).map(toWeather);
+  },
+
+  async listSpecialDays(businessId) {
+    /*
+      İki kaynak, iki sorgu: ortak resmî tatiller (business_id null) ve
+      işletmenin kendi eklediği günler. Tek sorguda `or` süzgeci
+      gerekirdi; onun için istemciye serbest metinli bir süzgeç girişi
+      açmak, bütün sorgulara açılan bir kapı olurdu.
+
+      İkisi BİRLİKTE bekleniyor: sırayla çekilseydi takvim önce yarım
+      çizilip sonra tamamlanır, gün kutuları oynardı.
+    */
+    const [ortak, kendi] = await Promise.all([
+      db().from('special_days').select('*').is('business_id', null).order('day'),
+      db().from('special_days').select('*').eq('business_id', businessId).order('day'),
+    ]);
+    if (ortak.error) fail('Resmî tatiller okunamadı.', ortak.error);
+    if (kendi.error) fail('Özel günler okunamadı.', kendi.error);
+
+    return [...(ortak.data ?? []), ...(kendi.data ?? [])]
+      .map(toSpecialDay)
+      .sort((a, b) => a.day.localeCompare(b.day) || a.label.localeCompare(b.label, 'tr'));
+  },
+
+  async saveSpecialDay(gun) {
+    if (!gun.businessId) throw new RepoError('Ortak günler değiştirilemez.');
+
+    const { data, error } = await db().from('special_days').upsert({
+      ...kimlikAlani(gun.id), business_id: gun.businessId,
+      day: gun.day, label: gun.label.trim(), kind: gun.kind,
+    }).select().single();
+    if (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw new RepoError('Bu gün için aynı isimde bir kayıt zaten var.');
+      }
+      fail('Özel gün kaydedilemedi.', error);
+    }
+    return toSpecialDay(data);
+  },
+
+  async deleteSpecialDay(id) {
+    /*
+      Ortak günü silmeye kalkan istek RLS'e takılır ve SİLİNEN SATIR
+      OLMADAN başarılı döner. Arayüzde satır kaybolup yenilemede geri
+      gelirdi; bu yüzden ortak gün burada da engelleniyor.
+    */
+    const { error } = await db().from('special_days')
+      .delete().eq('id', id).isNot('business_id', null);
+    if (error) fail('Özel gün silinemedi.', error);
+  },
+
+  async listSurveys(businessId) {
+    const { data, error } = await db().from('surveys')
+      .select('id,business_id,reservation_id,sent_at,answered_at,scores,comment,created_at')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false });
+    if (error) fail('Anket sonuçları okunamadı.', error);
+    return (data ?? []).map(toSurvey);
   },
 
   async listQuickReplies(businessId) {

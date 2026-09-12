@@ -12,6 +12,7 @@ import {
 const NAV = [
   { to: '/panel', label: 'Özet', icon: IconGrid, end: true },
   { to: '/panel/takvim', label: 'Rezervasyon Takvimi', icon: IconCalendar },
+  { to: '/panel/ozel-gunler', label: 'Özel Günler', icon: IconCalendar },
   { to: '/panel/rezervasyonlar', label: 'Rezervasyonlar', icon: IconList },
   { to: '/panel/musteriler', label: 'Müşteriler', icon: IconUsers },
   { to: '/panel/kasa', label: 'Gelir / Gider', icon: IconWallet },

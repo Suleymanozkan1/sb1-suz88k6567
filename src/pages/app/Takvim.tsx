@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
-import { useReservationsWithBalances } from '../../lib/queries';
+import { useReservationsWithBalances, useSpecialDays } from '../../lib/queries';
+import { gunlereGore } from '../../lib/ozelGun';
 import { QueryBoundary } from '../../components/QueryState';
 import { DAY_NAMES_SHORT, MONTH_NAMES } from '../../data/constants';
 import { formatMoney, okunakliMetinRengi, toIso, todayIso } from '../../lib/format';
 import { IconChevronLeft, IconChevronRight, IconPlus } from '../../components/Icons';
 import type { Reservation } from '../../types';
+import { OZEL_GUN_ADI, OZEL_GUN_RENGI } from '../../types';
 
 export default function Takvim() {
   const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
+  const { data: ozelGunler = [] } = useSpecialDays();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -26,6 +29,12 @@ export default function Takvim() {
       });
     return map;
   }, [reservations]);
+
+  /*
+    Özel günler (madde 30) güne göre haritalanıyor: her hücrede listeyi
+    baştan taramak, 42 hücrede 42 tarama demek olurdu.
+  */
+  const ozelGunHaritasi = useMemo(() => gunlereGore(ozelGunler), [ozelGunler]);
 
   const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
   const today = todayIso();
@@ -45,9 +54,12 @@ export default function Takvim() {
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Rezervasyon Takvimi</h1>
-        <Link to="/panel/rezervasyonlar/yeni" className="btn-primary text-white hover:text-white">
-          <IconPlus size={18} /> Yeni Rezervasyon
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/panel/ozel-gunler" className="btn-outline">Özel Günler</Link>
+          <Link to="/panel/rezervasyonlar/yeni" className="btn-primary text-white hover:text-white">
+            <IconPlus size={18} /> Yeni Rezervasyon
+          </Link>
+        </div>
       </div>
 
       {/*
@@ -92,21 +104,59 @@ export default function Takvim() {
             {cells.map((cell, i) => {
               if (!cell) return <span key={`e${i}`} className="min-h-[74px] rounded bg-surface/50" />;
               const items = byDate.get(cell) ?? [];
+              const ozel = ozelGunHaritasi.get(cell) ?? [];
               const isToday = cell === today;
               const isSelected = cell === selected;
               const day = Number(cell.slice(-2));
+              /*
+                Özel gün ARIA etiketine de giriyor: renkli nokta yalnızca
+                gören kullanıcıya bilgi verir, ekran okuyucuda bayram
+                günü sıradan bir gün gibi duyulurdu.
+              */
+              const etiket = [
+                `${day} ${MONTH_NAMES[month]} ${year}`,
+                `${items.length} rezervasyon`,
+                ...ozel.map((g) => g.label),
+              ].join(', ');
               return (
                 <button
                   key={cell}
                   type="button"
                   onClick={() => setSelected(isSelected ? null : cell)}
                   aria-pressed={isSelected}
-                  aria-label={`${day} ${MONTH_NAMES[month]} ${year}, ${items.length} rezervasyon`}
+                  aria-label={etiket}
                   className={`min-h-[74px] rounded border p-1.5 text-left transition ${
                     isSelected ? 'border-accent-ink bg-accent-ink/5' : isToday ? 'border-accent-ink/50 bg-white' : 'border-line bg-white hover:border-accent-ink/50'
                   }`}
                 >
-                  <span className={`text-xs font-semibold ${isToday ? 'text-accent-ink' : 'text-brand'}`}>{day}</span>
+                  <span className="flex items-center justify-between gap-1">
+                    <span className={`text-xs font-semibold ${isToday ? 'text-accent-ink' : 'text-brand'}`}>{day}</span>
+                    {/*
+                      Özel gün NOKTA ile işaretleniyor, hücrenin zeminini
+                      boyamakla değil: zemin boyansaydı üstündeki
+                      rezervasyon etiketlerinin rengi okunmaz olurdu.
+                    */}
+                    {ozel.length > 0 && (
+                      <span className="flex shrink-0 gap-0.5">
+                        {ozel.slice(0, 3).map((g) => (
+                          <span
+                            key={g.id}
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{ background: OZEL_GUN_RENGI[g.kind] }}
+                          />
+                        ))}
+                      </span>
+                    )}
+                  </span>
+                  {ozel.length > 0 && (
+                    <span
+                      className="mt-0.5 block truncate text-[9px] leading-tight"
+                      style={{ color: OZEL_GUN_RENGI[ozel[0]!.kind] }}
+                      title={ozel.map((g) => g.label).join(' · ')}
+                    >
+                      {ozel[0]!.label}
+                    </span>
+                  )}
                   <span className="mt-1 block space-y-0.5">
                     {items.slice(0, 2).map((r) => {
                       const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
@@ -136,6 +186,21 @@ export default function Takvim() {
                 {c.label}
               </span>
             ))}
+            {/*
+              Özel gün renkleri yalnızca o ay GERÇEKTEN varsa listeleniyor:
+              altı türün tamamı her ay yazılsaydı açıklama satırı, asıl
+              bilgi olan rezervasyon renklerini aşağı iterdi.
+            */}
+            {[...new Set(
+              cells.filter((c): c is string => Boolean(c))
+                .flatMap((c) => ozelGunHaritasi.get(c) ?? [])
+                .map((g) => g.kind),
+            )].map((kind) => (
+              <span key={kind} className="flex items-center gap-1.5 text-brand-muted">
+                <span className="h-3 w-3 rounded-full" style={{ background: OZEL_GUN_RENGI[kind] }} />
+                {OZEL_GUN_ADI[kind]}
+              </span>
+            ))}
           </div>
         </section>
 
@@ -150,6 +215,22 @@ export default function Takvim() {
               Kapat
             </button>
           </div>
+          {/*
+            Seçilen günün özel günleri listenin ÜSTÜNDE: "o gün bayram
+            mıydı" sorusu rezervasyonlara bakmadan önce sorulan soru.
+          */}
+          {(ozelGunHaritasi.get(selected) ?? []).length > 0 && (
+            <ul className="mb-4 space-y-1">
+              {(ozelGunHaritasi.get(selected) ?? []).map((g) => (
+                <li key={g.id} className="flex items-center gap-2 text-sm">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: OZEL_GUN_RENGI[g.kind] }} />
+                  <span className="text-brand">{g.label}</span>
+                  <span className="text-xs text-brand-muted">{OZEL_GUN_ADI[g.kind]}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
           {selectedItems.length === 0 ? (
             <p className="py-6 text-center text-sm text-brand-muted">
               Bu güne ait rezervasyon bulunmuyor.

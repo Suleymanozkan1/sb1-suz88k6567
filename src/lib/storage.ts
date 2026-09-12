@@ -96,6 +96,8 @@ export const KEYS = {
   resVendors: 'resVendors',
   session: 'session',
   seeded: 'seeded',
+  /** Takvimdeki özel günler (resmî tatil, kandil, okul...) */
+  specialDays: 'ozel-gunler',
   /** Program raporuna elle eklenen serbest notlar */
   programNotes: 'program-notlari',
   /** Demo modu uyarı bandı kullanıcı tarafından kapatıldı mı */

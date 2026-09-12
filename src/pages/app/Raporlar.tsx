@@ -4,9 +4,10 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import {
-  useBusinesses, useHalls, useLeadStatuses, useLeads, useMenus, useReservationsWithBalances,
+  useBusinesses, useHalls, useLeadStatuses, useSurveys, useLeads, useMenus, useReservationsWithBalances,
 } from '../../lib/queries';
 import { donusumRaporu } from '../../lib/lead';
+import { anketOzeti } from '../../lib/anket';
 import { QueryBoundary } from '../../components/QueryState';
 import {
   balanceReport, channelReport, downloadCsv, monthReport, programReport,
@@ -19,7 +20,7 @@ import ProgramCizelgesi from '../../components/ProgramCizelgesi';
 import { KEYS, read, write } from '../../lib/storage';
 import { IconDownload, IconPrint } from '../../components/Icons';
 
-type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans' | 'kanal' | 'salon' | 'donusum';
+type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans' | 'kanal' | 'salon' | 'donusum' | 'anket';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'cizelge', label: 'Program raporu' },
@@ -34,6 +35,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'kanal', label: 'Ulaşım kanalı' },
   { key: 'salon', label: 'Salon bazlı rapor' },
   { key: 'donusum', label: 'Görüşme ve dönüşüm' },
+  { key: 'anket', label: 'Deneyim anketi' },
 ];
 
 const TAB_KEYS = TABS.map((t) => t.key);
@@ -46,6 +48,7 @@ export default function Raporlar() {
   const { data: menus = [] } = useMenus();
   const { data: adaylar = [] } = useLeads();
   const { data: adayDurumlari = [] } = useLeadStatuses();
+  const { data: anketler = [] } = useSurveys();
   const [params] = useSearchParams();
   const istenenTab = params.get('tab');
   const [tab, setTab] = useState<Tab>(
@@ -57,6 +60,12 @@ export default function Raporlar() {
   const [from, setFrom] = useState(() => params.get('from') ?? '');
   const [to, setTo] = useState(() => params.get('to') ?? '');
   const [notlar, setNotlar] = useState(() => read<string>(KEYS.programNotes, ''));
+  /*
+    Anket özeti TARİH SÜZGECİNDEN GEÇMİYOR: anket organizasyondan bir
+    hafta sonra gidiyor ve rezervasyon tarihine göre süzülürse, geçen
+    ayın düğünü için bu ay gelen cevap hiçbir aralıkta görünmezdi.
+  */
+  const anket = useMemo(() => anketOzeti(anketler), [anketler]);
   const currency = user?.currency ?? 'TL';
 
   // Notlar bu tarayıcıda saklanır: rapor her açılışta yeniden yazılmasın.
@@ -352,6 +361,56 @@ export default function Raporlar() {
               </div>
             )}
           </>
+        ) : tab === 'anket' ? (
+          /*
+            Deneyim anketi (madde 31). Tarih aralığından ÖNCE geliyor:
+            anketin kendi takvimi var ve rezervasyon süzgecine bağlanırsa
+            cevaplar kaybolurdu.
+          */
+          anket.gonderilen === 0 ? (
+            <p className="py-10 text-center text-sm text-brand-muted">
+              Henüz gönderilmiş anket bulunmuyor. Anketler organizasyondan bir hafta
+              sonra, müşterinin e-posta adresi kayıtlıysa otomatik gönderilir.
+            </p>
+          ) : (
+            <>
+              <dl className="mb-6 grid gap-3 rounded-lg bg-surface p-4 sm:grid-cols-3">
+                <Ozet etiket="Gönderilen anket" deger={formatNumber(anket.gonderilen)} />
+                <Ozet
+                  etiket="Cevaplanan"
+                  deger={`${formatNumber(anket.cevaplanan)} (%${anket.cevapOrani.toFixed(1)})`}
+                />
+                <Ozet
+                  etiket="Genel ortalama"
+                  deger={anket.ortalama === null ? 'Cevap yok' : `${anket.ortalama.toFixed(2)} / 5`}
+                />
+              </dl>
+
+              {anket.sorular.length === 0 ? (
+                <p className="py-6 text-center text-sm text-brand-muted">
+                  Gönderilen anketler henüz cevaplanmadı.
+                </p>
+              ) : (
+                <Table
+                  headers={['Soru', 'Cevap sayısı', 'Ortalama']}
+                  rows={anket.sorular.map((soru) => [
+                    soru.label, formatNumber(soru.cevap), `${soru.ortalama.toFixed(2)} / 5`,
+                  ])}
+                />
+              )}
+
+              {/*
+                Cevaplanmayan anketler ortalamaya girmiyor ama gönderilen
+                sayısında duruyor: "kaç kişi memnun" ile "kaç kişi cevap
+                verdi" ayrı sorular ve ikisi birleştirilirse memnuniyet
+                olduğundan farklı görünür.
+              */}
+              <p className="mt-3 text-xs text-brand-muted">
+                Ortalamalar yalnızca cevaplanan anketlerden hesaplanır. Cevap oranı,
+                gönderilen anketlerin ne kadarının yanıtlandığını gösterir.
+              </p>
+            </>
+          )
         ) : scoped.length === 0 ? (
           <p className="py-10 text-center text-sm text-brand-muted">Seçilen tarih aralığında kayıt bulunmuyor.</p>
         ) : tab === 'program' ? (

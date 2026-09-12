@@ -13,6 +13,7 @@ import type {
   EventTask, Vendor, ReservationVendor,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
+  ExchangeRate, WeatherForecast, SpecialDay, Survey,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
 
@@ -162,6 +163,30 @@ export interface Repository {
   addErrorReport(input: {
     businessId?: string; path: string; message: string; userAgent: string;
   }): Promise<void>;
+
+  /* -- döviz / altın (madde 28) ----------------------------------------- */
+  /**
+   * Kur önbelleği.
+   *
+   * YALNIZCA OKUMA var: satırları sunucudaki zamanlanmış görev yazıyor.
+   * İstemciye yazma verilseydi sağlayıcı anahtarının tarayıcıya inmesi
+   * gerekirdi ve ekrandaki kur kullanıcıdan kullanıcıya değişirdi.
+   */
+  listExchangeRates(): Promise<ExchangeRate[]>;
+
+  /* -- hava durumu (madde 29) ------------------------------------------- */
+  /** İşletmenin konumu için çekilmiş günlük tahminler. Yoksa boş liste. */
+  listWeather(businessId: string): Promise<WeatherForecast[]>;
+
+  /* -- özel günler (madde 30) ------------------------------------------- */
+  /** Ortak resmî tatiller + işletmenin kendi eklediği günler. */
+  listSpecialDays(businessId: string): Promise<SpecialDay[]>;
+  saveSpecialDay(gun: SpecialDay): Promise<SpecialDay>;
+  deleteSpecialDay(id: string): Promise<void>;
+
+  /* -- deneyim anketi (madde 31) ---------------------------------------- */
+  /** Anketleri de sunucu üretiyor; panel sonuçları okur. */
+  listSurveys(businessId: string): Promise<Survey[]>;
 
   /* -- hızlı yanıtlar --------------------------------------------------- */
   listQuickReplies(businessId: string): Promise<QuickReply[]>;

@@ -24,6 +24,12 @@ sudo apt install -y postgresql nginx curl git ufw unattended-upgrades
 sudo dpkg-reconfigure --priority=low unattended-upgrades
 ```
 
+> **PostgreSQL 15 veya üstü gerekir.** Özel gün tablosu, ortak (işletmeye
+> bağlı olmayan) günlerin tekilliği için `unique nulls not distinct`
+> kullanıyor; bu sözdizimi 15 ile geldi. Daha eski bir sürümde göç
+> dosyası hata verir. Sürümü `psql --version` ile doğrulayın; Debian 12
+> ve Ubuntu 24.04 depolarındaki sürümler yeterlidir.
+
 Node.js 22:
 
 ```bash

@@ -464,6 +464,14 @@ export interface Business {
   /** Ay sonu raporunun gönderileceği adres (madde 24). Boşsa gönderilmez. */
   reportEmail?: string;
   /**
+   * Hava durumu sağlayıcısındaki konum anahtarı (madde 29).
+   * Boşsa tahmin hiç çekilmez -- yanlış bir şehrin havasını göstermek,
+   * hiç göstermemekten kötüdür.
+   */
+  weatherLocation?: string;
+  /** Anket sonuçlarının bildirileceği yönetici adresi (madde 31). */
+  surveyEmail?: string;
+  /**
    * İşlem yapılmadığında ekranın kilitleneceği saniye (madde 27).
    * 0 = kapalı. İşletme başına: aynı salonun bütün ekranları aynı
    * sürede kilitlenmeli.
@@ -798,3 +806,134 @@ export const KILIT_SURELERI: { saniye: number; etiket: string }[] = [
   { saniye: 300, etiket: '300 saniye (5 dakika)' },
   { saniye: 600, etiket: '600 saniye (10 dakika)' },
 ];
+
+/* ------------------------------------------------ döviz / altın (28) */
+
+/**
+ * Ekranda gösterilen kur kalemleri.
+ *
+ * Veritabanındaki `exchange_rates.code` kısıtının birebir karşılığı.
+ * Liste kapalı: sağlayıcı ne döndürürse dönsün, tanımadığımız bir kod
+ * ekrana çıkmıyor.
+ */
+export type ExchangeCode = 'USD' | 'EUR' | 'GRAM_ALTIN' | 'CEYREK_ALTIN';
+
+export const KUR_KODLARI: ExchangeCode[] = ['USD', 'EUR', 'GRAM_ALTIN', 'CEYREK_ALTIN'];
+
+export const KUR_ADI: Record<ExchangeCode, string> = {
+  USD: 'Dolar',
+  EUR: 'Euro',
+  GRAM_ALTIN: 'Gram Altın',
+  CEYREK_ALTIN: 'Çeyrek Altın',
+};
+
+/**
+ * Bir kur satırı.
+ *
+ * `quotedAt` sağlayıcının verdiği an, `fetchedAt` bizim çektiğimiz an.
+ * İkisi ayrı duruyor: sağlayıcı eski bir değeri tekrar verdiğinde
+ * ekranda "az önce güncellendi" yazmasın.
+ */
+export interface ExchangeRate {
+  code: ExchangeCode;
+  buy: number;
+  sell: number;
+  quotedAt: string;
+  fetchedAt: string;
+}
+
+/* --------------------------------------------------- hava durumu (29) */
+
+/**
+ * Bir günün hava tahmini.
+ *
+ * KAYIT YOKSA TAHMİN DE YOK. Sağlayıcının ulaşamadığı uzak tarihler için
+ * satır hiç yazılmıyor; ekran "Tahmin henüz mevcut değil" diyor. Boş bir
+ * satır yazılsaydı 0 derece gibi uydurma bir rakam görünürdü.
+ */
+export interface WeatherForecast {
+  businessId: string;
+  /** yyyy-mm-dd */
+  day: string;
+  minC?: number;
+  maxC?: number;
+  /** Yalnızca bugünün satırında dolu: o anki sıcaklık. */
+  currentC?: number;
+  summary: string;
+  icon: string;
+  fetchedAt: string;
+}
+
+/* --------------------------------------------------- özel günler (30) */
+
+export type SpecialDayKind =
+  | 'resmi_tatil' | 'dini_bayram' | 'arife' | 'kandil' | 'okul' | 'ozel';
+
+export const OZEL_GUN_ADI: Record<SpecialDayKind, string> = {
+  resmi_tatil: 'Resmî tatil',
+  dini_bayram: 'Dini bayram',
+  arife: 'Arife',
+  kandil: 'Kandil',
+  okul: 'Okul',
+  ozel: 'Özel gün',
+};
+
+/**
+ * Takvimdeki renkler.
+ *
+ * Rezervasyon renklerinden AYRI bir palet: özel gün işareti rezervasyon
+ * etiketiyle aynı renkte olsaydı ikisi birbirine karışırdı.
+ */
+export const OZEL_GUN_RENGI: Record<SpecialDayKind, string> = {
+  resmi_tatil: '#b91c1c',
+  dini_bayram: '#15803d',
+  arife: '#a16207',
+  kandil: '#5b21b6',
+  okul: '#1d4ed8',
+  ozel: '#475569',
+};
+
+export interface SpecialDay {
+  id: string;
+  /** Boş: bütün işletmelerde görünen ortak gün (resmî tatiller). */
+  businessId?: string;
+  /** yyyy-mm-dd */
+  day: string;
+  label: string;
+  kind: SpecialDayKind;
+  createdAt: string;
+}
+
+/* ------------------------------------------------ deneyim anketi (31) */
+
+/**
+ * Ankette sorulan başlıklar.
+ *
+ * Sabit: soru metni değişirse eski cevapların ne anlama geldiği
+ * bilinemez. Yeni soru eklemek yeni bir anahtar eklemek demek, var olan
+ * anahtarın metnini değiştirmek değil.
+ */
+export const ANKET_SORULARI: { key: string; label: string }[] = [
+  { key: 'salon', label: 'Salon ve düzen' },
+  { key: 'ikram', label: 'Yemek ve ikram' },
+  { key: 'personel', label: 'Personel ilgisi' },
+  { key: 'temizlik', label: 'Temizlik' },
+  { key: 'genel', label: 'Genel memnuniyet' },
+];
+
+export const ANKET_EN_DUSUK = 1;
+export const ANKET_EN_YUKSEK = 5;
+
+export interface Survey {
+  id: string;
+  businessId: string;
+  reservationId: string;
+  /** Bağlantıdaki gizli anahtar; panelde gösterilmez. */
+  token?: string;
+  sentAt?: string;
+  answeredAt?: string;
+  /** Soru anahtarı -> 1-5 arası puan. Cevaplanmadıysa boş. */
+  scores?: Record<string, number>;
+  comment: string;
+  createdAt: string;
+}

@@ -16,7 +16,7 @@ import type { Business, Currency } from '../../types';
 const EMPTY = {
   name: '', category: CATEGORIES[0], city: '', district: '', phone: '',
   capacity: '', currency: 'TL' as Currency, address: '', about: '', reportEmail: '',
-  lockSeconds: '120',
+  lockSeconds: '120', weatherLocation: '', surveyEmail: '',
 };
 
 export default function Isletmeler() {
@@ -61,6 +61,8 @@ export default function Isletmeler() {
       capacity: String(b.capacity), currency: b.currency, address: b.address ?? '', about: b.about ?? '',
       reportEmail: b.reportEmail ?? '',
       lockSeconds: String(b.lockSeconds ?? 120),
+      weatherLocation: b.weatherLocation ?? '',
+      surveyEmail: b.surveyEmail ?? '',
     });
     setError('');
     setShowForm(true);
@@ -91,6 +93,8 @@ export default function Isletmeler() {
       about: form.about.trim() || undefined,
       reportEmail: form.reportEmail.trim(),
       lockSeconds: Number(form.lockSeconds),
+      weatherLocation: form.weatherLocation.trim(),
+      surveyEmail: form.surveyEmail.trim(),
         createdAt: editing?.createdAt,
       });
       setShowForm(false);
@@ -200,6 +204,38 @@ export default function Isletmeler() {
                 placeholder="rapor@ornek.com"
                 value={form.reportEmail}
                 onChange={(e) => setForm((f) => ({ ...f, reportEmail: e.target.value }))} />
+            </div>
+            {/*
+              Anket sonuçlarının bildirileceği adres (madde 31). Aylık
+              rapor adresinden AYRI: raporu muhasebe, anketi salon
+              müdürü okuyor olabilir.
+            */}
+            <div className="md:col-span-2">
+              <label htmlFor="bz-survey-email" className="field-label">
+                Anket sonucu e-postası
+              </label>
+              <input id="bz-survey-email" type="email" className="field-input"
+                placeholder="anket@ornek.com"
+                value={form.surveyEmail}
+                onChange={(e) => setForm((f) => ({ ...f, surveyEmail: e.target.value }))} />
+            </div>
+            {/*
+              Hava durumu konum anahtarı (madde 29). Şehir adı değil,
+              sağlayıcının kendi anahtarı yazılıyor: "Merkez" adında
+              onlarca ilçe var ve ad üzerinden aranırsa yanlış şehrin
+              havası gösterilebilir.
+            */}
+            <div className="md:col-span-2">
+              <label htmlFor="bz-weather" className="field-label">
+                Hava durumu konum anahtarı
+              </label>
+              <input id="bz-weather" className="field-input"
+                placeholder="Örn. 318251"
+                value={form.weatherLocation}
+                onChange={(e) => setForm((f) => ({ ...f, weatherLocation: e.target.value }))} />
+              <p className="mt-1 text-xs text-brand-muted">
+                Boş bırakılırsa hava durumu gösterilmez.
+              </p>
             </div>
             {/*
               Ekran kilidi (madde 27). İşletme başına: aynı salonun bütün

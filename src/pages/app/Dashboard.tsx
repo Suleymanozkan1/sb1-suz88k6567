@@ -4,6 +4,8 @@ import Seo from '../../components/Seo';
 import StatCard from '../../components/StatCard';
 import KasaDagilimKarti from '../../components/KasaDagilimKarti';
 import StokDurumu from '../../components/StokDurumu';
+import KurSeridi from '../../components/KurSeridi';
+import HavaDurumu from '../../components/HavaDurumu';
 import { useAuth } from '../../context/AuthContext';
 import {
   useCashFlow, useLeadStatuses, useLeads, useReservationsWithBalances,
@@ -96,6 +98,13 @@ export default function Dashboard() {
     <QueryBoundary isLoading={isLoading} error={error}>
       <Seo title="Özet - Sahra Takip Panel" noindex />
 
+      {/*
+        Döviz/altın şeridi sayfanın EN ÜSTÜNDE (madde 28). Aşağı
+        konsaydı, günlük işi yapmak için ekranı açan kimse kaydırmadan
+        görmezdi ve ayrı bir siteye bakmaya devam ederdi.
+      */}
+      <KurSeridi />
+
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-bold text-brand">Hoş geldiniz, {user?.fullName}</h1>
@@ -103,6 +112,8 @@ export default function Dashboard() {
             {ayAdi} {new Date().getFullYear()} özeti · geçmiş dönemler{' '}
             <Link to="/panel/raporlar">Raporlar</Link> bölümünde
           </p>
+          {/* Güncel hava durumu (madde 29); veri yoksa satır hiç çıkmıyor. */}
+          <HavaDurumu className="mt-1" />
         </div>
         <Link to="/panel/rezervasyonlar/yeni" className="btn-primary text-white hover:text-white">
           <IconPlus size={18} /> Yeni Rezervasyon

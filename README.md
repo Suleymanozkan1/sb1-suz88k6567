@@ -57,6 +57,7 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 |-----|----------|
 | `/` | Giriş + zorunlu SMS doğrulama |
 | `/kod-dogrulama` | Rezervasyon kodu sorgulama (müşteriye SMS ile giden kod) |
+| `/anket` | Deneyim anketi; bağlantı e-postayla gider, yetki adresteki jetondur |
 | `/gizlilik-politikasi`, `/kvkk-aydinlatma-metni` | Yasal metinler |
 
 ### Panel (`/panel`, oturum gerekir)
@@ -64,7 +65,8 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | Yol | Açıklama |
 |-----|----------|
 | `/panel` | Özet, istatistik kartları, yaklaşan organizasyonlar, program ve ay dağılımı, tahsilat oranı |
-| `/panel/takvim` | Rezervasyon takvimi, gündüz/gece seansları, organizasyon türüne göre renklendirme |
+| `/panel/takvim` | Rezervasyon takvimi, gündüz/gece seansları, organizasyon türüne göre renklendirme, özel gün işaretleri |
+| `/panel/ozel-gunler` | Resmî tatiller (hazır gelir) ve işletmenin kendi özel günleri |
 | `/panel/rezervasyonlar` | Liste, isim/telefon/kod araması, tür, durum, tarih aralığı, sıralama, CSV dışa aktarım |
 | `/panel/rezervasyonlar/yeni`, `/:id`, `/:id/duzenle` | Detaylı rezervasyon kaydı, tahsilat yönetimi |
 | `/panel/rezervasyonlar/:id/sozlesme` | Yazdırılabilir salon kiralama sözleşmesi: bilgi sütunu, menü içeriği ve 16 maddelik şartlar |
@@ -75,10 +77,11 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | `/panel/whatsapp-ayarlari` | Bağlı numara, çalışma saatleri, karşılama ve mesai dışı mesajları |
 | `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi, çelik kasa; rezervasyon tahsilatları sözleşme numarası ve taraflarla birlikte |
 | `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
-| `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
+| `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, alacak bakiyesi, gündüz/gece, salon bazlı, görüşme/dönüşüm ve deneyim anketi raporları |
 | `/panel/salonlar` | Salon tanımları, bir işletmede birden çok salon |
 | `/panel/menuler` | Menü ve paket tanımları, kişi başı veya sabit fiyat |
-| `/panel/tedarikciler` | Tedarikçi defteri, orkestra, fotoğrafçı, çiçekçi |
+| `/panel/urun-hizmet` | Ürün ve hizmet defteri: personel, orkestra, fotoğrafçı, fiziksel ürün ve stok |
+| `/panel/odeme-bildirimleri` | Tahsilat olaylarında yöneticiye gidecek mesajlar ve alıcı numaraları |
 | `/panel/rezervasyonlar/:id/makbuz` | Yazdırılabilir tahsilat makbuzu |
 | `/panel/renk-ayarlari` | Organizasyon türü başına takvim rengi |
 | `/panel/isletmeler` | Firmalarım / Adminler, çok işletmeli kullanım |
@@ -433,6 +436,10 @@ Cron ifadeleri `sunucu/rotalar.ts` içinde, saatler **UTC**:
 | `30 2 * * *` | Günlük yedek |
 | `0 3 * * *` | İYS eşitleme |
 | `0 7 * * *` | Hatırlatma taraması |
+| `0 6 1 * *` | Aylık rapor (biten ayın özeti) |
+| `0 * * * *` | Döviz ve altın kurları |
+| `15 6,15 * * *` | Hava durumu tahmini |
+| `0 9 * * *` | Deneyim anketi gönderimi |
 
 Zamanlayıcı sürecin içinde çalışıyor; ayrıca bir cron kurulumu
 gerekmiyor. Aynı dakikada iki kez tetiklenmemesi için son çalıştığı
@@ -555,6 +562,73 @@ gerçekte olmayan bir paraya göre karar alınır. Tutarları varsa ayrıca
 sonradan eklendi ve eski satırların tipi gerçekten bilinmiyor; hepsine
 "Nakit" varsaymak uydurma bir veri üretir, dağılımı sessizce yanlış
 gösterirdi. Toplamdan düşülmez — para gerçekten kasada.
+
+## Döviz, hava durumu, özel günler ve deneyim anketi
+
+Dördünün ortak kuralı: **dış servisten gelen hiçbir veri uydurulmaz.**
+Sağlayıcı tanımlı değilse ya da cevap vermiyorsa ekranda veri yok
+görünür; tahmini bir kur ya da hava durumu gösterilmez. Salon sahibi o
+rakama bakarak fiyat belirliyor.
+
+**Döviz / altın.** Kur SUNUCUDA çekilip `exchange_rates` tablosuna
+yazılır, panel oradan okur. Tarayıcıdan çekilseydi sağlayıcının API
+anahtarı istemciye inerdi ve her açılan sekme sağlayıcıya ayrı istek
+atardı. İki sağlayıcı destekleniyor:
+
+| `KUR_SAGLAYICI` | Kaynak | Anahtar | Kapsam |
+|---|---|---|---|
+| `tcmb` *(varsayılan)* | Merkez Bankası günlük kur dosyası | gerekmez | USD, EUR |
+| `collectapi` | Ticari servis | `KUR_API_KEY` | USD, EUR, gram ve çeyrek altın |
+
+Varsayılan `tcmb`: kurulum hiçbir hesap açmadan çalışır. TCMB altın
+vermediği için o satırlar oluşmaz ve şeritte görünmez; uydurma bir altın
+fiyatı yazılmaz. Sağlayıcı hiç cevap vermezse **eski kur durur** ve
+tablo temizlenmez: bir dakikalık kesinti ekrandaki kuru silmemeli,
+satırın kendi tarihi zaten ne kadar eski olduğunu söyler.
+
+**Hava durumu.** Sağlayıcı AccuWeather (`ACCUWEATHER_API_KEY`). Her
+işletmenin konum anahtarı panelden girilir (Firmalarım → işletme →
+"Hava durumu konum anahtarı"); boş bırakılan işletme için tahmin
+çekilmez. Ücretsiz katman yalnızca birkaç günlük tahmin verdiği için
+**uzak tarihlerde satır hiç yazılmaz** ve ekran "Tahmin henüz mevcut
+değil" der. Boş satır yazılsaydı düğün gününde "0°" görünür, olmayan bir
+tahmin doğruymuş gibi sunulurdu. Bugünün satırında ayrıca o anki
+sıcaklık tutulur; gözlem alınamazsa yalnızca o alan boş kalır, tahmin
+yine gösterilir.
+
+**Özel günler.** Takvimde bayram, arife, kandil, resmî tatil ve okul
+tarihleri renkli nokta ve etiketle işaretlenir. İki kaynak var:
+
+- **Ortak günler** — sabit tarihli resmî tatiller (1 Ocak, 23 Nisan,
+  1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 28-29 Ekim). Göç sırasında
+  içinde bulunulan yıl ve sonraki üç yıl için tohumlanır, panelde
+  "Sistem" kaynaklı görünür ve değiştirilemez.
+- **İşletmenin günleri** — panelden eklenir ve silinir.
+
+**Dini günler ve okul tarihleri tohumlanmaz.** İlki Diyanet'in yıllık
+takvimine, ikincisi Millî Eğitim Bakanlığı'nın kararına bağlıdır;
+hesaplanmış bir hicri tarih gerçeğinden bir gün sapabilir ve o günü
+tatil sanıp salonu kapatmak ya da açmak salona zarar verir. Ekranda bu
+sebep yazılı duruyor ki kullanıcı eksik sanıp beklemesin.
+
+**Deneyim anketi.** Organizasyondan bir hafta sonra, müşterinin e-posta
+adresi kayıtlıysa çifte anket bağlantısı gider. Bağlantı **rezervasyon
+kimliğiyle değil**, anket kaydına ait rastgele bir jetonla açılır:
+kimliği tahmin eden herkes başka çiftin anketini açabilirdi. Sayfa beş
+başlığı 1-5 arasında puanlatır; puan doğrulaması arayüz ve sunucuda
+**aynı modülden** (`src/lib/anket.ts`) geçer, böylece tarayıcıyı atlayan
+bir istek aralık dışı puan yazamaz.
+
+Anket satırına yazma yetkisi yalnızca `service_role`'dadır ve o jeton
+tarayıcıya hiç inmez; cevap `/api/anket-yanit` üzerinden, sunucudan
+yazılır. Bir anket **ikinci kez cevaplanamaz** (bağlantı e-postada durur
+ve tekrar tıklanabilir). Sonuçlar Raporlar → Deneyim anketi sekmesinde
+özetlenir; cevaplanmamış anketler ortalamaya girmez ama cevap oranında
+sayılır. Yöneticiye bildirim gitmesi için Firmalarım'da "Anket sonucu
+e-postası" doldurulur.
+
+Gönderilemeyen anket silinmez: satır durur, `sent_at` boş kalır ve bir
+sonraki koşuda yeniden denenir.
 
 ## Ulaşım kanalı ve kanal raporu
 
@@ -946,3 +1020,15 @@ Aynı kontroller panelde **Sistem Durumu** ekranında Türkçe açıklamalarla v
 - Üyelik, abonelik, plan ve ücretlendirme **yoktur**. Siteden kendi kendine kayıt açılmaz; panel hesapları Supabase → Authentication → Users bölümünden ya da panelin Kullanıcılar ekranından tanımlanır.
 - e-Fatura bağlantısı Paraşüt için yazılmıştır (`api/_parasut.ts`); gövde üretimi ve hata çözümlemesi birim testleriyle doğrulanmış, ancak **gerçek bir Paraşüt hesabıyla test edilmemiştir**. İlk gönderimde alan adı uyuşmazlığı çıkabilir; hata metni Faturalar ekranında görünür.
 - Referans listesindeki işletmeler örnek veridir.
+- Döviz ve hava durumu sağlayıcılarına **gerçek bir hesapla bağlanılarak
+  denenmemiştir**: yanıt çözümleyicileri birim testleriyle, belgelenen
+  yanıt biçimleri üzerinden doğrulandı. İlk çalıştırmada alan adı
+  uyuşmazlığı çıkarsa görev günlüğünde sağlayıcının döndürdüğü durum
+  kodu görünür ve tablo eski değeriyle kalır.
+- Dini bayram, arife, kandil ve okul tarihleri **hazır gelmez**; her yıl
+  Diyanet ve Millî Eğitim Bakanlığı'nın açıkladığı takvime göre panelden
+  girilir. Hesaplanmış bir hicri tarih gerçeğinden bir gün sapabileceği
+  için tohumlanmadı.
+- Anket ve aylık rapor e-postaları `MAIL_API_URL/KEY/FROM` tanımlı
+  değilse **gönderilmez**; kayıtlar oluşur ve panelden okunur. Anket
+  bağlantısı için ayrıca `SITE_URL` gerekir.

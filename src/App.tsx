@@ -6,6 +6,7 @@ import PublicLayout from './layouts/PublicLayout';
 import AppLayout from './layouts/AppLayout';
 import RequireAuth from './components/RequireAuth';
 
+import Anket from './pages/Anket';
 import KodDogrulama from './pages/KodDogrulama';
 import LegalPage from './pages/LegalPage';
 import UyeGirisi from './pages/UyeGirisi';
@@ -40,6 +41,7 @@ const DenetimKaydi = lazy(() => import('./pages/app/DenetimKaydi'));
 const IzinYonetimi = lazy(() => import('./pages/app/IzinYonetimi'));
 const SistemDurumu = lazy(() => import('./pages/app/SistemDurumu'));
 const Faturalar = lazy(() => import('./pages/app/Faturalar'));
+const OzelGunler = lazy(() => import('./pages/app/OzelGunler'));
 const FaturaDetay = lazy(() => import('./pages/app/FaturaDetay'));
 
 function PanelLoading() {
@@ -76,6 +78,13 @@ export default function App() {
             {/* Müşteriye gönderilen SMS'teki sorgu kodu buraya geliyor. */}
             <Route path="kod-dogrulama" element={<KodDogrulama />} />
 
+            {/*
+              Deneyim anketi (madde 31). Bağlantı e-postayla gidiyor ve
+              jetonu adres satırında taşıyor; müşterinin sisteme girişi
+              yok, bu yüzden yol herkese açık bölümde.
+            */}
+            <Route path="anket" element={<Anket />} />
+
             <Route path="gizlilik-politikasi" element={<LegalPage />} />
             <Route path="kvkk-aydinlatma-metni" element={<LegalPage />} />
 
@@ -95,6 +104,7 @@ export default function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="takvim" element={<Takvim />} />
+            <Route path="ozel-gunler" element={<OzelGunler />} />
             <Route path="rezervasyonlar" element={<Rezervasyonlar />} />
             <Route path="rezervasyonlar/yeni" element={<RezervasyonForm />} />
             <Route path="rezervasyonlar/:id" element={<RezervasyonDetay />} />

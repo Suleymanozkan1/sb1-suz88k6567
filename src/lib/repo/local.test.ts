@@ -725,3 +725,113 @@ describe('müşteri adayları', () => {
     expect(await localRepo.listLeads(BIZ)).toHaveLength(1);
   });
 });
+
+/**
+ * Özel günler (madde 30).
+ *
+ * Ortak resmî tatiller ile işletmenin kendi günleri AYNI listede
+ * duruyor ama farklı kurallara tabi: ortak olan değiştirilemez. Kural
+ * burada da geçerli olmasaydı tanıtım kipinde silinebilen bir gün,
+ * gerçek kurulumda silinemeyen bir gün olurdu ve iki davranış
+ * ayrışırdı.
+ */
+describe('özel günler', () => {
+  it('resmî tatilleri hazır getirir', async () => {
+    const gunler = await localRepo.listSpecialDays(BIZ);
+    const yil = new Date().getFullYear();
+    expect(gunler.some((g) => g.day === `${yil}-10-29` && g.label === 'Cumhuriyet Bayramı')).toBe(true);
+  });
+
+  it('resmî tatilleri ortak (işletmesiz) tutar', async () => {
+    const gunler = await localRepo.listSpecialDays(BIZ);
+    expect(gunler.every((g) => !g.businessId)).toBe(true);
+  });
+
+  it('ikinci okumada tatilleri çoğaltmaz', async () => {
+    const ilk = (await localRepo.listSpecialDays(BIZ)).length;
+    expect((await localRepo.listSpecialDays(BIZ)).length).toBe(ilk);
+  });
+
+  // Dini günler ve okul tarihleri uydurulmuyor; panelden giriliyor.
+  it('dini gün ve okul tarihi tohumlamaz', async () => {
+    const gunler = await localRepo.listSpecialDays(BIZ);
+    expect(gunler.some((g) => g.kind === 'dini_bayram')).toBe(false);
+    expect(gunler.some((g) => g.kind === 'okul')).toBe(false);
+  });
+
+  it('işletmenin kendi gününü kaydeder ve listeler', async () => {
+    await localRepo.saveSpecialDay({
+      id: uid('ozel-gun'), businessId: BIZ, day: '2026-03-20',
+      label: 'Ramazan Bayramı 1. Gün', kind: 'dini_bayram',
+      createdAt: new Date().toISOString(),
+    });
+    const gunler = await localRepo.listSpecialDays(BIZ);
+    expect(gunler.some((g) => g.label === 'Ramazan Bayramı 1. Gün')).toBe(true);
+  });
+
+  it('başka işletmenin gününü göstermez', async () => {
+    await localRepo.saveSpecialDay({
+      id: uid('ozel-gun'), businessId: 'baska_biz', day: '2026-03-20',
+      label: 'Başkasının günü', kind: 'ozel', createdAt: new Date().toISOString(),
+    });
+    const gunler = await localRepo.listSpecialDays(BIZ);
+    expect(gunler.some((g) => g.label === 'Başkasının günü')).toBe(false);
+  });
+
+  it('aynı gün ve isimde ikinci kaydı reddeder', async () => {
+    const temel = {
+      businessId: BIZ, day: '2026-03-20', label: 'Arife',
+      kind: 'arife' as const, createdAt: new Date().toISOString(),
+    };
+    await localRepo.saveSpecialDay({ ...temel, id: uid('ozel-gun') });
+    await expect(localRepo.saveSpecialDay({ ...temel, id: uid('ozel-gun') }))
+      .rejects.toThrow(/zaten var/);
+  });
+
+  it('işletmesiz kayıt yazılamaz', async () => {
+    await expect(localRepo.saveSpecialDay({
+      id: uid('ozel-gun'), day: '2026-03-20', label: 'Ortak olmaya çalışan',
+      kind: 'ozel', createdAt: new Date().toISOString(),
+    })).rejects.toThrow(/Ortak günler/);
+  });
+
+  it('işletmenin gününü siler', async () => {
+    const id = uid('ozel-gun');
+    await localRepo.saveSpecialDay({
+      id, businessId: BIZ, day: '2026-03-20', label: 'Silinecek',
+      kind: 'ozel', createdAt: new Date().toISOString(),
+    });
+    await localRepo.deleteSpecialDay(id);
+    const gunler = await localRepo.listSpecialDays(BIZ);
+    expect(gunler.some((g) => g.id === id)).toBe(false);
+  });
+
+  it('ortak günü silmeye izin vermez', async () => {
+    const gunler = await localRepo.listSpecialDays(BIZ);
+    const ortak = gunler.find((g) => !g.businessId);
+    await expect(localRepo.deleteSpecialDay(ortak!.id)).rejects.toThrow(/silinemez/);
+    expect((await localRepo.listSpecialDays(BIZ)).some((g) => g.id === ortak!.id)).toBe(true);
+  });
+});
+
+/**
+ * Kur, hava durumu ve anket tanıtım kipinde BOŞ.
+ *
+ * Üçü de sunucudaki zamanlanmış görevlerin doldurduğu veriler; tanıtım
+ * kipinde sağlayıcı da görev de yok. Örnek rakam üretilseydi ekranda
+ * gerçek sanılan bir kur ya da "müşteriler 4,6 puan verdi" gibi
+ * uydurma bir sonuç görünürdü.
+ */
+describe('dış servis verileri tanıtım kipinde', () => {
+  it('kur listesi boş döner', async () => {
+    expect(await localRepo.listExchangeRates()).toEqual([]);
+  });
+
+  it('hava tahmini boş döner', async () => {
+    expect(await localRepo.listWeather(BIZ)).toEqual([]);
+  });
+
+  it('anket listesi boş döner', async () => {
+    expect(await localRepo.listSurveys(BIZ)).toEqual([]);
+  });
+});
