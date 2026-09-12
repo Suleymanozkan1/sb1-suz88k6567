@@ -28,15 +28,21 @@ describe('talebiCoz: gerçek mesaj', () => {
   it('kişi sayısını alır', () => expect(t.guestCount).toBe(1000));
   it('türü alır', () => expect(t.organizationType).toBe('Düğün'));
 
-  it('gün taşımayan tarihi UYDURMAZ, nota düşürür', () => {
+  it('gün taşımayan tarihi UYDURMAZ, tarih ifadesi olarak saklar', () => {
     // "Mayısın ilk haftası" bir gün vermiyor. Uydurulan gün, salonun o gün
-    // dolu sanılmasına yol açardı.
+    // dolu sanılmasına yol açardı; ifade olduğu gibi duruyor.
     expect(t.date).toBe('');
-    expect(t.note).toContain('Mayısın ilk haftası');
+    expect(t.dateText).toBe('Mayısın ilk haftası');
   });
 
-  it('çözülemeyen satırları nota taşır', () => {
-    expect(t.note).toContain('Fiyat tahminen yemekli ve yemeksiz');
+  it('müşterinin talebini nottan ayrı tutar', () => {
+    // Personel kartı açtığında müşterinin NE SORDUĞUNU ilk bakışta görmeli.
+    expect(t.request).toBe('Fiyat tahminen yemekli ve yemeksiz');
+  });
+
+  it('tarih ifadesini ayrıca nota yazmaz', () => {
+    // İki yerde görünürse kart kalabalıklaşır.
+    expect(t.note).not.toContain('Mayısın ilk haftası');
   });
 });
 
@@ -118,11 +124,22 @@ describe('tür çözümlemesi', () => {
     expect(talebiCoz('doğum günü').organizationType).toBe('Doğum Günü');
   });
 
-  it('cümle içindeki türü alır ama cümleyi nota da yazar', () => {
+  it('cümle içindeki türü alır ama cümleyi talep olarak da tutar', () => {
     // "Düğün için fiyat nedir" hem tür bilgisi hem de müşterinin sorusu.
     const t = talebiCoz('Düğün için fiyat listesi gönderir misiniz');
     expect(t.organizationType).toBe('Düğün');
-    expect(t.note).toContain('fiyat listesi');
+    expect(t.request).toContain('fiyat listesi');
+  });
+
+  it('tür olarak tanınan cümleyi tarih ifadesi saymaz', () => {
+    /*
+      "nisan" hem bir ay adı hem de bir organizasyon türü ("Nişan").
+      Bayrak olmasaydı bu cümle etkinlik tarihinin yerine yazılırdı.
+    */
+    const t = talebiCoz('nişan yapacağız salon arıyoruz');
+    expect(t.organizationType).toBe('Nişan');
+    expect(t.dateText).toBe('');
+    expect(t.request).toContain('nişan yapacağız');
   });
 
   it('tanımadığı türü boş bırakır', () => {
@@ -157,10 +174,11 @@ describe('isim çözümlemesi', () => {
     expect(t.name).toBe('Ayşe Yılmaz');
   });
 
-  it('uzun cümleyi isim saymaz, nota bırakır', () => {
+  it('uzun cümleyi isim saymaz', () => {
     const t = talebiCoz('merhaba acaba önümüzdeki hafta müsait misiniz');
     expect(t.name).toBe('');
-    expect(t.note).toContain('merhaba');
+    // "hafta" geçiyor: cümle tarih ifadesi olarak sınıflanıyor.
+    expect(`${t.dateText}${t.request}${t.note}`).toContain('merhaba');
   });
 });
 

@@ -692,8 +692,20 @@ metin gönderilebilir. Pencere kapandıysa yalnızca Meta'nın onayladığı bir
 kontrol edip kapalıysa `409` ile açıkça bildiriyor — sessizce düşen bir
 mesaj, gönderildi sanılır ve müşteri cevapsız bekler.
 
-`WHATSAPP_TOKEN` ve `WHATSAPP_PHONE_ID` yalnızca mesaj **göndermek** için
-gerekir; mesaj almak ikisi olmadan da çalışır.
+`WHATSAPP_ACCESS_TOKEN` ve `WHATSAPP_PHONE_NUMBER_ID` yalnızca mesaj
+**göndermek** için gerekir; mesaj almak ikisi olmadan da çalışır.
+
+**Webhook adresi.** İki yol da aynı işleyiciye gider, Meta paneline
+hangisini yazarsanız yazın:
+
+```
+https://<alan-adiniz>/api/webhooks/whatsapp
+https://<alan-adiniz>/api/whatsapp
+```
+
+`WHATSAPP_BUSINESS_ACCOUNT_ID` zorunlu değildir; verilirse gelen bildirimin
+beklenen WhatsApp Business hesabından geldiği de doğrulanır (bir Meta
+uygulamasına birden çok hesap bağlanabiliyor).
 
 ### Otomatik cevap
 
@@ -723,7 +735,7 @@ Otomatik gönderilen mesaj iletişim geçmişinde **"otomatik" etiketiyle**
 görünür: müşteriye ne söylendiğini bilmeden arayan personel aynı şeyi
 ikinci kez söylerdi.
 
-Gönderim `WHATSAPP_TOKEN` ve `WHATSAPP_PHONE_ID` ister. Tanımlı değilse
+Gönderim `WHATSAPP_ACCESS_TOKEN` ve `WHATSAPP_PHONE_NUMBER_ID` ister. Tanımlı değilse
 özellik sessizce kapalı kalır; mesaj alınmaya devam eder. Gönderim
 başarısız olursa mesaj geçmişe **yazılmaz** — gitmemiş bir cevabı gitmiş
 göstermek, personeli yanlış bilgiyle arattırırdı.
@@ -746,10 +758,82 @@ mümkün değil. Bu yüzden gelen her isteğin `x-hub-signature-256` imzası
 da rezervasyon listesi de çöple dolardı. `WHATSAPP_APP_SECRET` tanımlı
 değilse uç nokta hiç çalışmaz.
 
+İmza asıl kapı, ama tek kapı değil: adrese **hız sınırı** da uygulanıyor
+(dakikada 600 istek). İmzasız istek de bedava değildir — her biri bir HMAC
+hesabı demek; sınır olmadan saniyede binlerce çöp istekle sunucu meşgul
+edilebilirdi. Sınır yüksek tutuldu, çünkü Meta bir kerede yığın bildirim
+gönderebiliyor ve sınıra takılan GERÇEK bir bildirim 200 alamadığı için
+tekrar tekrar denenir.
+
 **KVKK:** aday kaydında ve mesajlarda ad, telefon ve e-posta bulunur —
 kişisel veridir. Mesajın aslı da saklanır, çünkü çözümleme yanlış yaptığında
 doğrusu ancak aslına bakılarak bulunur. Aydınlatma metnine işlendi; aday
 işletme tarafından silinebilir, silinince geçmişi de düşer.
+
+### Meta bilgileri girilmeden denemek
+
+`WHATSAPP_MOCK_MODE=true` iken `Panel → Müşteri Adayları → WhatsApp
+ayarları` ekranının altında bir **Test mesajı** kutusu açılır. Yapıştırılan
+metin gerçek webhook'un **aynı** boru hattından geçer: aynı çözümleyici,
+aynı "aynı numara ikinci kayıt açmaz" kuralı, aynı geçmiş kaydı. Ayrı bir
+taklit akış yazılsaydı orada çalışan şeyin üretimde de çalışacağının
+garantisi olmazdı.
+
+Üç kapı birden geçilmeden hiçbir şey yazılmaz: ortam değişkeni açık olmalı,
+çağıran oturum açmış olmalı ve o işletmeye erişimi bulunmalı. Üçüncüsü şart
+— yalnızca ortam değişkenine bakan bir uç nokta, yanlışlıkla açık
+bırakıldığında herkesin herhangi bir işletmeye kayıt açabildiği bir kapı
+olurdu.
+
+Test modunda otomatik cevap **gönderilmez**: deneme amacıyla yazılan bir
+mesaj yüzünden gerçek bir numaraya WhatsApp mesajı gitmemeli. Oluşan kayıt
+geçmişinde "test modunda elle girildi" satırı durur.
+
+**Üretimde `false` bırakın.** Gerçek webhook'un imza doğrulaması bu ayardan
+etkilenmez; mock mod açık diye imzasız bildirim kabul edilmez.
+
+## Müşteri adayı durumları
+
+Takip akışı koda gömülü değil, **işletmenin düzenlediği satırlar**
+(`Panel → Müşteri Adayları → Durumlar`). Kurulumda on iki durum gelir:
+
+> Yeni · Aranacak · Arandı · Ulaşılamadı · Tekrar Aranacak · Tekrar Arandı ·
+> İletişim Kuruldu · Teklif Verildi · Rezervasyon Bekliyor · Rezervasyona
+> Döndü · Olumsuz · İptal
+
+Her salonun akışı aynı değil: biri "Yer Gösterildi" ister, biri "Kapora
+Bekliyor". Ekleyebilir, adlandırabilir, sıralayabilir, rengini
+değiştirebilirsiniz.
+
+### Ad ile kod ayrıdır
+
+Kayıtlar durumun **adını değil, değişmeyen bir kodunu** taşır. "Arandı"yı
+"Görüşüldü" yapmak binlerce aday satırını yeniden yazmaz — yalnızca görünen
+değişir, geçmiş de bozulmaz.
+
+İş kuralları da ada bakmaz, **bayrağa** bakar:
+
+| Bayrak | Anlamı |
+|---|---|
+| Başlangıç | Yeni aday bu durumla açılır. İşletmede tek tanedir. |
+| Kapanış | İş beklemiyor; takip ve gecikme listelerinden düşer. |
+| Rezervasyon | Rezervasyona dönüş sayılır. İşletmede tek tanedir. |
+
+"Rezervasyona Döndü" yazan bir karşılaştırma, sahibi durumu yeniden
+adlandırdığı anda sessizce yanlış sayardı; sayı ekranda durmaya devam eder,
+kimse fark etmezdi.
+
+### Silme ve pasife alma
+
+- **Başlangıç durumu silinemez.** Silinirse yeni aday hiç açılamaz.
+- **Kullanımdaki durum silinemez.** O adayların durumunu yok etmek demek;
+  doğru işlem **pasife almaktır**. Pasif durum yeni seçimlerde görünmez ama
+  onu taşıyan kayıtlarda okunabilir kalır.
+- Hiç kullanılmamış bir durum silinebilir.
+
+Durum geçmişinde **yabancı anahtar yoktur**, bilerek: silinen bir durumun
+geçmişteki izi de silinseydi "bu müşteri neden kaybedildi" sorusu cevapsız
+kalırdı.
 
 ## İş emri ve tedarikçiler
 

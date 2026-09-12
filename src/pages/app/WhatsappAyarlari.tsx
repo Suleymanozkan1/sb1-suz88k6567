@@ -5,6 +5,7 @@ import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { useSaveWhatsappAccount, useWhatsappAccount } from '../../lib/queries';
 import { errorMessage } from '../../lib/authHelpers';
+import { gecerliJeton } from '../../lib/oturum';
 import {
   VARSAYILAN_AYAR, mesaiIcindeMi, saatiDakikayaCevir,
 } from '../../lib/whatsappOtomatik';
@@ -236,6 +237,110 @@ export default function WhatsappAyarlari() {
           </p>
         </div>
       </form>
+
+      <TestMesaji />
     </>
   );
 }
+
+/**
+ * Test mesajı: Meta bağlanmadan sistemi denemek için.
+ *
+ * Yapıştırılan metin GERÇEK webhook'un boru hattından geçiyor -- aynı
+ * çözümleyici, aynı "aynı numara ikinci kayıt açmaz" kuralı. Ayrı bir
+ * taklit akış olsaydı burada çalışanın üretimde de çalışacağının
+ * garantisi olmazdı.
+ *
+ * Uç nokta yalnızca WHATSAPP_MOCK_MODE=true iken açık. Kapalıysa 403
+ * dönüyor ve bölüm sebebini yazıyor; bu ekranın ortam değişkenini
+ * okuması mümkün değil (sunucuda kalıyor), o yüzden karar denemeden
+ * sonra veriliyor.
+ */
+function TestMesaji() {
+  const { user } = useAuth();
+  const [metin, setMetin] = useState(ORNEK_MESAJ);
+  const [gonderen, setGonderen] = useState('');
+  const [sonuc, setSonuc] = useState<{ tur: 'ok' | 'hata'; mesaj: string } | null>(null);
+  const [bekliyor, setBekliyor] = useState(false);
+
+  async function gonder() {
+    setBekliyor(true);
+    setSonuc(null);
+    try {
+      const jeton = await gecerliJeton();
+      const yanit = await fetch('/api/whatsapp-test', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(jeton ? { authorization: `Bearer ${jeton}` } : {}),
+        },
+        body: JSON.stringify({
+          businessId: user?.activeBusinessId ?? '',
+          text: metin,
+          from: gonderen,
+        }),
+      });
+      const govde = (await yanit.json()) as { error?: string; sonuc?: string; leadId?: string };
+      if (!yanit.ok) {
+        setSonuc({ tur: 'hata', mesaj: govde.error ?? 'Mesaj işlenemedi.' });
+        return;
+      }
+      setSonuc({
+        tur: 'ok',
+        mesaj: govde.sonuc === 'yeni'
+          ? 'Yeni müşteri adayı oluşturuldu.'
+          : 'Mevcut aday bulundu; mesaj geçmişine eklendi.',
+      });
+    } catch {
+      setSonuc({ tur: 'hata', mesaj: 'Sunucuya ulaşılamadı.' });
+    } finally {
+      setBekliyor(false);
+    }
+  }
+
+  return (
+    <section className="card mt-4 p-5">
+      <h2 className="font-heading font-bold text-brand">Test mesajı</h2>
+      <p className="mt-1 text-sm text-brand-muted">
+        Meta bağlantısı kurulmadan önce sistemi denemek için. Aşağıya bir WhatsApp
+        mesajı yapıştırın; gerçek webhook ile aynı yoldan geçer ve müşteri adayı
+        oluşturur. Yalnızca sunucuda <code>WHATSAPP_MOCK_MODE=true</code> iken çalışır.
+      </p>
+
+      <label className="mt-4 block">
+        <span className="field-label">Mesaj metni</span>
+        <textarea className="field-input" rows={7} value={metin}
+          onChange={(e) => setMetin(e.target.value)} />
+      </label>
+
+      <label className="mt-3 block max-w-xs">
+        <span className="field-label">Gönderen numara</span>
+        <input className="field-input" placeholder="Boşsa metinden çözülür"
+          value={gonderen} onChange={(e) => setGonderen(e.target.value)} />
+      </label>
+
+      {sonuc && (
+        <Alert kind={sonuc.tur === 'ok' ? 'success' : 'error'} className="mt-3">
+          {sonuc.mesaj}
+        </Alert>
+      )}
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button type="button" className="btn-primary text-white hover:text-white"
+          disabled={bekliyor || !metin.trim()} onClick={() => { void gonder(); }}>
+          {bekliyor ? 'Gönderiliyor…' : 'Test mesajı gönder'}
+        </button>
+        <Link to="/panel/musteri-adaylari" className="btn-ghost">Müşteri adaylarını aç</Link>
+      </div>
+    </section>
+  );
+}
+
+/** Kutuda hazır duran örnek: sisteme ne tür bir metin beklendiğini gösterir. */
+const ORNEK_MESAJ = `Ömer Ay
++905332642537
+oay685126@gmail.com
+Fiyat tahminen yemekli ve yemeksiz
+1000
+Mayısın ilk haftası
+düğün`;

@@ -3,13 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
-import { useAddLeadMessage, useSaveLead, useStaff } from '../../lib/queries';
+import { useAddLeadMessage, useLeadStatuses, useSaveLead, useStaff } from '../../lib/queries';
+import { baslangicDurumu, secilebilirDurumlar } from '../../lib/lead';
 import { errorMessage } from '../../lib/authHelpers';
 import { uid } from '../../lib/ids';
 import { todayIso } from '../../lib/format';
 import { telefonSadelestir } from '../../lib/whatsappTalep';
 import { ORGANIZATION_TYPES } from '../../data/constants';
-import { LEAD_SOURCES, LEAD_STATUSES } from '../../types';
+import { LEAD_SOURCES } from '../../types';
 import type { CustomerLead, LeadSource, LeadStatus } from '../../types';
 
 /**
@@ -25,14 +26,19 @@ export default function MusteriAdayiYeni() {
   const kaydet = useSaveLead();
   const mesajEkle = useAddLeadMessage();
   const { data: personel = [] } = useStaff();
+  const { data: durumlar = [] } = useLeadStatuses();
 
   const [hata, setHata] = useState('');
   const [form, setForm] = useState({
     name: '', phone: '', email: '', guestCount: '',
     eventDate: '', eventDateText: '', organizationType: 'Düğün',
     source: 'Telefon' as LeadSource, sourceDetail: '',
-    status: 'Aranmadı' as LeadStatus, nextFollowupAt: '', assignedTo: '', note: '',
+    status: '' as LeadStatus, nextFollowupAt: '', assignedTo: '', note: '',
+    requestText: '',
   });
+  // Başlangıç durumu işletmeye göre değişiyor ve durumlar sonradan
+  // yükleniyor; form boş açılırsa ilk render'da seçili durum olmaz.
+  const seciliDurum = form.status || baslangicDurumu(durumlar);
   const yaz = <A extends keyof typeof form>(alan: A, deger: (typeof form)[A]) =>
     setForm((f) => ({ ...f, [alan]: deger }));
 
@@ -65,10 +71,11 @@ export default function MusteriAdayiYeni() {
       organizationType: form.organizationType,
       source: form.source,
       sourceDetail: form.sourceDetail.trim(),
-      status: form.status,
+      status: seciliDurum,
       assignedTo: form.assignedTo || undefined,
       nextFollowupAt: form.nextFollowupAt,
       lastContactAt: simdi,
+      requestText: form.requestText.trim(),
       note: form.note.trim(),
       createdAt: simdi,
       updatedAt: simdi,
@@ -165,9 +172,11 @@ export default function MusteriAdayiYeni() {
           <legend className="mb-3 font-heading font-bold text-brand">Takip</legend>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Alan id="ml-status" etiket="Durum">
-              <select id="ml-status" className="field-input" value={form.status}
+              <select id="ml-status" className="field-input" value={seciliDurum}
                 onChange={(e) => yaz('status', e.target.value as LeadStatus)}>
-                {LEAD_STATUSES.map((d) => <option key={d} value={d}>{d}</option>)}
+                {secilebilirDurumlar(durumlar).map((d) => (
+                  <option key={d.code} value={d.code}>{d.label}</option>
+                ))}
               </select>
             </Alan>
             <Alan id="ml-followup" etiket="Sonraki takip tarihi">
@@ -180,6 +189,11 @@ export default function MusteriAdayiYeni() {
                 <option value="">Atanmadı</option>
                 {personel.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}
               </select>
+            </Alan>
+            <Alan id="ml-request" etiket="Talep" ipucu="Müşteri ne sordu? Yemekli fiyat, müsaitlik..."
+              className="md:col-span-2 lg:col-span-3">
+              <input id="ml-request" className="field-input" value={form.requestText}
+                onChange={(e) => yaz('requestText', e.target.value)} />
             </Alan>
             <Alan id="ml-note" etiket="Not" className="md:col-span-2 lg:col-span-3">
               <textarea id="ml-note" rows={3} className="field-input" value={form.note}

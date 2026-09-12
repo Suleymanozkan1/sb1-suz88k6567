@@ -101,8 +101,9 @@ export default function Kullanicilar() {
 
       {!isDemoMode && (
         <Alert kind="info" className="mb-5">
-          Yeni personel hesabı Supabase yönetim panelinden (Authentication → Users) oluşturulur.
-          Hesap açıldıktan sonra yetkilerini buradan düzenleyebilirsiniz.
+          Yeni personel hesabını şu an sunucu yöneticisi açıyor (veritabanındaki
+          <code> kullanici_ac</code> fonksiyonu). Hesap açıldıktan sonra adını,
+          telefonunu ve yetkilerini buradan düzenleyebilirsiniz.
         </Alert>
       )}
 

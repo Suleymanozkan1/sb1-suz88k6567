@@ -39,13 +39,15 @@ end $$;
 \echo '=== 1) Sema KURULMUS olmali ==='
 select
   to_regtype('public.lead_channel')          is not null as kanal_tipi,
-  to_regtype('public.lead_status')           is not null as durum_tipi,
+  -- lead_status ENUM'u 0023'te kaldirildi; durumlar artik bir TABLO.
+  to_regclass('public.lead_statuses')        is not null as durum_tablosu,
   to_regclass('public.customer_leads')       is not null as aday_tablosu,
   to_regclass('public.customer_lead_messages') is not null as mesaj_tablosu,
   to_regclass('public.whatsapp_accounts')    is not null as hesap_tablosu;
 
 do $$ begin
   if to_regtype('public.lead_channel') is null
+     or to_regclass('public.lead_statuses') is null
      or to_regclass('public.customer_leads') is null
      or to_regclass('public.customer_lead_messages') is null
      or to_regclass('public.customer_lead_status_history') is null
@@ -188,7 +190,7 @@ begin
     raise exception 'BASARISIZ: acilista gecmis yazilmadi (% satir)', v_adet;
   end if;
 
-  update public.customer_leads set status = 'Arandı'
+  update public.customer_leads set status = 'arandi'
   where id = current_setting('test.lead')::uuid;
 
   select count(*) into v_adet from public.customer_lead_status_history

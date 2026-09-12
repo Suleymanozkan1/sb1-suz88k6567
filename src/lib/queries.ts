@@ -12,7 +12,8 @@ import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
-  Payment, Reservation, SafeMovement, SmsLogEntry, CustomerLead, LeadMessage, WhatsappAccount,
+  Payment, Reservation, SafeMovement, SmsLogEntry, CustomerLead, LeadMessage,
+  LeadStatusDef, WhatsappAccount,
 } from '../types';
 
 export const keys = {
@@ -27,6 +28,7 @@ export const keys = {
   lead: (id: string) => ['lead', id] as const,
   leadMessages: (leadId: string) => ['leadMessages', leadId] as const,
   leadStatusHistory: (leadId: string) => ['leadStatusHistory', leadId] as const,
+  leadStatuses: (businessId: string) => ['leadStatuses', businessId] as const,
   whatsappAccount: (businessId: string) => ['whatsappAccount', businessId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
@@ -137,6 +139,23 @@ export function useLeadMessages(leadId: string | undefined) {
     queryKey: keys.leadMessages(leadId ?? ''),
     queryFn: () => repo.listLeadMessages(leadId!),
     enabled: Boolean(leadId),
+  });
+}
+
+/**
+ * İşletmenin aday durumları.
+ *
+ * Neredeyse her aday ekranı buna ihtiyaç duyuyor ve durumlar nadiren
+ * değişiyor; uzun bir staleTime ile her ekran değişiminde yeniden
+ * çekilmesi önleniyor.
+ */
+export function useLeadStatuses() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.leadStatuses(businessId),
+    queryFn: () => repo.listLeadStatuses(businessId),
+    enabled: Boolean(businessId),
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -449,6 +468,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: ['lead'] });
     qc.invalidateQueries({ queryKey: ['leadMessages'] });
     qc.invalidateQueries({ queryKey: ['leadStatusHistory'] });
+    qc.invalidateQueries({ queryKey: keys.leadStatuses(businessId) });
     qc.invalidateQueries({ queryKey: keys.whatsappAccount(businessId) });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
     qc.invalidateQueries({ queryKey: keys.colors(businessId) });
@@ -556,6 +576,22 @@ export function useDeleteLead() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => repo.deleteLead(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSaveLeadStatus() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (durum: LeadStatusDef) => repo.saveLeadStatus(durum),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteLeadStatus() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteLeadStatus(id),
     onSuccess: invalidate,
   });
 }

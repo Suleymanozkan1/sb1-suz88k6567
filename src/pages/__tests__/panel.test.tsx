@@ -724,7 +724,8 @@ describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
 
     expect(await screen.findByRole('heading', { name: 'Müşteri Adayları' })).toBeInTheDocument();
     expect(screen.getByText('Ömer Ay')).toBeInTheDocument();
-    expect(screen.getAllByText('Aranmadı').length).toBeGreaterThan(0);
+    // Ekranda durum KODU değil, işletmenin verdiği ad görünüyor.
+    expect(screen.getAllByText('Yeni').length).toBeGreaterThan(0);
   });
 
   it('geciken takip listede vurgulanır', async () => {
@@ -753,10 +754,11 @@ describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     renderPanel('/panel/musteri-adaylari/lead_seed_1');
 
     await screen.findByRole('heading', { name: 'Ömer Ay' });
-    await user.selectOptions(screen.getByLabelText('Durum'), 'Arandı');
+    // Seçenek değeri kod, görünen metin ad.
+    await user.selectOptions(screen.getByLabelText('Durum'), 'arandi');
 
     // Kim, ne zaman, neyden neye: geçmiş tetikleyiciyle yazılıyor.
-    expect(await screen.findByText(/Durum "Aranmadı" → "Arandı"/)).toBeInTheDocument();
+    expect(await screen.findByText(/Durum "Yeni" → "Arandı"/)).toBeInTheDocument();
   });
 
   it('yeni aday düğmesi elle kayıt formunu açar', async () => {

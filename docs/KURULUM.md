@@ -48,7 +48,7 @@ sudo -u postgres psql -c "create role sahra with login password '<DB_SIFRESI>';"
 sudo -u postgres psql -d sahra -c "grant all on schema public to sahra;"
 ```
 
-Göçleri **sırayla** uygulayın (`0000` en başta, `0021` en sonda):
+Göçleri **sırayla** uygulayın (`0000` en başta, sonra numara sırası):
 
 ```bash
 git clone <depo-adresi> /opt/sahra
@@ -64,7 +64,9 @@ Sıra önemlidir ve atlanamaz:
 - `0000` kimlik katmanını kurar; `0001` ona dayanıyor.
 - `0006` ve `0008` bugün kullanılmayan iki tablo açar, `0013` ikisini de
   düşürür. Aradaki göçler o tablolara dokunduğu için atlanamazlar.
-- `0021` tablo yetkilerini verir, bu yüzden en sonda.
+- `0021` çekirdek tablo yetkilerini verir, bu yüzden 0001-0020'den sonra.
+- `0023` durum tablosunu kurar ve `customer_leads.status` kolonunu enum'dan
+  koda çevirir; kendi yetkilerini kendi veriyor.
 
 PostgREST'in bağlanacağı role şifre verin:
 
@@ -168,8 +170,10 @@ PARASUT_COMPANY_ID=<...>
 # WhatsApp (isteğe bağlı)
 WHATSAPP_VERIFY_TOKEN=<...>
 WHATSAPP_APP_SECRET=<...>
-WHATSAPP_TOKEN=<...>
-WHATSAPP_PHONE_ID=<...>
+WHATSAPP_ACCESS_TOKEN=<...>
+WHATSAPP_PHONE_NUMBER_ID=<...>
+WHATSAPP_BUSINESS_ACCOUNT_ID=<...>
+WHATSAPP_MOCK_MODE=false
 ```
 
 Derleme sırasında sitenin gerçek sunucu kipinde çalışması için

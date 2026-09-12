@@ -18,8 +18,9 @@ import type {
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, Permission, Reservation, SafeMovement, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
-  CustomerLead, LeadMessage, LeadStatusChange, WhatsappAccount,
+  CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
 } from '../../types';
+import { VARSAYILAN_BASLANGIC_DURUMU } from '../../types';
 import { computeInvoice } from '../invoice';
 
 /**
@@ -191,11 +192,12 @@ function toLead(row: Row): CustomerLead {
     organizationType: (row.organization_type as string) ?? '',
     source: (row.source as CustomerLead['source']) ?? 'Manuel',
     sourceDetail: (row.source_detail as string) ?? '',
-    status: (row.status as CustomerLead['status']) ?? 'Aranmadı',
+    status: (row.status as CustomerLead['status']) ?? VARSAYILAN_BASLANGIC_DURUMU,
     assignedTo: (row.assigned_to as string) ?? undefined,
     nextFollowupAt: (row.next_followup_at as string) ?? '',
     lastContactAt: (row.last_contact_at as string) ?? '',
     reservationId: (row.reservation_id as string) ?? undefined,
+    requestText: (row.request_text as string) ?? '',
     note: (row.note as string) ?? '',
     createdAt: (row.created_at as string) ?? '',
     updatedAt: (row.updated_at as string) ?? '',
@@ -210,7 +212,22 @@ function fromLead(l: CustomerLead) {
     source: l.source, source_detail: l.sourceDetail, status: l.status,
     assigned_to: l.assignedTo ?? null, next_followup_at: l.nextFollowupAt || null,
     last_contact_at: l.lastContactAt || null, reservation_id: l.reservationId ?? null,
-    note: l.note,
+    request_text: l.requestText, note: l.note,
+  };
+}
+
+function toLeadStatus(row: Row): LeadStatusDef {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    code: (row.code as string) ?? '',
+    label: (row.label as string) ?? '',
+    sortOrder: Number(row.sort_order ?? 0),
+    tone: (row.tone as LeadStatusDef['tone']) ?? 'notr',
+    isInitial: Boolean(row.is_initial),
+    isClosed: Boolean(row.is_closed),
+    isWon: Boolean(row.is_won),
+    active: row.active === undefined ? true : Boolean(row.active),
   };
 }
 
@@ -629,9 +646,14 @@ export const supabaseRepo: Repository = {
 
   async saveStaff(_ownerId, input) {
     if (!input.id) {
+      /*
+        Panelden hesap AÇMA yolu henüz yok: hesabı sunucu yöneticisi
+        veritabanındaki `kullanici_ac` fonksiyonuyla oluşturuyor. Buradan
+        yalnızca var olan bir hesabın bilgileri ve yetkileri düzenlenir.
+      */
       throw new RepoError(
-        'Yeni personel hesabı Supabase yönetim panelinden (Authentication → Users) oluşturulmalıdır. ' +
-        'Kullanıcı oluşturulduktan sonra yetkilerini buradan düzenleyebilirsiniz.',
+        'Yeni personel hesabını sunucu yöneticisi açar (kullanici_ac). ' +
+        'Hesap açıldıktan sonra yetkilerini buradan düzenleyebilirsiniz.',
       );
     }
     const { error } = await db().from('profiles')
@@ -838,6 +860,63 @@ export const supabaseRepo: Repository = {
       wa_message_id: message.waMessageId ?? null, actor_email: message.actorEmail,
     });
     if (error) fail('İletişim kaydı yazılamadı.', error);
+  },
+
+  async listLeadStatuses(businessId) {
+    const { data, error } = await db().from('lead_statuses')
+      .select('*').eq('business_id', businessId).order('sort_order', { ascending: true });
+    if (error) fail('Durumlar alınamadı.', error);
+    return (data ?? []).map(toLeadStatus);
+  },
+
+  async saveLeadStatus(durum) {
+    /*
+      Başlangıç ve kazanım durumu işletmede tek olmalı; veritabanında bunu
+      kısmi benzersiz indeks tutuyor. Aynı anda iki satır yazılamadığı için
+      önce eskisi temizleniyor: doğrudan yazılsaydı indeks düşer ve
+      kullanıcı "23505" görürdü.
+    */
+    if (durum.isInitial || durum.isWon) {
+      const temizle: Record<string, unknown> = {};
+      if (durum.isInitial) temizle.is_initial = false;
+      if (durum.isWon) temizle.is_won = false;
+      const { error: hata } = await db().from('lead_statuses')
+        .update(temizle).eq('business_id', durum.businessId).neq('code', durum.code);
+      if (hata) fail('Durum kaydedilemedi.', hata);
+    }
+
+    const { data, error } = await db().from('lead_statuses')
+      .upsert({
+        ...kimlikAlani(durum.id), business_id: durum.businessId, code: durum.code,
+        label: durum.label, sort_order: durum.sortOrder, tone: durum.tone,
+        is_initial: durum.isInitial, is_closed: durum.isClosed, is_won: durum.isWon,
+        active: durum.active,
+      }, { onConflict: 'business_id,code' })
+      .select().single();
+    if (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw new RepoError('Bu kodla bir durum zaten var.');
+      }
+      fail('Durum kaydedilemedi.', error);
+    }
+    return toLeadStatus(data);
+  },
+
+  async deleteLeadStatus(id) {
+    const { error } = await db().from('lead_statuses').delete().eq('id', id);
+    if (error) {
+      // 23503: bu durumu taşıyan aday var. DT002: başlangıç durumu.
+      const kod = (error as { code?: string }).code;
+      if (kod === '23503') {
+        throw new RepoError(
+          'Bu durumu kullanan müşteri adayları var. Silmek yerine pasife alın.');
+      }
+      if (kod === 'DT002') {
+        throw new RepoError(
+          'Başlangıç durumu silinemez. Önce başka bir durumu başlangıç yapın.');
+      }
+      fail('Durum silinemedi.', error);
+    }
   },
 
   async listLeadStatusHistory(leadId) {

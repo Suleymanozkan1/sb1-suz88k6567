@@ -33,6 +33,7 @@ const MusteriAdaylari = lazy(() => import('./pages/app/MusteriAdaylari'));
 const MusteriAdayiDetay = lazy(() => import('./pages/app/MusteriAdayiDetay'));
 const MusteriAdayiYeni = lazy(() => import('./pages/app/MusteriAdayiYeni'));
 const WhatsappAyarlari = lazy(() => import('./pages/app/WhatsappAyarlari'));
+const AdayDurumlari = lazy(() => import('./pages/app/AdayDurumlari'));
 const Ayarlar = lazy(() => import('./pages/app/Ayarlar'));
 const DenetimKaydi = lazy(() => import('./pages/app/DenetimKaydi'));
 const IzinYonetimi = lazy(() => import('./pages/app/IzinYonetimi'));
@@ -113,6 +114,7 @@ export default function App() {
             <Route path="musteri-adaylari" element={<MusteriAdaylari />} />
             <Route path="musteri-adaylari/yeni" element={<MusteriAdayiYeni />} />
             <Route path="whatsapp-ayarlari" element={<WhatsappAyarlari />} />
+            <Route path="musteri-adaylari/durumlar" element={<AdayDurumlari />} />
             <Route path="musteri-adaylari/:id" element={<MusteriAdayiDetay />} />
             <Route path="izinler" element={<IzinYonetimi />} />
             <Route path="denetim" element={<DenetimKaydi />} />

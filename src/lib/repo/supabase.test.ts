@@ -424,7 +424,7 @@ describe('personel', () => {
     // nereye gideceğini söylemeli.
     await expect(repo.saveStaff('u1', {
       fullName: 'P', email: 'p@ornek.com', password: '', mobile: '5321112233', permissions: [],
-    })).rejects.toThrow('Authentication → Users');
+    })).rejects.toThrow(/kullanici_ac/);
   });
 
   it('var olan personelin yetkilerini günceller', async () => {
@@ -1422,13 +1422,15 @@ describe('müşteri adayları', () => {
       id: 'l1', businessId: 'b1', name: 'Ömer Ay', phone: '5332642537', email: '',
       guestCount: 1000, eventDate: '', eventDateText: 'Mayıs ilk hafta',
       organizationType: 'Düğün', source: 'WhatsApp', sourceDetail: '',
-      status: 'Aranmadı', nextFollowupAt: '', lastContactAt: '', note: '',
+      status: 'yeni', nextFollowupAt: '', lastContactAt: '',
+      requestText: 'Yemekli fiyat', note: '',
       createdAt: '', updatedAt: '',
     });
     const govde = islem(cagri('customer_leads'), 'upsert')?.arg[0] as Record<string, unknown>;
     expect(govde).toMatchObject({
       business_id: 'b1', name: 'Ömer Ay', phone: '5332642537',
-      event_date_text: 'Mayıs ilk hafta', source: 'WhatsApp', status: 'Aranmadı',
+      event_date_text: 'Mayıs ilk hafta', source: 'WhatsApp', status: 'yeni',
+      request_text: 'Yemekli fiyat',
     });
     // Boş tarih null gider; '' bir tarih değil.
     expect(govde.event_date).toBeNull();
@@ -1442,8 +1444,9 @@ describe('müşteri adayları', () => {
     await expect(repo.saveLead({
       id: 'l1', businessId: 'b1', name: '', phone: '5332642537', email: '',
       guestCount: null, eventDate: '', eventDateText: '', organizationType: '',
-      source: 'WhatsApp', sourceDetail: '', status: 'Aranmadı',
-      nextFollowupAt: '', lastContactAt: '', note: '', createdAt: '', updatedAt: '',
+      source: 'WhatsApp', sourceDetail: '', status: 'yeni',
+      nextFollowupAt: '', lastContactAt: '', requestText: '', note: '',
+      createdAt: '', updatedAt: '',
     })).rejects.toThrow(/zaten var/);
   });
 

@@ -7,8 +7,9 @@ import { errorMessage } from '../../lib/authHelpers';
 import { kurusToLira, menuTotalKurus } from '../../lib/seating';
 import {
   useHalls, useMenus, useReservation, useReservations, useSaveReservation, useSendSms,
-  useLead, useSaveLead,
+  useLead, useLeadStatuses, useSaveLead,
 } from '../../lib/queries';
+import { kazanimDurumu } from '../../lib/lead';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, todayIso } from '../../lib/format';
 import { LEAD_CHANNELS, ORGANIZATION_TYPES, ORG_TO_COLOR_KEY, SERVICE_OPTIONS } from '../../data/constants';
@@ -95,6 +96,7 @@ export default function RezervasyonForm() {
   const [aramaParam] = useSearchParams();
   const adayId = aramaParam.get('aday') ?? '';
   const { data: aday } = useLead(adayId || undefined);
+  const { data: adayDurumlari = [] } = useLeadStatuses();
   const adayiKaydet = useSaveLead();
 
   useEffect(() => {
@@ -287,10 +289,16 @@ export default function RezervasyonForm() {
       // adaydan ikinci bir rezervasyon açmak serbest kalır ve dönüşüm
       // takip edilemezdi. Bağlamanın hatası kaydın kendisini geçersiz
       // kılmaz, o yüzden kaydı düşürmüyor.
-      if (adayId && aday) {
+      /*
+        Hangi durumun "rezervasyona döndü" saydığı işletmenin kararı;
+        sabit bir metin, sahibi durumu yeniden adlandırdığı anda geçersiz
+        bir koda yazmaya çalışır ve bağlama sessizce başarısız olurdu.
+      */
+      const kazanim = kazanimDurumu(adayDurumlari);
+      if (adayId && aday && kazanim) {
         try {
           await adayiKaydet.mutateAsync({
-            ...aday, status: 'Rezervasyona Döndü', reservationId: saved.id,
+            ...aday, status: kazanim, reservationId: saved.id,
             lastContactAt: new Date().toISOString(),
           });
         } catch { /* kayıt açıldı; aday durumu sonradan elle kapatılabilir */ }

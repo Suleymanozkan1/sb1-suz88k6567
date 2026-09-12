@@ -19,14 +19,14 @@
  * açıkça bildiriliyor -- sessizce düşen bir mesaj, gönderildi sanılır.
  *
  * Gerekli ortam değişkenleri (SUNUCUDA KALIR):
- *   WHATSAPP_TOKEN     Kalıcı erişim jetonu
- *   WHATSAPP_PHONE_ID  Gönderen numaranın kimliği
+ *   WHATSAPP_ACCESS_TOKEN     Kalıcı erişim jetonu
+ *   WHATSAPP_PHONE_NUMBER_ID  Gönderen numaranın kimliği
  */
 import { insertRow, isDbConfigured, selectRows } from './_db';
 import { json } from './_guard';
 
-const TOKEN = process.env.WHATSAPP_TOKEN;
-const PHONE_ID = process.env.WHATSAPP_PHONE_ID;
+const TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
+const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const SURUM = process.env.WHATSAPP_API_VERSION ?? 'v21.0';
 
 export function isSendConfigured(): boolean {

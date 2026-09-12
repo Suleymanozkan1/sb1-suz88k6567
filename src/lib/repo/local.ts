@@ -14,9 +14,10 @@ import type {
   Business, CashFlowEntry, CashFlowKind, ColorSetting, EnqueueResult, Invoice,
   EventTask, Hall, Menu, Payment, Reservation, ReservationVendor,
   SafeDirection, SafeMovement, SeatingTable, SmsConsent, SmsLogEntry, Vendor,
-  CustomerLead, LeadMessage, LeadStatusChange, WhatsappAccount,
+  CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
   SmsQueueEntry, User,
 } from '../../types';
+import { VARSAYILAN_LEAD_DURUMLARI } from '../../types';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
 
 const wait = <T,>(value: T): Promise<T> => Promise.resolve(value);
@@ -31,6 +32,9 @@ function leads(): CustomerLead[] { return read<CustomerLead[]>(KEYS.leads, []); 
 function leadMessages(): LeadMessage[] { return read<LeadMessage[]>(KEYS.leadMessages, []); }
 function statusHistory(): LeadStatusChange[] {
   return read<LeadStatusChange[]>(KEYS.leadStatusHistory, []);
+}
+function leadStatuses(): LeadStatusDef[] {
+  return read<LeadStatusDef[]>(KEYS.leadStatuses, []);
 }
 function safeMoves(): SafeMovement[] { return read<SafeMovement[]>(KEYS.safeMovements, []); }
 
@@ -457,6 +461,70 @@ export const localRepo: Repository = {
 
   async addLeadMessage(message) {
     write(KEYS.leadMessages, [...leadMessages(), message]);
+  },
+
+  /**
+   * İşletmenin durumları.
+   *
+   * Demo modunda tablo boş olabilir; o zaman varsayılan akış üretiliyor.
+   * Boş liste dönseydi aday ekranı hiç durum gösteremezdi.
+   */
+  async listLeadStatuses(businessId) {
+    const kayitli = leadStatuses().filter((d) => d.businessId === businessId);
+    if (kayitli.length > 0) {
+      return wait([...kayitli].sort((a, b) => a.sortOrder - b.sortOrder));
+    }
+    return wait(VARSAYILAN_LEAD_DURUMLARI.map((d) => ({
+      ...d, id: `durum_${businessId}_${d.code}`, businessId,
+    })));
+  },
+
+  async saveLeadStatus(durum) {
+    const hepsi = leadStatuses();
+    const ayniKod = hepsi.find((d) => d.id !== durum.id
+      && d.businessId === durum.businessId && d.code === durum.code);
+    if (ayniKod) throw new RepoError('Bu kodla bir durum zaten var.');
+
+    // Veritabanındaki tekil indekslerin karşılığı: başlangıç ve kazanım
+    // durumu işletmede tek olmalı.
+    const digerleri = (bizim: LeadStatusDef[]) => bizim.map((d) => {
+      if (d.businessId !== durum.businessId || d.id === durum.id) return d;
+      return {
+        ...d,
+        isInitial: durum.isInitial ? false : d.isInitial,
+        isWon: durum.isWon ? false : d.isWon,
+      };
+    });
+
+    const temel = hepsi.length > 0 ? hepsi
+      : VARSAYILAN_LEAD_DURUMLARI.map((d) => ({
+        ...d, id: `durum_${durum.businessId}_${d.code}`, businessId: durum.businessId,
+      }));
+    const eski = temel.find((d) => d.id === durum.id);
+    const sonraki = digerleri(temel);
+    write(KEYS.leadStatuses, eski
+      ? sonraki.map((d) => (d.id === durum.id ? durum : d))
+      : [...sonraki, durum]);
+    return wait(durum);
+  },
+
+  async deleteLeadStatus(id) {
+    const hepsi = leadStatuses();
+    const durum = hepsi.find((d) => d.id === id);
+    if (!durum) return wait(undefined);
+    if (durum.isInitial) {
+      throw new RepoError(
+        'Başlangıç durumu silinemez. Önce başka bir durumu başlangıç yapın.');
+    }
+    // Yabancı anahtarın karşılığı: kullanımdaki durum silinemez.
+    const kullanan = leads().some((l) => l.businessId === durum.businessId
+      && l.status === durum.code);
+    if (kullanan) {
+      throw new RepoError(
+        'Bu durumu kullanan müşteri adayları var. Silmek yerine pasife alın.');
+    }
+    write(KEYS.leadStatuses, hepsi.filter((d) => d.id !== id));
+    return wait(undefined);
   },
 
   async listLeadStatusHistory(leadId) {

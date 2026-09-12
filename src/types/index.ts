@@ -202,29 +202,76 @@ export const LEAD_SOURCES: LeadSource[] = [
 ];
 
 /**
- * Müşteri adayının takip durumu.
+ * Müşteri adayının takip durumu: `lead_statuses.code` değeri.
  *
- * Sıra, akışın kendisi: aranmamış bir aday soldan sağa ilerliyor. Ekranda
- * da bu sırayla görünüyor ki personel listede aradığını yerinde bulsun.
+ * Durumlar artık sabit bir liste değil, işletmenin düzenlediği satırlar
+ * (bkz. LeadStatusDef). Bu yüzden tip `string`: derleyici hangi kodların
+ * geçerli olduğunu bilemez, geçerliliği veritabanındaki yabancı anahtar
+ * ve ekrandaki liste sağlıyor.
  */
-export type LeadStatus =
-  | 'Aranmadı'
-  | 'Arandı'
-  | 'Ulaşılamadı'
-  | 'Tekrar Aranacak'
-  | 'Tekrar Arandı'
-  | "WhatsApp'tan İletişim Kuruldu"
-  | 'İletişim Sağlandı'
-  | 'Teklif Gönderildi'
-  | 'Rezervasyona Döndü'
-  | 'Olumsuz'
-  | 'İptal';
+export type LeadStatus = string;
 
-export const LEAD_STATUSES: LeadStatus[] = [
-  'Aranmadı', 'Arandı', 'Ulaşılamadı', 'Tekrar Aranacak', 'Tekrar Arandı',
-  "WhatsApp'tan İletişim Kuruldu", 'İletişim Sağlandı', 'Teklif Gönderildi',
-  'Rezervasyona Döndü', 'Olumsuz', 'İptal',
+/**
+ * Durumun ekrandaki rengi.
+ *
+ * Tailwind sınıfı veritabanında DURMUYOR: orada anlam duruyor, karşılığını
+ * arayüz seçiyor. Sınıf adı saklansaydı tema değiştiğinde her işletmenin
+ * satırlarını tek tek düzeltmek gerekirdi.
+ */
+export type LeadStatusTone =
+  | 'bekleyen' | 'ilerleyen' | 'olumlu' | 'teklif' | 'dikkat' | 'kapali' | 'notr';
+
+export const LEAD_STATUS_TONES: LeadStatusTone[] =
+  ['bekleyen', 'ilerleyen', 'olumlu', 'teklif', 'dikkat', 'kapali', 'notr'];
+
+/**
+ * İşletmenin tanımladığı bir müşteri adayı durumu.
+ *
+ * `code` değişmez, aday satırları ona bakar; `label` istendiği zaman
+ * yeniden adlandırılabilir. İş kuralları da ada değil bayrağa bakıyor:
+ * "Rezervasyona Döndü" yazan bir karşılaştırma, sahibi durumu yeniden
+ * adlandırdığı anda sessizce yanlış sayardı.
+ */
+export interface LeadStatusDef {
+  id: string;
+  businessId: string;
+  code: string;
+  label: string;
+  sortOrder: number;
+  tone: LeadStatusTone;
+  /** Yeni aday bu durumla açılır. İşletmede tek tanedir. */
+  isInitial: boolean;
+  /** İş beklemiyor: takip ve gecikme listelerinden düşer. */
+  isClosed: boolean;
+  /** Rezervasyona döndü sayılır. İşletmede tek tanedir. */
+  isWon: boolean;
+  active: boolean;
+}
+
+/**
+ * Varsayılan durum akışı.
+ *
+ * Veritabanındaki `lead_statuses_tohumla` ile AYNI listedir; demo modu
+ * ve testler veritabanı olmadan da aynı akışı görsün diye burada da
+ * duruyor. İkisinin ayrışmadığını bir test koruyor.
+ */
+export const VARSAYILAN_LEAD_DURUMLARI: Omit<LeadStatusDef, 'id' | 'businessId'>[] = [
+  { code: 'yeni', label: 'Yeni', sortOrder: 10, tone: 'bekleyen', isInitial: true, isClosed: false, isWon: false, active: true },
+  { code: 'aranacak', label: 'Aranacak', sortOrder: 20, tone: 'bekleyen', isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'arandi', label: 'Arandı', sortOrder: 30, tone: 'ilerleyen', isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'ulasilamadi', label: 'Ulaşılamadı', sortOrder: 40, tone: 'dikkat', isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'tekrar_aranacak', label: 'Tekrar Aranacak', sortOrder: 50, tone: 'bekleyen', isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'tekrar_arandi', label: 'Tekrar Arandı', sortOrder: 60, tone: 'ilerleyen', isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'iletisim_kuruldu', label: 'İletişim Kuruldu', sortOrder: 70, tone: 'olumlu', isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'teklif_verildi', label: 'Teklif Verildi', sortOrder: 80, tone: 'teklif', isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'rezervasyon_bekliyor', label: 'Rezervasyon Bekliyor', sortOrder: 90, tone: 'teklif', isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'rezervasyona_dondu', label: 'Rezervasyona Döndü', sortOrder: 100, tone: 'olumlu', isInitial: false, isClosed: true, isWon: true, active: true },
+  { code: 'olumsuz', label: 'Olumsuz', sortOrder: 110, tone: 'kapali', isInitial: false, isClosed: true, isWon: false, active: true },
+  { code: 'iptal', label: 'İptal', sortOrder: 120, tone: 'kapali', isInitial: false, isClosed: true, isWon: false, active: true },
 ];
+
+/** Varsayılan akıştaki başlangıç durumu. Veritabanı yokken kullanılır. */
+export const VARSAYILAN_BASLANGIC_DURUMU = 'yeni';
 
 /**
  * Müşteri adayı.
@@ -253,6 +300,8 @@ export interface CustomerLead {
   nextFollowupAt: string;
   lastContactAt: string;
   reservationId?: string;
+  /** Müşterinin ne sorduğu: "yemekli/yemeksiz fiyat" gibi. Nottan ayrı durur. */
+  requestText: string;
   note: string;
   createdAt: string;
   updatedAt: string;
