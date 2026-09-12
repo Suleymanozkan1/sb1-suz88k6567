@@ -101,6 +101,30 @@ export interface Reservation {
   updatedAt: string;
 }
 
+/**
+ * Düğün içi gider: bir organizasyonun kendi içinde harcanan para.
+ *
+ * Garson, DJ, vale, fotoğrafçı. Rezervasyona bağlı olduğu için "bu düğün
+ * bize kaça mal oldu" sorusunun tek bir cevabı oluyor.
+ *
+ * Toplam ALAN DEĞİL, hesaplanıyor (unitCount * unitPrice). Ayrı bir alan
+ * olsaydı üç sayı birbirini tutmadığında hangisinin doğru olduğu
+ * bilinemezdi.
+ */
+export interface ReservationExpense {
+  id: string;
+  businessId: string;
+  reservationId: string;
+  /** Garson, DJ, Vale... Serbest metin; her salonun kalemleri farklı. */
+  kind: string;
+  /** Kaç adet / kaç kişi. Ondalık olabilir (yarım gün gibi). */
+  unitCount: number;
+  unitPrice: number;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Bir işletmedeki fiziksel salon. Çakışma kuralı salon bazında işler. */
 export interface Hall {
   id: string;

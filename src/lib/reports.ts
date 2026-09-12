@@ -1,5 +1,6 @@
 /** Rapor hesaplamaları: program bazlı, ay bazlı, tarih aralığı, alacak bakiyesi */
 import { MONTH_NAMES } from '../data/constants';
+import { daysBetween, todayIso } from './format';
 import type { OrganizationType, Payment, PaymentMethod, Reservation } from '../types';
 
 /**
@@ -9,6 +10,12 @@ import type { OrganizationType, Payment, PaymentMethod, Reservation } from '../t
 export interface BalanceLookup {
   paid: (r: Reservation) => number;
   remaining: (r: Reservation) => number;
+  /*
+    Gelecek ödemeler raporu "en son alınan ödeme"yi de gösteriyor; bunun
+    için ham tahsilat satırları gerekiyor. İsteğe bağlı: yalnızca toplam
+    isteyen raporlar (ay, seans, kanal) bunu vermek zorunda değil.
+  */
+  paymentsOf?: (id: string) => Payment[];
 }
 
 export interface RangeFilter {
@@ -92,15 +99,101 @@ export interface BalanceRow {
   reservation: Reservation;
   paid: number;
   remaining: number;
+  /**
+   * En son alınan tahsilat. Hesabın tabanı budur: salon sahibinin sorduğu
+   * "bu müşteriden en son ne zaman, ne kadar aldık" sorusunun cevabı.
+   * Hiç tahsilat yoksa (kapora da girilmemişse) null.
+   */
+  lastPayment: SonTahsilat | null;
+  /**
+   * Organizasyon gününe kalan gün. Eksi ise gün geçmiş ama bakiye
+   * kapanmamış demektir; alacak vadesi düğün günüdür.
+   */
+  daysLeft: number;
+  overdue: boolean;
 }
 
-/** Alacak bakiyesi raporu: yalnızca borcu kalan kayıtlar */
-export function balanceReport(reservations: Reservation[], balance: BalanceLookup): BalanceRow[] {
+/**
+ * Gelecek kaporalar ve ödemeler (alacak bakiyesi).
+ *
+ * Yalnızca borcu kalan kayıtlar. Sıralama TUTARA GÖRE DEĞİL TARİHE GÖRE:
+ * bu ekranın sorusu "hangi para ne zaman gelecek". En büyük alacak altı ay
+ * sonraki bir düğüne aitken bu haftaki tahsilat listenin dibinde kalıyordu.
+ *
+ * Günü geçmiş ama bakiyesi kapanmamış kayıtlar en başta duruyor: alacağın
+ * vadesi organizasyon günüdür, gün geçtiyse tahsilat gecikmiştir.
+ */
+export function balanceReport(
+  reservations: Reservation[],
+  balance: BalanceLookup,
+  referenceIso: string = todayIso(),
+): BalanceRow[] {
   return reservations
     .filter((r) => r.status !== 'İptal')
-    .map((r) => ({ reservation: r, paid: balance.paid(r), remaining: balance.remaining(r) }))
+    .map((r) => {
+      const odemeler = balance.paymentsOf?.(r.id) ?? [];
+      const daysLeft = daysBetween(referenceIso, r.date);
+      return {
+        reservation: r,
+        paid: balance.paid(r),
+        remaining: balance.remaining(r),
+        lastPayment: sonTahsilat(r, odemeler),
+        daysLeft,
+        overdue: daysLeft < 0,
+      };
+    })
     .filter((row) => row.remaining > 0)
-    .sort((a, b) => b.remaining - a.remaining);
+    .sort((a, b) => {
+      // Gecikmişler önce; kendi içlerinde en çok gecikmiş en üstte.
+      if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+      const tarih = a.reservation.date.localeCompare(b.reservation.date);
+      // Aynı güne düşen iki kayıtta büyük alacak üstte: aynı gün içinde
+      // önce hangisinin peşine düşüleceği tutara göre belli olur.
+      return tarih !== 0 ? tarih : b.remaining - a.remaining;
+    });
+}
+
+/**
+ * En son alınan tahsilat.
+ *
+ * Kapora ödemeler listesinde değil rezervasyon satırında durur; hesaba
+ * katılmazsa yalnızca kapora almış bir müşteri "hiç tahsilat yok" gibi
+ * görünürdü. Tarihi, `reservationIncome` ile aynı kuralla kaydın açıldığı
+ * gündür: sözleşme o gün imzalanmıştır.
+ */
+export interface SonTahsilat {
+  date: string;
+  amount: number;
+  /** Eski kayıtlarda ödeme tipi bilinmiyor olabilir. */
+  method?: PaymentMethod;
+  source: 'Kapora' | 'Tahsilat';
+}
+
+/*
+  Aynı güne birden çok tahsilat girilebildiği için tarih eşitliğinde kayıt
+  sırası (createdAt) belirleyici: aynı gün girilen iki tahsilattan sonuncusu
+  gerçekten en sonuncudur.
+*/
+function sonTahsilat(r: Reservation, odemeler: Payment[]): SonTahsilat | null {
+  const hepsi: { date: string; sira: string; row: SonTahsilat }[] = odemeler.map((p) => ({
+    date: p.date,
+    sira: p.createdAt,
+    row: { date: p.date, amount: p.amount, method: p.method, source: 'Tahsilat' },
+  }));
+
+  if (r.deposit > 0) {
+    const gun = (r.createdAt || '').slice(0, 10) || r.date;
+    hepsi.push({
+      date: gun,
+      // Kapora her zaman ilk tahsilattır; aynı güne düşen bir ödemeyle
+      // eşitlikte ödeme sonra girilmiş sayılır.
+      sira: '',
+      row: { date: gun, amount: r.deposit, method: r.depositMethod, source: 'Kapora' },
+    });
+  }
+
+  const sirali = hepsi.sort((a, b) => a.date.localeCompare(b.date) || a.sira.localeCompare(b.sira));
+  return sirali[sirali.length - 1]?.row ?? null;
 }
 
 /**

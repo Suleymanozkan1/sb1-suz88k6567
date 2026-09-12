@@ -12,7 +12,7 @@ import { RepoError, type PublicReservation, type Repository, type StaffInput } f
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
-  EventTask, Hall, Menu, Payment, Reservation, ReservationVendor,
+  EventTask, Hall, Menu, Payment, Reservation, ReservationExpense, ReservationVendor,
   SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
   SmsQueueEntry, User,
@@ -32,6 +32,9 @@ function leads(): CustomerLead[] { return read<CustomerLead[]>(KEYS.leads, []); 
 function leadMessages(): LeadMessage[] { return read<LeadMessage[]>(KEYS.leadMessages, []); }
 function statusHistory(): LeadStatusChange[] {
   return read<LeadStatusChange[]>(KEYS.leadStatusHistory, []);
+}
+function dugunGiderleri(): ReservationExpense[] {
+  return read<ReservationExpense[]>(KEYS.reservationExpenses, []);
 }
 function leadStatuses(): LeadStatusDef[] {
   return read<LeadStatusDef[]>(KEYS.leadStatuses, []);
@@ -339,6 +342,32 @@ export const localRepo: Repository = {
     return wait(cash()
       .filter((c) => c.businessId === businessId)
       .sort((a, b) => b.date.localeCompare(a.date)));
+  },
+
+  async listReservationExpenses(businessId) {
+    return wait(dugunGiderleri()
+      .filter((g) => g.businessId === businessId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  },
+
+  async saveReservationExpense(expense) {
+    const hepsi = dugunGiderleri();
+    const simdi = new Date().toISOString();
+    const eski = hepsi.find((g) => g.id === expense.id);
+    const kayit = {
+      ...expense,
+      createdAt: eski?.createdAt || expense.createdAt || simdi,
+      updatedAt: simdi,
+    };
+    write(KEYS.reservationExpenses, eski
+      ? hepsi.map((g) => (g.id === expense.id ? kayit : g))
+      : [...hepsi, kayit]);
+    return wait(undefined);
+  },
+
+  async deleteReservationExpense(id) {
+    write(KEYS.reservationExpenses, dugunGiderleri().filter((g) => g.id !== id));
+    return wait(undefined);
   },
 
   async addCashFlow(entry) { write(KEYS.cashflow, [...cash(), entry]); },

@@ -271,7 +271,7 @@ describe('Rezervasyon detayı', () => {
 
     expect(await screen.findByRole('heading', { name: target.customerName })).toBeInTheDocument();
     await user.type(screen.getByLabelText('Tutar'), '10000');
-    await user.click(screen.getByRole('button', { name: /Ekle/ }));
+    await user.click(screen.getByRole('button', { name: 'Ekle' }));
 
     await waitFor(() => {
       expect(within(screen.getByRole('table')).getAllByRole('row').length).toBeGreaterThan(1);
@@ -286,7 +286,7 @@ describe('Rezervasyon detayı', () => {
     renderPanel(`/panel/rezervasyonlar/${target.id}`);
 
     await user.type(await screen.findByLabelText('Tutar'), '99999999');
-    await user.click(screen.getByRole('button', { name: /Ekle/ }));
+    await user.click(screen.getByRole('button', { name: 'Ekle' }));
     expect(await screen.findByText(/kalan alacaktan .* fazla olamaz/)).toBeInTheDocument();
   });
 
@@ -522,10 +522,10 @@ describe('Raporlar', () => {
     expect(screen.getByRole('tab', { name: 'Ay bazlı rapor' })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('alacak bakiyesi sekmesi toplam satırı içerir', async () => {
+  it('gelecek kaporalar sekmesi toplam satırı içerir', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/raporlar');
-    await user.click(await screen.findByRole('tab', { name: 'Alacak bakiyesi' }));
+    await user.click(await screen.findByRole('tab', { name: 'Gelecek Kaporalar ve Ödemeler' }));
     expect(await screen.findByText('Toplam kalan alacak')).toBeInTheDocument();
   });
 

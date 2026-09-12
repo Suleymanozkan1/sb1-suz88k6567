@@ -119,20 +119,110 @@ describe('monthReport', () => {
   });
 });
 
-describe('balanceReport', () => {
-  it('yalnızca borcu kalanları en yüksek bakiyeden başlayarak listeler', () => {
+describe('balanceReport — gelecek kaporalar ve ödemeler', () => {
+  const BUGUN = '2026-03-01';
+
+  it('yalnızca borcu kalan kayıtları listeler', () => {
     const paid = keep(make({ totalAmount: 50000, deposit: 50000 }));
-    const small = keep(make({ totalAmount: 80000, deposit: 70000 }));
-    const big = keep(make({ totalAmount: 200000, deposit: 20000 }));
-    const rows = balanceReport([paid, small, big], NO_PAYMENTS);
+    const open1 = keep(make({ totalAmount: 80000, deposit: 70000 }));
+    const open2 = keep(make({ totalAmount: 200000, deposit: 20000 }));
+    const rows = balanceReport([paid, open1, open2], NO_PAYMENTS, BUGUN);
     expect(rows).toHaveLength(2);
-    expect(rows[0].reservation.id).toBe(big.id);
-    expect(rows[0].remaining).toBe(180000);
+    expect(rows.map((r) => r.remaining).sort((a, b) => a - b)).toEqual([10000, 180000]);
+  });
+
+  /*
+    Sıralama tutara göre değil tarihe göre: bu ekranın sorusu "hangi para
+    ne zaman gelecek". En büyük alacak altı ay sonraki bir düğüne aitken
+    bu haftaki tahsilat listenin dibinde kalıyordu.
+  */
+  it('yakın tarihli kaydı büyük tutarlı uzak kayıttan önce verir', () => {
+    const yakin = keep(make({ date: '2026-03-05', totalAmount: 80000, deposit: 70000 }));
+    const uzak = keep(make({ date: '2026-11-20', totalAmount: 400000, deposit: 20000 }));
+    const rows = balanceReport([uzak, yakin], NO_PAYMENTS, BUGUN);
+    expect(rows.map((r) => r.reservation.id)).toEqual([yakin.id, uzak.id]);
+  });
+
+  it('günü geçmiş ama bakiyesi kapanmamış kaydı en başa alır ve gecikmiş sayar', () => {
+    const gecmis = keep(make({ date: '2026-02-10', totalAmount: 90000, deposit: 10000 }));
+    const gelecek = keep(make({ date: '2026-03-05', totalAmount: 90000, deposit: 10000 }));
+    const rows = balanceReport([gelecek, gecmis], NO_PAYMENTS, BUGUN);
+    expect(rows[0].reservation.id).toBe(gecmis.id);
+    expect(rows[0].overdue).toBe(true);
+    expect(rows[0].daysLeft).toBe(-19);
+    expect(rows[1].overdue).toBe(false);
+    expect(rows[1].daysLeft).toBe(4);
+  });
+
+  it('aynı güne düşen iki kayıtta büyük alacağı üstte tutar', () => {
+    const kucuk = keep(make({ date: '2026-03-05', totalAmount: 80000, deposit: 70000 }));
+    const buyuk = keep(make({ date: '2026-03-05', totalAmount: 200000, deposit: 20000 }));
+    const rows = balanceReport([kucuk, buyuk], NO_PAYMENTS, BUGUN);
+    expect(rows.map((r) => r.reservation.id)).toEqual([buyuk.id, kucuk.id]);
+  });
+
+  it('en son alınan tahsilatı taşır', () => {
+    const r = keep(make({
+      totalAmount: 200000, deposit: 20000, createdAt: '2026-01-08T10:00:00.000Z',
+    }));
+    const rows = balanceReport([r], lookup([
+      { id: 'p1', reservationId: r.id, date: '2026-01-10', amount: 30000, method: 'Nakit', createdAt: '' },
+      { id: 'p2', reservationId: r.id, date: '2026-02-14', amount: 50000, method: 'Kredi Kartı', createdAt: '' },
+    ]), BUGUN);
+    expect(rows[0].lastPayment).toEqual({
+      date: '2026-02-14', amount: 50000, method: 'Kredi Kartı', source: 'Tahsilat',
+    });
+  });
+
+  /*
+    Aynı güne birden çok tahsilat girilebiliyor; tarih eşitliğinde kayıt
+    sırası belirleyici, yoksa "son tahsilat" rastgele seçilirdi.
+  */
+  it('aynı tarihli iki tahsilatta sonra girileni son sayar', () => {
+    const r = keep(make({
+      totalAmount: 200000, deposit: 20000, createdAt: '2026-01-08T10:00:00.000Z',
+    }));
+    const rows = balanceReport([r], lookup([
+      { id: 'once', reservationId: r.id, date: '2026-02-14', amount: 10000, method: 'Nakit', createdAt: '2026-02-14T08:00:00.000Z' },
+      { id: 'sonra', reservationId: r.id, date: '2026-02-14', amount: 20000, method: 'Nakit', createdAt: '2026-02-14T17:00:00.000Z' },
+    ]), BUGUN);
+    expect(rows[0].lastPayment?.amount).toBe(20000);
+  });
+
+  /*
+    Kapora ödemeler listesinde değil rezervasyon satırında durur; hesaba
+    katılmazsa yalnızca kapora almış bir müşteri "hiç tahsilat yok" gibi
+    görünürdü.
+  */
+  it('yalnızca kapora alınmışsa kaporayı son tahsilat sayar', () => {
+    const r = keep(make({
+      totalAmount: 200000, deposit: 20000, depositMethod: 'Nakit',
+      createdAt: '2026-01-08T10:00:00.000Z',
+    }));
+    expect(balanceReport([r], NO_PAYMENTS, BUGUN)[0].lastPayment).toEqual({
+      date: '2026-01-08', amount: 20000, method: 'Nakit', source: 'Kapora',
+    });
+  });
+
+  it('kaporadan sonra tahsilat yapılmışsa tahsilatı son sayar', () => {
+    const r = keep(make({
+      totalAmount: 200000, deposit: 20000, createdAt: '2026-01-08T10:00:00.000Z',
+    }));
+    const rows = balanceReport([r], lookup([
+      { id: 'p1', reservationId: r.id, date: '2026-02-01', amount: 30000, method: 'Havale/EFT', createdAt: '' },
+    ]), BUGUN);
+    expect(rows[0].lastPayment?.source).toBe('Tahsilat');
+    expect(rows[0].lastPayment?.date).toBe('2026-02-01');
+  });
+
+  it('hiç tahsilat yoksa son tahsilatı null verir', () => {
+    const r = keep(make({ totalAmount: 200000, deposit: 0 }));
+    expect(balanceReport([r], NO_PAYMENTS, BUGUN)[0].lastPayment).toBeNull();
   });
 
   it('iptal edilmiş kayıtları dışlar', () => {
     const cancelled = keep(make({ status: 'İptal', totalAmount: 90000, deposit: 0 }));
-    expect(balanceReport([cancelled], NO_PAYMENTS)).toHaveLength(0);
+    expect(balanceReport([cancelled], NO_PAYMENTS, BUGUN)).toHaveLength(0);
   });
 });
 

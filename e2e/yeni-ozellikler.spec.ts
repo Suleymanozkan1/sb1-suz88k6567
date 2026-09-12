@@ -137,3 +137,66 @@ test('Tahsilat makbuzu açılır ve tutarı taşır', async ({ page }) => {
   await expect(page.getByText('TAHSİLAT MAKBUZU')).toBeVisible();
   await expect(page.getByText(/25\.000/).first()).toBeVisible();
 });
+
+/**
+ * Düğün içi giderler: rezervasyonda girilen gider hem net tutarı düşürür
+ * hem de gelir/gider defterinde "Düğün İçi Gider" kategorisiyle görünür.
+ *
+ * Satır kasa tablosuna yazılmıyor, türetiliyor; bu akış iki ekranın aynı
+ * rakamı gösterdiğini tarayıcıda doğruluyor.
+ */
+test('Düğün içi gider net tutarı düşürür ve kasada görünür', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/rezervasyonlar/yeni');
+
+  const gelecek = new Date();
+  gelecek.setDate(gelecek.getDate() + 90);
+  await page.locator('#customerName').fill('Gider Testi');
+  await page.locator('#customerPhone').fill('5321119944');
+  await page.locator('#date').fill(gelecek.toISOString().slice(0, 10));
+  await page.locator('#guestCount').fill('300');
+  await page.locator('#totalAmount').fill('150000');
+  await page.locator('#deposit').fill('50000');
+  await page.getByRole('button', { name: /Kaydet/ }).click();
+  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
+
+  // Sözleşme numarası başlığın altında, tarih ve seansla aynı satırda durur.
+  const sozlesmeNo = (await page.locator('span.font-mono').first().textContent())?.trim() ?? '';
+  expect(sozlesmeNo).toMatch(/^\d{4}-\d+$/);
+
+  // Gider yokken taban kalan bakiyedir: 150.000 - 50.000 = 100.000
+  const gider = page.getByRole('region', { name: 'Düğün İçi Giderler' });
+  await expect(gider.getByText('Kalan bakiye')).toBeVisible();
+  await expect(gider.getByText('Bu organizasyon için gider girilmemiş.')).toBeVisible();
+
+  // 10 garson x 2.000 = 20.000
+  await gider.locator('#gd-kind').fill('Garson');
+  await gider.locator('#gd-count').fill('10');
+  await gider.locator('#gd-price').fill('2000');
+  await gider.getByRole('button', { name: 'Gider Ekle' }).click();
+
+  await expect(gider.getByRole('cell', { name: 'Garson', exact: true })).toBeVisible();
+  await expect(gider.getByText('20.000,00 ₺').first()).toBeVisible();
+  // Net: 100.000 - 20.000 = 80.000
+  await expect(gider.getByText('80.000,00 ₺')).toBeVisible();
+
+  // Aynı gider gelir/gider defterinde sözleşme numarasıyla görünür.
+  await page.goto('/panel/kasa');
+  await expect(page.getByText('Düğün İçi Gider').first()).toBeVisible();
+  await expect(page.getByText(sozlesmeNo).first()).toBeVisible();
+});
+
+/**
+ * Gelecek kaporalar ve ödemeler: sıralama tutara göre değil tarihe göre,
+ * ve her satır en son alınan tahsilatı gösteriyor.
+ */
+test('Gelecek kaporalar ekranı son tahsilatı ve vadeyi gösterir', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/raporlar');
+  await page.getByRole('tab', { name: 'Gelecek Kaporalar ve Ödemeler' }).click();
+
+  await expect(page.getByRole('columnheader', { name: 'Son tahsilat' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Durum' })).toBeVisible();
+  await expect(page.getByText('Toplam kalan alacak')).toBeVisible();
+  await expect(page.getByText(/gün kaldı|gün gecikti|Bugün/).first()).toBeVisible();
+});

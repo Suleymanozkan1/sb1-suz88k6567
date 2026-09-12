@@ -13,7 +13,7 @@ import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
   Payment, Reservation, SmsLogEntry, CustomerLead, LeadMessage,
-  LeadStatusDef, WhatsappAccount,
+  LeadStatusDef, ReservationExpense, WhatsappAccount,
 } from '../types';
 
 export const keys = {
@@ -28,6 +28,7 @@ export const keys = {
   leadMessages: (leadId: string) => ['leadMessages', leadId] as const,
   leadStatusHistory: (leadId: string) => ['leadStatusHistory', leadId] as const,
   leadStatuses: (businessId: string) => ['leadStatuses', businessId] as const,
+  reservationExpenses: (businessId: string) => ['reservationExpenses', businessId] as const,
   whatsappAccount: (businessId: string) => ['whatsappAccount', businessId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
@@ -139,6 +140,32 @@ export function useLeadMessages(leadId: string | undefined) {
  * değişiyor; uzun bir staleTime ile her ekran değişiminde yeniden
  * çekilmesi önleniyor.
  */
+/** Düğün içi giderler. İşletme genelinde okunur, ekranda rezervasyona süzülür. */
+export function useReservationExpenses() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.reservationExpenses(businessId),
+    queryFn: () => repo.listReservationExpenses(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveReservationExpense() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (expense: ReservationExpense) => repo.saveReservationExpense(expense),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteReservationExpense() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteReservationExpense(id),
+    onSuccess: invalidate,
+  });
+}
+
 export function useLeadStatuses() {
   const businessId = useActiveBusinessId();
   return useQuery({
@@ -458,6 +485,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: ['leadMessages'] });
     qc.invalidateQueries({ queryKey: ['leadStatusHistory'] });
     qc.invalidateQueries({ queryKey: keys.leadStatuses(businessId) });
+    qc.invalidateQueries({ queryKey: keys.reservationExpenses(businessId) });
     qc.invalidateQueries({ queryKey: keys.whatsappAccount(businessId) });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
     qc.invalidateQueries({ queryKey: keys.colors(businessId) });

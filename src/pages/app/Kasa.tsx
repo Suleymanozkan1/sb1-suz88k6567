@@ -6,19 +6,32 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
-  useAddCashFlow, useCashFlow, useDeleteCashFlow, useReservationsWithBalances,
+  useAddCashFlow, useCashFlow, useDeleteCashFlow, useReservationExpenses,
+  useReservationsWithBalances,
 } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, todayIso } from '../../lib/format';
-import { downloadCsv, reservationIncome, toCsv, withinRange } from '../../lib/reports';
+import { contractParties, downloadCsv, reservationIncome, toCsv, withinRange } from '../../lib/reports';
 import type { ReservationIncomeRow } from '../../lib/reports';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../data/constants';
 import { IconDownload, IconPlus, IconTrash, IconWallet } from '../../components/Icons';
 import StatCard from '../../components/StatCard';
 import KasaDagilimKarti from '../../components/KasaDagilimKarti';
 import { kasaDagilimi, kasaHareketleri } from '../../lib/kasa';
+import { giderKasaSatirlari } from '../../lib/dugunGideri';
+import type { GiderSatiri } from '../../lib/dugunGideri';
 import { PAYMENT_METHODS } from '../../data/constants';
 import type { CashFlowEntry, CashFlowKind, PaymentMethod } from '../../types';
+
+/**
+ * Satırın nereden geldiği. Elle girilen silinebilir, türetilenler
+ * silinemez -- düzeltme kaynağında yapılır.
+ */
+const KAYNAK_ETIKETI: Record<'elle' | 'rezervasyon' | 'dugunGideri', string> = {
+  elle: 'Elle girilen',
+  rezervasyon: 'Rezervasyon',
+  dugunGideri: 'Düğün gideri',
+};
 
 /**
  * Kasa tablosunun tek satırı. `kaynak` alanı satırın nereden geldiğini
@@ -35,6 +48,11 @@ type KasaSatiri =
       id: string; date: string; kind: CashFlowKind; category: string;
       description: string; amount: number; method?: PaymentMethod;
       kaynak: 'rezervasyon'; row: ReservationIncomeRow;
+    }
+  | {
+      id: string; date: string; kind: CashFlowKind; category: string;
+      description: string; amount: number; method?: PaymentMethod;
+      kaynak: 'dugunGideri'; gider: GiderSatiri;
     };
 
 export default function Kasa() {
@@ -42,6 +60,7 @@ export default function Kasa() {
   const businessId = user?.activeBusinessId ?? '';
   const { data: cashData, isLoading, error: loadError } = useCashFlow();
   const { reservations, payments } = useReservationsWithBalances();
+  const { data: dugunGiderleri = [] } = useReservationExpenses();
   const addMutation = useAddCashFlow();
   const deleteMutation = useDeleteCashFlow();
   const [kindFilter, setKindFilter] = useState('');
@@ -78,6 +97,16 @@ export default function Kasa() {
     [reservations, payments],
   );
 
+  /*
+    Düğün içi giderler de türetilmiş satır: cash_flow tablosuna
+    YAZILMIYOR. Yazılsaydı gider düzeltildiğinde ya da silindiğinde kasa
+    rezervasyondan kopar ve aynı para iki yerde farklı görünürdü.
+  */
+  const giderSatirlari = useMemo(
+    () => giderKasaSatirlari(dugunGiderleri, reservations, contractParties),
+    [dugunGiderleri, reservations],
+  );
+
   const birlesik: KasaSatiri[] = useMemo(() => [
     ...entries.map((e) => ({
       id: e.id,
@@ -103,7 +132,17 @@ export default function Kasa() {
       kaynak: 'rezervasyon' as const,
       row: r,
     })),
-  ], [entries, rezervasyonSatirlari]);
+    ...giderSatirlari.map((g) => ({
+      id: g.id,
+      date: g.date,
+      kind: 'Gider' as CashFlowKind,
+      category: g.category,
+      description: `${g.contractNo} · ${g.parties} · ${g.kind}`,
+      amount: g.amount,
+      kaynak: 'dugunGideri' as const,
+      gider: g,
+    })),
+  ], [entries, rezervasyonSatirlari, giderSatirlari]);
 
   /*
     Kasa dağılımı SÜZGEÇTEN GEÇMİŞ satırlara değil, tüm kayıtlara bakıyor:
@@ -187,12 +226,12 @@ export default function Kasa() {
       ['Tarih', 'Tür', 'Kategori', 'Sözleşme No', 'Taraflar', 'Açıklama', 'Tutar', 'Ödeme tipi', 'Kaynak'],
       filtered.map((e) => [
         formatDate(e.date), e.kind, e.category,
-        e.kaynak === 'rezervasyon' ? e.row.contractNo : '',
-        e.kaynak === 'rezervasyon' ? e.row.parties : '',
+        e.kaynak === 'rezervasyon' ? e.row.contractNo : e.kaynak === 'dugunGideri' ? e.gider.contractNo : '',
+        e.kaynak === 'rezervasyon' ? e.row.parties : e.kaynak === 'dugunGideri' ? e.gider.parties : '',
         e.description,
         e.amount,
         e.method ?? '',
-        e.kaynak === 'rezervasyon' ? 'Rezervasyon' : 'Elle girilen',
+        KAYNAK_ETIKETI[e.kaynak],
       ]),
     );
     downloadCsv(`gelir-gider-${new Date().toISOString().slice(0, 10)}.csv`, csv);
@@ -341,6 +380,11 @@ export default function Kasa() {
                         {' · '}{e.row.parties}
                         {e.row.method ? ` · ${e.row.method}` : ''}
                       </Link>
+                    ) : e.kaynak === 'dugunGideri' ? (
+                      <Link to={`/panel/rezervasyonlar/${e.gider.reservationId}`} className="hover:text-accent-ink">
+                        <span className="font-mono text-brand">{e.gider.contractNo}</span>
+                        {' · '}{e.gider.parties}{' · '}{e.gider.kind}
+                      </Link>
                     ) : (e.description || '-')}
                   </td>
                   <td className={`px-4 py-3 text-right font-medium ${e.kind === 'Gelir' ? 'text-[#15803d]' : 'text-[#b91c1c]'}`}>
@@ -351,9 +395,10 @@ export default function Kasa() {
                     {e.method ?? <span className="text-xs">Belirtilmemiş</span>}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {e.kaynak === 'rezervasyon' ? (
-                      <span className="rounded-full bg-surface px-2 py-1 text-[11px] text-brand-muted" title="Bu satır rezervasyondan gelir; düzeltme rezervasyon ekranından yapılır.">
-                        Rezervasyon
+                    {e.kaynak !== 'elle' ? (
+                      <span className="rounded-full bg-surface px-2 py-1 text-[11px] text-brand-muted"
+                        title="Bu satır rezervasyondan türer; düzeltme rezervasyon ekranından yapılır.">
+                        {KAYNAK_ETIKETI[e.kaynak]}
                       </span>
                     ) : can('kasa.duzenle') && (
                       <button type="button" onClick={() => setToDelete(e.entry)} aria-label="Kaydı sil" className="rounded p-1 text-brand-muted hover:text-danger">

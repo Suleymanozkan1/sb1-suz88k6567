@@ -7,7 +7,7 @@
  */
 import type { HatirlatmaKurali, Sablon } from '../sablon';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus,   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus,   EnqueueResult, MessageCategory, Payment, Permission, Reservation, ReservationExpense, SmsConsent,
   Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
   EventTask, Vendor, ReservationVendor,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
@@ -113,6 +113,11 @@ export interface Repository {
   listPayments(businessId: string): Promise<Payment[]>;
   addPayment(payment: Payment): Promise<void>;
   deletePayment(id: string): Promise<void>;
+
+  /* -- düğün içi giderler ---------------------------------------------- */
+  listReservationExpenses(businessId: string): Promise<ReservationExpense[]>;
+  saveReservationExpense(expense: ReservationExpense): Promise<void>;
+  deleteReservationExpense(id: string): Promise<void>;
 
   /* -- kasa ---------------------------------------------------------- */
   listCashFlow(businessId: string): Promise<CashFlowEntry[]>;

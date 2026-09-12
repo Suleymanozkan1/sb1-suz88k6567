@@ -7,7 +7,7 @@ import { useBusinesses, useHalls, useMenus, useReservationsWithBalances } from '
 import { QueryBoundary } from '../../components/QueryState';
 import {
   balanceReport, channelReport, downloadCsv, monthReport, programReport,
-  slotReport, summarize, toCsv, withinRange,
+  slotReport, summarize, toCsv, withinRange, type BalanceRow,
 } from '../../lib/reports';
 import { addDays, formatDate, formatMoney, formatNumber, formatPhone, todayIso } from '../../lib/format';
 import { buildProgram, programIsEmpty } from '../../lib/program';
@@ -24,7 +24,9 @@ const TABS: { key: Tab; label: string }[] = [
   // ayrı raporu anlatır olmuştu.
   { key: 'program', label: 'Organizasyon bazlı rapor' },
   { key: 'ay', label: 'Ay bazlı rapor' },
-  { key: 'bakiye', label: 'Alacak bakiyesi' },
+  // Şartnamedeki adı: sözleşme yapıldıktan sonra hangi paranın ne zaman
+  // geleceğini gösteren ekran.
+  { key: 'bakiye', label: 'Gelecek Kaporalar ve Ödemeler' },
   { key: 'seans', label: 'Gündüz / Gece' },
   { key: 'kanal', label: 'Ulaşım kanalı' },
 ];
@@ -65,6 +67,12 @@ export default function Raporlar() {
   const slots = useMemo(() => slotReport(scoped, balance), [scoped, balance]);
   const channels = useMemo(() => channelReport(scoped, balance), [scoped, balance]);
 
+  // Günü geçmiş alacaklar ayrıca sayılıyor: listenin başında durmaları
+  // yetmez, kaç tane ve ne kadar olduğu tek bakışta görünmeli.
+  const geciken = useMemo(() => balances.filter((b) => b.overdue), [balances]);
+  const gecikenSayisi = geciken.length;
+  const gecikenTutar = geciken.reduce((t, b) => t + b.remaining, 0);
+
   const aktifIsletmeAdi =
     businesses.find((b) => b.id === user?.activeBusinessId)?.name ?? businesses[0]?.name ?? 'Program';
 
@@ -97,10 +105,16 @@ export default function Raporlar() {
       );
     } else if (tab === 'bakiye') {
       csv = toCsv(
-        ['Kod', 'Tarih', 'Müşteri', 'Telefon', 'Toplam', 'Ödenen', 'Kalan'],
+        ['Kod', 'Tarih', 'Durum', 'Müşteri', 'Telefon', 'Toplam', 'Ödenen',
+          'Son tahsilat tarihi', 'Son tahsilat tutarı', 'Son tahsilat tipi', 'Kalan'],
         balances.map((b) => [
-          b.reservation.code, formatDate(b.reservation.date), b.reservation.customerName,
-          formatPhone(b.reservation.customerPhone), b.reservation.totalAmount, b.paid, b.remaining,
+          b.reservation.code, formatDate(b.reservation.date), vadeMetni(b),
+          b.reservation.customerName, formatPhone(b.reservation.customerPhone),
+          b.reservation.totalAmount, b.paid,
+          b.lastPayment ? formatDate(b.lastPayment.date) : '',
+          b.lastPayment ? b.lastPayment.amount : '',
+          b.lastPayment?.method ?? '',
+          b.remaining,
         ]),
       );
     } else if (tab === 'kanal') {
@@ -293,44 +307,70 @@ export default function Raporlar() {
           balances.length === 0 ? (
             <p className="py-10 text-center text-sm text-brand-muted">Kalan alacağı olan kayıt bulunmuyor.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead>
-                  <tr className="border-b border-line bg-surface text-left text-xs uppercase text-brand-muted">
-                    <th className="px-3 py-2.5 font-medium">Kod</th>
-                    <th className="px-3 py-2.5 font-medium">Tarih</th>
-                    <th className="px-3 py-2.5 font-medium">Müşteri</th>
-                    <th className="px-3 py-2.5 font-medium">Telefon</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Toplam</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Ödenen</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Kalan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {balances.map((b) => (
-                    <tr key={b.reservation.id} className="border-b border-line/60 last:border-0">
-                      <td className="px-3 py-2.5 font-mono text-xs text-brand-muted">{b.reservation.code}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-brand">{formatDate(b.reservation.date)}</td>
-                      <td className="px-3 py-2.5">
-                        <Link to={`/panel/rezervasyonlar/${b.reservation.id}`}>{b.reservation.customerName}</Link>
-                      </td>
-                      <td className="px-3 py-2.5 text-brand-muted">{formatPhone(b.reservation.customerPhone)}</td>
-                      <td className="px-3 py-2.5 text-right text-brand">{formatMoney(b.reservation.totalAmount, currency)}</td>
-                      <td className="px-3 py-2.5 text-right text-[#15803d]">{formatMoney(b.paid, currency)}</td>
-                      <td className="px-3 py-2.5 text-right font-medium text-[#b91c1c]">{formatMoney(b.remaining, currency)}</td>
+            <>
+              {gecikenSayisi > 0 && (
+                <Alert kind="warning" className="mb-4">
+                  {gecikenSayisi} kaydın organizasyon günü geçtiği hâlde bakiyesi kapanmadı.
+                  Toplam {formatMoney(gecikenTutar, currency)} tahsil edilmedi.
+                </Alert>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] text-sm">
+                  <thead>
+                    <tr className="border-b border-line bg-surface text-left text-xs uppercase text-brand-muted">
+                      <th className="px-3 py-2.5 font-medium">Kod</th>
+                      <th className="px-3 py-2.5 font-medium">Tarih</th>
+                      <th className="px-3 py-2.5 font-medium">Durum</th>
+                      <th className="px-3 py-2.5 font-medium">Müşteri</th>
+                      <th className="px-3 py-2.5 font-medium">Telefon</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Toplam</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Ödenen</th>
+                      <th className="px-3 py-2.5 font-medium">Son tahsilat</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Kalan</th>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-line font-semibold">
-                    <td className="px-3 py-2.5 text-brand" colSpan={6}>Toplam kalan alacak</td>
-                    <td className="px-3 py-2.5 text-right text-[#b91c1c]">
-                      {formatMoney(balances.reduce((s, b) => s + b.remaining, 0), currency)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {balances.map((b) => (
+                      <tr key={b.reservation.id} className="border-b border-line/60 last:border-0">
+                        <td className="px-3 py-2.5 font-mono text-xs text-brand-muted">{b.reservation.code}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-brand">{formatDate(b.reservation.date)}</td>
+                        <td className={`px-3 py-2.5 whitespace-nowrap text-xs ${b.overdue ? 'font-medium text-[#b91c1c]' : 'text-brand-muted'}`}>
+                          {vadeMetni(b)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Link to={`/panel/rezervasyonlar/${b.reservation.id}`}>{b.reservation.customerName}</Link>
+                        </td>
+                        <td className="px-3 py-2.5 text-brand-muted">{formatPhone(b.reservation.customerPhone)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand">{formatMoney(b.reservation.totalAmount, currency)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#15803d]">{formatMoney(b.paid, currency)}</td>
+                        {/*
+                          Hesabın tabanı: "en son ne zaman, ne kadar aldık".
+                          Tutar tek başına yeterli değil; tarihi olmadan
+                          alacağın ne kadar beklediği görünmüyordu.
+                        */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-xs text-brand-muted">
+                          {b.lastPayment ? (
+                            <>
+                              <span className="block text-brand">{formatMoney(b.lastPayment.amount, currency)}</span>
+                              {formatDate(b.lastPayment.date)} · {b.lastPayment.method ?? b.lastPayment.source}
+                            </>
+                          ) : 'Tahsilat yok'}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-medium text-[#b91c1c]">{formatMoney(b.remaining, currency)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-line font-semibold">
+                      <td className="px-3 py-2.5 text-brand" colSpan={8}>Toplam kalan alacak</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#b91c1c]">
+                        {formatMoney(balances.reduce((s, b) => s + b.remaining, 0), currency)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>
           )
         ) : tab === 'seans' ? (
           <Table
@@ -398,4 +438,14 @@ function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
       </table>
     </div>
   );
+}
+
+/**
+ * Alacağın vadesi organizasyon günüdür: o güne kadar tahsil edilmesi
+ * beklenir. Gün sayısı ham olarak değil, okunacak biçimde yazılıyor.
+ */
+function vadeMetni(b: BalanceRow): string {
+  if (b.daysLeft < 0) return `${Math.abs(b.daysLeft)} gün gecikti`;
+  if (b.daysLeft === 0) return 'Bugün';
+  return `${b.daysLeft} gün kaldı`;
 }

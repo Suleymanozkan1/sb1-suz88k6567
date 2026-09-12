@@ -7,6 +7,7 @@ import MasaDuzeni from '../../components/MasaDuzeni';
 import IsEmri from '../../components/IsEmri';
 import TedarikciAtama from '../../components/TedarikciAtama';
 import HatirlatmaGonder from '../../components/HatirlatmaGonder';
+import DugunGiderleri from '../../components/DugunGiderleri';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
@@ -286,6 +287,17 @@ export default function RezervasyonDetay() {
           </div>
         )}
       </section>
+
+      {/*
+        Düğün içi giderler tahsilatların hemen altında: ikisi birlikte
+        "elime ne geçecek" sorusunun cevabını veriyor.
+      */}
+      <DugunGiderleri
+        reservation={reservation}
+        payments={payments}
+        kalanBakiye={remaining}
+        duzenlenebilir={can('kasa.duzenle')}
+      />
 
       <HatirlatmaGonder reservation={reservation} payments={payments} />
 

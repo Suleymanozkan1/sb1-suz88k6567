@@ -16,7 +16,7 @@ import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult,
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
-  Payment, Permission, Reservation, SmsConsent, SmsLogEntry, SmsQueueEntry,
+  Payment, Permission, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
 } from '../../types';
@@ -321,6 +321,20 @@ function toPayment(row: Row): Payment {
     method: (row.method as Payment['method']) ?? 'Nakit',
     note: (row.note as string) ?? undefined,
     createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toReservationExpense(row: Row): ReservationExpense {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    reservationId: String(row.reservation_id),
+    kind: (row.kind as string) ?? '',
+    unitCount: Number(row.unit_count ?? 0),
+    unitPrice: Number(row.unit_price ?? 0),
+    note: (row.note as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
+    updatedAt: (row.updated_at as string) ?? '',
   };
 }
 
@@ -751,6 +765,27 @@ export const supabaseRepo: Repository = {
       .select('*').eq('business_id', businessId).order('date', { ascending: false });
     if (error) fail('Kasa kayıtları alınamadı.', error);
     return (data ?? []).map(toCashFlow);
+  },
+
+  async listReservationExpenses(businessId) {
+    const { data, error } = await db().from('reservation_expenses')
+      .select('*').eq('business_id', businessId).order('created_at', { ascending: false });
+    if (error) fail('Düğün içi giderler alınamadı.', error);
+    return (data ?? []).map(toReservationExpense);
+  },
+
+  async saveReservationExpense(expense) {
+    const { error } = await db().from('reservation_expenses').upsert({
+      ...kimlikAlani(expense.id), business_id: expense.businessId,
+      reservation_id: expense.reservationId, kind: expense.kind,
+      unit_count: expense.unitCount, unit_price: expense.unitPrice, note: expense.note,
+    });
+    if (error) fail('Gider kaydedilemedi.', error);
+  },
+
+  async deleteReservationExpense(id) {
+    const { error } = await db().from('reservation_expenses').delete().eq('id', id);
+    if (error) fail('Gider silinemedi.', error);
   },
 
   async addCashFlow(entry) {
