@@ -19,7 +19,7 @@ Kurulacak dört parça, hepsi ücretsiz:
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y postgresql nginx curl git ufw unattended-upgrades
+sudo apt install -y postgresql nginx curl git rsync ufw unattended-upgrades
 # Güvenlik güncellemeleri kendiliğinden kurulsun
 sudo dpkg-reconfigure --priority=low unattended-upgrades
 ```
@@ -306,6 +306,8 @@ sudo -u postgres pg_dump -Fc sahra > sahra-$(date +%F).dump
 
 ## 9. Güncelleme
 
+Elle:
+
 ```bash
 cd /opt/sahra
 git pull
@@ -314,6 +316,111 @@ npm ci
 npm run build
 sudo systemctl restart sahra
 ```
+
+Otomatik dağıtım kuruluysa (bir sonraki bölüm) bu adımlar `main` dalına
+her itmede kendiliğinden çalışır; **göçler hariç.**
+
+## 10. GitHub'dan otomatik dağıtım (isteğe bağlı)
+
+`.github/workflows/dagit.yml`, `main` dalına her itmede projeyi derleyip
+testleri çalıştırıyor ve sunucuya gönderip servisi yeniden başlatıyor.
+GitHub Actions bu kullanım için ücretsiz: herkese açık depolarda
+sınırsız, özel depolarda aylık ücretsiz dakika kotasının içinde. **Ek bir
+servise ya da abonelige gerek yok.**
+
+> **Göçler bu akışta çalışmaz.** Bilinçli bir karar: göçler geri
+> alınamaz olabiliyor (`0024` çelik kasa defterini düşürür) ve doğru sıra
+> önce yedek, sonra göç. Yeni bir göç dosyası geldiğinde iş akışı bunu
+> özetinde bildiriyor ve uygulanacak komutları yazıyor; komutları siz
+> çalıştırıyorsunuz.
+
+### 10.1 Sunucuda dağıtım kullanıcısı
+
+`root` KULLANILMIYOR. Anahtarı ele geçiren biri sunucunun tamamına değil,
+yalnızca uygulama dizinine ve tek bir servis komutuna ulaşsın.
+
+```bash
+sudo adduser --disabled-password --gecos "" dagitim
+sudo mkdir -p /home/dagitim/.ssh && sudo chmod 700 /home/dagitim/.ssh
+
+# Uygulama dizinini bu kullanıcı yazabilsin
+sudo chown -R dagitim:www-data /opt/sahra
+sudo chmod -R g+rX /opt/sahra
+```
+
+> `rsync` sunucuda kurulu olmalı (1. bölümdeki apt satırında var). Kurulu
+> değilse dağıtım "rsync: command not found" ile düşer.
+
+`/etc/sahra.env` dosyasına **dokunulmuyor**: sırlar sunucuda kalıyor ve
+dağıtım kullanıcısının onu okumasına da gerek yok.
+
+Servisi yeniden başlatma yetkisi **yalnızca o komut için** veriliyor:
+
+```bash
+echo 'dagitim ALL=(root) NOPASSWD: /usr/bin/systemctl restart sahra'   | sudo tee /etc/sudoers.d/dagitim
+sudo chmod 440 /etc/sudoers.d/dagitim
+```
+
+### 10.2 Anahtar çifti
+
+Anahtar **kendi bilgisayarınızda** üretilir; özel anahtar sunucuya hiç
+gitmez.
+
+```bash
+ssh-keygen -t ed25519 -C "sahra-dagitim" -f ~/.ssh/sahra_dagitim -N ""
+```
+
+Açık anahtarı sunucuya:
+
+```bash
+ssh-copy-id -i ~/.ssh/sahra_dagitim.pub dagitim@sahratakip.com
+```
+
+Özel anahtarın **tamamını** (`-----BEGIN` satırından `-----END` satırına
+kadar) GitHub'a sır olarak ekleyin:
+
+**Settings → Secrets and variables → Actions → New repository secret**
+
+| Sır | Değer |
+|---|---|
+| `SUNUCU_SSH_ANAHTARI` | `cat ~/.ssh/sahra_dagitim` çıktısının tamamı |
+| `SUNUCU_HOST` | `sahratakip.com` ya da IP |
+| `SUNUCU_KULLANICI` | `dagitim` |
+| `SUNUCU_PORT` | SSH portu; 22 ise boş bırakın |
+| `SUNUCU_DIZIN` | `/opt/sahra` ise boş bırakın |
+
+> Özel anahtarı e-postayla, mesajla ya da bir dosya paylaşım servisiyle
+> göndermeyin. GitHub sır alanına yapıştırıldıktan sonra kimse (siz
+> dahil) bir daha okuyamaz; kaybederseniz yenisini üretip açık anahtarı
+> değiştirirsiniz.
+
+### 10.3 İlk çalıştırma
+
+Sırları girdikten sonra **Actions → Dağıt → Run workflow** ile elle bir
+kez çalıştırın. Akış şunları yapar:
+
+1. `npm ci`, tip denetimi, lint ve birim testleri
+2. `VITE_SUNUCU_MODU=1` ile derleme (demo kipinde açılmasın diye)
+3. `dist/` ve `sunucu-dist/` dizinlerini `rsync` ile gönderme
+4. Sunucuda `npm ci --omit=dev` ve `systemctl restart sahra`
+5. `/api/health` üzerinden sağlık denetimi — servis 30 saniyede cevap
+   vermezse akış kırmızı olur ve `systemctl status` çıktısını basar
+6. Yeni göç varsa uyarı ve uygulanacak komutlar
+
+Testler düşerse dağıtım **yapılmaz**; bozuk sürüm sunucuya çıkmaz.
+
+### 10.4 Geri alma
+
+Dağıtım bozuk bir sürüm çıkardıysa önceki işleme dönüp yeniden itmek
+yeterli:
+
+```bash
+git revert <bozuk-commit>
+git push
+```
+
+Veritabanı göçleri otomatik uygulanmadığı için geri alma yalnızca kodu
+etkiler; veri olduğu gibi kalır.
 
 ## Sorun giderme
 
@@ -325,6 +432,10 @@ sudo systemctl restart sahra
 | `/api/*` 404 veriyor | `sahra` servisi çalışmıyor (`systemctl status sahra`) |
 | Giriş 500 veriyor | `/etc/sahra.env` okunamıyor ya da `JWT_SECRET` kısa (< 32) |
 | Yedek alınmıyor | `YEDEK_DIZINI` yok ya da `www-data` yazamıyor |
+| Dağıtım "Permission denied (publickey)" | Açık anahtar `dagitim` kullanıcısına eklenmemiş ya da `SUNUCU_KULLANICI` yanlış |
+| Dağıtım `systemctl restart` adımında düşüyor | `/etc/sudoers.d/dagitim` yok ya da komut yolu farklı (`which systemctl`) |
+| Dağıtım geçti ama site eski | Tarayıcı önbelleği; sert yenileyin. Sürmüyorsa `systemctl status sahra` |
+| Dağıtım sonrası "permission denied for table ..." | Yeni göç uygulanmamış; iş akışı özetindeki komutları çalıştırın |
 
 Günlükler:
 

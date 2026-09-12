@@ -408,6 +408,21 @@ npm run build     # site + sunucu derlenir
 npm run baslat    # sunucuyu çalıştırır (üretimde systemd yapar)
 ```
 
+### GitHub'dan otomatik dağıtım
+
+`.github/workflows/dagit.yml`, `main` dalına her itmede derleyip test
+ediyor, sunucuya `rsync` ile gönderiyor ve servisi yeniden başlatıyor.
+Ek bir servise ya da aboneliğe gerek yok; GitHub Actions bu kullanım için
+ücretsiz. Testler düşerse dağıtım yapılmaz.
+
+**Veritabanı göçleri bu akışta çalışmaz.** Göçler geri alınamaz olabiliyor
+(`0024` çelik kasa defterini düşürür) ve doğru sıra önce yedek, sonra
+göç. Yeni bir göç geldiğinde iş akışı özetinde uyarıyor ve çalıştırılacak
+komutları yazıyor.
+
+Sunucudaki dağıtım kullanıcısı, SSH anahtarı ve depo sırları:
+[`docs/KURULUM.md` § 10](docs/KURULUM.md).
+
 Ortam değişkenleri iki yere girilir:
 
 | Tür | Nasıl |
