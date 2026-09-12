@@ -17,3 +17,14 @@ playwright-report
 # Teslim paketleri sürüm takibinde; dağıtımda işleri yok.
 *.pptx
 *.pdf
+
+# Yerelde üretilen derleme çıktıları; Vercel kendi derlemesini yapar.
+# Yüklenirlerse eski bir çıktı yeni derlemenin üzerine binebilir.
+dist
+sunucu-dist
+
+# NOT: `api/` ve `sunucu/` BİLEREK dışarıda bırakılmıyor. `vercel.json`
+# içindeki `builds` alanı Vercel'in sıfır yapılandırma algılamasını
+# kapattığı için kökteki `api/` sunucusuz işlev sayılmıyor; ayrıca
+# derleme adımındaki `tsc -b` bu iki klasörü tip denetiminden geçiriyor
+# ve dosyalar yüklenmezse derleme düşerdi.

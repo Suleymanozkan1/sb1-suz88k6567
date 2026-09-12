@@ -385,6 +385,33 @@ Ortam değişkenleri iki yere girilir:
 Sunucu sırları `process.env` üzerinden okunur ve **derlenmiş tarayıcı
 paketine hiç girmez**; bir test bunu her derlemede doğruluyor.
 
+### Vercel'e demo dağıtımı
+
+Depoya bağlı bir Vercel projesi **yalnızca demo içindir**. Vercel
+derlenmiş statik siteyi sunar; sunucu tarafı orada çalışmaz.
+
+| | Vercel (demo) | Kendi sunucunuz (gerçek) |
+|---|---|---|
+| Veriler nerede | Yalnızca **tarayıcıda** (localStorage) | PostgreSQL |
+| Kim görür | Yalnızca o tarayıcı | İşletmenin tüm kullanıcıları |
+| Tarayıcı verisi silinirse | **Kayıtlar gider** | Etkilenmez |
+| SMS, İYS, e-fatura, WhatsApp | Çalışmaz | Çalışır |
+| Giriş | Örnek hesapla, kilit ve hız sınırı yok | Sunucu tarafında korumalı |
+
+> Demo, sistemi göstermek ve denetlemek içindir. **Gerçek müşteri
+> kaydı girilmemelidir**: veriler tarayıcıdan silindiğinde geri
+> getirilemez ve yedeklenmez.
+
+`vercel.json` içindeki `builds` alanı Vercel'in sıfır yapılandırma
+algılamasını kapatır. Kapatılmasaydı Vercel kökteki `api/` klasörünü
+kendi sunucusuz işlev kuralına göre yorumlar ve iki sorun çıkardı:
+derleme, projenin kendi TypeScript ayarı yerine Vercel'inkiyle yapılıp
+düşerdi; ve `api/*.test.ts` dosyaları herkese açık uç noktalar olarak
+yayına çıkabilirdi. `.vercelignore` test dosyalarını ayrıca eliyor.
+
+`vercel-build` betiği yalnızca statik siteyi derler; sunucu derlemesi
+Vercel'e girmez.
+
 ### PostgREST neden dışarı açılmıyor
 
 Veritabanı arayüzü yalnızca `127.0.0.1` üzerinde dinliyor ve isteklere

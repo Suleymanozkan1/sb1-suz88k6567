@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "build:sunucu": "tsc -p tsconfig.sunucu.json && node -e \"require('fs').copyFileSync('sunucu/derleme-paketi.json','sunucu-dist/package.json')\"",
-    "baslat": "node sunucu-dist/sunucu/baslat.js"
+    "baslat": "node sunucu-dist/sunucu/baslat.js",
+    "vercel-build": "tsc -b && vite build"
   },
   "dependencies": {
     "@sentry/react": "^10.73.0",
