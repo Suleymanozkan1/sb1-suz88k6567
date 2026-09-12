@@ -30,13 +30,6 @@ export default function Takvim() {
   const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
   const today = todayIso();
 
-  const monthReservations = useMemo(() => {
-    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
-    return reservations
-      .filter((r) => r.date.startsWith(prefix) && r.status !== 'İptal')
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [reservations, year, month]);
-
   function shift(delta: number) {
     const d = new Date(year, month + delta, 1);
     setYear(d.getFullYear());
@@ -57,8 +50,14 @@ export default function Takvim() {
         </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section className="card p-4 lg:col-span-2">
+      {/*
+        Sağdaki "ayın kayıtları" listesi kaldırıldı (madde 7): takvimin
+        kendisi zaten ayın tamamını gösteriyordu ve aynı kayıtlar yan
+        yana iki kez duruyordu. Panel yalnızca BİR GÜN seçiliyken
+        açılıyor; seçim yokken takvim tam genişlikte.
+      */}
+      <div className={`grid gap-6 ${selected ? 'lg:grid-cols-3' : ''}`}>
+        <section className={`card p-4 ${selected ? 'lg:col-span-2' : ''}`}>
           <div className="mb-4 flex items-center justify-between">
             <button type="button" onClick={() => shift(-1)} aria-label="Önceki ay" className="rounded border border-line p-2 text-brand hover:border-accent-ink hover:text-accent-ink">
               <IconChevronLeft size={18} />
@@ -140,17 +139,24 @@ export default function Takvim() {
           </div>
         </section>
 
+        {selected && (
         <section className="card p-5">
-          <h2 className="mb-4 font-heading text-lg font-bold text-brand">
-            {selected ? `${Number(selected.slice(-2))} ${MONTH_NAMES[month]} kayıtları` : `${MONTH_NAMES[month]} ayı kayıtları`}
-          </h2>
-          {(selected ? selectedItems : monthReservations).length === 0 ? (
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="font-heading text-lg font-bold text-brand">
+              {Number(selected.slice(-2))} {MONTH_NAMES[month]} kayıtları
+            </h2>
+            <button type="button" className="text-xs text-brand-muted underline hover:text-brand"
+              onClick={() => setSelected(null)}>
+              Kapat
+            </button>
+          </div>
+          {selectedItems.length === 0 ? (
             <p className="py-6 text-center text-sm text-brand-muted">
-              {selected ? 'Bugüne ait rezervasyon bulunmuyor.' : 'Bu ay için rezervasyon bulunmuyor.'}
+              Bu güne ait rezervasyon bulunmuyor.
             </p>
           ) : (
             <ul className="space-y-3">
-              {(selected ? selectedItems : monthReservations).map((r) => {
+              {selectedItems.map((r) => {
                 const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
                 return (
                   <li key={r.id} className="rounded-md border border-line p-3">
@@ -176,6 +182,7 @@ export default function Takvim() {
             </ul>
           )}
         </section>
+        )}
       </div>
     </QueryBoundary>
   );

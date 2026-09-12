@@ -35,6 +35,11 @@ export function contractSequence(code: string, year: number): number | null {
  * geriye çekmemeli. Silinmiş kayıtlar yüzünden numara geri sarmasın diye
  * çağıran taraf ayrıca kendi sayacını tutabilir; bu fonksiyon yalnızca
  * "kullanılmış en büyük + 1" değerini verir.
+ *
+ * YIL, ORGANİZASYONUN YAPILACAĞI YILDIR (madde 13), sözleşmenin açıldığı
+ * yıl değil: 2026'da satılan bir 2027 düğünü 2027-1 olur. Çağıran taraf
+ * bu yüzden rezervasyonun tarihini geçiriyor; varsayılan yalnızca tarihi
+ * olmayan çağrılar için.
  */
 export function nextContractCode(existingCodes: readonly string[], year = new Date().getFullYear()): string {
   let enBuyuk = 0;

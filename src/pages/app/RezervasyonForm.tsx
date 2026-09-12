@@ -12,7 +12,7 @@ import {
 import { kazanimDurumu } from '../../lib/lead';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, todayIso } from '../../lib/format';
-import { LEAD_CHANNELS, ORGANIZATION_TYPES, ORG_TO_COLOR_KEY, SERVICE_OPTIONS } from '../../data/constants';
+import { LEAD_CHANNELS, ORGANIZATION_TYPES, ORG_TO_COLOR_KEY } from '../../data/constants';
 import type {
   LeadChannel, OrganizationType, Reservation, ReservationStatus, SessionSlot,
 } from '../../types';
@@ -389,11 +389,21 @@ export default function RezervasyonForm() {
               >
                 <option value="">Seçilmedi</option>
                 {LEAD_CHANNELS.map((k) => <option key={k} value={k}>{k}</option>)}
+                {/*
+                  Kaydın kanalı artık listede değilse (eski "Referans",
+                  "Düğün.com") yalnızca o kayıt için ekleniyor: yoksa
+                  kaydı açan kullanıcı, hiç dokunmadığı alanın
+                  kendiliğinden boşaldığını görürdü.
+                */}
+                {form.sourceChannel && !LEAD_CHANNELS.includes(form.sourceChannel) && (
+                  <option value={form.sourceChannel}>{form.sourceChannel} (eski)</option>
+                )}
               </select>
             </Field>
             <Field
               id="sourceDetail"
-              label={form.sourceChannel === 'Referans' ? 'Tavsiye eden (varsa)' : 'Kanal açıklaması'}
+              label={form.sourceChannel === 'Tavsiye' || form.sourceChannel === 'Referans'
+                ? 'Tavsiye eden (varsa)' : 'Kanal açıklaması'}
               error={errors.sourceDetail}
               hint={form.sourceChannel === 'Diğer' ? 'Diğer seçildiğinde bu alan zorunludur.' : undefined}
             >
@@ -401,7 +411,11 @@ export default function RezervasyonForm() {
                 id="sourceDetail"
                 className="field-input"
                 value={form.sourceDetail}
-                disabled={form.sourceChannel !== 'Referans' && form.sourceChannel !== 'Diğer'}
+                // "Referans" madde 8 ile "Tavsiye" oldu; eski kayıtlarda
+                // hâlâ geçtiği için ikisi de açık bırakılıyor.
+                disabled={form.sourceChannel !== 'Tavsiye'
+                  && form.sourceChannel !== 'Referans'
+                  && form.sourceChannel !== 'Diğer'}
                 placeholder={form.sourceChannel === 'Referans' ? 'Ayşe Yılmaz' : 'Tabela, fuar, tanıdık esnaf...'}
                 onChange={(e) => update('sourceDetail', e.target.value)}
                 aria-describedby={form.sourceChannel === 'Diğer' ? 'sourceDetail-hint' : undefined}
@@ -450,24 +464,16 @@ export default function RezervasyonForm() {
             </Field>
           </div>
 
-          <div className="mt-4">
-            <span className="field-label">Hizmetler</span>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {SERVICE_OPTIONS.map((s) => (
-                <label key={s} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-line text-accent-ink focus:ring-accent"
-                    checked={form.services.includes(s)}
-                    onChange={(e) =>
-                      update('services', e.target.checked ? [...form.services, s] : form.services.filter((x) => x !== s))
-                    }
-                  />
-                  {s}
-                </label>
-              ))}
-            </div>
-          </div>
+          {/*
+            "Extralar" (hizmet kutucukları) kaldırıldı (madde 8). Sabit bir
+            liste her salona uymuyordu ve seçilen kutucuk hiçbir tutara
+            dönüşmüyordu; hizmetler artık Ürün ve Hizmet ekranında fiyatıyla
+            tanımlanıp Düğün İçi Giderler'e satır olarak giriyor.
+
+            Alanın kendisi kaldırılmadı: eski sözleşmelerde yazılı olan
+            hizmetler çıktıda görünmeye devam ediyor. Silinseydi imzalanmış
+            bir sözleşmenin içeriği sistemden kaybolurdu.
+          */}
         </fieldset>
 
         <fieldset className="mb-8">

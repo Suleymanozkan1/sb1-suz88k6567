@@ -23,7 +23,15 @@ export type SessionSlot = 'Gündüz' | 'Gece';
  * Sabit bir liste: serbest metin "Instagram", "instagram", "İnstagram" diye
  * üç ayrı kanal üretip yıl sonu raporunu anlamsız kılardı.
  */
-export type LeadChannel = 'Instagram' | 'Düğün.com' | 'Google' | 'Referans' | 'Diğer';
+export type LeadChannel =
+  | 'Instagram' | 'Facebook' | 'WhatsApp' | 'Web Sitesi'
+  | 'Google' | 'Tavsiye' | 'Telefon' | 'Diğer'
+  /*
+    Artık listede olmayan eski değerler. Tipten atılsalardı, o kanalla
+    kaydedilmiş geçmiş rezervasyonlar okunamaz olur ve yıl sonu kanal
+    raporunda sessizce kaybolurlardı. Yeni kayıtta seçilemiyorlar.
+  */
+  | 'Düğün.com' | 'Referans';
 
 export type ReservationStatus = 'Ön Rezervasyon' | 'Kesin Rezervasyon' | 'Tamamlandı' | 'İptal';
 
@@ -731,3 +739,19 @@ export const ODEME_YER_TUTUCULARI: [string, string][] = [
   ['{kalan}', 'İşlem sonrası kalan alacak'],
   ['{kullanici}', 'İşlemi yapan kullanıcı'],
 ];
+
+/**
+ * Personelin yazarken kullandığı kısa hazır metin.
+ *
+ * Şablondan (message_templates) farkı: olaya bağlı değil, sayısı
+ * sınırsız ve yer tutucu gerektirmiyor. Şablon tablosu tür başına tek
+ * satır tuttuğu için "üç ayrı fiyat cümlesi" oraya sığmıyordu.
+ */
+export interface QuickReply {
+  id: string;
+  businessId: string;
+  /** Listede hangi metin olduğunu anlamak için; metnin ilk kelimeleri yetmiyordu. */
+  title: string;
+  body: string;
+  sortOrder: number;
+}

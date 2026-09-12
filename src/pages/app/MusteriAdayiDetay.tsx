@@ -6,7 +6,7 @@ import { QueryBoundary } from '../../components/QueryState';
 import { useAuth } from '../../context/AuthContext';
 import {
   useAddLeadMessage, useDeleteLead, useLead, useLeadMessages,
-  useHalls, useLeadStatusHistory, useLeadStatuses, useSaveLead, useStaff,
+  useHalls, useLeadStatusHistory, useLeadStatuses, useQuickReplies, useSaveLead, useStaff,
 } from '../../lib/queries';
 import { daysBetween, formatDate, formatMoney, formatPhone, todayIso } from '../../lib/format';
 import { errorMessage } from '../../lib/authHelpers';
@@ -34,6 +34,7 @@ export default function MusteriAdayiDetay() {
   const harita = durumHaritasi(durumlar);
   const { data: personel = [] } = useStaff();
   const { data: salonlar = [] } = useHalls();
+  const { data: hizliYanitlar = [] } = useQuickReplies();
   const kaydet = useSaveLead();
   const mesajEkle = useAddLeadMessage();
   const silMutation = useDeleteLead();
@@ -325,19 +326,40 @@ export default function MusteriAdayiDetay() {
               <h2 className="mb-3 font-heading text-lg font-bold text-brand">İletişim Geçmişi</h2>
 
               {duzenlenebilir && (
-                <div className="mb-4 flex gap-2">
-                  <label className="sr-only" htmlFor="lead-note">Görüşme notu</label>
-                  <input
-                    id="lead-note"
-                    className="field-input"
-                    placeholder="Görüşme notu ekle"
-                    value={not}
-                    onChange={(e) => setNot(e.target.value)}
-                  />
-                  <button type="button" className="btn-primary text-white hover:text-white"
-                    onClick={() => { void notEkle(); }} disabled={!not.trim()}>
-                    Ekle
-                  </button>
+                <div className="mb-4">
+                  <div className="flex gap-2">
+                    <label className="sr-only" htmlFor="lead-note">Görüşme notu</label>
+                    <input
+                      id="lead-note"
+                      className="field-input"
+                      placeholder="Görüşme notu ekle"
+                      value={not}
+                      onChange={(e) => setNot(e.target.value)}
+                    />
+                    <button type="button" className="btn-primary text-white hover:text-white"
+                      onClick={() => { void notEkle(); }} disabled={!not.trim()}>
+                      Ekle
+                    </button>
+                  </div>
+
+                  {/*
+                    Hızlı yanıtlar (madde 14). Metin kutuya EKLENİYOR,
+                    üzerine yazılmıyor: personel yarım yazdığı cümleyi
+                    kaybetmemeli.
+                  */}
+                  {hizliYanitlar.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {hizliYanitlar.map((y) => (
+                        <button
+                          key={y.id} type="button"
+                          className="rounded-full border border-line px-2.5 py-1 text-xs text-brand-muted hover:border-accent-ink hover:text-brand"
+                          onClick={() => setNot((m) => (m.trim() ? `${m.trim()} ${y.body}` : y.body))}
+                        >
+                          {y.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

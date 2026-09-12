@@ -13,7 +13,7 @@ import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
   EventTask, Hall, Menu, Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent,
-  PaymentEventKind, Reservation, ReservationExpense, ReservationVendor,
+  PaymentEventKind, QuickReply, Reservation, ReservationExpense, ReservationVendor,
   SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
   SmsQueueEntry, User,
@@ -57,6 +57,10 @@ function isletmeDurumlari(businessId: string): LeadStatusDef[] {
   return VARSAYILAN_LEAD_DURUMLARI.map((d) => ({
     ...d, id: `durum_${businessId}_${d.code}`, businessId,
   }));
+}
+
+function hizliYanitlar(): QuickReply[] {
+  return read<QuickReply[]>(KEYS.quickReplies, []);
 }
 
 function odemeOlaylariKaydi(): PaymentEvent[] {
@@ -168,6 +172,24 @@ const VARSAYILAN_SABLON: Record<
   etkinlik_gunu: {
     title: 'Etkinlik günü', kind: 'Hatırlatma', category: 'islem',
     body: 'Sayin {musteri}, bugun {seans} seansinda {salon} sizi bekliyor',
+  },
+  /*
+    Madde 14'teki yeni türler. Üçü de OLAYA bağlı, takvime değil: prova
+    randevusu alındığında, albüm hazır olduğunda gönderilir. Otomatik
+    kurala bağlanmamalarının sebebi bu -- tarihe bağlı bir gönderim,
+    hazır olmayan bir albümü "hazır" diye duyururdu.
+  */
+  prova: {
+    title: 'Prova', kind: 'Hatırlatma', category: 'islem',
+    body: 'Sayin {musteri}, {tarih} organizasyonunuz icin prova randevunuzu belirleyelim. Bizi arayabilirsiniz.',
+  },
+  foto_secim: {
+    title: 'Fotoğraf / video seçimi', kind: 'Bilgilendirme', category: 'islem',
+    body: 'Sayin {musteri}, dugun fotograf ve video seciminiz icin bizi bekliyoruz. Uygun gununuzu bildiriniz.',
+  },
+  foto_hazir: {
+    title: 'Fotoğraflar hazır', kind: 'Bilgilendirme', category: 'islem',
+    body: 'Sayin {musteri}, {tarih} organizasyonunuzun fotograf ve videolari hazir. Teslim icin bizi ariniz.',
   },
   tesekkur: {
     title: 'Teşekkür', kind: 'Bilgilendirme', category: 'ticari',
@@ -351,7 +373,13 @@ export const localRepo: Repository = {
       const kodlar = reservations()
         .filter((r) => r.businessId === reservation.businessId)
         .map((r) => r.code);
-      reservation = { ...reservation, code: nextContractCode(kodlar) };
+      /*
+        Yıl ORGANİZASYON GÜNÜNDEN geliyor, bugünden değil (madde 13):
+        2026'da satılan bir 2027 düğünü "2026-41" olarak numaralanıyordu
+        ve salon o dosyayı 2027 klasöründe arayıp bulamıyordu.
+      */
+      const yil = Number(reservation.date.slice(0, 4)) || new Date().getFullYear();
+      reservation = { ...reservation, code: nextContractCode(kodlar, yil) };
     }
     // Veritabanındaki benzersizlik kısıtının karşılığı: çakışma SALON bazındadır
     const conflict = reservations().find(
@@ -582,6 +610,30 @@ export const localRepo: Repository = {
    * Demo modunda tablo boş olabilir; o zaman varsayılan akış üretiliyor.
    * Boş liste dönseydi aday ekranı hiç durum gösteremezdi.
    */
+  async listQuickReplies(businessId) {
+    return wait(hizliYanitlar()
+      .filter((y) => y.businessId === businessId)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'tr')));
+  },
+
+  async saveQuickReply(yanit) {
+    const hepsi = hizliYanitlar();
+    const ayniBaslik = hepsi.find((y) => y.id !== yanit.id
+      && y.businessId === yanit.businessId
+      && y.title.trim().toLocaleLowerCase('tr') === yanit.title.trim().toLocaleLowerCase('tr'));
+    if (ayniBaslik) throw new RepoError('Bu başlıkla bir hızlı yanıt zaten var.');
+
+    const yeni = hepsi.some((y) => y.id === yanit.id)
+      ? hepsi.map((y) => (y.id === yanit.id ? yanit : y))
+      : [...hepsi, yanit];
+    write(KEYS.quickReplies, yeni);
+    return wait(yanit);
+  },
+
+  async deleteQuickReply(id) {
+    write(KEYS.quickReplies, hizliYanitlar().filter((y) => y.id !== id));
+  },
+
   async listLeadStatuses(businessId) {
     return wait(isletmeDurumlari(businessId));
   },

@@ -606,8 +606,15 @@ describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     renderPanel('/panel/rezervasyonlar/yeni');
     const secim = await screen.findByLabelText('Bize nereden ulaştı?');
     expect(secim).toBeInTheDocument();
-    expect(within(secim as HTMLSelectElement).getByRole('option', { name: 'Düğün.com' }))
-      .toBeInTheDocument();
+    // Şartnamedeki kanal listesi (madde 8).
+    for (const kanal of ['Instagram', 'Facebook', 'WhatsApp', 'Web Sitesi',
+      'Google', 'Tavsiye', 'Telefon', 'Diğer']) {
+      expect(within(secim as HTMLSelectElement).getByRole('option', { name: kanal }))
+        .toBeInTheDocument();
+    }
+    // Listeden çıkarılan eski kanal yeni kayıtta seçilemez.
+    expect(within(secim as HTMLSelectElement).queryByRole('option', { name: 'Düğün.com' }))
+      .toBeNull();
   });
 
   it('Diğer seçilip açıklama yazılmazsa kayıt reddedilir', async () => {

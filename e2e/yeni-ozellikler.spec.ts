@@ -374,3 +374,64 @@ test('Görüşme ve dönüşüm raporu sekmesi açılır', async ({ page }) => {
   await expect(page.getByRole('columnheader', { name: 'Dönüşüm' })).toBeVisible();
   await expect(page.getByText(/Dönüşüm oranı: rezervasyona dönen/)).toBeVisible();
 });
+
+/**
+ * Maddeler 7, 8, 13, 14: takvim sağ bölümü, kanal listesi, sözleşme
+ * numarası ve hızlı yanıtlar.
+ */
+test('Sözleşme numarası düğün yılına göre verilir', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/rezervasyonlar/yeni');
+
+  await page.locator('#customerName').fill('Uzak Yıl Testi');
+  await page.locator('#customerPhone').fill('5321117766');
+  await page.locator('#date').fill('2030-06-12');
+  await page.locator('#guestCount').fill('200');
+  await page.locator('#totalAmount').fill('150000');
+  // Kanal listesi şartnamedeki seçenekleri taşımalı (madde 8).
+  await page.locator('#sourceChannel').selectOption('Tavsiye');
+  await page.getByRole('button', { name: /Kaydet/ }).click();
+  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
+
+  // Sözleşme açıldığı yıla değil, düğünün yapılacağı yıla göre (madde 13).
+  await expect(page.locator('span.font-mono').first()).toHaveText(/^2030-\d+$/);
+
+  // "Extralar" (hizmet kutucukları) kaldırıldı (madde 8).
+  await page.goto('/panel/rezervasyonlar/yeni');
+  await expect(page.getByText('Hizmetler', { exact: true })).toHaveCount(0);
+});
+
+test('Takvimde ay listesi yok, gün seçilince panel açılır', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/takvim');
+
+  // Sağdaki "ayın kayıtları" bölümü kaldırıldı (madde 7).
+  await expect(page.getByText(/ayı kayıtları/)).toHaveCount(0);
+
+  // Bir güne tıklanınca o günün paneli açılıyor.
+  await page.locator('button[aria-label*="rezervasyon"]').first().click();
+  await expect(page.getByRole('button', { name: 'Kapat' })).toBeVisible();
+});
+
+test('Hızlı yanıt kaydedilir ve müşteri kartında kullanılır', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/hatirlatmalar');
+
+  // Yeni hazır mesaj türleri (madde 14).
+  for (const ad of ['Prova', 'Fotoğraf / video seçimi', 'Fotoğraflar hazır']) {
+    await expect(page.getByRole('heading', { name: ad })).toBeVisible();
+  }
+
+  const kutu = page.getByRole('region', { name: 'Hızlı Yanıt Kaydet' });
+  await kutu.locator('#hy-title').fill('Yemekli fiyat');
+  await kutu.locator('#hy-body').fill('Yemekli fiyatimiz kisi basi 1.250 TL');
+  await kutu.getByRole('button', { name: 'Hızlı yanıtı kaydet' }).click();
+  await expect(kutu.getByText('Yemekli fiyatimiz kisi basi 1.250 TL')).toBeVisible();
+
+  // Müşteri kartındaki not kutusuna tek tuşla ekleniyor.
+  await page.goto('/panel/musteri-adaylari');
+  await page.locator('a[href^="/panel/musteri-adaylari/lead"]').first().click();
+  await page.waitForURL(/\/panel\/musteri-adaylari\/[^/]+$/);
+  await page.getByRole('button', { name: 'Yemekli fiyat' }).click();
+  await expect(page.locator('#lead-note')).toHaveValue('Yemekli fiyatimiz kisi basi 1.250 TL');
+});

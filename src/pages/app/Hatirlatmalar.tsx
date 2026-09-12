@@ -12,6 +12,7 @@ import {
   type HatirlatmaKurali, type Sablon,
 } from '../../lib/sablon';
 import { IconCheck, IconMessage } from '../../components/Icons';
+import HizliYanitlar from '../../components/HizliYanitlar';
 
 /**
  * Hatırlatma şablonları ve otomatik gönderim kuralları.
@@ -230,6 +231,16 @@ export default function Hatirlatmalar() {
           })}
         </div>
       </QueryBoundary>
+
+      {/*
+        Hızlı yanıtlar şablonlardan AYRI bir bölüm: şablon müşteriye giden,
+        yer tutuculu ve olaya bağlı bir taslak; hızlı yanıt personelin
+        yazarken kopyaladığı kısa metin. Aynı listede toplansalardı ikisi
+        de anlaşılmaz olurdu.
+      */}
+      <div className="mt-6">
+        <HizliYanitlar duzenleyebilir={duzenleyebilir} />
+      </div>
 
       <p className="mt-6 text-xs text-brand-muted">
         Otomatik gönderim gece çalışan bir görevle yapılır; SMS sağlayıcısı

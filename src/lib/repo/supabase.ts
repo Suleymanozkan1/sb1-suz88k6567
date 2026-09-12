@@ -17,7 +17,7 @@ import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult,
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent, PaymentMethod,
-  Permission, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
+  Permission, QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
 } from '../../types';
@@ -229,6 +229,16 @@ function fromLead(l: CustomerLead) {
     option_date: l.optionDate || null,
     meeting_date: l.meetingDate || null,
     request_text: l.requestText, note: l.note,
+  };
+}
+
+function toQuickReply(row: Row): QuickReply {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    title: (row.title as string) ?? '',
+    body: (row.body as string) ?? '',
+    sortOrder: Number(row.sort_order ?? 0),
   };
 }
 
@@ -973,6 +983,32 @@ export const supabaseRepo: Repository = {
       wa_message_id: message.waMessageId ?? null, actor_email: message.actorEmail,
     });
     if (error) fail('İletişim kaydı yazılamadı.', error);
+  },
+
+  async listQuickReplies(businessId) {
+    const { data, error } = await db().from('quick_replies')
+      .select('*').eq('business_id', businessId).order('sort_order').order('title');
+    if (error) fail('Hızlı yanıtlar okunamadı.', error);
+    return (data ?? []).map(toQuickReply);
+  },
+
+  async saveQuickReply(yanit) {
+    const { data, error } = await db().from('quick_replies').upsert({
+      ...kimlikAlani(yanit.id), business_id: yanit.businessId,
+      title: yanit.title, body: yanit.body, sort_order: yanit.sortOrder,
+    }).select().single();
+    if (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw new RepoError('Bu başlıkla bir hızlı yanıt zaten var.');
+      }
+      fail('Hızlı yanıt kaydedilemedi.', error);
+    }
+    return toQuickReply(data);
+  },
+
+  async deleteQuickReply(id) {
+    const { error } = await db().from('quick_replies').delete().eq('id', id);
+    if (error) fail('Hızlı yanıt silinemedi.', error);
   },
 
   async listLeadStatuses(businessId) {

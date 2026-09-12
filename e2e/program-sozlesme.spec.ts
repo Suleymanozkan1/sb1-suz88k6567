@@ -236,13 +236,14 @@ test.describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     await page.locator('#date').fill('2029-09-20');
     await page.locator('#guestCount').fill('180');
     await page.locator('#totalAmount').fill('90000');
-    await page.locator('#sourceChannel').selectOption('Referans');
+    // "Referans" madde 8 ile "Tavsiye" oldu.
+    await page.locator('#sourceChannel').selectOption('Tavsiye');
     await page.locator('#sourceDetail').fill('Ayşe Yılmaz');
     await page.getByRole('button', { name: /Kaydet/ }).click();
 
     await page.waitForURL(/\/panel\/rezervasyonlar\/(?!yeni$)[^/]+$/);
     await expect(page.getByRole('heading', { name: 'Rezervasyon Bilgileri' })).toBeVisible();
-    await expect(page.getByText('Referans · Ayşe Yılmaz')).toBeVisible();
+    await expect(page.getByText('Tavsiye · Ayşe Yılmaz')).toBeVisible();
   });
 
   test('Diğer seçilip açıklama yazılmazsa kayıt reddedilir', async ({ page }) => {

@@ -13,7 +13,7 @@ import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
   Payment, PaymentAlert, PaymentAlertRecipient, Reservation, SmsLogEntry, CustomerLead, LeadMessage,
-  LeadStatusDef, ReservationExpense, WhatsappAccount,
+  LeadStatusDef, QuickReply, ReservationExpense, WhatsappAccount,
 } from '../types';
 
 export const keys = {
@@ -32,6 +32,7 @@ export const keys = {
   paymentEvents: (businessId: string) => ['paymentEvents', businessId] as const,
   paymentAlerts: (businessId: string) => ['paymentAlerts', businessId] as const,
   paymentAlertRecipients: (businessId: string) => ['paymentAlertRecipients', businessId] as const,
+  quickReplies: (businessId: string) => ['quickReplies', businessId] as const,
   whatsappAccount: (businessId: string) => ['whatsappAccount', businessId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
@@ -492,6 +493,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.paymentEvents(businessId) });
     qc.invalidateQueries({ queryKey: keys.paymentAlerts(businessId) });
     qc.invalidateQueries({ queryKey: keys.paymentAlertRecipients(businessId) });
+    qc.invalidateQueries({ queryKey: keys.quickReplies(businessId) });
     qc.invalidateQueries({ queryKey: keys.whatsappAccount(businessId) });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
     qc.invalidateQueries({ queryKey: keys.colors(businessId) });
@@ -600,6 +602,34 @@ export function useDeletePaymentAlertRecipient() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => repo.deletePaymentAlertRecipient(id),
+    onSuccess: invalidate,
+  });
+}
+
+/* ------------------------------------------------------- hızlı yanıtlar */
+
+export function useQuickReplies() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.quickReplies(businessId),
+    queryFn: () => repo.listQuickReplies(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveQuickReply() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (yanit: QuickReply) => repo.saveQuickReply({ ...yanit, businessId }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteQuickReply() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteQuickReply(id),
     onSuccess: invalidate,
   });
 }
