@@ -5,7 +5,12 @@ import type { KasaDagilimi } from '../lib/kasa';
 /**
  * Kasadaki paranın nerede durduğunu gösteren kart.
  *
- * Toplam herkese açık, dağılım gizli. Sebebi ekran başında duran
+ * Üstte güncel kasa toplamı, altında küçük bir ÇELİK KASA bölümü: nakit,
+ * kredi kartı ve havale ayrı ayrı bakiye olarak duruyor. Tek bir toplam
+ * "para nerede" sorusunu cevaplamıyor; nakit kasada, kart ve havale
+ * bankadadır ve ikisi aynı şey değildir.
+ *
+ * Toplam herkese açık, çelik kasa gizli. Sebebi ekran başında duran
  * personelin değil, yanından geçenin görmesi: salonun kasasında ne kadar
  * nakit olduğu, ekranda sürekli açık duran bir bilgi olmamalı.
  *
@@ -86,7 +91,7 @@ export default function KasaDagilimKarti({
       {!acik ? (
         <form onSubmit={(e) => { void ac(e); }} className="mt-4">
           <label htmlFor="kasa-sifre" className="field-label">
-            Dağılımı görmek için hesap şifreniz
+            Çelik kasayı görmek için hesap şifreniz
           </label>
           <div className="flex gap-2">
             <input
@@ -106,29 +111,56 @@ export default function KasaDagilimKarti({
         </form>
       ) : (
         <>
-          <dl className="mt-4 space-y-2">
-            {dagilim.kanallar.map((k) => (
-              <div key={k.method} className="flex items-baseline justify-between gap-3">
-                <dt className="text-sm text-brand-muted">{k.method}</dt>
-                <dd className="font-medium text-brand">{formatMoney(k.tutar, currency)}</dd>
-              </div>
-            ))}
+          {/*
+            ÇELİK KASA: güncel kasanın altında, küçük. Kanalların her biri
+            AYRI BAKİYE olarak duruyor -- "nerede ne kadar var" sorusunun
+            cevabı tek bir toplamda görünmez.
+
+            Hareket defteri YOK. Eskiden paranın fiziksel yeri ayrı bir
+            defterde elle işaretleniyordu; bu ikinci bir muhasebeydi ve
+            unutulan her işaret kasayı olduğundan farklı gösteriyordu.
+            Buradaki bakiyeler paranın zaten taşıdığı ödeme tipinden
+            hesaplanıyor, elle bakım istemiyor.
+          */}
+          <div className="mt-4 rounded-lg bg-surface p-3">
+            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wide text-brand-muted">
+              Çelik Kasa
+            </h3>
+            <dl className="space-y-1.5">
+              {dagilim.kanallar.map((k) => (
+                <div key={k.method} className="flex items-baseline justify-between gap-3">
+                  <dt className="text-xs text-brand-muted">{k.method}</dt>
+                  <dd className="whitespace-nowrap text-sm font-medium text-brand">{formatMoney(k.tutar, currency)}</dd>
+                </div>
+              ))}
+
+              {/*
+                Tipi bilinmeyen kayıtlar ayrı satırda. Bir kanala yazmak
+                uydurma olurdu; sıfırdan farklıysa sahibi geçmişe dönüp
+                doldurabilsin diye görünür duruyor.
+              */}
+              {dagilim.belirtilmemis !== 0 && (
+                <div className="flex items-baseline justify-between gap-3 border-t border-line pt-1.5">
+                  <dt className="text-xs text-brand-muted">Belirtilmemiş</dt>
+                  <dd className="whitespace-nowrap text-sm font-medium text-brand">
+                    {formatMoney(dagilim.belirtilmemis, currency)}
+                  </dd>
+                </div>
+              )}
+            </dl>
 
             {/*
-              Tipi bilinmeyen kayıtlar ayrı satırda. Bir kanala yazmak
-              uydurma olurdu; sıfırdan farklıysa sahibi geçmişe dönüp
-              doldurabilsin diye görünür duruyor.
+              Açıklama listenin DIŞINDA: tanım listesinin içinde yalnızca
+              dt/dd durabilir, araya konan bir paragraf listeyi bozuyor ve
+              ekran okuyucuda eşleşme kayboluyor. Etiketin yanında da
+              duramaz; tutarı sıkıştırıp rakamı iki satıra bölüyordu.
             */}
             {dagilim.belirtilmemis !== 0 && (
-              <div className="flex items-baseline justify-between gap-3 border-t border-line pt-2">
-                <dt className="text-sm text-brand-muted">
-                  Belirtilmemiş
-                  <span className="ml-1 text-xs">(ödeme tipi girilmemiş kayıtlar)</span>
-                </dt>
-                <dd className="font-medium text-brand">{formatMoney(dagilim.belirtilmemis, currency)}</dd>
-              </div>
+              <p className="mt-1 text-[11px] leading-tight text-brand-muted">
+                Ödeme tipi girilmemiş kayıtlar
+              </p>
             )}
-          </dl>
+          </div>
 
           {/*
             Çek ve senet kasaya GİRMEZ: ikisi de henüz tahsil edilmemiş bir
@@ -136,7 +168,7 @@ export default function KasaDagilimKarti({
             görünür ve olmayan bir paraya göre karar alınır.
           */}
           {dagilim.tahsilEdilmemis !== 0 && (
-            <p className="mt-3 rounded-md bg-surface px-3 py-2 text-xs text-brand-muted">
+            <p className="mt-2 px-1 text-xs text-brand-muted">
               Çek / senet: <strong className="text-brand">{formatMoney(dagilim.tahsilEdilmemis, currency)}</strong>
               {' '}— henüz tahsil edilmedi, kasa toplamına dahil değil.
             </p>

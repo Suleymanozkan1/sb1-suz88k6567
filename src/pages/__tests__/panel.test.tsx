@@ -440,9 +440,14 @@ describe('Gelir gider kayıtları', () => {
     expect(await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' })).toBeInTheDocument();
     expect(screen.getByText('Toplam Gelir')).toBeInTheDocument();
     expect(screen.getByText('Süzgeçteki Bakiye')).toBeInTheDocument();
-    // Çelik kasa kaldırıldı; yerini ödeme tipi dağılımı aldı.
     expect(screen.getByRole('heading', { name: 'Kasa Durumu' })).toBeInTheDocument();
-    expect(screen.queryByText('Çelik Kasa')).toBeNull();
+    /*
+      Çelik kasa güncel kasanın ALTINDA, küçük: her ödeme tipi ayrı bakiye.
+      Ayrı bir hareket defteri yok; o defter elle işaretleme istiyordu ve
+      unutulan her işaret kasayı olduğundan farklı gösteriyordu.
+    */
+    expect(screen.getByRole('heading', { name: 'Çelik Kasa' })).toBeInTheDocument();
+    expect(screen.queryByText('Çelik Kasa Hareketleri')).toBeNull();
   });
 
   it('rezervasyon tahsilatlarını sözleşme numarası ve taraflarla listeler', async () => {
@@ -495,7 +500,6 @@ describe('Gelir gider kayıtları', () => {
     const user = userEvent.setup();
     renderPanel('/panel/kasa');
     await user.selectOptions(await screen.findByLabelText('Tür filtresi'), 'Gider');
-    // Ekranda iki tablo var: gelir/gider kayıtları ve çelik kasa hareketleri.
     const tablo = screen.getByRole('table', { name: 'Gelir ve gider kayıtları' });
     const rows = within(tablo).getAllByRole('row').slice(1);
     rows.forEach((row) => expect(row.textContent).toContain('Gider'));

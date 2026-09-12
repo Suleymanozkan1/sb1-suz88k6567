@@ -200,3 +200,27 @@ test('Gelecek kaporalar ekranı son tahsilatı ve vadeyi gösterir', async ({ pa
   await expect(page.getByText('Toplam kalan alacak')).toBeVisible();
   await expect(page.getByText(/gün kaldı|gün gecikti|Bugün/).first()).toBeVisible();
 });
+
+/**
+ * Çelik Kasa güncel kasanın altında, küçük: her ödeme tipi ayrı bakiye.
+ * Hareket defteri yok -- o defter her satırın elle işaretlenmesini
+ * istiyordu ve unutulan her işaret kasayı olduğundan farklı gösteriyordu.
+ */
+test('Çelik Kasa kasa kartının altında ayrı bakiyeler gösterir', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/kasa');
+
+  const kart = page.getByRole('region', { name: 'Kasa Durumu' });
+  await expect(kart.getByRole('heading', { name: 'Çelik Kasa' })).toBeVisible();
+  for (const kanal of ['Nakit', 'Kredi Kartı', 'Havale/EFT']) {
+    await expect(kart.getByText(kanal, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByText('Çelik Kasa Hareketleri')).toHaveCount(0);
+
+  // Özet sayfasında aynı kart şifreyle açılıyor: salonun kasasındaki nakit,
+  // ekranın yanından geçen herkesin göreceği bir bilgi olmamalı.
+  await page.goto('/panel');
+  const ozetKart = page.getByRole('region', { name: 'Kasa Durumu' });
+  await expect(ozetKart.getByLabel('Çelik kasayı görmek için hesap şifreniz')).toBeVisible();
+  await expect(ozetKart.getByRole('heading', { name: 'Çelik Kasa' })).toHaveCount(0);
+});
