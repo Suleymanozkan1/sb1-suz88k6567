@@ -304,6 +304,12 @@ export interface LeadStatusDef {
   label: string;
   sortOrder: number;
   tone: LeadStatusTone;
+  /**
+   * Bu duruma geçince kaç gün sonra takip hatırlatması kurulacağı.
+   * 0 = kurulmaz. Teklif durumlarında varsayılan 7 (madde 18); gün
+   * sayısı koda gömülmedi, salonun takip ritmi değişebilsin.
+   */
+  followupDays: number;
   /** Yeni aday bu durumla açılır. İşletmede tek tanedir. */
   isInitial: boolean;
   /** İş beklemiyor: takip ve gecikme listelerinden düşer. */
@@ -321,18 +327,18 @@ export interface LeadStatusDef {
  * duruyor. İkisinin ayrışmadığını bir test koruyor.
  */
 export const VARSAYILAN_LEAD_DURUMLARI: Omit<LeadStatusDef, 'id' | 'businessId'>[] = [
-  { code: 'yeni', label: 'Yeni', sortOrder: 10, tone: 'bekleyen', isInitial: true, isClosed: false, isWon: false, active: true },
-  { code: 'aranacak', label: 'Aranacak', sortOrder: 20, tone: 'bekleyen', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'arandi', label: 'Arandı', sortOrder: 30, tone: 'ilerleyen', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'ulasilamadi', label: 'Ulaşılamadı', sortOrder: 40, tone: 'dikkat', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'tekrar_aranacak', label: 'Tekrar Aranacak', sortOrder: 50, tone: 'bekleyen', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'tekrar_arandi', label: 'Tekrar Arandı', sortOrder: 60, tone: 'ilerleyen', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'iletisim_kuruldu', label: 'İletişim Kuruldu', sortOrder: 70, tone: 'olumlu', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'teklif_verildi', label: 'Teklif Verildi', sortOrder: 80, tone: 'teklif', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'rezervasyon_bekliyor', label: 'Rezervasyon Bekliyor', sortOrder: 90, tone: 'teklif', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'rezervasyona_dondu', label: 'Rezervasyona Döndü', sortOrder: 100, tone: 'olumlu', isInitial: false, isClosed: true, isWon: true, active: true },
-  { code: 'olumsuz', label: 'Olumsuz', sortOrder: 110, tone: 'kapali', isInitial: false, isClosed: true, isWon: false, active: true },
-  { code: 'iptal', label: 'İptal', sortOrder: 120, tone: 'kapali', isInitial: false, isClosed: true, isWon: false, active: true },
+  { code: 'yeni', label: 'Yeni', sortOrder: 10, tone: 'bekleyen', followupDays: 0, isInitial: true, isClosed: false, isWon: false, active: true },
+  { code: 'aranacak', label: 'Aranacak', sortOrder: 20, tone: 'bekleyen', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'arandi', label: 'Arandı', sortOrder: 30, tone: 'ilerleyen', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'ulasilamadi', label: 'Ulaşılamadı', sortOrder: 40, tone: 'dikkat', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'tekrar_aranacak', label: 'Tekrar Aranacak', sortOrder: 50, tone: 'bekleyen', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'tekrar_arandi', label: 'Tekrar Arandı', sortOrder: 60, tone: 'ilerleyen', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'iletisim_kuruldu', label: 'İletişim Kuruldu', sortOrder: 70, tone: 'olumlu', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'teklif_verildi', label: 'Teklif Verildi', sortOrder: 80, tone: 'teklif', followupDays: 7, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'rezervasyon_bekliyor', label: 'Rezervasyon Bekliyor', sortOrder: 90, tone: 'teklif', followupDays: 7, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'rezervasyona_dondu', label: 'Rezervasyona Döndü', sortOrder: 100, tone: 'olumlu', followupDays: 0, isInitial: false, isClosed: true, isWon: true, active: true },
+  { code: 'olumsuz', label: 'Olumsuz', sortOrder: 110, tone: 'kapali', followupDays: 0, isInitial: false, isClosed: true, isWon: false, active: true },
+  { code: 'iptal', label: 'İptal', sortOrder: 120, tone: 'kapali', followupDays: 0, isInitial: false, isClosed: true, isWon: false, active: true },
 ];
 
 /** Varsayılan akıştaki başlangıç durumu. Veritabanı yokken kullanılır. */
@@ -365,6 +371,15 @@ export interface CustomerLead {
   nextFollowupAt: string;
   lastContactAt: string;
   reservationId?: string;
+  /** Düşünülen salon. İlk görüşmede boş olabilir; uydurma bir salon seçmekten iyidir. */
+  hallId?: string;
+  /** Verilen teklif tutarı. Rakam yoksa teklif verilmemiş sayılır. */
+  offerAmount?: number;
+  offerValidUntil?: string;
+  /** Salonun müşteri için tutulduğu son gün. Geçince başkasına satılabilir. */
+  optionDate?: string;
+  /** Görüşmenin YAPILDIĞI gün; kaydın açıldığı günden farklı olabilir. */
+  meetingDate?: string;
   /** Müşterinin ne sorduğu: "yemekli/yemeksiz fiyat" gibi. Nottan ayrı durur. */
   requestText: string;
   note: string;

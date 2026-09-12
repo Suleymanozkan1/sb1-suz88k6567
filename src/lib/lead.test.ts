@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  bugunAranacakMi, durumAdi, durumHaritasi, durumSinifi, etkinlikTarihi,
-  gecikmisMi, kapandiMi, kazanimDurumu, leadOzeti, secilebilirDurumlar,
-  baslangicDurumu, toplamAday, whatsappWebLinki,
+  bugunAranacakMi, donusumRaporu, durumAdi, durumHaritasi, durumSinifi, etkinlikTarihi,
+  gecikmisMi, kapandiMi, kazanimDurumu, leadOzeti, opsiyonuYaklasanlar,
+  secilebilirDurumlar, baslangicDurumu, takipTarihi, toplamAday, whatsappWebLinki,
 } from './lead';
 import { VARSAYILAN_LEAD_DURUMLARI } from '../types';
 import type { CustomerLead, LeadStatusDef } from '../types';
@@ -158,7 +158,7 @@ describe('dashboard özeti', () => {
     // Sabit kutu listesi, eklenen durumu dashboard'da görünmez bırakırdı.
     const genis = [...durumlar, {
       id: 'd_yer', businessId: BIZ, code: 'yer_gosterildi', label: 'Yer Gösterildi',
-      sortOrder: 55, tone: 'ilerleyen' as const,
+      sortOrder: 55, tone: 'ilerleyen' as const, followupDays: 0,
       isInitial: false, isClosed: false, isWon: false, active: true,
     }];
     const kutular = leadOzeti(liste, genis, bugun);
@@ -203,5 +203,144 @@ describe('etkinlik tarihi', () => {
   it('çözülemeyen ifadeyi olduğu gibi gösterir', () => {
     expect(etkinlikTarihi(aday({ eventDateText: 'Mayısın ilk haftası' })))
       .toBe('Mayısın ilk haftası');
+  });
+});
+
+/* ------------------------------------------- otomatik takip ve dönüşüm */
+
+describe('takipTarihi', () => {
+  const BUGUN = '2026-09-12';
+
+  it('teklif durumuna geçince yedi gün sonrasını kurar', () => {
+    const yeni = aday({ status: 'teklif_verildi' });
+    expect(takipTarihi(yeni, aday({ status: 'arandi' }), durumlar, BUGUN))
+      .toBe('2026-09-19');
+  });
+
+  // Gün sayısı durumun ayarı; koda gömülü olsaydı salonun takip ritmi
+  // değiştiğinde yeni sürüm gerekirdi.
+  it('durumun kendi gün sayısını kullanır', () => {
+    const ozel = durumlar.map((d) => (
+      d.code === 'teklif_verildi' ? { ...d, followupDays: 3 } : d));
+    expect(takipTarihi(aday({ status: 'teklif_verildi' }), aday({ status: 'yeni' }), ozel, BUGUN))
+      .toBe('2026-09-15');
+  });
+
+  it('takip günü sıfır olan durumda tarih kurmaz', () => {
+    expect(takipTarihi(aday({ status: 'arandi' }), aday({ status: 'yeni' }), durumlar, BUGUN))
+      .toBe('');
+  });
+
+  it('durum değişmediyse tarihe dokunmaz', () => {
+    const kayit = aday({ status: 'teklif_verildi', nextFollowupAt: '' });
+    expect(takipTarihi(kayit, kayit, durumlar, BUGUN)).toBe('');
+  });
+
+  /*
+    Personel elle bir gün belirlediyse onu silmek, üzerinde anlaşılmış bir
+    randevuyu iptal etmek olurdu.
+  */
+  it('gelecekteki elle girilmiş tarihin üzerine yazmaz', () => {
+    const yeni = aday({ status: 'teklif_verildi', nextFollowupAt: '2026-09-30' });
+    expect(takipTarihi(yeni, aday({ status: 'yeni' }), durumlar, BUGUN))
+      .toBe('2026-09-30');
+  });
+
+  it('geçmişte kalmış tarihi yeniler', () => {
+    const yeni = aday({ status: 'teklif_verildi', nextFollowupAt: '2026-08-01' });
+    expect(takipTarihi(yeni, aday({ status: 'yeni' }), durumlar, BUGUN))
+      .toBe('2026-09-19');
+  });
+});
+
+describe('opsiyonuYaklasanlar', () => {
+  const BUGUN = '2026-09-12';
+
+  it('eşik içindeki opsiyonu listeler', () => {
+    const liste = [
+      aday({ id: 'l1', optionDate: '2026-09-15' }),
+      aday({ id: 'l2', optionDate: '2026-12-01' }),
+    ];
+    expect(opsiyonuYaklasanlar(liste, durumlar, 7, BUGUN).map((l) => l.id)).toEqual(['l1']);
+  });
+
+  // "Tarih geçti, hâlâ cevap yok" en acil durumdur; gizlenirse kimse
+  // fark etmez.
+  it('günü geçmiş opsiyonu da listeler ve başa alır', () => {
+    const liste = [
+      aday({ id: 'yakin', optionDate: '2026-09-15' }),
+      aday({ id: 'gecmis', optionDate: '2026-09-01' }),
+    ];
+    expect(opsiyonuYaklasanlar(liste, durumlar, 7, BUGUN).map((l) => l.id))
+      .toEqual(['gecmis', 'yakin']);
+  });
+
+  it('kapanmış adayı listelemez', () => {
+    const liste = [aday({ optionDate: '2026-09-15', status: 'olumsuz' })];
+    expect(opsiyonuYaklasanlar(liste, durumlar, 7, BUGUN)).toEqual([]);
+  });
+
+  it('opsiyon tarihi olmayanı listelemez', () => {
+    expect(opsiyonuYaklasanlar([aday({})], durumlar, 7, BUGUN)).toEqual([]);
+  });
+});
+
+describe('donusumRaporu', () => {
+  it('görüşme ayına göre gruplar', () => {
+    const satirlar = donusumRaporu([
+      aday({ meetingDate: '2026-09-03' }),
+      aday({ meetingDate: '2026-09-20' }),
+      aday({ meetingDate: '2026-10-02' }),
+    ], durumlar);
+    expect(satirlar.map((s) => s.ay)).toEqual(['2026-09', '2026-10']);
+    expect(satirlar[0].kayit).toBe(2);
+  });
+
+  /*
+    Her kayıt bir görüşmedir ama SALONA GELEN kişi yüz yüze görüşülendir.
+    İkisi tek sayıda toplanınca dönüşüm oranı anlamsız çıkıyordu.
+  */
+  it('salona geleni görüşme tarihi dolu olanlarla sayar', () => {
+    const [satir] = donusumRaporu([
+      aday({ meetingDate: '2026-09-03' }),
+      aday({ createdAt: '2026-09-05T10:00:00.000Z' }),
+    ], durumlar);
+    expect(satir.kayit).toBe(2);
+    expect(satir.gelen).toBe(1);
+  });
+
+  // Rakam konuşulmamış bir görüşme teklif sayılsaydı oran şişerdi.
+  it('yalnızca fiyat girilmiş kaydı teklif sayar', () => {
+    const [satir] = donusumRaporu([
+      aday({ meetingDate: '2026-09-03', offerAmount: 150000 }),
+      aday({ meetingDate: '2026-09-04' }),
+      aday({ meetingDate: '2026-09-05', offerAmount: 0 }),
+    ], durumlar);
+    expect(satir.teklif).toBe(1);
+  });
+
+  it('dönüşüm oranını gelen kişi üzerinden hesaplar', () => {
+    const [satir] = donusumRaporu([
+      aday({ meetingDate: '2026-09-03', reservationId: 'r1' }),
+      aday({ meetingDate: '2026-09-04' }),
+      aday({ meetingDate: '2026-09-05' }),
+      aday({ meetingDate: '2026-09-06' }),
+    ], durumlar);
+    expect(satir.rezervasyon).toBe(1);
+    expect(satir.donusumOrani).toBe(25);
+  });
+
+  it('hiç gelen yoksa oranı sıfır bırakır, bölme hatası vermez', () => {
+    const [satir] = donusumRaporu([aday({ createdAt: '2026-09-05T10:00:00.000Z' })], durumlar);
+    expect(satir.donusumOrani).toBe(0);
+  });
+
+  it('olumsuz kapanan kayıtları sayar', () => {
+    const [satir] = donusumRaporu([
+      aday({ meetingDate: '2026-09-03', status: 'olumsuz' }),
+      aday({ meetingDate: '2026-09-04', status: 'rezervasyona_dondu' }),
+    ], durumlar);
+    // Kazanımla kapanan olumsuz sayılmamalı.
+    expect(satir.olumsuz).toBe(1);
   });
 });

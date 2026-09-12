@@ -20,6 +20,7 @@ import type {
 } from '../../types';
 import { ODEME_OLAYLARI, VARSAYILAN_LEAD_DURUMLARI } from '../../types';
 import { odemeOlaylari } from '../odemeOlayi';
+import { takipTarihi } from '../lead';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
 
 const wait = <T,>(value: T): Promise<T> => Promise.resolve(value);
@@ -41,6 +42,23 @@ function dugunGiderleri(): ReservationExpense[] {
 function leadStatuses(): LeadStatusDef[] {
   return read<LeadStatusDef[]>(KEYS.leadStatuses, []);
 }
+/**
+ * İşletmenin durum listesi.
+ *
+ * Kaydedilmiş satır yoksa varsayılan akış dönüyor ve bu liste DEPOYA
+ * YAZILMIYOR: durumlar sunucuda tetikleyiciyle tohumlanıyor, tanıtım
+ * kipinde de aynı davranış korunuyor. Ayrı ayrı hesaplanmaması önemli --
+ * otomatik takip bu listedeki gün sayısına bakıyor ve boş bir liste,
+ * takibin sessizce hiç kurulmamasına yol açardı.
+ */
+function isletmeDurumlari(businessId: string): LeadStatusDef[] {
+  const kayitli = leadStatuses().filter((d) => d.businessId === businessId);
+  if (kayitli.length > 0) return [...kayitli].sort((a, b) => a.sortOrder - b.sortOrder);
+  return VARSAYILAN_LEAD_DURUMLARI.map((d) => ({
+    ...d, id: `durum_${businessId}_${d.code}`, businessId,
+  }));
+}
+
 function odemeOlaylariKaydi(): PaymentEvent[] {
   return read<PaymentEvent[]>(KEYS.paymentEvents, []);
 }
@@ -520,6 +538,10 @@ export const localRepo: Repository = {
     const eski = hepsi.find((l) => l.id === lead.id);
     const kayit: CustomerLead = {
       ...lead,
+      // Otomatik takip: sunucuda tetikleyici yapıyor, tanıtım kipinde
+      // burada. Kural ortak modülde (`takipTarihi`) duruyor ki iki taraf
+      // aynı günü kursun.
+      nextFollowupAt: takipTarihi(lead, eski ?? null, isletmeDurumlari(lead.businessId)),
       createdAt: eski?.createdAt || lead.createdAt || now,
       updatedAt: now,
     };
@@ -561,13 +583,7 @@ export const localRepo: Repository = {
    * Boş liste dönseydi aday ekranı hiç durum gösteremezdi.
    */
   async listLeadStatuses(businessId) {
-    const kayitli = leadStatuses().filter((d) => d.businessId === businessId);
-    if (kayitli.length > 0) {
-      return wait([...kayitli].sort((a, b) => a.sortOrder - b.sortOrder));
-    }
-    return wait(VARSAYILAN_LEAD_DURUMLARI.map((d) => ({
-      ...d, id: `durum_${businessId}_${d.code}`, businessId,
-    })));
+    return wait(isletmeDurumlari(businessId));
   },
 
   async saveLeadStatus(durum) {

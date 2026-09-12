@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   useCashFlow, useLeadStatuses, useLeads, useReservationsWithBalances,
 } from '../../lib/queries';
-import { leadOzeti, toplamAday } from '../../lib/lead';
+import { leadOzeti, opsiyonuYaklasanlar, toplamAday } from '../../lib/lead';
 import { kasaDagilimi, kasaHareketleri } from '../../lib/kasa';
 import type { CustomerLead, LeadStatusDef } from '../../types';
 import { QueryBoundary } from '../../components/QueryState';
@@ -82,6 +82,11 @@ export default function Dashboard() {
     [cash, rezervasyonGelirleri],
   );
 
+  const opsiyonlular = useMemo(
+    () => opsiyonuYaklasanlar(adaylar, adayDurumlari),
+    [adaylar, adayDurumlari],
+  );
+
   const ayinProgramlari = useMemo(
     () => programReport(ayinKayitlari, balance),
     [ayinKayitlari, balance],
@@ -153,6 +158,33 @@ export default function Dashboard() {
           <h2 id="lead-title" className="font-heading text-lg font-bold text-brand">Müşteri takip</h2>
           <Link to="/panel/musteri-adaylari" className="text-sm">Tümü →</Link>
         </div>
+
+        {/*
+          Opsiyon uyarısı (madde 18). Modal yerine bu bandın seçilmesi
+          bilinçli: her açılışta pencere kapatan personel birkaç günde
+          okumadan kapatır hâle gelir. Uyarı işin yapıldığı ekranda ve
+          tıklanabilir duruyor.
+        */}
+        {opsiyonlular.length > 0 && (
+          <div className="mb-4 rounded-md bg-[#fef3c7] px-4 py-3 text-sm text-[#92400e]" role="status">
+            <p className="mb-1 font-medium">
+              {opsiyonlular.length} müşterinin opsiyon tarihi yaklaşıyor.
+              Müşterilerle tekrar iletişime geçilmesi gerekiyor.
+            </p>
+            <ul className="flex flex-wrap gap-x-4 gap-y-1">
+              {opsiyonlular.slice(0, 6).map((l) => (
+                <li key={l.id}>
+                  <Link to={`/panel/musteri-adaylari/${l.id}`} className="underline">
+                    {l.name}
+                  </Link>
+                  {' · '}
+                  {formatDate(l.optionDate as string)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <LeadOzetKutulari adaylar={adaylar} durumlar={adayDurumlari} />
       </section>
 

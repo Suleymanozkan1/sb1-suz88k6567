@@ -200,6 +200,12 @@ function toLead(row: Row): CustomerLead {
     nextFollowupAt: (row.next_followup_at as string) ?? '',
     lastContactAt: (row.last_contact_at as string) ?? '',
     reservationId: (row.reservation_id as string) ?? undefined,
+    hallId: (row.hall_id as string) ?? undefined,
+    offerAmount: row.offer_amount === null || row.offer_amount === undefined
+      ? undefined : Number(row.offer_amount),
+    offerValidUntil: (row.offer_valid_until as string) ?? undefined,
+    optionDate: (row.option_date as string) ?? undefined,
+    meetingDate: (row.meeting_date as string) ?? undefined,
     requestText: (row.request_text as string) ?? '',
     note: (row.note as string) ?? '',
     createdAt: (row.created_at as string) ?? '',
@@ -215,6 +221,13 @@ function fromLead(l: CustomerLead) {
     source: l.source, source_detail: l.sourceDetail, status: l.status,
     assigned_to: l.assignedTo ?? null, next_followup_at: l.nextFollowupAt || null,
     last_contact_at: l.lastContactAt || null, reservation_id: l.reservationId ?? null,
+    hall_id: l.hallId ?? null,
+    // Boş tutar NULL yazılıyor, sıfır değil: sıfır "bedava teklif
+    // verildi" demektir ve dönüşüm raporunda teklif sayılırdı.
+    offer_amount: l.offerAmount ?? null,
+    offer_valid_until: l.offerValidUntil || null,
+    option_date: l.optionDate || null,
+    meeting_date: l.meetingDate || null,
     request_text: l.requestText, note: l.note,
   };
 }
@@ -227,6 +240,7 @@ function toLeadStatus(row: Row): LeadStatusDef {
     label: (row.label as string) ?? '',
     sortOrder: Number(row.sort_order ?? 0),
     tone: (row.tone as LeadStatusDef['tone']) ?? 'notr',
+    followupDays: Number(row.followup_days ?? 0),
     isInitial: Boolean(row.is_initial),
     isClosed: Boolean(row.is_closed),
     isWon: Boolean(row.is_won),
@@ -988,6 +1002,7 @@ export const supabaseRepo: Repository = {
       .upsert({
         ...kimlikAlani(durum.id), business_id: durum.businessId, code: durum.code,
         label: durum.label, sort_order: durum.sortOrder, tone: durum.tone,
+        followup_days: durum.followupDays,
         is_initial: durum.isInitial, is_closed: durum.isClosed, is_won: durum.isWon,
         active: durum.active,
       }, { onConflict: 'business_id,code' })

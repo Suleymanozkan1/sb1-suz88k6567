@@ -6,13 +6,13 @@ import { QueryBoundary } from '../../components/QueryState';
 import { useAuth } from '../../context/AuthContext';
 import {
   useAddLeadMessage, useDeleteLead, useLead, useLeadMessages,
-  useLeadStatusHistory, useLeadStatuses, useSaveLead, useStaff,
+  useHalls, useLeadStatusHistory, useLeadStatuses, useSaveLead, useStaff,
 } from '../../lib/queries';
-import { formatDate, formatPhone, todayIso } from '../../lib/format';
+import { daysBetween, formatDate, formatMoney, formatPhone, todayIso } from '../../lib/format';
 import { errorMessage } from '../../lib/authHelpers';
 import { uid } from '../../lib/ids';
 import {
-  durumAdi, durumHaritasi, durumSinifi, secilebilirDurumlar, whatsappWebLinki,
+  durumAdi, durumHaritasi, durumSinifi, kapandiMi, secilebilirDurumlar, whatsappWebLinki,
 } from '../../lib/lead';
 import type { CustomerLead, LeadMessage, LeadStatus } from '../../types';
 
@@ -33,6 +33,7 @@ export default function MusteriAdayiDetay() {
   const { data: durumlar = [] } = useLeadStatuses();
   const harita = durumHaritasi(durumlar);
   const { data: personel = [] } = useStaff();
+  const { data: salonlar = [] } = useHalls();
   const kaydet = useSaveLead();
   const mesajEkle = useAddLeadMessage();
   const silMutation = useDeleteLead();
@@ -40,6 +41,22 @@ export default function MusteriAdayiDetay() {
   const [hata, setHata] = useState('');
   const [not, setNot] = useState('');
   const duzenlenebilir = can('rezervasyon.duzenle');
+  const currency = user?.currency ?? 'TL';
+  const salonAdi = salonlar.find((h) => h.id === lead?.hallId)?.name ?? '';
+
+  /*
+    Opsiyon uyarısı (madde 18). Kapanmış adayda gösterilmiyor: kaybedilmiş
+    bir müşterinin opsiyon tarihi kimseyi ilgilendirmiyor ve her açılışta
+    uyarı veren ekran okunmaz olur.
+  */
+  const opsiyonUyarisi = (() => {
+    if (!lead?.optionDate || kapandiMi(harita, lead)) return '';
+    const kalan = daysBetween(todayIso(), lead.optionDate);
+    if (kalan < 0) return `Opsiyon tarihi ${Math.abs(kalan)} gün önce geçti. Salon başkasına satılabilir; müşteriyle görüşün.`;
+    if (kalan === 0) return 'Opsiyon tarihi bugün doluyor. Müşteriyle bugün görüşülmesi gerekiyor.';
+    if (kalan <= 7) return `Opsiyon tarihine ${kalan} gün kaldı. Müşteriyle tekrar iletişime geçilmesi gerekiyor.`;
+    return '';
+  })();
 
   async function yaz(degisiklik: Partial<CustomerLead>, olay?: string) {
     if (!lead) return;
@@ -183,6 +200,12 @@ export default function MusteriAdayiDetay() {
               <Bilgi etiket="İlk iletişim" deger={lead.createdAt ? formatDate(lead.createdAt.slice(0, 10)) : ''} />
               <Bilgi etiket="Son iletişim" deger={lead.lastContactAt ? formatDate(lead.lastContactAt.slice(0, 10)) : ''} />
               <Bilgi etiket="Sonraki aranma" deger={lead.nextFollowupAt ? formatDate(lead.nextFollowupAt) : ''} />
+              <Bilgi etiket="Görüşme tarihi" deger={lead.meetingDate ? formatDate(lead.meetingDate) : ''} />
+              <Bilgi etiket="Düşünülen salon" deger={salonAdi} />
+              <Bilgi etiket="Teklif fiyatı"
+                deger={lead.offerAmount ? formatMoney(lead.offerAmount, currency) : ''} />
+              <Bilgi etiket="Teklif geçerlilik"
+                deger={lead.offerValidUntil ? formatDate(lead.offerValidUntil) : ''} />
               <Bilgi
                 etiket="Rezervasyon"
                 deger={lead.reservationId ? 'Oluşturuldu' : ''}
@@ -237,7 +260,45 @@ export default function MusteriAdayiDetay() {
                 onChange={(e) => { void yaz({ nextFollowupAt: e.target.value }); }}
               />
 
-              <label className="field-label mt-4" htmlFor="lead-assignee">Sorumlu personel</label>
+              {/*
+                Opsiyon: salonun müşteri için tutulduğu son gün. Uyarı
+                burada, alanın hemen üstünde: ayrı bir ekranda dursaydı
+                tarihe bakan kişi uyarıyı görmezdi.
+              */}
+              <label className="field-label mt-4" htmlFor="lead-option">Opsiyon tarihi</label>
+              <input
+                id="lead-option"
+                type="date"
+                className="field-input"
+                value={lead.optionDate ?? ''}
+                disabled={!duzenlenebilir}
+                onChange={(e) => { void yaz({ optionDate: e.target.value || undefined }); }}
+              />
+              {opsiyonUyarisi && (
+                <p className="mt-2 rounded-md bg-[#fef3c7] px-3 py-2 text-xs text-[#92400e]" role="status">
+                  {opsiyonUyarisi}
+                </p>
+              )}
+
+              <label className="field-label mt-4" htmlFor="lead-offer">Teklif fiyatı</label>
+              <input
+                id="lead-offer"
+                inputMode="decimal"
+                className="field-input"
+                defaultValue={lead.offerAmount ? String(lead.offerAmount) : ''}
+                disabled={!duzenlenebilir}
+                onBlur={(e) => {
+                  const ham = e.target.value.trim();
+                  const tutar = ham ? Number(ham) : undefined;
+                  // Geçersiz ya da sıfır tutar KAYDEDİLMİYOR: sıfır
+                  // "bedava teklif verildi" demek ve dönüşüm raporunda
+                  // teklif sayılırdı.
+                  if (ham && (!Number.isFinite(tutar) || (tutar ?? 0) <= 0)) return;
+                  if (tutar !== lead.offerAmount) void yaz({ offerAmount: tutar });
+                }}
+              />
+
+              <label className="field-label mt-4" htmlFor="lead-assignee">Görüşmeyi yapan personel</label>
               <select
                 id="lead-assignee"
                 className="field-input"

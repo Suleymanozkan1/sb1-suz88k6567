@@ -331,3 +331,46 @@ test('Ürün stoğu koliden hesaplanır ve özette görünür', async ({ page })
   await expect(stok.getByText('Su (0,5 lt)')).toBeVisible();
   await expect(stok.getByText(/ürün kritik seviyede/)).toBeVisible();
 });
+
+/**
+ * Maddeler 16-19: görüşme alanları, otomatik takip ve dönüşüm raporu.
+ */
+test('Görüşme alanları kaydedilir, teklif takibi ve opsiyon uyarısı çıkar', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/musteri-adaylari/yeni');
+
+  const yarin = new Date();
+  yarin.setDate(yarin.getDate() + 3);
+  const opsiyon = yarin.toISOString().slice(0, 10);
+
+  await page.locator('#ml-name').fill('Görüşme Testi');
+  await page.locator('#ml-phone').fill('5331234567');
+  await page.locator('#ml-guests').fill('250');
+  await page.locator('#ml-offer').fill('180000');
+  await page.locator('#ml-option').fill(opsiyon);
+  await page.getByRole('button', { name: /Kaydet/ }).click();
+  await expect(page).toHaveURL(/\/panel\/musteri-adaylari\/[^/]+$/);
+
+  // Teklif fiyatı ve opsiyon tarihi kayda geçmiş olmalı.
+  await expect(page.getByText('180.000,00 ₺')).toBeVisible();
+  // Opsiyon üç gün sonra: uyarı çıkmalı (madde 18).
+  await expect(page.getByText(/Opsiyon tarihine 3 gün kaldı/)).toBeVisible();
+
+  // Teklif durumuna geçince takip tarihi kendiliğinden kuruluyor.
+  await page.locator('#lead-status').selectOption('teklif_verildi');
+  await expect(page.locator('#lead-followup')).not.toHaveValue('');
+
+  // Özet sayfasındaki opsiyon bandı.
+  await page.goto('/panel');
+  await expect(page.getByText(/opsiyon tarihi yaklaşıyor/)).toBeVisible();
+});
+
+test('Görüşme ve dönüşüm raporu sekmesi açılır', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/raporlar');
+  await page.getByRole('tab', { name: 'Görüşme ve dönüşüm' }).click();
+
+  await expect(page.getByRole('columnheader', { name: 'Salona gelen' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Dönüşüm' })).toBeVisible();
+  await expect(page.getByText(/Dönüşüm oranı: rezervasyona dönen/)).toBeVisible();
+});

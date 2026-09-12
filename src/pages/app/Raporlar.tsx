@@ -3,7 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
-import { useBusinesses, useHalls, useMenus, useReservationsWithBalances } from '../../lib/queries';
+import {
+  useBusinesses, useHalls, useLeadStatuses, useLeads, useMenus, useReservationsWithBalances,
+} from '../../lib/queries';
+import { donusumRaporu } from '../../lib/lead';
 import { QueryBoundary } from '../../components/QueryState';
 import {
   balanceReport, channelReport, downloadCsv, monthReport, programReport,
@@ -16,7 +19,7 @@ import ProgramCizelgesi from '../../components/ProgramCizelgesi';
 import { KEYS, read, write } from '../../lib/storage';
 import { IconDownload, IconPrint } from '../../components/Icons';
 
-type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans' | 'kanal';
+type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans' | 'kanal' | 'donusum';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'cizelge', label: 'Program raporu' },
@@ -29,6 +32,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'bakiye', label: 'Gelecek Kaporalar ve Ödemeler' },
   { key: 'seans', label: 'Gündüz / Gece' },
   { key: 'kanal', label: 'Ulaşım kanalı' },
+  { key: 'donusum', label: 'Görüşme ve dönüşüm' },
 ];
 
 const TAB_KEYS = TABS.map((t) => t.key);
@@ -39,6 +43,8 @@ export default function Raporlar() {
   const { data: halls = [] } = useHalls();
   const { data: businesses = [] } = useBusinesses();
   const { data: menus = [] } = useMenus();
+  const { data: adaylar = [] } = useLeads();
+  const { data: adayDurumlari = [] } = useLeadStatuses();
   const [params] = useSearchParams();
   const istenenTab = params.get('tab');
   const [tab, setTab] = useState<Tab>(
@@ -66,6 +72,19 @@ export default function Raporlar() {
   const balances = useMemo(() => balanceReport(scoped, balance), [scoped, balance]);
   const slots = useMemo(() => slotReport(scoped, balance), [scoped, balance]);
   const channels = useMemo(() => channelReport(scoped, balance), [scoped, balance]);
+
+  /*
+    Dönüşüm raporu rezervasyonlardan değil ADAYLARDAN çıkıyor: "kaç kişi
+    geldi, kaçı rezervasyona döndü" sorusunun paydası satılmış düğünler
+    değil, görüşülen müşterilerdir.
+  */
+  const donusum = useMemo(
+    () => donusumRaporu(
+      adaylar.filter((l) => withinRange(l.meetingDate || l.createdAt.slice(0, 10), { from, to })),
+      adayDurumlari,
+    ),
+    [adaylar, adayDurumlari, from, to],
+  );
 
   // Günü geçmiş alacaklar ayrıca sayılıyor: listenin başında durmaları
   // yetmez, kaç tane ve ne kadar olduğu tek bakışta görünmeli.
@@ -115,6 +134,14 @@ export default function Raporlar() {
           b.lastPayment ? b.lastPayment.amount : '',
           b.lastPayment?.method ?? '',
           b.remaining,
+        ]),
+      );
+    } else if (tab === 'donusum') {
+      csv = toCsv(
+        ['Ay', 'Kayıt', 'Salona gelen', 'Teklif', 'Rezervasyon', 'Olumsuz', 'Dönüşüm (%)'],
+        donusum.map((d) => [
+          d.ay, d.kayit, d.gelen, d.teklif, d.rezervasyon, d.olumsuz,
+          d.donusumOrani.toFixed(1),
         ]),
       );
     } else if (tab === 'kanal') {
@@ -370,6 +397,33 @@ export default function Raporlar() {
                   </tfoot>
                 </table>
               </div>
+            </>
+          )
+        ) : tab === 'donusum' ? (
+          donusum.length === 0 ? (
+            <p className="py-10 text-center text-sm text-brand-muted">
+              Seçilen tarih aralığında görüşme kaydı bulunmuyor.
+            </p>
+          ) : (
+            <>
+              {/*
+                "Kayıt" ile "salona gelen" ayrı sütunlar: her kayıt bir
+                görüşmedir, ama gelen kişi yüz yüze görüşülendir. İkisi
+                tek sayıda toplanınca dönüşüm oranı anlamsız çıkıyordu.
+              */}
+              <Table
+                headers={['Ay', 'Kayıt', 'Salona gelen', 'Teklif', 'Rezervasyon', 'Olumsuz', 'Dönüşüm']}
+                rows={donusum.map((d) => [
+                  d.ay, formatNumber(d.kayit), formatNumber(d.gelen), formatNumber(d.teklif),
+                  formatNumber(d.rezervasyon), formatNumber(d.olumsuz),
+                  `%${d.donusumOrani.toFixed(1)}`,
+                ])}
+              />
+              <p className="mt-3 text-xs text-brand-muted">
+                Dönüşüm oranı: rezervasyona dönen müşteri / salona gelen kişi. Teklif sayısı
+                yalnızca fiyat girilmiş kayıtları sayar; rakam konuşulmamış bir görüşme teklif
+                sayılsaydı oran olduğundan iyi görünürdü.
+              </p>
             </>
           )
         ) : tab === 'seans' ? (
