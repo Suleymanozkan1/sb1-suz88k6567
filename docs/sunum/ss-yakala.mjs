@@ -61,21 +61,49 @@ async function girisYap(page) {
   await page.waitForURL(/\/panel$/);
 }
 
-/** Tutarları bilinen bir rezervasyon açar ve kimliğini döndürür. */
+/** Tarihi gün olarak ileri alır. */
+function gunEkle(iso, gun) {
+  const t = new Date(`${iso}T12:00:00`);
+  t.setDate(t.getDate() + gun);
+  return t.toISOString().slice(0, 10);
+}
+
+/**
+ * Tutarları bilinen bir rezervasyon açar ve kimliğini döndürür.
+ *
+ * Örnek veri aynı salonu aynı gün ve seansta zaten doldurmuş olabilir;
+ * sistem ikinci kaydı haklı olarak reddediyor. Sabit tarihlerde ısrar
+ * etmek yerine çakışma görülünce bir sonraki güne geçiliyor: örnek veri
+ * değiştiğinde ya da ay başka bir güne denk geldiğinde betik yine
+ * çalışsın.
+ */
 async function rezervasyon(page, { ad, tarih, kisi, tutar, kapora, tur }) {
-  await page.goto(`${KOK}/panel/rezervasyonlar/yeni`);
-  await page.locator('#hallId').selectOption({ index: 1 });
-  await page.locator('#customerName').fill(ad);
-  await page.locator('#customerPhone').fill('5321234567');
-  await page.locator('#date').fill(tarih);
-  if (tur) await page.locator('#organizationType').selectOption(tur);
-  await page.locator('#guestCount').fill(String(kisi));
-  await page.locator('#totalAmount').fill(String(tutar));
-  await page.locator('#deposit').fill(String(kapora));
-  await page.getByRole('button', { name: /Kaydet/ }).click();
-  await page.waitForURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
-  not('  · rezervasyon: ' + ad);
-  return page.url().split('/').pop();
+  for (let deneme = 0; deneme < 12; deneme += 1) {
+    const gun = gunEkle(tarih, deneme);
+    await page.goto(`${KOK}/panel/rezervasyonlar/yeni`);
+    await page.locator('#hallId').selectOption({ index: 1 });
+    await page.locator('#customerName').fill(ad);
+    await page.locator('#customerPhone').fill('5321234567');
+    await page.locator('#date').fill(gun);
+    if (tur) await page.locator('#organizationType').selectOption(tur);
+    await page.locator('#guestCount').fill(String(kisi));
+    await page.locator('#totalAmount').fill(String(tutar));
+    await page.locator('#deposit').fill(String(kapora));
+    await page.getByRole('button', { name: /Kaydet/ }).click();
+
+    try {
+      await page.waitForURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/, { timeout: 4000 });
+      not(`  · rezervasyon: ${ad} (${gun})`);
+      return page.url().split('/').pop();
+    } catch {
+      const govde = await page.innerText('body');
+      if (!/zaten bir rezervasyon var/.test(govde)) {
+        throw new Error(`Rezervasyon açılamadı (${ad}): ${govde.slice(0, 200)}`);
+      }
+      not(`  · ${gun} dolu, ertesi gün deneniyor`);
+    }
+  }
+  throw new Error(`Boş gün bulunamadı: ${ad}`);
 }
 
 const browser = await chromium.launch({
@@ -197,7 +225,26 @@ for (const [ad, yol] of [
   ['panel-hatirlatmalar',  '/panel/hatirlatmalar'],
   ['panel-sms-kayitlari',  '/panel/sms'],
   ['panel-rezervasyon-detay', `/panel/rezervasyonlar/${rid}`],
+  // Yeni eklenen ekranlar
+  ['panel-musteri-adaylari', '/panel/musteri-adaylari'],
+  ['panel-whatsapp-ayarlari', '/panel/whatsapp-ayarlari'],
 ]) await ekran(page, ad, yol);
+
+not('Müşteri adayı kartı yakalanıyor…');
+{
+  // Listeden ilk adayın kartına girilir; kart durum geçmişini ve
+  // iletişim geçmişini birlikte gösteriyor.
+  await page.goto(`${KOK}/panel/musteri-adaylari`);
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(700);
+  const ilk = page.locator('a[href*="/panel/musteri-adaylari/"]').first();
+  if (await ilk.count()) {
+    await ilk.click();
+    await page.waitForTimeout(900);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await cek(page, 'panel-aday-karti');
+  }
+}
 
 await page.goto(`${KOK}/panel/faturalar`);
 await page.waitForLoadState('domcontentloaded');
@@ -241,7 +288,13 @@ await cek(page, 'panel-makbuz');
 
 not('Site ekranı yakalanıyor…');
 await page.goto(`${KOK}/panel/rezervasyonlar/${rid}`);
-const kod = (await page.getByText(/SA-\d{4}-\d+/).first().textContent()).match(/SA-\d{4}-\d+/)[0];
+/*
+  Sözleşme numarası artık "2026-1" biçiminde; eski "SA-2026-5281"
+  kalıbı aranırsa hiçbir şey bulunamaz ve betik burada düşer.
+  Rezervasyon kodu sayfadaki "Kod" alanından okunuyor.
+*/
+const kod = (await page.getByText(/\b\d{4}-\d{1,9}\b/).first().textContent())
+  .match(/\b\d{4}-\d{1,9}\b/)[0];
 await page.goto(`${KOK}/kod-dogrulama`);
 await page.getByLabel(/[Kk]od/).first().fill(kod);
 await page.getByRole('button', { name: /Kodu Kontrol Et|Doğrula/ }).click();

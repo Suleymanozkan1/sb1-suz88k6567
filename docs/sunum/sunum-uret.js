@@ -235,9 +235,11 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
       ['İletişim', 'Hatırlatma şablonları ve otomatik SMS gönderimi'],
       ['Yönetim', 'Kullanıcılar ve yetkiler, yedekleme, sistem durumu'],
       ['Mobil', 'iOS ve Android uygulaması: panelin bütün ekranları telefonda'],
+      ['Müşteri takibi', 'Müşteri adayları, WhatsApp’tan gelen talepler, takip tarihi ve dönüşüm'],
+      ['Çelik kasa', 'Fiziksel kasadaki nakdin ayrı defteri; kasa bakiyesinden bağımsız'],
     ],
   });
-  s.addNotes('Altı başlığın kısa dökümü. Ayrıntılar sonraki slaytlarda.');
+  s.addNotes('Dokuz başlığın kısa dökümü. Ayrıntılar sonraki slaytlarda.');
 }
 
 /* ══ 3 · Takvim ═══════════════════════════════════════════════ */
@@ -580,6 +582,74 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     ],
   });
   s.addNotes('Raporlar tarih aralığına göre filtrelenebilir.');
+}
+
+/* ══ 18b · Çelik kasa ═════════════════════════════════════════ */
+{
+  const s = slayt(SURFACE);
+  baslik(s, 'ÇELİK KASA', 'Fiziksel kasadaki nakit');
+  s.addText('Gelir gider defteri neyin kazanıldığını yazar; çelik kasa o paranın fiziksel olarak nerede durduğunu. İkisi ayrı sorulardır: tahsil edilmiş ama henüz kasaya konmamış bir ödeme, defterde görünür, kasada görünmez.', {
+    x: KENAR, y: 1.66, w: GENIS, h: 0.5, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 13.5, color: MUTED, lineSpacing: 18,
+  });
+  gorsel(s, img('panel-kasa.png'), { x: KENAR, y: 2.35, w: 7.4, h: 3.6 });
+  maddeler(s, {
+    x: 8.5, y: 2.4, w: 4.1, gap: 1.2,
+    items: [
+      ['Ekle ve çıkar', 'Her gelir ya da gider satırı kasaya elle eklenir, kasadan elle çıkarılır.'],
+      ['Çift sayım engeli', 'Kasadaki bir tutar ikinci kez eklenemez; para çıkmadan tekrar giremez.'],
+      ['Giderin yönü', 'Gider kasaya eklenmez, kasadan düşer. Yön satırın türünden gelir.'],
+    ],
+  });
+  dipnot(s, 'Kural veritabanında tetikleyiciyle uygulanır; ekrandan atlanamaz.', 6.15, { kucuk: true });
+  s.addNotes('Bu ayrım, “kasada ne kadar var” sorusunun cevabının defterle karışmaması içindir. Salon sahibi akşam kasayı sayar ve buradaki rakamla karşılaştırır.');
+}
+
+/* ══ 18c · Müşteri adayları ═══════════════════════════════════ */
+{
+  const s = slayt();
+  baslik(s, 'MÜŞTERİ TAKİBİ', 'Soran müşteri kaybolmasın');
+  s.addText('Fiyat soran her müşteri rezervasyona dönmez; dönmeyenlerin de bir yerde yazılı olması gerekir. Aday kaydı, ilk temastan sözleşmeye kadar olan aralığı tutar.', {
+    x: KENAR, y: 1.66, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 13.5, color: MUTED,
+  });
+  gorsel(s, img('panel-musteri-adaylari.png'), {
+    x: KENAR, y: 2.25, w: 6.15, h: 3.75, altYazi: 'Durum, sorumlu ve takip tarihi bir arada.',
+  });
+  gorsel(s, img('panel-aday-karti.png'), {
+    x: 6.95, y: 2.25, w: 5.65, h: 3.75, altYazi: 'Aday kartı: durum geçmişi ve iletişim geçmişi.',
+  });
+  mikroNotlar(s, {
+    y: 6.35,
+    items: [
+      ['11 durum', 'Aranmadı’dan rezervasyona'],
+      ['Takip tarihi', 'Geciken ayrı gösterilir'],
+      ['Geçmiş silinmez', 'Kim, ne zaman, neyden neye'],
+      ['Dönüşüm', 'Bilgiler forma taşınır'],
+    ],
+  });
+  s.addNotes('Geciken takip ile bugün aranacak bilerek ayrı duruyor: ikisi tek sayıda toplanınca gecikmiş iş günlük işin içinde kaybolur. Durum değişiklikleri veritabanı tetikleyicisiyle yazılır, istemci atlayamaz.');
+}
+
+/* ══ 18d · WhatsApp ═══════════════════════════════════════════ */
+{
+  const s = slayt(SURFACE);
+  baslik(s, 'WHATSAPP', 'Gelen mesaj kendiliğinden aday olur');
+  s.addText('İşletmenin WhatsApp numarasına yazılan mesaj çözümlenir ve bir müşteri adayına dönüşür. Aynı numaradan gelen ikinci mesaj yeni bir kayıt açmaz, mevcut adayın geçmişine eklenir.', {
+    x: KENAR, y: 1.66, w: GENIS, h: 0.44, isTextBox: true, margin: 0,
+    fontFace: B, fontSize: 13.5, color: MUTED,
+  });
+  gorsel(s, img('panel-whatsapp-ayarlari.png'), { x: KENAR, y: 2.3, w: 7.1, h: 3.6 });
+  maddeler(s, {
+    x: 8.2, y: 2.35, w: 4.4, gap: 1.15,
+    items: [
+      ['Karşılama', 'İlk kez yazana bir kez “mesajınız alındı” gider.'],
+      ['Mesai dışı', 'Çalışma saatleri dışında “ne zaman döneceğiz” bilgisi gider.'],
+      ['Fiyat sorusuna cevap yok', 'Müsaitlik söyleyen otomatik yanıt, salon adına taahhüt gibi okunur.'],
+    ],
+  });
+  dipnot(s, 'İkisi de varsayılan olarak kapalıdır; açmak işletmenin kararıdır.', 6.1, { kucuk: true });
+  s.addNotes('Çözümleyici satır sırasına değil içeriğine bakar ve emin olamadığını uydurmaz: “Mayısın ilk haftası” tarihe çevrilmez, olduğu gibi saklanır. Uydurulan bir gün, salonun o gün dolu sanılmasına yol açardı.');
 }
 
 /* ══ 19 · e-Arşiv / e-Fatura ══════════════════════════════════ */
