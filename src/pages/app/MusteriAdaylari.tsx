@@ -74,9 +74,12 @@ export default function MusteriAdaylari() {
           </p>
         </div>
         {can('rezervasyon.duzenle') && (
-          <Link to="/panel/musteri-adaylari/yeni" className="btn-primary text-white hover:text-white">
-            Yeni aday
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/panel/musteri-adaylari/yeni" className="btn-primary text-white hover:text-white">
+              Yeni aday
+            </Link>
+            <Link to="/panel/whatsapp-ayarlari" className="btn-ghost">WhatsApp ayarları</Link>
+          </div>
         )}
       </header>
 

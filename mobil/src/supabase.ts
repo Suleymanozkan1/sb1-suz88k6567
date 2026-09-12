@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 /**
- * Supabase istemcisi ve oturum saklama.
+ * Veri istemcisi ve oturum saklama.
+ *
+ * Veriye kendi sunucumuzdaki PostgREST üzerinden gidiliyor; web paneliyle
+ * aynı yol, aynı RLS politikaları.
  *
  * Oturum belirteci cihazda AsyncStorage yerine SecureStore'da tutulur:
  * AsyncStorage düz metin bir dosyadır ve köklenmiş/jailbreak bir cihazda
@@ -67,8 +69,6 @@ const guvenliDepo = {
 const depo = Platform.OS === 'web' ? AsyncStorage : guvenliDepo;
 
 const ekstra = (Constants.expoConfig?.extra ?? {}) as {
-  supabaseUrl?: string | null;
-  supabaseAnonKey?: string | null;
   apiKok?: string;
 };
 
@@ -82,9 +82,7 @@ function metin(...adaylar: unknown[]): string {
   return '';
 }
 
-export const SUPABASE_URL = metin(process.env.EXPO_PUBLIC_SUPABASE_URL, ekstra.supabaseUrl);
-export const SUPABASE_ANON = metin(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, ekstra.supabaseAnonKey);
-/** Sunucu uçları (giriş kilidi, SMS) web ile aynı kökten geçer. */
+/** Sunucu kökü: hem /api/* uçları hem de /veri (PostgREST) buradan geçer. */
 export const API_KOK = metin(process.env.EXPO_PUBLIC_API_KOK, ekstra.apiKok, 'https://sahratakip.com');
 
 /**
@@ -92,18 +90,118 @@ export const API_KOK = metin(process.env.EXPO_PUBLIC_API_KOK, ekstra.apiKok, 'ht
  * Adres yalnızca https olabilir: düz metin bağlantı üzerinden oturum
  * belirteci taşımak, belirtecin ağda okunabilmesi demektir.
  */
-export const yapilandirildi = Boolean(
-  SUPABASE_URL.startsWith('https://') && SUPABASE_ANON,
-);
+export const yapilandirildi = API_KOK.startsWith('https://');
 
-export const supabase: SupabaseClient | null = yapilandirildi
-  ? createClient(SUPABASE_URL, SUPABASE_ANON, {
-      auth: {
-        storage: depo,
-        autoRefreshToken: true,
-        persistSession: true,
-        // Mobilde adres çubuğu yok; oturum bağlantıdan okunmaz.
-        detectSessionInUrl: false,
-      },
-    })
-  : null;
+/* ------------------------------------------------------------ oturum */
+
+const ERISIM = 'sahra-erisim-jetonu';
+const YENILEME = 'sahra-yenileme-jetonu';
+const BITIS = 'sahra-jeton-bitis';
+
+/** Jeton bu kadar kalanla yenilenir; son saniyeye bırakılırsa istek yolda ölür. */
+const ERKEN_YENILE_SANIYE = 120;
+
+export interface Oturum {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+let erisimOnbellek: string | null = null;
+
+export async function oturumuKaydet(oturum: Oturum): Promise<void> {
+  erisimOnbellek = oturum.accessToken;
+  await depo.setItem(ERISIM, oturum.accessToken);
+  await depo.setItem(YENILEME, oturum.refreshToken);
+  await depo.setItem(BITIS, String(Date.now() + oturum.expiresIn * 1000));
+}
+
+export async function oturumuTemizle(): Promise<void> {
+  erisimOnbellek = null;
+  await depo.removeItem(ERISIM);
+  await depo.removeItem(YENILEME);
+  await depo.removeItem(BITIS);
+}
+
+export async function oturumVarMi(): Promise<boolean> {
+  return Boolean(await depo.getItem(YENILEME));
+}
+
+/**
+ * Geçerli erişim jetonu; gerekiyorsa yeniler.
+ *
+ * Aynı anda birden çok istek yenilemeyi tetiklerse tek çağrı yapılır:
+ * dönüşümlü yenileme yüzünden ikinci çağrı reddedilir ve kullanıcı
+ * sebepsiz yere dışarı atılırdı.
+ */
+let bekleyen: Promise<string | null> | null = null;
+
+export async function gecerliJeton(): Promise<string | null> {
+  const yenileme = await depo.getItem(YENILEME);
+  if (!yenileme) return null;
+
+  const bitis = Number(await depo.getItem(BITIS));
+  const tazelemeGerek = !Number.isFinite(bitis) || bitis === 0
+    || Date.now() >= bitis - ERKEN_YENILE_SANIYE * 1000;
+
+  if (!tazelemeGerek) {
+    erisimOnbellek = erisimOnbellek ?? (await depo.getItem(ERISIM));
+    return erisimOnbellek;
+  }
+  if (bekleyen) return bekleyen;
+
+  bekleyen = (async () => {
+    try {
+      const yanit = await fetch(`${API_KOK}/api/oturum`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ refreshToken: yenileme }),
+      });
+      if (!yanit.ok) {
+        await oturumuTemizle();
+        return null;
+      }
+      const yeni = (await yanit.json()) as Oturum;
+      await oturumuKaydet(yeni);
+      return yeni.accessToken;
+    } catch {
+      // Ağ hatası oturumu SİLMEZ: geçici kopukluk kullanıcıyı dışarı atmamalı.
+      return depo.getItem(ERISIM);
+    } finally {
+      bekleyen = null;
+    }
+  })();
+
+  return bekleyen;
+}
+
+/** Sunucudaki oturumu da kapatır. */
+export async function cikisYap(): Promise<void> {
+  const yenileme = await depo.getItem(YENILEME);
+  await oturumuTemizle();
+  if (!yenileme) return;
+  try {
+    await fetch(`${API_KOK}/api/oturum`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken: yenileme }),
+    });
+  } catch {
+    // Yerel kayıt silindi; sunucudaki satır süresi dolunca düşer.
+  }
+}
+
+/** Oturumdaki kullanıcının kimliği; jeton gövdesinden okunur. */
+export function kullaniciId(jeton: string | null): string | null {
+  if (!jeton) return null;
+  const parcalar = jeton.split('.');
+  if (parcalar.length !== 3) return null;
+  try {
+    const govde = JSON.parse(
+      Buffer.from(parcalar[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'),
+    ) as { sub?: string };
+    return govde.sub ?? null;
+  } catch {
+    return null;
+  }
+}

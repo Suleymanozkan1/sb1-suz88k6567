@@ -33,6 +33,8 @@ const durum = {
   tabloYanitlari: {} as Record<string, Yanit[]>,
   rpcYanitlari: {} as Record<string, Yanit>,
   authYanitlari: {} as Record<string, unknown>,
+  /** Oturumdaki kullanıcının kimliği; null ise oturum yok. */
+  kimlik: null as string | null,
 };
 
 function tabloYaniti(tablo: string): Yanit {
@@ -62,48 +64,28 @@ function kurucu(tablo: string) {
   return nesne;
 }
 
-function authYaniti(ad: string, varsayilan: unknown) {
-  return durum.authYanitlari[ad] ?? varsayilan;
-}
-
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({
+vi.mock('../postgrest', () => ({
+  postgrestIstemci: () => ({
     from: (tablo: string) => kurucu(tablo),
     rpc: (ad: string, arg: unknown) => {
       durum.rpcler.push({ ad, arg });
       return Promise.resolve(durum.rpcYanitlari[ad] ?? { data: null, error: null });
     },
-    auth: {
-      getSession: () => {
-        durum.auth.push({ ad: 'getSession', arg: [] });
-        return Promise.resolve(authYaniti('getSession', { data: { session: null } }));
-      },
-      getUser: () => {
-        durum.auth.push({ ad: 'getUser', arg: [] });
-        return Promise.resolve(authYaniti('getUser', { data: { user: null } }));
-      },
-      setSession: (...arg: unknown[]) => {
-        durum.auth.push({ ad: 'setSession', arg });
-        return Promise.resolve(authYaniti('setSession', { error: null }));
-      },
-      signInWithPassword: (...arg: unknown[]) => {
-        durum.auth.push({ ad: 'signInWithPassword', arg });
-        return Promise.resolve(authYaniti('signInWithPassword', { error: null }));
-      },
-      signOut: () => {
-        durum.auth.push({ ad: 'signOut', arg: [] });
-        return Promise.resolve({ error: null });
-      },
-      updateUser: (...arg: unknown[]) => {
-        durum.auth.push({ ad: 'updateUser', arg });
-        return Promise.resolve(authYaniti('updateUser', { error: null }));
-      },
-      resetPasswordForEmail: (...arg: unknown[]) => {
-        durum.auth.push({ ad: 'resetPasswordForEmail', arg });
-        return Promise.resolve(authYaniti('resetPasswordForEmail', { error: null }));
-      },
-    },
   }),
+}));
+
+/*
+  Oturum katmanı taklit ediliyor. Kimlik artık jetonun gövdesinden
+  okunuyor; testte gerçek bir jeton üretmek yerine `durum.kimlik`
+  doğrudan veriliyor.
+*/
+vi.mock('../oturum', () => ({
+  erisimJetonu: () => (durum.kimlik ? `b.${btoa(JSON.stringify({ sub: durum.kimlik }))}.c` : null),
+  oturumVarMi: () => Boolean(durum.kimlik),
+  gecerliJeton: () => Promise.resolve(durum.kimlik ? 'jeton' : null),
+  oturumuKaydet: (o: unknown) => { durum.auth.push({ ad: 'oturumuKaydet', arg: [o] }); },
+  oturumuTemizle: () => { durum.auth.push({ ad: 'oturumuTemizle', arg: [] }); },
+  cikisYap: () => { durum.auth.push({ ad: 'cikisYap', arg: [] }); return Promise.resolve(); },
 }));
 
 let repo: Repository;
@@ -115,6 +97,7 @@ beforeEach(async () => {
   durum.tabloYanitlari = {};
   durum.rpcYanitlari = {};
   durum.authYanitlari = {};
+  durum.kimlik = null;
 
   vi.stubEnv('VITE_SUPABASE_URL', 'https://ornek.supabase.co');
   vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-anahtari');
@@ -150,8 +133,7 @@ describe('oturum', () => {
   });
 
   it('oturum varsa profili okur', async () => {
-    durum.authYanitlari.getSession = { data: { session: { access_token: 'x' } } };
-    durum.authYanitlari.getUser = { data: { user: { id: 'u1' } } };
+    durum.kimlik = 'u1';
     yanitla('profiles', { data: { id: 'u1', full_name: 'Ayşe', email: 'a@b.com', role: 'owner' } });
 
     const kullanici = await repo.getSession();
@@ -163,8 +145,7 @@ describe('oturum', () => {
   });
 
   it('eksik sütunları güvenli varsayılanlara çevirir', async () => {
-    durum.authYanitlari.getSession = { data: { session: {} } };
-    durum.authYanitlari.getUser = { data: { user: { id: 'u1' } } };
+    durum.kimlik = 'u1';
     yanitla('profiles', { data: { id: 'u1' } });
 
     const kullanici = await repo.getSession();
@@ -178,16 +159,16 @@ describe('oturum', () => {
   });
 
   it('profil okunamazsa anlaşılır hata verir', async () => {
-    durum.authYanitlari.getSession = { data: { session: {} } };
-    durum.authYanitlari.getUser = { data: { user: { id: 'u1' } } };
+    durum.kimlik = 'u1';
     yanitla('profiles', { error: HATA });
-
     await expect(repo.getSession()).rejects.toThrow('Profil bilgisi alınamadı.');
   });
 
-  it('çıkışta Supabase oturumu kapatılır', async () => {
+  it('çıkışta sunucudaki oturum da kapatılır', async () => {
+    // Yalnızca yerel kayıt silinseydi, çalınan yenileme jetonu 30 gün
+    // boyunca geçerli kalırdı.
     await repo.signOut();
-    expect(durum.auth.some((a) => a.ad === 'signOut')).toBe(true);
+    expect(durum.auth.some((a) => a.ad === 'cikisYap')).toBe(true);
   });
 });
 
@@ -203,17 +184,15 @@ describe('sunucu üzerinden giriş', () => {
   }
 
   it('sunucudan gelen belirteçlerle oturum açar', async () => {
-    fetchYanit({ json: { accessToken: 'at', refreshToken: 'rt' } });
-    durum.authYanitlari.getUser = { data: { user: { id: 'u1' } } };
+    fetchYanit({ json: { accessToken: 'at', refreshToken: 'rt', expiresIn: 3600 } });
+    durum.kimlik = 'u1';
     yanitla('profiles', { data: { id: 'u1', email: 'a@b.com' } });
 
     const kullanici = await repo.signIn('a@b.com', 'sifre');
 
     expect(kullanici.id).toBe('u1');
-    const ayar = durum.auth.find((a) => a.ad === 'setSession');
-    expect(ayar?.arg[0]).toEqual({ access_token: 'at', refresh_token: 'rt' });
-    // Uç nokta çalıştığında doğrudan Supabase'e düşülmemeli.
-    expect(durum.auth.some((a) => a.ad === 'signInWithPassword')).toBe(false);
+    const ayar = durum.auth.find((a) => a.ad === 'oturumuKaydet');
+    expect(ayar?.arg[0]).toEqual({ accessToken: 'at', refreshToken: 'rt', expiresIn: 3600 });
   });
 
   it('hesap kilitliyse sunucunun metnini gösterir', async () => {
@@ -237,89 +216,167 @@ describe('sunucu üzerinden giriş', () => {
     await expect(repo.signIn('a@b.com', 'x')).rejects.toThrow(/hatalı\.$/);
   });
 
-  it('uç nokta yoksa doğrudan Supabase ile giriş yapar', async () => {
-    // Uç noktası olmayan bir dağıtımda sunucu SPA kabuğunu döndürür.
+  it('uç nokta yanıt vermiyorsa GİRİŞİ REDDEDER', async () => {
+    /*
+      Eskiden burada doğrudan veritabanına düşülüyordu ve o yolda hesap
+      kilidi ile hız sınırı hiç uygulanmıyordu. Sessizce korumasız
+      çalışan bir giriş, hiç çalışmayandan kötüdür.
+    */
     fetchYanit({ html: true });
-    durum.authYanitlari.getUser = { data: { user: { id: 'u1' } } };
-    yanitla('profiles', { data: { id: 'u1' } });
-
-    await repo.signIn('a@b.com', 'sifre');
-
-    expect(durum.auth.some((a) => a.ad === 'signInWithPassword')).toBe(true);
+    await expect(repo.signIn('a@b.com', 'sifre')).rejects.toThrow(/Giriş servisi yanıt vermiyor/);
+    expect(durum.auth.some((a) => a.ad === 'oturumuKaydet')).toBe(false);
   });
 
-  it('ağ hatasında da doğrudan Supabase yoluna düşer', async () => {
+  it('ağ hatasında da giriş yapılmaz', async () => {
     fetchYanit({ atar: true });
-    durum.authYanitlari.getUser = { data: { user: { id: 'u1' } } };
-    yanitla('profiles', { data: { id: 'u1' } });
-
-    await repo.signIn('a@b.com', 'sifre');
-
-    expect(durum.auth.some((a) => a.ad === 'signInWithPassword')).toBe(true);
+    await expect(repo.signIn('a@b.com', 'sifre')).rejects.toThrow(/Sunucuya ulaşılamadı/);
+    expect(durum.auth.some((a) => a.ad === 'oturumuKaydet')).toBe(false);
   });
 
-  it('doğrudan girişte hatalı şifre metnini çevirir', async () => {
-    fetchYanit({ html: true });
-    durum.authYanitlari.signInWithPassword = { error: { message: 'Invalid login credentials' } };
-    await expect(repo.signIn('a@b.com', 'x')).rejects.toThrow('E-posta veya şifreniz hatalı.');
-  });
-
-  it('doğrulanmamış e-postayı ayrı metinle bildirir', async () => {
-    fetchYanit({ html: true });
-    durum.authYanitlari.signInWithPassword = { error: { message: 'Email not confirmed' } };
-    await expect(repo.signIn('a@b.com', 'x'))
-      .rejects.toThrow('E-posta adresinizi doğrulamanız gerekiyor.');
-  });
-
-  it('profil bulunamazsa giriş tamamlanmaz', async () => {
+  it('profil bulunamazsa oturumu açık BIRAKMAZ', async () => {
+    // Profili olmayan hesapla panele girmek, kullanıcıyı hiçbir şey
+    // yapamadığı bir ekrana sokardı.
     fetchYanit({ json: { accessToken: 'at', refreshToken: 'rt' } });
-    durum.authYanitlari.getUser = { data: { user: null } };
+    durum.kimlik = null;
     await expect(repo.signIn('a@b.com', 'x')).rejects.toThrow('Hesabınıza ait profil bulunamadı.');
+    expect(durum.auth.some((a) => a.ad === 'oturumuTemizle')).toBe(true);
   });
 });
 
 describe('şifre işlemleri', () => {
-  it('şifre sıfırlama bağlantısı gönderir', async () => {
+  function sifreYanit(secenek: { status?: number; json?: unknown } = {}) {
+    const cagrilar: { govde: unknown }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_u: unknown, init?: RequestInit) => {
+      cagrilar.push({ govde: init?.body ? JSON.parse(String(init.body)) : undefined });
+      return new Response(JSON.stringify(secenek.json ?? { ok: true }), {
+        status: secenek.status ?? 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }));
+    return cagrilar;
+  }
+
+  it('şifre sıfırlama isteğini sunucuya iletir', async () => {
+    const c = sifreYanit();
     await repo.requestPasswordReset('  a@b.com  ');
-    const cagri = durum.auth.find((a) => a.ad === 'resetPasswordForEmail')!;
-    expect(cagri.arg[0]).toBe('a@b.com');
+    expect(c[0].govde).toEqual({ islem: 'sifirla', email: 'a@b.com' });
   });
 
   it('şifre sıfırlama hatasını çevirir', async () => {
-    durum.authYanitlari.resetPasswordForEmail = { error: HATA };
+    sifreYanit({ status: 500, json: { error: 'Şifre sıfırlama e-postası gönderilemedi.' } });
     await expect(repo.requestPasswordReset('a@b.com'))
       .rejects.toThrow('Şifre sıfırlama e-postası gönderilemedi.');
   });
 
-  it('şifre değiştirmeden önce mevcut şifreyi doğrular', async () => {
-    durum.authYanitlari.getUser = { data: { user: { id: 'u1' } } };
+  it('şifre değiştirmeyi mevcut şifreyle birlikte sunucuya gönderir', async () => {
+    // Doğrulama sunucuda yapılıyor; şifre veritabanına hiç gitmiyor.
+    durum.kimlik = 'u1';
     yanitla('profiles', { data: { id: 'u1', email: 'a@b.com' } });
+    const c = sifreYanit();
 
     await repo.changePassword('eski', 'yeni');
 
-    const dogrulama = durum.auth.find((a) => a.ad === 'signInWithPassword')!;
-    expect(dogrulama.arg[0]).toEqual({ email: 'a@b.com', password: 'eski' });
-    expect(durum.auth.find((a) => a.ad === 'updateUser')?.arg[0]).toEqual({ password: 'yeni' });
+    expect(c[0].govde).toEqual({
+      islem: 'degistir', email: 'a@b.com', mevcut: 'eski', yeni: 'yeni',
+    });
   });
 
-  it('mevcut şifre yanlışsa yeni şifreyi yazmaz', async () => {
-    durum.authYanitlari.getUser = { data: { user: { id: 'u1' } } };
+  it('şifre değişince yerel oturum temizlenir', async () => {
+    // Sunucu o kullanıcının bütün oturumlarını kapatıyor; bu cihazdaki
+    // jeton da artık geçersiz.
+    durum.kimlik = 'u1';
     yanitla('profiles', { data: { id: 'u1', email: 'a@b.com' } });
-    durum.authYanitlari.signInWithPassword = { error: { message: 'Invalid login credentials' } };
+    sifreYanit();
+
+    await repo.changePassword('eski', 'yeni');
+    expect(durum.auth.some((a) => a.ad === 'oturumuTemizle')).toBe(true);
+  });
+
+  it('mevcut şifre yanlışsa sunucunun metnini gösterir', async () => {
+    durum.kimlik = 'u1';
+    yanitla('profiles', { data: { id: 'u1', email: 'a@b.com' } });
+    sifreYanit({ status: 401, json: { error: 'Mevcut şifreniz hatalı.' } });
 
     await expect(repo.changePassword('yanlis', 'yeni')).rejects.toThrow('Mevcut şifreniz hatalı.');
-    expect(durum.auth.some((a) => a.ad === 'updateUser')).toBe(false);
+    expect(durum.auth.some((a) => a.ad === 'oturumuTemizle')).toBe(false);
   });
 
   it('oturum yoksa şifre değiştirilemez', async () => {
-    durum.authYanitlari.getUser = { data: { user: null } };
+    durum.kimlik = null;
     await expect(repo.changePassword('a', 'b')).rejects.toThrow('Oturumunuz bulunamadı.');
+  });
+});
+
+describe('kimlik üretimi', () => {
+  /*
+    Ekranlar kimliği kendileri üretiyor: uid('hall') -> "hall_mtx...".
+    Demo kipinde bu sorun değil (yerel depo metin kimlik kabul ediyor)
+    ama veritabanındaki sütun uuid. Gönderilirse kayıt hiç açılmıyor;
+    PostgREST 22P02 döndürüyor ve kullanıcı yalnızca bir hata görüyor.
+
+    Bu yüzden uygulama gerçek veritabanına karşı hiç çalışmamıştı:
+    yeni salon, menü, tedarikçi, tahsilat, kasa hareketi ve işletme
+    ekleme yollarının HEPSİ bu hatayı veriyordu.
+  */
+  it('uuid olmayan kimliği eklemede göndermez', async () => {
+    durum.kimlik = 'u1';
+    yanitla('halls', { data: { id: 'uuid-den-gelen' } });
+
+    await repo.saveHall({
+      id: 'hall_mtxyuoiswgz45x', businessId: 'biz-1', name: 'Bahçe',
+      capacity: 150, note: '', isActive: true,
+    });
+
+    const govde = islem(cagri('halls'), 'upsert')?.arg[0] as Record<string, unknown>;
+    expect(govde).not.toHaveProperty('id');
+    expect(govde.name).toBe('Bahçe');
+  });
+
+  it('veritabanından gelen uuid kimliği güncellemede gönderir', async () => {
+    // Gönderilmezse upsert güncelleme yerine yeni satır açar.
+    durum.kimlik = 'u1';
+    yanitla('halls', { data: { id: '13f1720e-e2d0-4552-9c49-0075c3db2de6' } });
+
+    await repo.saveHall({
+      id: '13f1720e-e2d0-4552-9c49-0075c3db2de6', businessId: 'biz-1',
+      name: 'Bahçe', capacity: 150, note: '', isActive: true,
+    });
+
+    const govde = islem(cagri('halls'), 'upsert')?.arg[0] as Record<string, unknown>;
+    expect(govde.id).toBe('13f1720e-e2d0-4552-9c49-0075c3db2de6');
+  });
+
+  it('aynı kural menü, tedarikçi ve kasa yollarında da geçerli', async () => {
+    durum.kimlik = 'u1';
+    yanitla('menus', { data: { id: 'x' } });
+    yanitla('vendors', { data: { id: 'x' } });
+    yanitla('cash_flow', { data: { id: 'x' } });
+
+    await repo.saveMenu({
+      id: 'menu_abc', businessId: 'biz-1', name: 'Standart',
+      pricing: 'kisi_basi', priceKurus: 10000, description: '',
+      isActive: true, createdAt: '',
+    });
+    await repo.saveVendor({
+      id: 'vendor_abc', businessId: 'biz-1', name: 'Orkestra',
+      category: 'Orkestra', phone: '', note: '', isActive: true, createdAt: '',
+    });
+    await repo.addCashFlow({
+      id: 'kasa_abc', businessId: 'biz-1', kind: 'Gelir', date: '2026-01-01',
+      category: 'Diğer', amount: 100, description: '', reservationId: '', createdAt: '',
+    });
+
+    for (const tablo of ['menus', 'vendors', 'cash_flow']) {
+      const c = cagri(tablo);
+      const govde = (islem(c, 'upsert') ?? islem(c, 'insert'))?.arg[0] as Record<string, unknown>;
+      expect(govde).not.toHaveProperty('id');
+    }
   });
 });
 
 describe('profil güncelleme', () => {
   beforeEach(() => {
-    durum.authYanitlari.getUser = { data: { user: { id: 'u1' } } };
+    durum.kimlik = 'u1';
     yanitla('profiles', { data: { id: 'u1', full_name: 'Yeni' } });
   });
 
@@ -339,7 +396,7 @@ describe('profil güncelleme', () => {
   });
 
   it('oturum yoksa güncellemez', async () => {
-    durum.authYanitlari.getUser = { data: { user: null } };
+    durum.kimlik = null;
     await expect(repo.updateProfile({ fullName: 'X' })).rejects.toThrow('Oturumunuz bulunamadı.');
   });
 
@@ -564,8 +621,9 @@ describe('tahsilat ve kasa', () => {
       id: 'p1', reservationId: 'r1', date: '2026-01-01', amount: 5000,
       method: 'Havale/EFT', note: '', createdAt: '',
     });
+    // Kimlik GÖNDERİLMEZ: sütun uuid, ekranın ürettiği "p1" kabul edilmez.
     expect(islem(cagri('payments'), 'insert')?.arg[0]).toEqual({
-      id: 'p1', reservation_id: 'r1', date: '2026-01-01',
+      reservation_id: 'r1', date: '2026-01-01',
       amount: 5000, method: 'Havale/EFT', note: null,
     });
   });
@@ -576,7 +634,7 @@ describe('tahsilat ve kasa', () => {
       category: 'Kira', amount: 1000, description: '', reservationId: '', createdAt: '',
     });
     expect(islem(cagri('cash_flow'), 'insert')?.arg[0]).toEqual({
-      id: 'c1', business_id: 'b1', kind: 'Gider', date: '2026-01-01',
+      business_id: 'b1', kind: 'Gider', date: '2026-01-01',
       category: 'Kira', amount: 1000, description: null, reservation_id: null,
     });
   });
@@ -630,7 +688,7 @@ describe('çelik kasa', () => {
       sourceId: 'kapora:r1', createdAt: '',
     });
     expect(islem(cagri('safe_movements'), 'insert')?.arg[0]).toEqual({
-      id: 'k1', business_id: 'b1', date: '2026-01-01', direction: 'Giriş',
+      business_id: 'b1', date: '2026-01-01', direction: 'Giriş',
       amount: 500, description: 'Gelir · Tahsilat', source_kind: 'reservation',
       source_id: 'kapora:r1',
     });

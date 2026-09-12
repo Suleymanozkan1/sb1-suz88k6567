@@ -269,7 +269,34 @@ export interface LeadMessage {
   channel: 'whatsapp' | 'telefon' | 'eposta' | 'sistem';
   body: string;
   waMessageId?: string;
+  /** Dolu ise mesajı program gönderdi; boş ise personel yazdı. */
+  autoKind?: 'karsilama' | 'mesai_disi';
   actorEmail: string;
+  createdAt: string;
+}
+
+/**
+ * WhatsApp Business numarası ve o numaranın otomatik cevap ayarları.
+ *
+ * Numara başına tek satır; işletmenin numarayı hangi hesaba bağladığı ve
+ * program adına ne söyleyeceği aynı yerde duruyor.
+ */
+export interface WhatsappAccount {
+  /** Meta'nın verdiği Phone number ID. Birincil anahtar. */
+  phoneNumberId: string;
+  businessId: string;
+  displayPhone: string;
+  /** Yeni aday açıldığında karşılama gönderilsin mi. */
+  autoReplyEnabled: boolean;
+  welcomeMessage: string;
+  /** Çalışma saatleri dışında bilgilendirme gönderilsin mi. */
+  afterHoursEnabled: boolean;
+  afterHoursMessage: string;
+  /** İşletmenin yerel saati, "HH:MM". */
+  workStart: string;
+  workEnd: string;
+  /** ISO gün numaraları: 1 pazartesi … 7 pazar. */
+  workDays: number[];
   createdAt: string;
 }
 

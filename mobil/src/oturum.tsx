@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_KOK, supabase, yapilandirildi } from './supabase';
+import {
+  API_KOK, cikisYap as oturumuKapat, gecerliJeton, kullaniciId,
+  oturumVarMi, oturumuKaydet, yapilandirildi, type Oturum,
+} from './supabase';
 
 /**
  * Oturum yönetimi.
@@ -47,7 +50,7 @@ export function OturumSaglayici({ children }: { children: ReactNode }) {
   const [yukleniyor, setYukleniyor] = useState(true);
 
   useEffect(() => {
-    if (!yapilandirildi || !supabase) {
+    if (!yapilandirildi) {
       let iptalTanitim = false;
       void AsyncStorage.getItem(TANITIM_ANAHTARI)
         .then((deger) => {
@@ -60,35 +63,33 @@ export function OturumSaglayici({ children }: { children: ReactNode }) {
     }
     let iptal = false;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (iptal) return;
-      const o = data.session?.user;
-      if (o) {
-        setKullanici({
-          id: o.id,
-          eposta: o.email ?? '',
-          ad: (o.user_metadata?.['name'] as string | undefined) ?? o.email ?? '',
-          rol: (o.user_metadata?.['role'] as string | undefined) ?? 'Personel',
-        });
+    /*
+      Uygulama açılışında saklı oturum varsa kurtarılır. Profil
+      bilgisi jetondan değil veritabanından okunuyor: ad ve rol
+      değişebilir, jetona gömülü olsaydı eski hâliyle donup kalırdı.
+    */
+    void (async () => {
+      try {
+        if (!(await oturumVarMi())) return;
+        const jeton = await gecerliJeton();
+        const kimlik = kullaniciId(jeton);
+        if (iptal || !kimlik) return;
+
+        const { profilOku } = await import('./veri');
+        const profil = await profilOku(kimlik);
+        if (!iptal && profil) setKullanici(profil);
+      } catch {
+        // Oturum kurtarılamazsa giriş ekranıyla başlanır.
+      } finally {
+        if (!iptal) setYukleniyor(false);
       }
-      setYukleniyor(false);
-    });
+    })();
 
-    const { data: abone } = supabase.auth.onAuthStateChange((_olay, oturum) => {
-      const o = oturum?.user;
-      setKullanici(o ? {
-        id: o.id,
-        eposta: o.email ?? '',
-        ad: (o.user_metadata?.['name'] as string | undefined) ?? o.email ?? '',
-        rol: (o.user_metadata?.['role'] as string | undefined) ?? 'Personel',
-      } : null);
-    });
-
-    return () => { iptal = true; abone.subscription.unsubscribe(); };
+    return () => { iptal = true; };
   }, []);
 
   const girisYap = useCallback(async (eposta: string, sifre: string) => {
-    if (!yapilandirildi || !supabase) {
+    if (!yapilandirildi) {
       setKullanici(TANITIM_KULLANICI);
       await AsyncStorage.setItem(TANITIM_ANAHTARI, 'acik').catch(() => { /* önemsiz */ });
       return;
@@ -99,21 +100,33 @@ export function OturumSaglayici({ children }: { children: ReactNode }) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: eposta.trim().toLowerCase(), password: sifre }),
     });
-    const govde = (await yanit.json().catch(() => ({}))) as { error?: string; session?: { access_token: string; refresh_token: string } };
+    const govde = (await yanit.json().catch(() => ({}))) as
+      { error?: string } & Partial<Oturum>;
 
-    if (!yanit.ok || !govde.session) {
+    if (!yanit.ok || !govde.accessToken || !govde.refreshToken) {
       throw new Error(govde.error ?? 'Giriş yapılamadı. Bilgilerinizi kontrol edin.');
     }
 
-    const { error } = await supabase.auth.setSession({
-      access_token: govde.session.access_token,
-      refresh_token: govde.session.refresh_token,
+    await oturumuKaydet({
+      accessToken: govde.accessToken,
+      refreshToken: govde.refreshToken,
+      expiresIn: govde.expiresIn ?? 3600,
     });
-    if (error) throw new Error(error.message);
+
+    const kimlik = kullaniciId(govde.accessToken);
+    const { profilOku } = await import('./veri');
+    const profil = kimlik ? await profilOku(kimlik) : null;
+    if (!profil) {
+      // Profili olmayan bir hesapla panele girmek, kullanıcıyı hiçbir
+      // şey yapamadığı bir ekrana sokardı.
+      await oturumuKapat();
+      throw new Error('Hesabınıza ait profil bulunamadı.');
+    }
+    setKullanici(profil);
   }, []);
 
   const cikisYap = useCallback(async () => {
-    if (supabase) await supabase.auth.signOut();
+    await oturumuKapat();
     await AsyncStorage.removeItem(TANITIM_ANAHTARI).catch(() => { /* önemsiz */ });
     setKullanici(null);
   }, []);

@@ -19,6 +19,7 @@ import RenkAyarlari from '../app/RenkAyarlari';
 import Musteriler from '../app/Musteriler';
 import SmsKayitlari from '../app/SmsKayitlari';
 import MusteriAdaylari from '../app/MusteriAdaylari';
+import MusteriAdayiYeni from '../app/MusteriAdayiYeni';
 import MusteriAdayiDetay from '../app/MusteriAdayiDetay';
 import UyeGirisi from '../UyeGirisi';
 
@@ -60,6 +61,7 @@ function renderPanel(path: string) {
             <Route path="musteriler" element={<Musteriler />} />
             <Route path="sms" element={<SmsKayitlari />} />
             <Route path="musteri-adaylari" element={<MusteriAdaylari />} />
+            <Route path="musteri-adaylari/yeni" element={<MusteriAdayiYeni />} />
             <Route path="musteri-adaylari/:id" element={<MusteriAdayiDetay />} />
           </Route>
         </Routes>
@@ -755,6 +757,48 @@ describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
 
     // Kim, ne zaman, neyden neye: geçmiş tetikleyiciyle yazılıyor.
     expect(await screen.findByText(/Durum "Aranmadı" → "Arandı"/)).toBeInTheDocument();
+  });
+
+  it('yeni aday düğmesi elle kayıt formunu açar', async () => {
+    // Rota eksikken bu düğme ":id" kalıbına düşüp "aday bulunamadı" diyordu.
+    const user = userEvent.setup();
+    clearAll();
+    seedIfEmpty();
+    renderPanel('/panel/musteri-adaylari');
+    await screen.findByRole('heading', { name: 'Müşteri Adayları' });
+
+    await user.click(screen.getByRole('link', { name: /Yeni aday/ }));
+    expect(await screen.findByRole('heading', { name: 'Yeni Müşteri Adayı' })).toBeInTheDocument();
+  });
+
+  it('elle açılan aday kaydedilir ve geçmişi ilk satırıyla başlar', async () => {
+    const user = userEvent.setup();
+    clearAll();
+    seedIfEmpty();
+    renderPanel('/panel/musteri-adaylari/yeni');
+    await screen.findByRole('heading', { name: 'Yeni Müşteri Adayı' });
+
+    await user.type(screen.getByLabelText(/Ad Soyad/), 'Nazlı Demir');
+    await user.type(screen.getByLabelText('Telefon'), '0533 111 22 33');
+    await user.click(screen.getByRole('button', { name: 'Kaydet' }));
+
+    // Kayıt sonrası doğrudan detay ekranına geçer.
+    expect(await screen.findByRole('heading', { name: 'Nazlı Demir' })).toBeInTheDocument();
+    expect(screen.getByText(/Müşteri adayı elle oluşturuldu/)).toBeInTheDocument();
+  });
+
+  it('elle aday formu geçersiz telefonu reddeder', async () => {
+    const user = userEvent.setup();
+    clearAll();
+    seedIfEmpty();
+    renderPanel('/panel/musteri-adaylari/yeni');
+    await screen.findByRole('heading', { name: 'Yeni Müşteri Adayı' });
+
+    await user.type(screen.getByLabelText(/Ad Soyad/), 'Hatalı Kayıt');
+    await user.type(screen.getByLabelText('Telefon'), '123');
+    await user.click(screen.getByRole('button', { name: 'Kaydet' }));
+
+    expect(await screen.findByText(/Geçerli bir cep telefonu giriniz/)).toBeInTheDocument();
   });
 
   it('WhatsApp\'ta Aç bağlantısı wa.me adresine gider', async () => {

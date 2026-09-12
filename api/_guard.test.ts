@@ -29,15 +29,12 @@ function fetchTakli(uretici: (url: string, init?: RequestInit) => Response | Pro
 }
 
 const YAPILI = {
-  SUPABASE_URL: 'https://ornek.supabase.co',
-  VITE_SUPABASE_URL: undefined,
-  SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+  PGRST_URL: 'http://veri.yerel',
+    JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
 };
 
 const YAPILANDIRILMAMIS = {
-  SUPABASE_URL: undefined,
-  VITE_SUPABASE_URL: undefined,
-  SUPABASE_SERVICE_ROLE_KEY: undefined,
+      JWT_SECRET: undefined,
 };
 
 const KURAL = { bucket: 'login', limit: 5, windowSeconds: 60 };
@@ -104,8 +101,8 @@ describe('isGuardConfigured', () => {
     expect(guard.isGuardConfigured()).toBe(true);
   });
 
-  it('anahtar yoksa yanlış döner', async () => {
-    const guard = await moduluYukle({ ...YAPILI, SUPABASE_SERVICE_ROLE_KEY: undefined });
+  it('imza sırrı yoksa yanlış döner', async () => {
+    const guard = await moduluYukle({ ...YAPILI, JWT_SECRET: undefined });
     expect(guard.isGuardConfigured()).toBe(false);
   });
 });
@@ -142,7 +139,7 @@ describe('enforceRateLimit', () => {
     await expect(guard.enforceRateLimit('ip:1.2.3.4', KURAL))
       .resolves.toEqual({ allowed: true, enforced: true });
 
-    expect(cagrilar[0].url).toBe('https://ornek.supabase.co/rest/v1/rpc/check_rate_limit');
+    expect(cagrilar[0].url).toBe('http://veri.yerel/rpc/check_rate_limit');
     expect(cagrilar[0].govde).toEqual({
       p_bucket: 'login', p_identifier: 'ip:1.2.3.4', p_limit: 5, p_window_seconds: 60,
     });
@@ -181,7 +178,7 @@ describe('loginLockStatus', () => {
 
     await expect(guard.loginLockStatus('demo@sahratakip.com'))
       .resolves.toEqual({ locked: true, failed_count: 6, retry_after_seconds: 300 });
-    expect(cagrilar[0].url).toBe('https://ornek.supabase.co/rest/v1/rpc/login_lock_status');
+    expect(cagrilar[0].url).toBe('http://veri.yerel/rpc/login_lock_status');
     expect(cagrilar[0].govde).toEqual({ p_email: 'demo@sahratakip.com' });
   });
 
@@ -210,7 +207,7 @@ describe('recordLoginAttempt', () => {
 
     await guard.recordLoginAttempt('demo@sahratakip.com', '203.0.113.7', false);
 
-    expect(cagrilar[0].url).toBe('https://ornek.supabase.co/rest/v1/rpc/record_login_attempt');
+    expect(cagrilar[0].url).toBe('http://veri.yerel/rpc/record_login_attempt');
     expect(cagrilar[0].govde).toEqual({
       p_email: 'demo@sahratakip.com', p_ip: '203.0.113.7', p_succeeded: false,
     });

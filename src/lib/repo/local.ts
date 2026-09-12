@@ -14,7 +14,7 @@ import type {
   Business, CashFlowEntry, CashFlowKind, ColorSetting, EnqueueResult, Invoice,
   EventTask, Hall, Menu, Payment, Reservation, ReservationVendor,
   SafeDirection, SafeMovement, SeatingTable, SmsConsent, SmsLogEntry, Vendor,
-  CustomerLead, LeadMessage, LeadStatusChange,
+  CustomerLead, LeadMessage, LeadStatusChange, WhatsappAccount,
   SmsQueueEntry, User,
 } from '../../types';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
@@ -468,6 +468,23 @@ export const localRepo: Repository = {
       .filter((x) => x.h.leadId === leadId)
       .sort((a, b) => b.h.createdAt.localeCompare(a.h.createdAt) || b.i - a.i)
       .map((x) => x.h));
+  },
+
+  async getWhatsappAccount(businessId) {
+    const hepsi = read<WhatsappAccount[]>(KEYS.whatsappAccounts, []);
+    return wait(hepsi.find((h) => h.businessId === businessId) ?? null);
+  },
+
+  async saveWhatsappAccount(account) {
+    const hepsi = read<WhatsappAccount[]>(KEYS.whatsappAccounts, []);
+    // Numara kimliği birincil anahtar; işletme başına tek numara tutuluyor,
+    // bu yüzden numara değiştiğinde eski satır kalmamalı.
+    const kalan = hepsi.filter(
+      (h) => h.businessId !== account.businessId && h.phoneNumberId !== account.phoneNumberId,
+    );
+    kalan.push(account);
+    write(KEYS.whatsappAccounts, kalan);
+    return wait(account);
   },
 
   async getColorSettings(businessId) {

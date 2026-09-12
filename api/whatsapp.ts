@@ -28,6 +28,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { insertRow, isDbConfigured, patchRows, selectRows } from './_db';
 import { json } from './_guard';
 import { talebiCoz, telefonSadelestir } from '../src/lib/whatsappTalep';
+import { otomatikCevapSec } from '../src/lib/whatsappOtomatik';
+import type { OtomatikAyar, OtomatikTur } from '../src/lib/whatsappOtomatik';
+import { isSendConfigured, metinGonder } from './whatsapp-gonder';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const APP_SECRET = process.env.WHATSAPP_APP_SECRET;
@@ -74,15 +77,40 @@ interface MetaGovde {
   }[];
 }
 
-interface HesapSatiri { phone_number_id: string; business_id: string }
+interface HesapSatiri {
+  business_id: string;
+  auto_reply_enabled: boolean;
+  welcome_message: string;
+  after_hours_enabled: boolean;
+  after_hours_message: string;
+  work_start: string;
+  work_end: string;
+  work_days: number[];
+}
+
+const HESAP_ALANLARI = 'business_id,auto_reply_enabled,welcome_message,'
+  + 'after_hours_enabled,after_hours_message,work_start,work_end,work_days';
+
+function ayaraCevir(hesap: HesapSatiri): OtomatikAyar {
+  return {
+    autoReplyEnabled: hesap.auto_reply_enabled,
+    welcomeMessage: hesap.welcome_message ?? '',
+    afterHoursEnabled: hesap.after_hours_enabled,
+    afterHoursMessage: hesap.after_hours_message ?? '',
+    workStart: hesap.work_start ?? '09:00',
+    workEnd: hesap.work_end ?? '19:00',
+    workDays: hesap.work_days ?? [1, 2, 3, 4, 5, 6, 7],
+  };
+}
 interface AdaySatiri { id: string; name: string; email: string; status: string }
 
-/** Mesajın geldiği numarayı işletmeye bağlar. */
-async function isletmeBul(phoneNumberId: string): Promise<string | null> {
+/** Mesajın geldiği numarayı işletmeye ve o numaranın ayarlarına bağlar. */
+async function hesabiBul(phoneNumberId: string): Promise<HesapSatiri | null> {
   const satirlar = await selectRows<HesapSatiri>(
-    `whatsapp_accounts?phone_number_id=eq.${encodeURIComponent(phoneNumberId)}&select=business_id&limit=1`,
+    `whatsapp_accounts?phone_number_id=eq.${encodeURIComponent(phoneNumberId)}`
+    + `&select=${HESAP_ALANLARI}&limit=1`,
   );
-  return satirlar[0]?.business_id ?? null;
+  return satirlar[0] ?? null;
 }
 
 /**
@@ -139,7 +167,9 @@ export function mesajlariCikar(govde: MetaGovde): {
  * personelin elle düzelttiği bir adı, gelen mesajdaki çözümleme yanlışıyla
  * bozmak kaydı kötüleştirirdi. Yalnızca boş alanlar doldurulur.
  */
-async function mesajiIsle(businessId: string, mesaj: MetaMesaj): Promise<'yeni' | 'eklendi'> {
+async function mesajiIsle(
+  businessId: string, mesaj: MetaMesaj,
+): Promise<{ leadId: string; telefon: string; zaman: string; sonuc: 'yeni' | 'eklendi' }> {
   const metin = mesaj.text?.body ?? '';
   const cozum = talebiCoz(metin);
   const saniye = Number(mesaj.timestamp);
@@ -191,7 +221,61 @@ async function mesajiIsle(businessId: string, mesaj: MetaMesaj): Promise<'yeni' 
     created_at: zaman,
   });
 
-  return sonuc;
+  return { leadId, telefon, zaman, sonuc };
+}
+
+/**
+ * Karşılama ya da mesai dışı bilgilendirmesi gönderir.
+ *
+ * Gönderilen mesaj geçmişe `auto_kind` ile yazılıyor: personel müşteriye
+ * ne söylendiğini görmeden arayamaz, ve aynı adaya ikinci bir karşılama
+ * gönderilmemesi bu kayda bakılarak sağlanıyor.
+ *
+ * Hiçbir hata webhook'u düşürmemeli: Meta 200 almazsa aynı mesajı
+ * yeniden gönderir, kuyruk tıkanır ve aday iki kez açılır. Gönderim
+ * başarısızsa mesaj kaydedilmez -- gönderilmemiş bir mesajı geçmişe
+ * yazmak, personele gitmemiş bir cevabı gitmiş gösterirdi.
+ */
+async function otomatikCevapVer(
+  hesap: HesapSatiri,
+  aday: { leadId: string; telefon: string; yeniAday: boolean },
+  /*
+    Karar müşterinin mesajı YAZDIĞI ana göre veriliyor, sunucunun o anki
+    saatine göre değil. Geçmişteki otomatik mesajlar da aynı damgayla
+    kaydediliyor; ikisi ayrı zaman ekseninde olsaydı "12 saatte bir"
+    kuralı kendi kaydıyla tutarsız çalışırdı.
+  */
+  zaman: Date,
+): Promise<OtomatikTur | null> {
+  const ayar = ayaraCevir(hesap);
+  if (!ayar.autoReplyEnabled && !ayar.afterHoursEnabled) return null;
+  if (!aday.telefon || !isSendConfigured()) return null;
+
+  const gecmis = await selectRows<{ auto_kind: OtomatikTur; created_at: string }>(
+    `customer_lead_messages?lead_id=eq.${aday.leadId}&auto_kind=not.is.null`
+    + '&select=auto_kind,created_at&order=created_at.desc&limit=20',
+  );
+
+  const secim = otomatikCevapSec(ayar, {
+    yeniAday: aday.yeniAday,
+    gecmis: gecmis.map((g) => ({ kind: g.auto_kind, at: g.created_at })),
+    zaman,
+  });
+  if (!secim) return null;
+
+  const waMessageId = await metinGonder(aday.telefon, secim.body);
+  await insertRow('customer_lead_messages', {
+    business_id: hesap.business_id,
+    lead_id: aday.leadId,
+    direction: 'giden',
+    channel: 'whatsapp',
+    body: secim.body,
+    auto_kind: secim.kind,
+    wa_message_id: waMessageId,
+    // Gelen mesajla aynı eksende: "12 saatte bir" kuralı kendi kaydını okuyor.
+    created_at: zaman.toISOString(),
+  });
+  return secim.kind;
 }
 
 export default async function handler(request: Request): Promise<Response> {
@@ -237,16 +321,31 @@ export default async function handler(request: Request): Promise<Response> {
   let yeniAday = 0;
   let eklenen = 0;
   let atlanan = 0;
+  let otomatik = 0;
 
   for (const { phoneNumberId, mesaj } of mesajlariCikar(govde)) {
-    const businessId = await isletmeBul(phoneNumberId);
+    const hesap = await hesabiBul(phoneNumberId);
     // Tanımadığımız numaraya gelen mesaj kaydedilmez: hangi işletmeye ait
     // olduğu bilinmeden yazılan satır kimsenin göremeyeceği bir kayıt olur.
-    if (!businessId) { atlanan += 1; continue; }
+    if (!hesap) { atlanan += 1; continue; }
 
     try {
-      const sonuc = await mesajiIsle(businessId, mesaj);
-      if (sonuc === 'yeni') yeniAday += 1; else eklenen += 1;
+      const kayit = await mesajiIsle(hesap.business_id, mesaj);
+      if (kayit.sonuc === 'yeni') yeniAday += 1; else eklenen += 1;
+
+      // Otomatik cevap ayrı bir try içinde: gönderim hatası mesajın
+      // kaydedilmesini geri almamalı. Müşterinin talebi durur, yalnızca
+      // otomatik cevap gitmemiş olur.
+      try {
+        const tur = await otomatikCevapVer(hesap, {
+          leadId: kayit.leadId,
+          telefon: kayit.telefon,
+          yeniAday: kayit.sonuc === 'yeni',
+        }, new Date(kayit.zaman));
+        if (tur) otomatik += 1;
+      } catch {
+        // yutuluyor: aşağıdaki 200 yanıtı korunmalı
+      }
     } catch {
       // Aynı mesaj iki kez gelirse benzersizlik kısıtı düşürür; bu bir hata
       // değil, Meta'nın yeniden denemesidir. 200 dönmezsek sonsuza kadar
@@ -255,5 +354,5 @@ export default async function handler(request: Request): Promise<Response> {
     }
   }
 
-  return json({ ok: true, yeniAday, eklenen, atlanan });
+  return json({ ok: true, yeniAday, eklenen, atlanan, otomatik });
 }

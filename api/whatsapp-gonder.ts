@@ -42,6 +42,31 @@ export function pencereAcikMi(sonGelenIso: string | null, simdi = new Date()): b
   return fark >= 0 && fark < PENCERE_SAAT * 60 * 60 * 1000;
 }
 
+/**
+ * Ham gönderim: numaraya metin yollar, Meta'nın mesaj kimliğini döndürür.
+ *
+ * Pencere kontrolü BURADA yapılmaz -- çağıranın işidir. Webhook'tan
+ * gelen otomatik cevapta pencere zaten müşterinin o anki mesajıyla
+ * açılmış olur; burada ikinci kez sorgulamak boşuna bir veritabanı
+ * turu demekti.
+ */
+export async function metinGonder(telefon: string, metin: string): Promise<string | null> {
+  const yanit = await fetch(`https://graph.facebook.com/${SURUM}/${PHONE_ID}/messages`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: `90${telefon}`,
+      type: 'text',
+      text: { body: metin },
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!yanit.ok) throw new Error(`WhatsApp gönderimi başarısız (${yanit.status}).`);
+  const sonuc = (await yanit.json()) as { messages?: { id?: string }[] };
+  return sonuc.messages?.[0]?.id ?? null;
+}
+
 interface AdaySatiri { id: string; business_id: string; phone: string }
 interface MesajSatiri { created_at: string }
 
@@ -80,31 +105,21 @@ export default async function handler(request: Request): Promise<Response> {
     }, 409);
   }
 
-  const yanit = await fetch(`https://graph.facebook.com/${SURUM}/${PHONE_ID}/messages`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: `90${aday.phone}`,
-      type: 'text',
-      text: { body: govde.body },
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  if (!yanit.ok) {
-    return json({ error: `WhatsApp gönderimi başarısız (${yanit.status}).` }, 502);
+  let waMessageId: string | null;
+  try {
+    waMessageId = await metinGonder(aday.phone, govde.body);
+  } catch (err) {
+    return json({ error: (err as Error).message }, 502);
   }
 
-  const sonuc = (await yanit.json()) as { messages?: { id?: string }[] };
   await insertRow('customer_lead_messages', {
     business_id: aday.business_id,
     lead_id: aday.id,
     direction: 'giden',
     channel: 'whatsapp',
     body: govde.body,
-    wa_message_id: sonuc.messages?.[0]?.id ?? null,
+    wa_message_id: waMessageId,
   });
 
-  return json({ ok: true, waMessageId: sonuc.messages?.[0]?.id ?? null });
+  return json({ ok: true, waMessageId });
 }

@@ -1,12 +1,14 @@
-import { supabase, yapilandirildi } from './supabase';
+import { API_KOK, gecerliJeton, kullaniciId, yapilandirildi } from './supabase';
+import { postgrestIstemci } from './postgrest';
 import { bugunIso, yerelIso } from './bicim';
 
 /**
  * Veri erişimi.
  *
- * Okumalar doğrudan Supabase'e gider; hangi satırın görüneceğine sunucudaki
- * RLS karar verir, istemci filtresine güvenilmez. Supabase yapılandırılmamışsa
- * (mağaza incelemesi, ekran görüntüsü, tanıtım) örnek veri döner.
+ * Okumalar doğrudan veritabanına (PostgREST) gider; hangi satırın
+ * görüneceğine sunucudaki RLS karar verir, istemci filtresine güvenilmez.
+ * Sunucu yapılandırılmamışsa (mağaza incelemesi, ekran görüntüsü,
+ * tanıtım) örnek veri döner.
  *
  * Dosya alanlara göre bölünmüştür; her bölümün başında önce tipler, sonra
  * tanıtım verisi, sonra sorgular gelir. Web panelindeki her ekranın buradaki
@@ -18,7 +20,7 @@ import { bugunIso, yerelIso } from './bicim';
 export type Seans = 'Gündüz' | 'Gece';
 
 /** Tanıtım kipinde mi çalışıyoruz. */
-export const tanitim = !yapilandirildi || !supabase;
+export const tanitim = !yapilandirildi;
 
 function gunEkle(gun: number): string {
   const t = new Date();
@@ -29,16 +31,50 @@ function gunEkle(gun: number): string {
 /** Sunucu yapılandırılmışsa sorguyu çalıştırır, değilse tanıtım verisini verir. */
 async function sorgu<T>(ornek: T, calistir: () => Promise<T>): Promise<T> {
   if (tanitim) return ornek;
+  // Her sorgudan önce jeton tazeleniyor; süresi dolmuş bir jetonla
+  // gönderilen istek 401 dönerdi.
+  sonJeton = await gecerliJeton();
   return calistir();
 }
 
-/** Supabase yanıtındaki hatayı çağırana anlaşılır biçimde iletir. */
+/** Sunucu yanıtındaki hatayı çağırana anlaşılır biçimde iletir. */
 function denetle<T>(veri: T | null, hata: { message: string } | null, mesaj: string): T {
   if (hata) throw new Error(`${mesaj} (${hata.message})`);
   return (veri ?? []) as T;
 }
 
-const db = () => supabase!;
+/*
+  Jeton her istekte yeniden okunuyor ve gerekiyorsa yenileniyor; eski
+  jetonla devam edilirse istekler 401 döner ve kullanıcı sebepsiz yere
+  giriş ekranına düşer.
+
+  `gecerliJeton()` eşzamansız olduğu için burada son okunan değer
+  kullanılıyor; tazeleme `sorgu()` içinde, istekten ÖNCE yapılıyor.
+*/
+let sonJeton: string | null = null;
+const db = () => postgrestIstemci(`${API_KOK}/veri`, () => sonJeton);
+
+/**
+ * Oturumdaki kullanıcının profili.
+ *
+ * Ad ve rol jetondan DEĞİL veritabanından okunuyor: ikisi de
+ * değişebilir, jetona gömülü olsalardı kullanıcı yeniden giriş yapana
+ * kadar eski hâliyle donup kalırdı.
+ */
+export async function profilOku(
+  kimlik: string,
+): Promise<{ id: string; eposta: string; ad: string; rol: string } | null> {
+  const { data, error } = await db().from('profiles')
+    .select('id, email, full_name, role').eq('id', kimlik).maybeSingle();
+  if (error) throw new Error(`Profil okunamadı. (${error.message})`);
+  if (!data) return null;
+  return {
+    id: String(data.id),
+    eposta: String(data.email ?? ''),
+    ad: String(data.full_name ?? data.email ?? ''),
+    rol: String(data.role ?? '') === 'owner' ? 'Yönetici' : 'Personel',
+  };
+}
 
 /** Etkin işletme; tanıtımda sabit. Panelde olduğu gibi tek işletme seçilidir. */
 export const ISLETME = { id: 'demo', ad: 'Grand Sahra Düğün ve Davet Salonu' };
@@ -56,12 +92,12 @@ export async function aktifIsletmeId(): Promise<string> {
   if (tanitim) return ISLETME.id;
   if (isletmeBellek) return isletmeBellek;
 
-  const { data: oturum } = await db().auth.getUser();
-  const kullanici = oturum?.user;
-  if (!kullanici) throw new Error('Oturum bulunamadı.');
+  // Kimlik jetonun gövdesinden okunuyor; doğrulamayı sunucu yapıyor.
+  const kimlik = kullaniciId(await gecerliJeton());
+  if (!kimlik) throw new Error('Oturum bulunamadı.');
 
   const { data, error } = await db().from('profiles')
-    .select('active_business_id, owner_id, id').eq('id', kullanici.id).maybeSingle();
+    .select('active_business_id, owner_id, id').eq('id', kimlik).maybeSingle();
   if (error) throw new Error(`İşletme bilgisi okunamadı. (${error.message})`);
 
   const profil = data as unknown as { active_business_id: string | null } | null;

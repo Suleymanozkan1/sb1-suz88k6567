@@ -49,6 +49,15 @@
   .btn-brand {
     @apply btn bg-brand text-white hover:bg-brand-dark;
   }
+  /*
+    İkincil eylem: dolgulu birincil düğmenin yanında durur ama onunla
+    yarışmaz. Tanımsız bırakıldığında bu sınıfı taşıyan "Ara" ve
+    "Rezervasyona Dönüştür" düz metin gibi görünüyordu; düğme olduğu
+    anlaşılmayan bir düğmeye kimse basmaz.
+  */
+  .btn-ghost {
+    @apply btn border border-line bg-white text-brand hover:border-brand-light hover:bg-surface;
+  }
   .btn-sm {
     @apply rounded-md px-3 py-1.5 text-xs;
   }

@@ -16,9 +16,8 @@ async function handlerYukle(env: Record<string, string | undefined> = {}) {
   process.env = {
     ...ESKI_ENV,
     OTP_SECRET: SIR,
-    SUPABASE_URL: 'https://ornek.supabase.co',
-    VITE_SUPABASE_URL: undefined,
-    SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+    PGRST_URL: 'http://veri.yerel',
+        JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
     NETGSM_USER: 'kullanici',
     NETGSM_PASS: 'sifre',
     NETGSM_HEADER: 'SAHRATAKIP',

@@ -16,9 +16,8 @@ async function handlerYukle(env: Record<string, string | undefined> = {}) {
   process.env = {
     ...ESKI_ENV,
     CRON_SECRET: SIR,
-    SUPABASE_URL: 'https://ornek.supabase.co',
-    VITE_SUPABASE_URL: undefined,
-    SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+    PGRST_URL: 'http://veri.yerel',
+        JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
     NETGSM_USER: 'abone',
     NETGSM_PASS: 'gizli-sifre',
     NETGSM_HEADER: 'SAHRATAKIP',
@@ -101,8 +100,7 @@ describe('sms kuyruğu, yetkilendirme', () => {
 describe('sms kuyruğu, yapılandırma', () => {
   it('veritabanı yapılandırması eksikse 500 döner', async () => {
     const handler = await handlerYukle({
-      SUPABASE_URL: undefined, VITE_SUPABASE_URL: undefined,
-      SUPABASE_SERVICE_ROLE_KEY: undefined,
+      JWT_SECRET: undefined,
     });
     fetchTakli();
     const yanit = await handler(istek());

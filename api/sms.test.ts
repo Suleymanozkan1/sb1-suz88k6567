@@ -16,9 +16,8 @@ async function moduluYukle(env: Record<string, string | undefined> = {}) {
     NETGSM_USER: 'abone',
     NETGSM_PASS: 'gizli-sifre',
     NETGSM_HEADER: 'SAHRATAKIP',
-    SUPABASE_URL: 'https://ornek.supabase.co',
-    VITE_SUPABASE_URL: undefined,
-    SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+    PGRST_URL: 'http://veri.yerel',
+        JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
     ...env,
   };
   vi.resetModules();

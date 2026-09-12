@@ -1,5 +1,15 @@
-/** Supabase (Postgres) tabanlı veri erişimi. */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+/**
+ * PostgreSQL tabanlı veri erişimi.
+ *
+ * Veriye kendi sunucumuzdaki PostgREST üzerinden gidiliyor. Kiracı
+ * izolasyonu yine veritabanındaki RLS politikalarıyla sağlanıyor;
+ * jetondaki `sub` talebi `auth.uid()` değerine dönüşüyor.
+ */
+import { postgrestIstemci, type PostgrestIstemci } from '../postgrest';
+import {
+  cikisYap as oturumuKapat, erisimJetonu, gecerliJeton,
+  oturumVarMi, oturumuKaydet, oturumuTemizle, type Oturum,
+} from '../oturum';
 import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants';
 import { RepoError, type PublicReservation, type Repository } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
@@ -8,24 +18,57 @@ import type {
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, Permission, Reservation, SafeMovement, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
-  CustomerLead, LeadMessage, LeadStatusChange,
+  CustomerLead, LeadMessage, LeadStatusChange, WhatsappAccount,
 } from '../../types';
 import { computeInvoice } from '../invoice';
 
-const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+/**
+ * Veri yolu. Kendi sunucumuz PostgREST'i bu yol altında vekilliyor;
+ * ayrı bir köken olmadığı için tarayıcıda CORS'a gerek kalmıyor ve
+ * içerik güvenlik politikası `connect-src 'self'` kadar dar kalabiliyor.
+ */
+const VERI_YOLU = (import.meta.env.VITE_VERI_YOLU as string | undefined) ?? '/veri';
 
-export const isSupabaseConfigured = Boolean(URL && KEY);
+/**
+ * Gerçek veritabanı modu.
+ *
+ * Demo modunda bu bayrak kapalı olmalı ve yerel depo kullanılmalı.
+ * Ayar, derleme sırasında veriliyor: bir sunucu adresi tahmin edip
+ * yanlış yere bağlanmaktansa açıkça kapalı olmak daha iyi.
+ */
+export const isSupabaseConfigured =
+  String(import.meta.env.VITE_SUNUCU_MODU ?? '') === '1';
 
-let client: SupabaseClient | null = null;
-function db(): SupabaseClient {
+let client: PostgrestIstemci | null = null;
+function db(): PostgrestIstemci {
   if (!client) {
-    if (!URL || !KEY) throw new RepoError('Supabase yapılandırması eksik.');
-    client = createClient(URL, KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-    });
+    /*
+      Jeton her istekte yeniden okunuyor: oturum yenilendiğinde eski
+      jetonla devam edilirse istekler 401 dönerdi.
+    */
+    client = postgrestIstemci(VERI_YOLU, () => erisimJetonu());
   }
   return client;
+}
+
+const UUID_KALIBI =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Yeni kayıtta kimliği VERİTABANI üretsin.
+ *
+ * Ekranlar kimliği kendileri üretiyor (`uid('hall')` -> "hall_mtx...").
+ * Demo kipinde bu sorun değil, çünkü yerel depo metin kimlik kabul
+ * ediyor. Veritabanındaki sütun ise `uuid`: gönderildiğinde kayıt hiç
+ * açılmıyor, PostgREST 22P02 döndürüyor ve kullanıcı ekranda yalnızca
+ * bir hata görüyor.
+ *
+ * Güncellemede kimlik zaten veritabanından gelmiş bir uuid olduğu için
+ * olduğu gibi gönderiliyor; upsert'in güncelleme yerine yeni satır
+ * açmaması buna bağlı.
+ */
+function kimlikAlani(id: string | undefined): { id?: string } {
+  return id && UUID_KALIBI.test(id) ? { id } : {};
 }
 
 /* ------------------------------------------------------------- eşleme */
@@ -119,7 +162,7 @@ function toReservation(row: Row): Reservation {
 
 function fromReservation(r: Reservation) {
   return {
-    id: r.id, business_id: r.businessId, hall_id: r.hallId,
+    ...kimlikAlani(r.id), business_id: r.businessId, hall_id: r.hallId,
     // Kod boşsa veritabanı tetikleyicisi sıradaki numarayı yazar.
     menu_id: r.menuId || null, code: r.code || null,
     customer_name: r.customerName, customer_phone: r.customerPhone,
@@ -161,7 +204,7 @@ function toLead(row: Row): CustomerLead {
 
 function fromLead(l: CustomerLead) {
   return {
-    id: l.id, business_id: l.businessId, name: l.name, phone: l.phone, email: l.email,
+    ...kimlikAlani(l.id), business_id: l.businessId, name: l.name, phone: l.phone, email: l.email,
     guest_count: l.guestCount, event_date: l.eventDate || null,
     event_date_text: l.eventDateText, organization_type: l.organizationType,
     source: l.source, source_detail: l.sourceDetail, status: l.status,
@@ -180,7 +223,26 @@ function toLeadMessage(row: Row): LeadMessage {
     channel: (row.channel as LeadMessage['channel']) ?? 'sistem',
     body: (row.body as string) ?? '',
     waMessageId: (row.wa_message_id as string) ?? undefined,
+    autoKind: (row.auto_kind as LeadMessage['autoKind']) ?? undefined,
     actorEmail: (row.actor_email as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function hesabaCevir(row: Row): WhatsappAccount {
+  return {
+    phoneNumberId: String(row.phone_number_id),
+    businessId: String(row.business_id),
+    displayPhone: (row.display_phone as string) ?? '',
+    autoReplyEnabled: Boolean(row.auto_reply_enabled),
+    welcomeMessage: (row.welcome_message as string) ?? '',
+    afterHoursEnabled: Boolean(row.after_hours_enabled),
+    afterHoursMessage: (row.after_hours_message as string) ?? '',
+    // Postgres "time" değerini "09:00:00" olarak döndürür; form saniye
+    // beklemiyor, saniyesi kırpılıyor.
+    workStart: saatiKirp(row.work_start) ?? '09:00',
+    workEnd: saatiKirp(row.work_end) ?? '19:00',
+    workDays: Array.isArray(row.work_days) ? (row.work_days as number[]) : [1, 2, 3, 4, 5, 6, 7],
     createdAt: (row.created_at as string) ?? '',
   };
 }
@@ -374,12 +436,14 @@ function fail(message: string, error: unknown): never {
 
 /**
  * Korumalı giriş uç noktası.
- * Uç nokta bu dağıtımda yoksa 'endpoint_missing' döner ve çağıran
- * doğrudan Supabase'e düşer.
+ *
+ * Yedek yol YOK. Eskiden uç nokta bulunamazsa doğrudan Supabase'e
+ * düşülüyordu; o yolda hesap kilidi ve hız sınırı hiç uygulanmıyordu ve
+ * bu, yapılandırma bozulduğunda sessizce gerçekleşiyordu. Sessizce
+ * korumasız çalışan bir giriş, hiç çalışmayandan kötüdür: açık bir hata
+ * en azından fark edilir.
  */
-async function signInViaServer(
-  email: string, password: string,
-): Promise<{ accessToken: string; refreshToken: string } | 'endpoint_missing'> {
+async function signInViaServer(email: string, password: string): Promise<Oturum> {
   let response: Response;
   try {
     response = await fetch('/api/login', {
@@ -388,16 +452,16 @@ async function signInViaServer(
       body: JSON.stringify({ email: email.trim(), password }),
     });
   } catch {
-    return 'endpoint_missing';
+    throw new RepoError('Sunucuya ulaşılamadı. Bağlantınızı kontrol ediniz.');
   }
 
   // Uç nokta tanımlı değilse sunucu SPA kabuğunu (HTML) döndürür.
   if (!(response.headers.get('content-type') ?? '').includes('application/json')) {
-    return 'endpoint_missing';
+    throw new RepoError('Giriş servisi yanıt vermiyor. Sunucu yapılandırmasını kontrol ediniz.');
   }
 
   const result = (await response.json()) as {
-    accessToken?: string; refreshToken?: string;
+    accessToken?: string; refreshToken?: string; expiresIn?: number;
     error?: string; locked?: boolean; remainingAttempts?: number | null;
   };
 
@@ -415,15 +479,60 @@ async function signInViaServer(
     throw new RepoError((result.error ?? 'Giriş yapılamadı.') + suffix);
   }
 
-  return { accessToken: result.accessToken, refreshToken: result.refreshToken };
+  return {
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    expiresIn: result.expiresIn ?? 3600,
+  };
+}
+
+/**
+ * Oturumdaki kullanıcının kimliği.
+ *
+ * Jetonun gövdesi okunuyor, İMZASI DOĞRULANMIYOR: doğrulamayı sunucu ve
+ * PostgREST yapıyor. Tarayıcıda yapılan bir doğrulama zaten hiçbir şey
+ * kanıtlamaz, çünkü kodu da jetonu da kullanıcı değiştirebilir. Buradaki
+ * okuma sadece "hangi profili çekeceğiz" sorusunu cevaplıyor; yanlış bir
+ * kimlik yazılsa bile RLS başkasının satırını döndürmez.
+ */
+function kullaniciId(): string | null {
+  const jeton = erisimJetonu();
+  if (!jeton) return null;
+  const parcalar = jeton.split('.');
+  if (parcalar.length !== 3) return null;
+  try {
+    const govde = JSON.parse(atob(parcalar[1].replace(/-/g, '+').replace(/_/g, '/'))) as
+      { sub?: string };
+    return govde.sub ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function currentProfile(): Promise<User | null> {
-  const { data: auth } = await db().auth.getUser();
-  if (!auth.user) return null;
-  const { data, error } = await db().from('profiles').select('*').eq('id', auth.user.id).maybeSingle();
+  const id = kullaniciId();
+  if (!id) return null;
+  const { data, error } = await db().from('profiles').select('*').eq('id', id).maybeSingle();
   if (error) fail('Profil bilgisi alınamadı.', error);
-  return data ? toUser(data) : null;
+  return data ? toUser(data as Row) : null;
+}
+
+/** Sunucudaki şifre uç noktasına istek atar. */
+async function sifreIstegi(govde: Record<string, unknown>): Promise<void> {
+  let yanit: Response;
+  try {
+    yanit = await fetch('/api/sifre', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(govde),
+    });
+  } catch {
+    throw new RepoError('Sunucuya ulaşılamadı.');
+  }
+  if (!yanit.ok) {
+    const sonuc = (await yanit.json().catch(() => ({}))) as { error?: string };
+    throw new RepoError(sonuc.error ?? 'İşlem tamamlanamadı.');
+  }
 }
 
 /* --------------------------------------------------------- repository */
@@ -432,67 +541,65 @@ export const supabaseRepo: Repository = {
   kind: 'supabase',
 
   async getSession() {
-    const { data } = await db().auth.getSession();
-    if (!data.session) return null;
+    if (!oturumVarMi()) return null;
+    // Süresi dolmak üzereyse önce tazelenir; yoksa ilk sorgu 401 alır
+    // ve kullanıcı sebepsiz yere giriş ekranına düşer.
+    const jeton = await gecerliJeton();
+    if (!jeton) return null;
     return currentProfile();
   },
 
   async signIn(email, password) {
-    // Giriş sunucu tarafındaki /api/login üzerinden yapılır; hesap kilidi ve
-    // hız sınırı yalnızca orada uygulanabilir. Uç nokta bulunmayan bir
-    // dağıtımda doğrudan Supabase'e düşülür (kilit korumasız çalışır).
-    const viaServer = await signInViaServer(email, password);
-    if (viaServer !== 'endpoint_missing') {
-      const { error } = await db().auth.setSession({
-        access_token: viaServer.accessToken,
-        refresh_token: viaServer.refreshToken,
-      });
-      if (error) throw new RepoError('Oturum başlatılamadı.', error);
-    } else {
-      const { error } = await db().auth.signInWithPassword({ email: email.trim(), password });
-      if (error) {
-        if (error.message.includes('Invalid login')) {
-          throw new RepoError('E-posta veya şifreniz hatalı.');
-        }
-        if (error.message.includes('Email not confirmed')) {
-          throw new RepoError('E-posta adresinizi doğrulamanız gerekiyor.');
-        }
-        throw new RepoError('Giriş yapılamadı. Lütfen tekrar deneyiniz.', error);
-      }
-    }
+    /*
+      Giriş her zaman sunucudaki /api/login üzerinden yapılır. Doğrudan
+      veritabanına giden bir yedek yol BIRAKILMADI: eskiden uç nokta
+      bulunamazsa Supabase'e düşülüyordu ve o yolda hesap kilidi ile hız
+      sınırı hiç uygulanmıyordu. Sessizce korumasız çalışan bir giriş,
+      hiç çalışmayandan kötüdür.
+    */
+    const oturum = await signInViaServer(email, password);
+    oturumuKaydet(oturum);
 
     const profile = await currentProfile();
-    if (!profile) throw new RepoError('Hesabınıza ait profil bulunamadı.');
+    if (!profile) {
+      // Profil yoksa oturumu açık bırakmak, kullanıcıyı hiçbir şey
+      // yapamadığı bir panele sokardı.
+      oturumuTemizle();
+      throw new RepoError('Hesabınıza ait profil bulunamadı.');
+    }
     return profile;
   },
 
   async signOut() {
-    await db().auth.signOut();
+    await oturumuKapat();
   },
 
   async requestPasswordReset(email) {
-    const { error } = await db().auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/sifre-yenile`,
-    });
-    if (error) fail('Şifre sıfırlama e-postası gönderilemedi.', error);
+    await sifreIstegi({ islem: 'sifirla', email: email.trim() });
   },
 
   async changePassword(currentPassword, nextPassword) {
     const profile = await currentProfile();
     if (!profile) throw new RepoError('Oturumunuz bulunamadı.');
-    // Mevcut şifreyi doğrula
-    const { error: checkError } = await db().auth.signInWithPassword({
-      email: profile.email, password: currentPassword,
-    });
-    if (checkError) throw new RepoError('Mevcut şifreniz hatalı.');
 
-    const { error } = await db().auth.updateUser({ password: nextPassword });
-    if (error) fail('Şifreniz güncellenemedi.', error);
+    /*
+      Mevcut şifre sunucuda doğrulanıyor. Doğrulama başarılıysa o
+      kullanıcının BÜTÜN oturumları kapanıyor -- bu cihaz dahil; şifre
+      değiştirmek, hesabı ele geçirmiş olabilecek birini de dışarı
+      atmalı.
+    */
+    await sifreIstegi({
+      islem: 'degistir',
+      email: profile.email,
+      mevcut: currentPassword,
+      yeni: nextPassword,
+    });
+    oturumuTemizle();
   },
 
   async updateProfile(patch) {
-    const { data: auth } = await db().auth.getUser();
-    if (!auth.user) throw new RepoError('Oturumunuz bulunamadı.');
+    const id = kullaniciId();
+    if (!id) throw new RepoError('Oturumunuz bulunamadı.');
 
     const row: Row = {};
     if (patch.companyName !== undefined) row.company_name = patch.companyName;
@@ -508,7 +615,7 @@ export const supabaseRepo: Repository = {
     if (patch.activeBusinessId !== undefined) row.active_business_id = patch.activeBusinessId;
 
     const { data, error } = await db().from('profiles')
-      .update(row).eq('id', auth.user.id).select().single();
+      .update(row).eq('id', id).select().single();
     if (error) fail('Bilgileriniz kaydedilemedi.', error);
     return toUser(data);
   },
@@ -547,7 +654,7 @@ export const supabaseRepo: Repository = {
 
   async saveBusiness(business) {
     const { data, error } = await db().from('businesses').upsert({
-      id: business.id, owner_id: business.ownerId, name: business.name,
+      ...kimlikAlani(business.id), owner_id: business.ownerId, name: business.name,
       category: business.category, city: business.city, district: business.district,
       phone: business.phone, capacity: business.capacity, currency: business.currency,
       address: business.address || null, facebook: business.facebook || null,
@@ -616,7 +723,7 @@ export const supabaseRepo: Repository = {
 
   async addPayment(payment) {
     const { error } = await db().from('payments').insert({
-      id: payment.id, reservation_id: payment.reservationId, date: payment.date,
+      ...kimlikAlani(payment.id), reservation_id: payment.reservationId, date: payment.date,
       amount: payment.amount, method: payment.method, note: payment.note || null,
     });
     if (error) fail('Tahsilat kaydedilemedi.', error);
@@ -636,7 +743,7 @@ export const supabaseRepo: Repository = {
 
   async addCashFlow(entry) {
     const { error } = await db().from('cash_flow').insert({
-      id: entry.id, business_id: entry.businessId, kind: entry.kind, date: entry.date,
+      ...kimlikAlani(entry.id), business_id: entry.businessId, kind: entry.kind, date: entry.date,
       category: entry.category, amount: entry.amount, description: entry.description || null,
       reservation_id: entry.reservationId || null,
     });
@@ -662,7 +769,7 @@ export const supabaseRepo: Repository = {
 
   async addSafeMovement(movement) {
     const { error } = await db().from('safe_movements').insert({
-      id: movement.id, business_id: movement.businessId, date: movement.date,
+      ...kimlikAlani(movement.id), business_id: movement.businessId, date: movement.date,
       direction: movement.direction, amount: movement.amount,
       description: movement.description, source_kind: movement.sourceKind,
       source_id: movement.sourceId,
@@ -726,7 +833,7 @@ export const supabaseRepo: Repository = {
 
   async addLeadMessage(message) {
     const { error } = await db().from('customer_lead_messages').insert({
-      id: message.id, business_id: message.businessId, lead_id: message.leadId,
+      ...kimlikAlani(message.id), business_id: message.businessId, lead_id: message.leadId,
       direction: message.direction, channel: message.channel, body: message.body,
       wa_message_id: message.waMessageId ?? null, actor_email: message.actorEmail,
     });
@@ -745,6 +852,32 @@ export const supabaseRepo: Repository = {
       actorEmail: (row.actor_email as string) ?? '',
       createdAt: (row.created_at as string) ?? '',
     }));
+  },
+
+  async getWhatsappAccount(businessId) {
+    const { data, error } = await db().from('whatsapp_accounts')
+      .select('*').eq('business_id', businessId).limit(1).maybeSingle();
+    if (error) fail('WhatsApp hesabı alınamadı.', error);
+    return data ? hesabaCevir(data) : null;
+  },
+
+  async saveWhatsappAccount(account) {
+    const { data, error } = await db().from('whatsapp_accounts')
+      .upsert({
+        phone_number_id: account.phoneNumberId,
+        business_id: account.businessId,
+        display_phone: account.displayPhone,
+        auto_reply_enabled: account.autoReplyEnabled,
+        welcome_message: account.welcomeMessage,
+        after_hours_enabled: account.afterHoursEnabled,
+        after_hours_message: account.afterHoursMessage,
+        work_start: account.workStart,
+        work_end: account.workEnd,
+        work_days: account.workDays,
+      })
+      .select('*').single();
+    if (error) fail('WhatsApp hesabı kaydedilemedi.', error);
+    return hesabaCevir(data);
   },
 
   async getColorSettings(businessId) {
@@ -1003,7 +1136,7 @@ export const supabaseRepo: Repository = {
 
   async saveHall(hall) {
     const { data, error } = await db().from('halls').upsert({
-      id: hall.id, business_id: hall.businessId, name: hall.name,
+      ...kimlikAlani(hall.id), business_id: hall.businessId, name: hall.name,
       capacity: hall.capacity, note: hall.note, is_active: hall.isActive,
     }).select().single();
     if (error) fail('Salon kaydedilemedi.', error);
@@ -1028,7 +1161,7 @@ export const supabaseRepo: Repository = {
 
   async saveMenu(menu) {
     const { data, error } = await db().from('menus').upsert({
-      id: menu.id, business_id: menu.businessId, name: menu.name,
+      ...kimlikAlani(menu.id), business_id: menu.businessId, name: menu.name,
       pricing: menu.pricing, price_kurus: menu.priceKurus,
       description: menu.description, is_active: menu.isActive,
     }).select().single();
@@ -1128,7 +1261,7 @@ export const supabaseRepo: Repository = {
 
   async saveVendor(vendor) {
     const { data, error } = await db().from('vendors').upsert({
-      id: vendor.id, business_id: vendor.businessId, name: vendor.name,
+      ...kimlikAlani(vendor.id), business_id: vendor.businessId, name: vendor.name,
       category: vendor.category, phone: vendor.phone, note: vendor.note,
       is_active: vendor.isActive,
     }).select().single();

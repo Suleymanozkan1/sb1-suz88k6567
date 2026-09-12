@@ -116,7 +116,7 @@ export default function MusteriAdayiDetay() {
       {!lead ? (
         <div className="card p-6">
           <p className="text-sm text-brand-muted">Müşteri adayı bulunamadı.</p>
-          <Link to="/panel/musteri-adaylari" className="btn-ghost mt-3 inline-block">Listeye dön</Link>
+          <Link to="/panel/musteri-adaylari" className="btn-ghost mt-3">Listeye dön</Link>
         </div>
       ) : (
         <>
@@ -228,7 +228,7 @@ export default function MusteriAdayiDetay() {
               {duzenlenebilir && (
                 <button
                   type="button"
-                  className="btn-ghost mt-6 w-full text-[#b91c1c]"
+                  className="btn-ghost mt-6 w-full text-danger hover:border-danger"
                   onClick={() => { void sil(); }}
                 >
                   Adayı sil
@@ -265,6 +265,16 @@ export default function MusteriAdayiDetay() {
                       {' '}{m.createdAt.slice(11, 16)}
                       {m.actorEmail ? ` · ${m.actorEmail}` : ''}
                       {' · '}{m.direction === 'gelen' ? 'Gelen mesaj' : m.direction === 'giden' ? 'Giden mesaj' : 'İşlem'}
+                      {/*
+                        Otomatik gönderilen mesaj personelinkinden ayrılmalı:
+                        müşteriye ne söylendiğini bilmeden arayan personel,
+                        aynı şeyi ikinci kez söyler.
+                      */}
+                      {m.autoKind && (
+                        <span className="ml-1 rounded-full bg-surface px-2 py-0.5 text-[11px] text-brand">
+                          {m.autoKind === 'karsilama' ? 'otomatik karşılama' : 'otomatik mesai dışı'}
+                        </span>
+                      )}
                     </p>
                     <p className="mt-0.5 whitespace-pre-wrap text-sm text-brand">{m.body}</p>
                   </li>

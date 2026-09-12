@@ -15,9 +15,8 @@ async function handlerYukle(env: Record<string, string | undefined> = {}) {
   process.env = {
     ...ESKI_ENV,
     CRON_SECRET: SIR,
-    SUPABASE_URL: 'https://ornek.supabase.co',
-    VITE_SUPABASE_URL: undefined,
-    SUPABASE_SERVICE_ROLE_KEY: 'service-anahtari',
+    PGRST_URL: 'http://veri.yerel',
+        JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
     NETGSM_USER: 'abone',
     NETGSM_PASS: 'gizli-sifre',
     NETGSM_HEADER: 'SAHRATAKIP',
@@ -43,7 +42,7 @@ const SAGLIKLI: Ozet = {
 function fetchTakli(ozetler: Ozet[] | 'hata' = [SAGLIKLI]) {
   vi.stubGlobal('fetch', vi.fn(async (url: string | URL | Request) => {
     const adres = String(url);
-    if (adres.includes('/rest/v1/profiles')) {
+    if (adres.includes('/profiles')) {
       if (ozetler === 'hata') return new Response('izin yok', { status: 403 });
       return new Response(JSON.stringify(ozetler.map((_, i) => ({ id: `sahip-${i}` }))));
     }
@@ -67,7 +66,7 @@ afterEach(() => { process.env = { ...ESKI_ENV }; vi.unstubAllGlobals(); });
 describe('sağlık kontrolü, temel durumlar', () => {
   it('veritabanı yapılandırılmamışsa arıza değil demo bildirir', async () => {
     const handler = await handlerYukle({
-      SUPABASE_URL: undefined, VITE_SUPABASE_URL: undefined, SUPABASE_SERVICE_ROLE_KEY: undefined,
+      JWT_SECRET: undefined,
     });
     fetchTakli();
     const yanit = await handler(istek());
