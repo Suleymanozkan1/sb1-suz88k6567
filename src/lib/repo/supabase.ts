@@ -14,7 +14,7 @@ import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants'
 import { RepoError, type PublicReservation, type Repository } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult, ErrorReport,
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent, PaymentMethod,
   Permission, QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
@@ -117,6 +117,7 @@ function toBusiness(row: Row): Business {
     instagram: (row.instagram as string) ?? undefined,
     about: (row.about as string) ?? undefined,
     reportEmail: (row.report_email as string) ?? '',
+    lockSeconds: Number(row.lock_seconds ?? 120),
     createdAt: (row.created_at as string) ?? '',
   };
 }
@@ -764,6 +765,7 @@ export const supabaseRepo: Repository = {
       address: business.address || null, facebook: business.facebook || null,
       instagram: business.instagram || null, about: business.about || null,
       report_email: business.reportEmail ?? '',
+      lock_seconds: business.lockSeconds ?? 120,
     }).select().single();
     if (error) fail('İşletme kaydedilemedi.', error);
     return toBusiness(data);
@@ -1212,6 +1214,36 @@ export const supabaseRepo: Repository = {
   async deleteConsent(id) {
     const { error } = await db().from('sms_consents').delete().eq('id', id);
     if (error) fail('İzin kaydı silinemedi.', error);
+  },
+
+  async listErrorReports(limit) {
+    const { data, error } = await db().from('error_reports')
+      .select('*').order('created_at', { ascending: false }).limit(limit);
+    if (error) fail('Hata bildirimleri alınamadı.', error);
+    return (data ?? []).map((row: Row): ErrorReport => ({
+      id: String(row.id),
+      businessId: (row.business_id as string) ?? undefined,
+      actorEmail: (row.actor_email as string) ?? '',
+      path: (row.path as string) ?? '',
+      message: (row.message as string) ?? '',
+      userAgent: (row.user_agent as string) ?? '',
+      createdAt: (row.created_at as string) ?? '',
+    }));
+  },
+
+  async addErrorReport(input) {
+    /*
+      Kullanıcı ve kapsam GÖNDERİLMİYOR: veritabanı kolon varsayılanıyla
+      oturumdan dolduruyor. İstemciden gelseydi bildirim başkasının adına
+      yazılabilirdi.
+    */
+    const { error } = await db().from('error_reports').insert({
+      business_id: input.businessId ?? null,
+      path: input.path,
+      message: input.message,
+      user_agent: input.userAgent,
+    });
+    if (error) fail('Hata bildirimi kaydedilemedi.', error);
   },
 
   async listAuditLog(limit) {

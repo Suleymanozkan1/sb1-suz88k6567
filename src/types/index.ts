@@ -463,6 +463,12 @@ export interface Business {
   about?: string;
   /** Ay sonu raporunun gönderileceği adres (madde 24). Boşsa gönderilmez. */
   reportEmail?: string;
+  /**
+   * İşlem yapılmadığında ekranın kilitleneceği saniye (madde 27).
+   * 0 = kapalı. İşletme başına: aynı salonun bütün ekranları aynı
+   * sürede kilitlenmeli.
+   */
+  lockSeconds?: number;
   createdAt: string;
 }
 
@@ -765,3 +771,30 @@ export interface QuickReply {
   body: string;
   sortOrder: number;
 }
+
+/**
+ * Kullanıcının bildirdiği hata (madde 32).
+ *
+ * Kullanıcı, sayfa ve zaman kendiliğinden yazılıyor: elle sorulsaydı
+ * çoğu bildirim "çalışmıyor" diye gelir ve hiçbiri incelenemezdi.
+ */
+export interface ErrorReport {
+  id: string;
+  businessId?: string;
+  actorEmail: string;
+  /** Kullanıcının bulunduğu sayfa: "/panel/kasa". */
+  path: string;
+  message: string;
+  userAgent: string;
+  createdAt: string;
+}
+
+/** Ekran kilidi için seçilebilen süreler (madde 27). */
+export const KILIT_SURELERI: { saniye: number; etiket: string }[] = [
+  { saniye: 0, etiket: 'Kapalı' },
+  { saniye: 30, etiket: '30 saniye' },
+  { saniye: 60, etiket: '60 saniye' },
+  { saniye: 120, etiket: '120 saniye' },
+  { saniye: 300, etiket: '300 saniye (5 dakika)' },
+  { saniye: 600, etiket: '600 saniye (10 dakika)' },
+];

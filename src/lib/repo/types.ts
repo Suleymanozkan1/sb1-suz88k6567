@@ -7,7 +7,7 @@
  */
 import type { HatirlatmaKurali, Sablon } from '../sablon';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus,   EnqueueResult, MessageCategory, Payment, PaymentAlert, PaymentAlertRecipient,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ErrorReport,  EnqueueResult, MessageCategory, Payment, PaymentAlert, PaymentAlertRecipient,
   PaymentEvent, Permission, QuickReply, Reservation, ReservationExpense, SmsConsent,
   Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
   EventTask, Vendor, ReservationVendor,
@@ -156,6 +156,13 @@ export interface Repository {
   listLeadStatusHistory(leadId: string): Promise<LeadStatusChange[]>;
 
   /** İşletmenin düzenleyebildiği aday durumları. */
+  /* -- hata bildirimi --------------------------------------------------- */
+  /** Kayıt düzeltilemez; yalnızca eklenir ve okunur. */
+  listErrorReports(limit: number): Promise<ErrorReport[]>;
+  addErrorReport(input: {
+    businessId?: string; path: string; message: string; userAgent: string;
+  }): Promise<void>;
+
   /* -- hızlı yanıtlar --------------------------------------------------- */
   listQuickReplies(businessId: string): Promise<QuickReply[]>;
   saveQuickReply(yanit: QuickReply): Promise<QuickReply>;

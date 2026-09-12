@@ -77,6 +77,8 @@ export const KEYS = {
   paymentAlertRecipients: 'odeme-bildirim-alicilari',
   /** Personelin yazarken kullandığı kısa hazır metinler */
   quickReplies: 'hizli-yanitlar',
+  /** Kullanıcının bildirdiği hatalar */
+  errorReports: 'hata-bildirimleri',
   /** WhatsApp numarası eşlemesi ve otomatik cevap ayarları */
   whatsappAccounts: 'whatsapp-hesaplari',
   colors: 'colors',

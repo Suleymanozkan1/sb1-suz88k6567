@@ -3,6 +3,8 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusinesses } from '../lib/queries';
 import DemoNotice from '../components/DemoNotice';
+import HataBildir from '../components/HataBildir';
+import EkranKilidi from '../components/EkranKilidi';
 import {
   IconAlert, IconBell, IconBuilding, IconCalendar, IconChart, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu, IconMessage, IconPalette, IconPlus, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
@@ -155,6 +157,13 @@ export default function AppLayout() {
           <DemoNotice className="mb-5" />
           <Outlet />
         </main>
+
+        {/*
+          Hata bildirimi ve ekran kilidi panelin tamamında: tek bir ekrana
+          konsaydı hatanın çıktığı sayfadan çıkmak gerekirdi.
+        */}
+        <HataBildir />
+        <EkranKilidi />
       </div>
     </div>
   );

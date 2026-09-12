@@ -10,11 +10,13 @@ import { QueryBoundary } from '../../components/QueryState';
 import { CATEGORIES, CITIES, CURRENCIES, DISTRICTS } from '../../data/constants';
 import { formatPhone } from '../../lib/format';
 import { IconBuilding, IconEdit, IconPlus, IconTrash } from '../../components/Icons';
+import { KILIT_SURELERI } from '../../types';
 import type { Business, Currency } from '../../types';
 
 const EMPTY = {
   name: '', category: CATEGORIES[0], city: '', district: '', phone: '',
   capacity: '', currency: 'TL' as Currency, address: '', about: '', reportEmail: '',
+  lockSeconds: '120',
 };
 
 export default function Isletmeler() {
@@ -58,6 +60,7 @@ export default function Isletmeler() {
       name: b.name, category: b.category, city: b.city, district: b.district, phone: b.phone,
       capacity: String(b.capacity), currency: b.currency, address: b.address ?? '', about: b.about ?? '',
       reportEmail: b.reportEmail ?? '',
+      lockSeconds: String(b.lockSeconds ?? 120),
     });
     setError('');
     setShowForm(true);
@@ -87,6 +90,7 @@ export default function Isletmeler() {
       address: form.address.trim() || undefined,
       about: form.about.trim() || undefined,
       reportEmail: form.reportEmail.trim(),
+      lockSeconds: Number(form.lockSeconds),
         createdAt: editing?.createdAt,
       });
       setShowForm(false);
@@ -196,6 +200,21 @@ export default function Isletmeler() {
                 placeholder="rapor@ornek.com"
                 value={form.reportEmail}
                 onChange={(e) => setForm((f) => ({ ...f, reportEmail: e.target.value }))} />
+            </div>
+            {/*
+              Ekran kilidi (madde 27). İşletme başına: aynı salonun bütün
+              ekranları aynı sürede kilitlenmeli. Kullanıcı başına olsaydı,
+              ortak kullanılan resepsiyon bilgisayarında kimin oturumu
+              açıksa o sürenin geçerli olması gerekirdi.
+            */}
+            <div>
+              <label htmlFor="bz-lock" className="field-label">Ekran kilidi süresi</label>
+              <select id="bz-lock" className="field-input" value={form.lockSeconds}
+                onChange={(e) => setForm((f) => ({ ...f, lockSeconds: e.target.value }))}>
+                {KILIT_SURELERI.map((k) => (
+                  <option key={k.saniye} value={String(k.saniye)}>{k.etiket}</option>
+                ))}
+              </select>
             </div>
             <div className="md:col-span-2 lg:col-span-3">
               <label htmlFor="bz-about" className="field-label">Açıklama</label>

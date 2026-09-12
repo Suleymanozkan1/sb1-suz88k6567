@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { QueryBoundary } from '../../components/QueryState';
-import { useAuditLog } from '../../lib/queries';
+import { useAuditLog, useErrorReports } from '../../lib/queries';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateTime, normalizeTr } from '../../lib/format';
 import { IconSearch } from '../../components/Icons';
@@ -54,6 +54,7 @@ function formatValue(value: unknown): string {
 export default function DenetimKaydi() {
   const { can, isDemoMode } = useAuth();
   const { data, isLoading, error } = useAuditLog();
+  const { data: bildirimler = [] } = useErrorReports();
   const [query, setQuery] = useState('');
   const [action, setAction] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -186,6 +187,38 @@ export default function DenetimKaydi() {
           </table>
         )}
       </div>
+
+      {/*
+        Kullanıcı bildirimleri (madde 32) denetim kaydının altında: ikisi
+        de "ne oldu" sorusuna bakılan yer ve ayrı ekranlara konsaydı,
+        bir sorunu araştıran kişi ikisi arasında gidip gelirdi.
+      */}
+      <section className="card mt-6 p-5" aria-labelledby="hata-bildirim-baslik">
+        <h2 id="hata-bildirim-baslik" className="mb-1 font-heading text-lg font-bold text-brand">
+          Kullanıcı Hata Bildirimleri
+        </h2>
+        <p className="mb-4 text-sm text-brand-muted">
+          Ekranın sağ alt köşesindeki düğmeyle gönderilen bildirimler. Kullanıcı, sayfa ve
+          saat kendiliğinden kaydedilir; kayıtlar silinemez.
+        </p>
+
+        {bildirimler.length === 0 ? (
+          <p className="py-5 text-center text-sm text-brand-muted">Hata bildirimi bulunmuyor.</p>
+        ) : (
+          <ol className="divide-y divide-line">
+            {bildirimler.map((b) => (
+              <li key={b.id} className="py-3">
+                <p className="whitespace-pre-wrap text-sm text-brand">{b.message}</p>
+                <p className="mt-1 text-xs text-brand-muted">
+                  {b.actorEmail || 'Kullanıcı bilinmiyor'}
+                  {' · '}<span className="font-mono">{b.path || '-'}</span>
+                  {' · '}{formatDateTime(b.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
     </QueryBoundary>
   );
 }

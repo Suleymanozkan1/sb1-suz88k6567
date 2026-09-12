@@ -33,6 +33,7 @@ export const keys = {
   paymentAlerts: (businessId: string) => ['paymentAlerts', businessId] as const,
   paymentAlertRecipients: (businessId: string) => ['paymentAlertRecipients', businessId] as const,
   quickReplies: (businessId: string) => ['quickReplies', businessId] as const,
+  errorReports: (ownerId: string) => ['errorReports', ownerId] as const,
   whatsappAccount: (businessId: string) => ['whatsappAccount', businessId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
@@ -494,6 +495,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.paymentAlerts(businessId) });
     qc.invalidateQueries({ queryKey: keys.paymentAlertRecipients(businessId) });
     qc.invalidateQueries({ queryKey: keys.quickReplies(businessId) });
+    qc.invalidateQueries({ queryKey: keys.errorReports(ownerId) });
     qc.invalidateQueries({ queryKey: keys.whatsappAccount(businessId) });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
     qc.invalidateQueries({ queryKey: keys.colors(businessId) });
@@ -602,6 +604,27 @@ export function useDeletePaymentAlertRecipient() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => repo.deletePaymentAlertRecipient(id),
+    onSuccess: invalidate,
+  });
+}
+
+/* ------------------------------------------------------ hata bildirimi */
+
+export function useErrorReports(limit = 100) {
+  const { ownerId } = useAuth();
+  return useQuery({
+    queryKey: keys.errorReports(ownerId),
+    queryFn: () => repo.listErrorReports(limit),
+    enabled: Boolean(ownerId),
+  });
+}
+
+export function useAddErrorReport() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (input: { path: string; message: string; userAgent: string }) =>
+      repo.addErrorReport({ ...input, businessId: businessId || undefined }),
     onSuccess: invalidate,
   });
 }

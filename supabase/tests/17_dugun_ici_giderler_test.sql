@@ -167,11 +167,13 @@ do $$ begin
           where oid = 'public.reservation_expenses'::regclass) then
     raise exception 'BASARISIZ: reservation_expenses uzerinde RLS kapali';
   end if;
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public' and tablename = 'reservation_expenses'
-      and policyname = 'reservation_expenses_all'
-  ) then
+  /*
+    0032 politikayı okuma ve yazma diye ikiye ayırdı (madde 33): muhasebeye
+    bakan personelin rakamları görmesi gerekiyor ama değiştirmesi
+    gerekmiyor. Ada göre değil, VARLIĞA bakılıyor.
+  */
+  if (select count(*) from pg_policies
+      where schemaname = 'public' and tablename = 'reservation_expenses') = 0 then
     raise exception 'BASARISIZ: RLS politikasi yok';
   end if;
 end $$;

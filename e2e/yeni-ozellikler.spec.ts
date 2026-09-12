@@ -485,3 +485,40 @@ test('Kullanıcıya aylık rapor anahtarı eklenir', async ({ page }) => {
   await page.getByRole('button', { name: /Yeni Kullanıcı/ }).click();
   await expect(page.getByLabel(/Aylık rapor gönderilsin/)).not.toBeChecked();
 });
+
+/**
+ * Maddeler 27, 32: ekran kilidi ayarı ve hata bildirimi.
+ */
+test('Hata bildirimi kaydedilir ve denetim ekranında görünür', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/kasa');
+
+  // Düğme her ekranda sabit; bulunduğu sayfa kendiliğinden kaydediliyor.
+  await page.getByRole('button', { name: 'Hata Bildir' }).click();
+  await expect(page.getByText('/panel/kasa')).toBeVisible();
+  await page.locator('#hata-metin').fill('Kasa toplamı yanlış görünüyor.');
+  await page.getByRole('button', { name: 'Gönder' }).click();
+  await expect(page.getByText(/Bildiriminiz kaydedildi/)).toBeVisible();
+  await page.getByRole('dialog', { name: 'Hata Bildir' })
+    .getByRole('button', { name: 'Kapat' }).last().click();
+
+  await page.goto('/panel/denetim');
+  const bolum = page.getByRole('region', { name: 'Kullanıcı Hata Bildirimleri' });
+  await expect(bolum.getByText('Kasa toplamı yanlış görünüyor.')).toBeVisible();
+  // Hangi sayfada olduğu da kayıtta duruyor (madde 32).
+  await expect(bolum.getByText('/panel/kasa')).toBeVisible();
+});
+
+test('Ekran kilidi süresi ayarlanabilir', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/isletmeler');
+  await page.getByRole('button', { name: /Düzenle/ }).first().click();
+
+  const secim = page.locator('#bz-lock');
+  await expect(secim).toBeVisible();
+  // Varsayılan 120 saniye (madde 27).
+  await expect(secim).toHaveValue('120');
+  for (const saniye of ['0', '30', '60', '300', '600']) {
+    await expect(secim.locator(`option[value="${saniye}"]`)).toHaveCount(1);
+  }
+});

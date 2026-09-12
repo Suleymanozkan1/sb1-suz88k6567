@@ -13,7 +13,7 @@ import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
   EventTask, Hall, Menu, Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent,
-  PaymentEventKind, QuickReply, Reservation, ReservationExpense, ReservationVendor,
+  ErrorReport, PaymentEventKind, QuickReply, Reservation, ReservationExpense, ReservationVendor,
   SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
   SmsQueueEntry, User,
@@ -57,6 +57,10 @@ function isletmeDurumlari(businessId: string): LeadStatusDef[] {
   return VARSAYILAN_LEAD_DURUMLARI.map((d) => ({
     ...d, id: `durum_${businessId}_${d.code}`, businessId,
   }));
+}
+
+function hataBildirimleri(): ErrorReport[] {
+  return read<ErrorReport[]>(KEYS.errorReports, []);
 }
 
 function hizliYanitlar(): QuickReply[] {
@@ -611,6 +615,27 @@ export const localRepo: Repository = {
    * Demo modunda tablo boş olabilir; o zaman varsayılan akış üretiliyor.
    * Boş liste dönseydi aday ekranı hiç durum gösteremezdi.
    */
+  async listErrorReports(limit) {
+    return wait(hataBildirimleri()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit));
+  },
+
+  async addErrorReport(input) {
+    const kayit: ErrorReport = {
+      id: uid('hata'),
+      businessId: input.businessId,
+      // Tanıtım kipinde oturum sahibi tek kullanıcı; gerçek kurulumda bu
+      // alanı veritabanı kolon varsayılanı dolduruyor.
+      actorEmail: users().find((u) => u.id === read<string | null>(KEYS.session, null))?.email ?? '',
+      path: input.path,
+      message: input.message,
+      userAgent: input.userAgent,
+      createdAt: new Date().toISOString(),
+    };
+    write(KEYS.errorReports, [...hataBildirimleri(), kayit]);
+  },
+
   async listQuickReplies(businessId) {
     return wait(hizliYanitlar()
       .filter((y) => y.businessId === businessId)
