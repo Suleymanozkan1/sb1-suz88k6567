@@ -295,3 +295,39 @@ test('Ödeme bildirim kuralları kapalı başlar ve metni düzenlenebilir', asyn
   await page.getByRole('button', { name: 'Ekle', exact: true }).click();
   await expect(page.getByText(/Geçerli bir cep telefonu/)).toBeVisible();
 });
+
+/**
+ * Madde 25-26: ürün stoğu koli x koli içi + tek adet olarak hesaplanıyor
+ * ve özet sayfasında çubuk olarak görünüyor.
+ */
+test('Ürün stoğu koliden hesaplanır ve özette görünür', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/urun-hizmet');
+  await page.getByRole('tab', { name: 'Ürünler ve Stok' }).click();
+
+  // Tohum veri: 10 koli x 24 + 6 tek adet = 246
+  await expect(page.getByRole('cell', { name: 'Su (0,5 lt)', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '246', exact: true })).toBeVisible();
+
+  // Yeni ürün: 5 koli x 12 + 3 = 63
+  await page.getByRole('button', { name: /Yeni Ürün/ }).click();
+  await page.locator('#vendor-name').fill('Ayran');
+  await page.locator('#vendor-box').fill('5');
+  await page.locator('#vendor-per').fill('12');
+  await page.locator('#vendor-loose').fill('3');
+  await expect(page.getByText('63 adet')).toBeVisible();
+  await page.getByRole('button', { name: 'Kaydet' }).click();
+  await expect(page.getByRole('cell', { name: 'Ayran', exact: true })).toBeVisible();
+
+  // Hizmette stok alanları hiç sorulmuyor: DJ'in kolisi olmaz.
+  await page.getByRole('button', { name: /Yeni Ürün|Yeni Hizmet/ }).click();
+  await page.locator('#vendor-kind').selectOption('hizmet');
+  await expect(page.locator('#vendor-box')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Vazgeç' }).click();
+
+  // Özet sayfasında stok çubukları ve kritik uyarısı.
+  await page.goto('/panel');
+  const stok = page.getByRole('region', { name: 'Stok durumu' });
+  await expect(stok.getByText('Su (0,5 lt)')).toBeVisible();
+  await expect(stok.getByText(/ürün kritik seviyede/)).toBeVisible();
+});

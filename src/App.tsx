@@ -22,7 +22,7 @@ const Salonlar = lazy(() => import('./pages/app/Salonlar'));
 const Menuler = lazy(() => import('./pages/app/Menuler'));
 const Hatirlatmalar = lazy(() => import('./pages/app/Hatirlatmalar'));
 const OdemeBildirimleri = lazy(() => import('./pages/app/OdemeBildirimleri'));
-const Tedarikciler = lazy(() => import('./pages/app/Tedarikciler'));
+const UrunHizmet = lazy(() => import('./pages/app/UrunHizmet'));
 const Makbuz = lazy(() => import('./pages/app/Makbuz'));
 const Raporlar = lazy(() => import('./pages/app/Raporlar'));
 const RenkAyarlari = lazy(() => import('./pages/app/RenkAyarlari'));
@@ -111,7 +111,9 @@ export default function App() {
             <Route path="menuler" element={<Menuler />} />
             <Route path="hatirlatmalar" element={<Hatirlatmalar />} />
             <Route path="odeme-bildirimleri" element={<OdemeBildirimleri />} />
-            <Route path="tedarikciler" element={<Tedarikciler />} />
+            <Route path="urun-hizmet" element={<UrunHizmet />} />
+            {/* Eski adres: kayıtlı bağlantılar ve yer imleri kırılmasın. */}
+            <Route path="tedarikciler" element={<Navigate to="/panel/urun-hizmet" replace />} />
             <Route path="sms" element={<SmsKayitlari />} />
             <Route path="musteri-adaylari" element={<MusteriAdaylari />} />
             <Route path="musteri-adaylari/yeni" element={<MusteriAdayiYeni />} />

@@ -473,7 +473,13 @@ function toVendor(row: Row): Vendor {
   return {
     id: String(row.id), businessId: String(row.business_id),
     name: (row.name as string) ?? '', category: (row.category as string) ?? '',
+    kind: (row.kind as Vendor['kind']) ?? 'hizmet',
     phone: (row.phone as string) ?? '', note: (row.note as string) ?? '',
+    unitPrice: Number(row.unit_price ?? 0),
+    boxCount: Number(row.box_count ?? 0),
+    unitsPerBox: Number(row.units_per_box ?? 0),
+    looseCount: Number(row.loose_count ?? 0),
+    minCount: Number(row.min_count ?? 0),
     isActive: Boolean(row.is_active ?? true), createdAt: (row.created_at as string) ?? '',
   };
 }
@@ -1434,19 +1440,26 @@ export const supabaseRepo: Repository = {
   async saveVendor(vendor) {
     const { data, error } = await db().from('vendors').upsert({
       ...kimlikAlani(vendor.id), business_id: vendor.businessId, name: vendor.name,
-      category: vendor.category, phone: vendor.phone, note: vendor.note,
+      category: vendor.category, kind: vendor.kind, phone: vendor.phone, note: vendor.note,
+      unit_price: vendor.unitPrice,
+      // Stok alanları hizmette sıfır kalıyor; veritabanı kısıtı da bunu
+      // zorluyor, "3 koli DJ" gibi bir satır hiç oluşmasın.
+      box_count: vendor.kind === 'urun' ? vendor.boxCount : 0,
+      units_per_box: vendor.kind === 'urun' ? vendor.unitsPerBox : 0,
+      loose_count: vendor.kind === 'urun' ? vendor.looseCount : 0,
+      min_count: vendor.kind === 'urun' ? vendor.minCount : 0,
       is_active: vendor.isActive,
     }).select().single();
-    if (error) fail('Tedarikçi kaydedilemedi.', error);
+    if (error) fail('Kayıt kaydedilemedi.', error);
     return toVendor(data);
   },
 
   async deleteVendor(id) {
     const { error } = await db().from('vendors').delete().eq('id', id);
     if (error && (error as { code?: string }).code === '23503') {
-      throw new RepoError('Bu tedarikçi organizasyonlara bağlı; silmek yerine pasife alın.');
+      throw new RepoError('Bu kayıt organizasyonlara bağlı; silmek yerine pasife alın.');
     }
-    if (error) fail('Tedarikçi silinemedi.', error);
+    if (error) fail('Kayıt silinemedi.', error);
   },
 
   async listReservationVendors(reservationId) {

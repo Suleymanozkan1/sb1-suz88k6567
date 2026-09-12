@@ -17,7 +17,7 @@ const NAV = [
   { to: '/panel/raporlar', label: 'Raporlar', icon: IconChart },
   { to: '/panel/salonlar', label: 'Salonlar', icon: IconBuilding },
   { to: '/panel/menuler', label: 'Menüler', icon: IconList },
-  { to: '/panel/tedarikciler', label: 'Tedarikçiler', icon: IconUsers },
+  { to: '/panel/urun-hizmet', label: 'Ürün ve Hizmet', icon: IconUsers },
   { to: '/panel/renk-ayarlari', label: 'Renk Ayarları', icon: IconPalette },
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
   { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser, ownerOnly: true },

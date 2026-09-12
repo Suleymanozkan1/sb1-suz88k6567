@@ -588,7 +588,7 @@ describe('tedarikçiler', () => {
     seedIfEmpty();
     await expect(localRepo.saveVendor({
       id: 'vendor_yeni', businessId: 'biz_demo', name: 'Yıldız Orkestra',
-      category: 'Orkestra / Müzik', phone: '', note: '', isActive: true,
+      category: 'Orkestra / Müzik', phone: '', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true,
     })).rejects.toThrow(/zaten var/);
   });
 

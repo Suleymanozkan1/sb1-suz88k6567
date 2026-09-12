@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import StatCard from '../../components/StatCard';
 import KasaDagilimKarti from '../../components/KasaDagilimKarti';
+import StokDurumu from '../../components/StokDurumu';
 import { useAuth } from '../../context/AuthContext';
 import {
   useCashFlow, useLeadStatuses, useLeads, useReservationsWithBalances,
@@ -225,6 +226,11 @@ export default function Dashboard() {
           )}
         </section>
 
+        {/*
+          Stok, yaklaşan organizasyonların hemen altında (madde 6):
+          o organizasyonlara yetecek malzeme var mı sorusu aynı ekranda
+          sorulup cevaplanıyor.
+        */}
         <section className="card p-5" aria-labelledby="program-title">
           <h2 id="program-title" className="mb-4 font-heading text-lg font-bold text-brand">
             {ayAdi} ayı program dağılımı
@@ -254,6 +260,10 @@ export default function Dashboard() {
             </ul>
           )}
         </section>
+
+        <div className="lg:col-span-2">
+          <StokDurumu />
+        </div>
       </div>
     </QueryBoundary>
   );

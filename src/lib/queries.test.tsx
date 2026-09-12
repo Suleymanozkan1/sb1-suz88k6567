@@ -101,7 +101,7 @@ async function yaz<Girdi, Sonuc>(
 async function tedarikciEkle(id = 'v1') {
   await repo.saveVendor({
     id, businessId: BIZ, name: 'Orkestra', category: 'Orkestra / Müzik',
-    phone: '5321112233', note: '', isActive: true, createdAt: '',
+    phone: '5321112233', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
   });
 }
 
@@ -264,7 +264,7 @@ describe('okuma kancaları', () => {
   it('tedarikçileri okur', async () => {
     await repo.saveVendor({
       id: 'v1', businessId: BIZ, name: 'Orkestra', category: 'Orkestra / Müzik',
-      phone: '5321112233', note: '', isActive: true, createdAt: '',
+      phone: '5321112233', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
     });
     await expect(veri(() => sorgular.useVendors())).resolves.toHaveLength(1);
   });
@@ -498,7 +498,7 @@ describe('yazma kancaları', () => {
   it('tedarikçi kaydeder ve siler', async () => {
     const { sonuc } = await yaz(() => sorgular.useSaveVendor(), {
       id: 'v1', businessId: BIZ, name: 'Orkestra', category: 'Orkestra / Müzik',
-      phone: '5321112233', note: '', isActive: true, createdAt: '',
+      phone: '5321112233', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
     });
     expect(sonuc.name).toBe('Orkestra');
 

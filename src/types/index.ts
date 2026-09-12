@@ -175,13 +175,32 @@ export interface EventTask {
   done: boolean;
 }
 
+/**
+ * Ürün mü hizmet mi?
+ *
+ * Aynı tabloda duruyorlar: garson ve su iki ayrı tabloda tanımlansaydı
+ * aynı kalem iki yerden girilebilir, hangisinin doğru olduğu belirsiz
+ * kalırdı. Stok yalnızca üründe anlamlı -- DJ'in kolisi olmaz.
+ */
+export type VendorKind = 'hizmet' | 'urun';
+
 export interface Vendor {
   id: string;
   businessId: string;
   name: string;
   category: string;
+  kind: VendorKind;
   phone: string;
   note: string;
+  /** Düğün içi gider satırı buradan doldurulabilir. */
+  unitPrice: number;
+  /** Stok: yalnızca üründe dolu. */
+  boxCount: number;
+  unitsPerBox: number;
+  /** Koliden bozulmuş, tek tek duran adet. */
+  looseCount: number;
+  /** Kritik seviye. Sıfır = takip edilmiyor. */
+  minCount: number;
   isActive: boolean;
   createdAt: string;
 }
@@ -199,6 +218,23 @@ export interface ReservationVendor {
 export const VENDOR_CATEGORIES = [
   'Orkestra / Müzik', 'Fotoğraf / Video', 'Çiçek / Süsleme', 'Pasta',
   'Gelin Arabası', 'Ses ve Işık', 'İkram / Catering', 'Diğer',
+] as const;
+
+/**
+ * Hizmet kalemlerinin kategorileri.
+ *
+ * Tedarikçi kategorileri dış firmaları anlatıyordu; salonun kendi
+ * personeli (garson, vale) o listeye girmiyordu. İkisi ayrı listeler,
+ * tek listede toplanınca hiçbiri işe yaramıyordu.
+ */
+export const HIZMET_KATEGORILERI = [
+  'Personel', 'Orkestra / Müzik', 'Fotoğraf / Video', 'Çiçek / Süsleme',
+  'Pasta', 'Gelin Arabası', 'Ses ve Işık', 'İkram / Catering', 'Diğer',
+] as const;
+
+/** Fiziksel ürün kategorileri. */
+export const URUN_KATEGORILERI = [
+  'İçecek', 'Gıda', 'Temizlik', 'Sarf Malzeme', 'Diğer',
 ] as const;
 
 export type CashFlowKind = 'Gelir' | 'Gider';

@@ -52,13 +52,13 @@ export default function TedarikciAtama({ reservationId, currency, canEdit }: Pro
     }
   }
 
-  if (isLoading) return <p className="text-sm text-brand-muted">Tedarikçiler yükleniyor…</p>;
+  if (isLoading) return <p className="text-sm text-brand-muted">Ürün ve hizmetler yükleniyor…</p>;
 
   if (vendors.length === 0) {
     return (
       <p className="rounded border border-dashed border-line p-6 text-center text-sm text-brand-muted">
         Henüz tedarikçi tanımlanmamış.{' '}
-        <Link to="/panel/tedarikciler" className="text-brand underline">Tedarikçiler</Link> ekranından ekleyebilirsiniz.
+        <Link to="/panel/urun-hizmet" className="text-brand underline">Ürün ve Hizmet</Link> ekranından ekleyebilirsiniz.
       </p>
     );
   }

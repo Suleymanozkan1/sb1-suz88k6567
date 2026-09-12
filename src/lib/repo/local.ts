@@ -1000,7 +1000,7 @@ export const localRepo: Repository = {
       (v) => v.businessId === vendor.businessId && v.id !== vendor.id &&
              v.name.trim().toLocaleLowerCase('tr') === vendor.name.trim().toLocaleLowerCase('tr'),
     );
-    if (duplicate) throw new RepoError('Bu isimde bir tedarikçi zaten var.');
+    if (duplicate) throw new RepoError('Bu isimde bir kayıt zaten var.');
 
     const next: Vendor = { ...vendor, createdAt: vendor.createdAt ?? new Date().toISOString() };
     const idx = list.findIndex((v) => v.id === next.id);

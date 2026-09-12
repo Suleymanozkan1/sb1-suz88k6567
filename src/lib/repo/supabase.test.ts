@@ -359,7 +359,7 @@ describe('kimlik üretimi', () => {
     });
     await repo.saveVendor({
       id: 'vendor_abc', businessId: 'biz-1', name: 'Orkestra',
-      category: 'Orkestra', phone: '', note: '', isActive: true, createdAt: '',
+      category: 'Orkestra', phone: '', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
     });
     await repo.addCashFlow({
       id: 'kasa_abc', businessId: 'biz-1', kind: 'Gelir', date: '2026-01-01',
@@ -1080,10 +1080,10 @@ describe('tedarikçiler', () => {
     expect(tedarikci).toMatchObject({ id: 'v1', businessId: 'b1', name: 'Orkestra', isActive: true });
   });
 
-  it('organizasyona bağlı tedarikçi için pasife almayı önerir', async () => {
+  it('organizasyona bağlı kalem için pasife almayı önerir', async () => {
     yanitla('vendors', { error: { code: '23503', message: 'foreign key violation' } });
     await expect(repo.deleteVendor('v1'))
-      .rejects.toThrow('Bu tedarikçi organizasyonlara bağlı; silmek yerine pasife alın.');
+      .rejects.toThrow('Bu kayıt organizasyonlara bağlı; silmek yerine pasife alın.');
   });
 
   it('atamaları önce siler sonra yazar ve boş saati null yapar', async () => {
@@ -1264,7 +1264,7 @@ describe('listeleme eşlemeleri', () => {
 
     const tedarikci = await repo.saveVendor({
       id: 'v1', businessId: 'b1', name: 'Orkestra', category: 'Orkestra / Müzik',
-      phone: '5321112233', note: '', isActive: true, createdAt: '',
+      phone: '5321112233', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
     });
 
     expect(tedarikci).toMatchObject({ id: 'v1', name: 'Orkestra', isActive: true });

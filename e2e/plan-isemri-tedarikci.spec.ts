@@ -43,13 +43,13 @@ test('İş emri: örnek akış yüklenir ve kaydedilir', async ({ page }) => {
   await expect(page.getByText('Kaydedilmemiş değişiklik var.')).toBeHidden();
 });
 
-test('Tedarikçiler ekranı: tedarikçi eklenir', async ({ page }) => {
+test('Ürün ve Hizmet ekranı: hizmet eklenir', async ({ page }) => {
   await login(page);
-  await page.goto('/panel/tedarikciler');
-  await expect(page.getByRole('heading', { name: 'Tedarikçiler' })).toBeVisible();
+  await page.goto('/panel/urun-hizmet');
+  await expect(page.getByRole('heading', { name: 'Ürün ve Hizmet' })).toBeVisible();
   await expect(page.getByText('Yıldız Orkestra')).toBeVisible();
 
-  await page.getByRole('button', { name: /Yeni Tedarikçi/ }).click();
+  await page.getByRole('button', { name: /Yeni Hizmet/ }).click();
   await page.locator('#vendor-name').fill('Deneme Pastanesi');
   await page.locator('#vendor-category').selectOption('Pasta');
   await page.getByRole('button', { name: 'Kaydet' }).click();
@@ -60,7 +60,7 @@ test('Tedarikçi ataması: maliyet toplanır ve kaydedilir', async ({ page }) =>
   await login(page);
   await rezervasyonAc(page, 'Tedarikçi Testi', '2028-03-09');
 
-  await expect(page.getByRole('heading', { name: 'Tedarikçiler' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ürün ve Hizmet' })).toBeVisible();
   await page.getByRole('button', { name: /Tedarikçi ekle/ }).click();
   await page.locator('select[aria-label="1. tedarikçi"]').selectOption({ index: 1 });
   await page.locator('input[aria-label="1. tedarikçi ücreti"]').fill('15000');

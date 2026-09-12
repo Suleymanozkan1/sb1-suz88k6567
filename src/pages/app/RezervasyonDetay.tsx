@@ -445,7 +445,7 @@ export default function RezervasyonDetay() {
       </section>
 
       <section className="card mb-6 p-5">
-        <h2 className="mb-1 font-heading text-lg font-bold text-brand">Tedarikçiler</h2>
+        <h2 className="mb-1 font-heading text-lg font-bold text-brand">Ürün ve Hizmet</h2>
         <p className="mb-4 text-sm text-brand-muted">
           Bu organizasyonda çalışacak dış firmalar, geliş saatleri ve ücretleri.
         </p>
