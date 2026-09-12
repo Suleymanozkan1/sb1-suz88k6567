@@ -21,6 +21,7 @@ const Kasa = lazy(() => import('./pages/app/Kasa'));
 const Salonlar = lazy(() => import('./pages/app/Salonlar'));
 const Menuler = lazy(() => import('./pages/app/Menuler'));
 const Hatirlatmalar = lazy(() => import('./pages/app/Hatirlatmalar'));
+const OdemeBildirimleri = lazy(() => import('./pages/app/OdemeBildirimleri'));
 const Tedarikciler = lazy(() => import('./pages/app/Tedarikciler'));
 const Makbuz = lazy(() => import('./pages/app/Makbuz'));
 const Raporlar = lazy(() => import('./pages/app/Raporlar'));
@@ -109,6 +110,7 @@ export default function App() {
             <Route path="salonlar" element={<Salonlar />} />
             <Route path="menuler" element={<Menuler />} />
             <Route path="hatirlatmalar" element={<Hatirlatmalar />} />
+            <Route path="odeme-bildirimleri" element={<OdemeBildirimleri />} />
             <Route path="tedarikciler" element={<Tedarikciler />} />
             <Route path="sms" element={<SmsKayitlari />} />
             <Route path="musteri-adaylari" element={<MusteriAdaylari />} />

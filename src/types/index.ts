@@ -602,3 +602,81 @@ export interface DirectoryMember {
   phone?: string;
   about: string;
 }
+
+/* ------------------------------------------------- ödeme değişiklikleri */
+
+/**
+ * Tahsilatta izlenen olaylar.
+ *
+ * Veritabanındaki `payment_event_kind` enum'unun birebir karşılığı.
+ * Satırları tetikleyici yazıyor; uygulama yalnızca okuyor.
+ */
+export type PaymentEventKind =
+  | 'tahsilat_eklendi'
+  | 'tutar_degisti'
+  | 'tip_degisti'
+  | 'tarih_degisti'
+  | 'tahsilat_silindi'
+  /** Çek/senet: para henüz kasaya girmedi. */
+  | 'kasaya_girmedi';
+
+export const ODEME_OLAY_ADI: Record<PaymentEventKind, string> = {
+  tahsilat_eklendi: 'Yeni tahsilat',
+  tutar_degisti: 'Tutar değişti',
+  tip_degisti: 'Ödeme tipi değişti',
+  tarih_degisti: 'Tarih değişti',
+  tahsilat_silindi: 'Tahsilat silindi',
+  kasaya_girmedi: 'Kasaya girmedi',
+};
+
+/** Ekrandaki sıra; olay listesi her açılışta aynı sırayla gelsin. */
+export const ODEME_OLAYLARI: PaymentEventKind[] = [
+  'tahsilat_eklendi', 'tutar_degisti', 'tip_degisti',
+  'tarih_degisti', 'tahsilat_silindi', 'kasaya_girmedi',
+];
+
+export interface PaymentEvent {
+  id: string;
+  businessId: string;
+  reservationId: string;
+  /** Silinen tahsilatta da dolu kalır: kayıt sildiği satırı hatırlar. */
+  paymentId?: string;
+  event: PaymentEventKind;
+  amount?: number;
+  oldAmount?: number;
+  method?: PaymentMethod;
+  oldMethod?: PaymentMethod;
+  /** İşlemi yapan kullanıcı. Oturum çözülemediyse boş. */
+  actorEmail: string;
+  createdAt: string;
+}
+
+/** Bir olayda yöneticiye gidecek mesaj. Metin hard-code değil. */
+export interface PaymentAlert {
+  id: string;
+  businessId: string;
+  event: PaymentEventKind;
+  enabled: boolean;
+  body: string;
+}
+
+/** Bildirimi alacak numara. Kullanıcı hesabına bağlı değil. */
+export interface PaymentAlertRecipient {
+  id: string;
+  businessId: string;
+  name: string;
+  phone: string;
+  enabled: boolean;
+}
+
+/** Mesaj metinlerinde kullanılabilen yer tutucular ve anlamları. */
+export const ODEME_YER_TUTUCULARI: [string, string][] = [
+  ['{isletme}', 'İşletme adı'],
+  ['{kod}', 'Sözleşme numarası'],
+  ['{tutar}', 'Tahsilat tutarı'],
+  ['{eski_tutar}', 'Değişiklikten önceki tutar'],
+  ['{tip}', 'Ödeme tipi'],
+  ['{eski_tip}', 'Değişiklikten önceki ödeme tipi'],
+  ['{kalan}', 'İşlem sonrası kalan alacak'],
+  ['{kullanici}', 'İşlemi yapan kullanıcı'],
+];

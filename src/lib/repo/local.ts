@@ -12,12 +12,14 @@ import { RepoError, type PublicReservation, type Repository, type StaffInput } f
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
-  EventTask, Hall, Menu, Payment, Reservation, ReservationExpense, ReservationVendor,
+  EventTask, Hall, Menu, Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent,
+  PaymentEventKind, Reservation, ReservationExpense, ReservationVendor,
   SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
   SmsQueueEntry, User,
 } from '../../types';
-import { VARSAYILAN_LEAD_DURUMLARI } from '../../types';
+import { ODEME_OLAYLARI, VARSAYILAN_LEAD_DURUMLARI } from '../../types';
+import { odemeOlaylari } from '../odemeOlayi';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
 
 const wait = <T,>(value: T): Promise<T> => Promise.resolve(value);
@@ -38,6 +40,62 @@ function dugunGiderleri(): ReservationExpense[] {
 }
 function leadStatuses(): LeadStatusDef[] {
   return read<LeadStatusDef[]>(KEYS.leadStatuses, []);
+}
+function odemeOlaylariKaydi(): PaymentEvent[] {
+  return read<PaymentEvent[]>(KEYS.paymentEvents, []);
+}
+function odemeKurallari(): PaymentAlert[] {
+  return read<PaymentAlert[]>(KEYS.paymentAlerts, []);
+}
+function odemeAlicilari(): PaymentAlertRecipient[] {
+  return read<PaymentAlertRecipient[]>(KEYS.paymentAlertRecipients, []);
+}
+
+/**
+ * Sunucudaki `payment_alerts_tohumla` ile aynı metinler.
+ *
+ * Hepsi KAPALI: yeni kurulan bir salonda yönetici metni okumadan SMS
+ * gitmeye başlamamalı, SMS ücretli.
+ */
+const VARSAYILAN_ODEME_METNI: Record<PaymentEventKind, string> = {
+  tahsilat_eklendi: '{isletme}: {kod} sozlesmesine {tutar} tahsilat girildi ({tip}). Kalan: {kalan}. Islem: {kullanici}',
+  tutar_degisti: '{isletme}: {kod} sozlesmesinde tahsilat {eski_tutar} -> {tutar} olarak degistirildi. Kalan: {kalan}. Islem: {kullanici}',
+  tip_degisti: '{isletme}: {kod} sozlesmesinde {tutar} tahsilatin odeme tipi {eski_tip} -> {tip} oldu. Islem: {kullanici}',
+  tarih_degisti: '{isletme}: {kod} sozlesmesinde {tutar} tahsilatin tarihi degistirildi. Islem: {kullanici}',
+  tahsilat_silindi: '{isletme}: {kod} sozlesmesinden {tutar} tahsilat SILINDI. Kalan: {kalan}. Islem: {kullanici}',
+  kasaya_girmedi: '{isletme}: {kod} sozlesmesinde {tutar} tahsilat {tip} olarak alindi, kasaya girmedi. Islem: {kullanici}',
+};
+
+/**
+ * Tanıtım kipinde olay kaydını yazar.
+ *
+ * Gerçek kurulumda bunu veritabanı tetikleyicisi yapıyor; kural ortak bir
+ * modülde (`odemeOlaylari`) duruyor ki iki taraf aynı olayı üretsin.
+ * Burada SMS kuyruğa ALINMIYOR: tanıtım kipinde gönderecek bir sağlayıcı
+ * yok ve olmayan bir gönderimi kuyrukta göstermek yanıltıcı olurdu.
+ */
+function olayYaz(oncesi: Payment | null, sonrasi: Payment | null): void {
+  const kayit = sonrasi ?? oncesi;
+  if (!kayit) return;
+  const rezervasyon = reservations().find((r) => r.id === kayit.reservationId);
+  if (!rezervasyon) return;
+
+  const simdi = new Date().toISOString();
+  const satirlar: PaymentEvent[] = odemeOlaylari(oncesi, sonrasi).map((event) => ({
+    id: uid('odeme-olay'),
+    businessId: rezervasyon.businessId,
+    reservationId: rezervasyon.id,
+    paymentId: kayit.id,
+    event,
+    amount: kayit.amount,
+    oldAmount: oncesi && sonrasi ? oncesi.amount : undefined,
+    method: kayit.method,
+    oldMethod: oncesi && sonrasi ? oncesi.method : undefined,
+    actorEmail: '',
+    createdAt: simdi,
+  }));
+
+  if (satirlar.length > 0) write(KEYS.paymentEvents, [...odemeOlaylariKaydi(), ...satirlar]);
 }
 
 /**
@@ -334,9 +392,69 @@ export const localRepo: Repository = {
     return wait(payments().filter((p) => ids.has(p.reservationId)));
   },
 
-  async addPayment(payment) { write(KEYS.payments, [...payments(), payment]); },
+  async addPayment(payment) {
+    write(KEYS.payments, [...payments(), payment]);
+    olayYaz(null, payment);
+  },
 
-  async deletePayment(id) { write(KEYS.payments, payments().filter((p) => p.id !== id)); },
+  async updatePayment(payment) {
+    const onceki = payments().find((p) => p.id === payment.id) ?? null;
+    write(KEYS.payments, payments().map((p) => (p.id === payment.id ? payment : p)));
+    olayYaz(onceki, payment);
+  },
+
+  async deletePayment(id) {
+    const onceki = payments().find((p) => p.id === id) ?? null;
+    write(KEYS.payments, payments().filter((p) => p.id !== id));
+    olayYaz(onceki, null);
+  },
+
+  async listPaymentEvents(businessId) {
+    return wait(odemeOlaylariKaydi()
+      .filter((o) => o.businessId === businessId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  },
+
+  async listPaymentAlerts(businessId) {
+    const kayitli = odemeKurallari().filter((k) => k.businessId === businessId);
+    // Tohumlama sunucuda tetikleyiciyle yapılıyor; yerel kipte ilk
+    // okumada üretiliyor ki ekran boş bir listeyle açılmasın.
+    if (kayitli.length > 0) return wait(kayitli);
+    const varsayilan = ODEME_OLAYLARI.map((event) => ({
+      id: uid('odeme-kural'), businessId, event, enabled: false,
+      body: VARSAYILAN_ODEME_METNI[event],
+    }));
+    write(KEYS.paymentAlerts, [...odemeKurallari(), ...varsayilan]);
+    return wait(varsayilan);
+  },
+
+  async savePaymentAlert(alert) {
+    const hepsi = odemeKurallari();
+    const yeni = hepsi.some((k) => k.id === alert.id)
+      ? hepsi.map((k) => (k.id === alert.id ? alert : k))
+      : [...hepsi, alert];
+    write(KEYS.paymentAlerts, yeni);
+    return wait(alert);
+  },
+
+  async listPaymentAlertRecipients(businessId) {
+    return wait(odemeAlicilari()
+      .filter((a) => a.businessId === businessId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr')));
+  },
+
+  async savePaymentAlertRecipient(alici) {
+    const hepsi = odemeAlicilari();
+    const yeni = hepsi.some((a) => a.id === alici.id)
+      ? hepsi.map((a) => (a.id === alici.id ? alici : a))
+      : [...hepsi, alici];
+    write(KEYS.paymentAlertRecipients, yeni);
+    return wait(alici);
+  },
+
+  async deletePaymentAlertRecipient(id) {
+    write(KEYS.paymentAlertRecipients, odemeAlicilari().filter((a) => a.id !== id));
+  },
 
   async listCashFlow(businessId) {
     return wait(cash()

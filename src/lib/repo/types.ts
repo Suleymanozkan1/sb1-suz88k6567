@@ -7,7 +7,8 @@
  */
 import type { HatirlatmaKurali, Sablon } from '../sablon';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus,   EnqueueResult, MessageCategory, Payment, Permission, Reservation, ReservationExpense, SmsConsent,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus,   EnqueueResult, MessageCategory, Payment, PaymentAlert, PaymentAlertRecipient,
+  PaymentEvent, Permission, Reservation, ReservationExpense, SmsConsent,
   Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
   EventTask, Vendor, ReservationVendor,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
@@ -112,7 +113,18 @@ export interface Repository {
   /* -- tahsilatlar --------------------------------------------------- */
   listPayments(businessId: string): Promise<Payment[]>;
   addPayment(payment: Payment): Promise<void>;
+  /** Tutar, tip, tarih ve açıklama düzeltilebilir; kayıt kimliği değişmez. */
+  updatePayment(payment: Payment): Promise<void>;
   deletePayment(id: string): Promise<void>;
+
+  /* -- ödeme değişiklikleri -------------------------------------------- */
+  /** Geçmiş yalnızca okunur; satırları veritabanı tetikleyicisi yazar. */
+  listPaymentEvents(businessId: string): Promise<PaymentEvent[]>;
+  listPaymentAlerts(businessId: string): Promise<PaymentAlert[]>;
+  savePaymentAlert(alert: PaymentAlert): Promise<PaymentAlert>;
+  listPaymentAlertRecipients(businessId: string): Promise<PaymentAlertRecipient[]>;
+  savePaymentAlertRecipient(alici: PaymentAlertRecipient): Promise<PaymentAlertRecipient>;
+  deletePaymentAlertRecipient(id: string): Promise<void>;
 
   /* -- düğün içi giderler ---------------------------------------------- */
   listReservationExpenses(businessId: string): Promise<ReservationExpense[]>;

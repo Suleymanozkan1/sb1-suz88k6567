@@ -69,6 +69,12 @@ export const KEYS = {
   leadStatuses: 'aday-durumlari',
   /** Organizasyon içi giderler (garson, DJ, vale...) */
   reservationExpenses: 'dugun-ici-giderler',
+  /** Tahsilatlarda rakam içeren değişikliklerin geçmişi */
+  paymentEvents: 'odeme-olaylari',
+  /** Hangi ödeme olayında yöneticiye mesaj gider */
+  paymentAlerts: 'odeme-bildirim-kurallari',
+  /** Bildirimi alacak numaralar */
+  paymentAlertRecipients: 'odeme-bildirim-alicilari',
   /** WhatsApp numarası eşlemesi ve otomatik cevap ayarları */
   whatsappAccounts: 'whatsapp-hesaplari',
   colors: 'colors',

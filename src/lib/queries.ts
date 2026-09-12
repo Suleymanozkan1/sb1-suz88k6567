@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
-  Payment, Reservation, SmsLogEntry, CustomerLead, LeadMessage,
+  Payment, PaymentAlert, PaymentAlertRecipient, Reservation, SmsLogEntry, CustomerLead, LeadMessage,
   LeadStatusDef, ReservationExpense, WhatsappAccount,
 } from '../types';
 
@@ -29,6 +29,9 @@ export const keys = {
   leadStatusHistory: (leadId: string) => ['leadStatusHistory', leadId] as const,
   leadStatuses: (businessId: string) => ['leadStatuses', businessId] as const,
   reservationExpenses: (businessId: string) => ['reservationExpenses', businessId] as const,
+  paymentEvents: (businessId: string) => ['paymentEvents', businessId] as const,
+  paymentAlerts: (businessId: string) => ['paymentAlerts', businessId] as const,
+  paymentAlertRecipients: (businessId: string) => ['paymentAlertRecipients', businessId] as const,
   whatsappAccount: (businessId: string) => ['whatsappAccount', businessId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
@@ -486,6 +489,9 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: ['leadStatusHistory'] });
     qc.invalidateQueries({ queryKey: keys.leadStatuses(businessId) });
     qc.invalidateQueries({ queryKey: keys.reservationExpenses(businessId) });
+    qc.invalidateQueries({ queryKey: keys.paymentEvents(businessId) });
+    qc.invalidateQueries({ queryKey: keys.paymentAlerts(businessId) });
+    qc.invalidateQueries({ queryKey: keys.paymentAlertRecipients(businessId) });
     qc.invalidateQueries({ queryKey: keys.whatsappAccount(businessId) });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
     qc.invalidateQueries({ queryKey: keys.colors(businessId) });
@@ -524,10 +530,76 @@ export function useAddPayment() {
   });
 }
 
+export function useUpdatePayment() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (payment: Payment) => repo.updatePayment(payment),
+    onSuccess: invalidate,
+  });
+}
+
 export function useDeletePayment() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => repo.deletePayment(id),
+    onSuccess: invalidate,
+  });
+}
+
+/* -------------------------------------------- ödeme değişiklik geçmişi */
+
+export function usePaymentEvents() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.paymentEvents(businessId),
+    queryFn: () => repo.listPaymentEvents(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function usePaymentAlerts() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.paymentAlerts(businessId),
+    queryFn: () => repo.listPaymentAlerts(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSavePaymentAlert() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    // İşletme çağıran ekrandan değil oturumdan geliyor: ekranın boş bir
+    // kimlikle kaydettiği satır hiçbir listede görünmezdi.
+    mutationFn: (alert: PaymentAlert) => repo.savePaymentAlert({ ...alert, businessId }),
+    onSuccess: invalidate,
+  });
+}
+
+export function usePaymentAlertRecipients() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.paymentAlertRecipients(businessId),
+    queryFn: () => repo.listPaymentAlertRecipients(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSavePaymentAlertRecipient() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (alici: PaymentAlertRecipient) =>
+      repo.savePaymentAlertRecipient({ ...alici, businessId }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeletePaymentAlertRecipient() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deletePaymentAlertRecipient(id),
     onSuccess: invalidate,
   });
 }

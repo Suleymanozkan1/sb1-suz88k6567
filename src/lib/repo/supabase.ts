@@ -16,7 +16,8 @@ import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult,
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
-  Payment, Permission, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
+  Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent, PaymentMethod,
+  Permission, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
 } from '../../types';
@@ -335,6 +336,48 @@ function toReservationExpense(row: Row): ReservationExpense {
     note: (row.note as string) ?? '',
     createdAt: (row.created_at as string) ?? '',
     updatedAt: (row.updated_at as string) ?? '',
+  };
+}
+
+/*
+  Olay satırı geçmişten geliyor: silinmiş bir tahsilata ait olabilir ve
+  o satırın tipi/tutarı artık başka hiçbir yerde durmuyor. Alanlar bu
+  yüzden boş geçilebilir sayılıyor, uydurma varsayılan konmuyor.
+*/
+function toPaymentEvent(row: Row): PaymentEvent {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    reservationId: String(row.reservation_id),
+    paymentId: row.payment_id ? String(row.payment_id) : undefined,
+    event: row.event as PaymentEvent['event'],
+    amount: row.amount === null || row.amount === undefined ? undefined : Number(row.amount),
+    oldAmount: row.old_amount === null || row.old_amount === undefined
+      ? undefined : Number(row.old_amount),
+    method: (row.method as PaymentMethod | null) ?? undefined,
+    oldMethod: (row.old_method as PaymentMethod | null) ?? undefined,
+    actorEmail: (row.actor_email as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toPaymentAlert(row: Row): PaymentAlert {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    event: row.event as PaymentAlert['event'],
+    enabled: Boolean(row.enabled),
+    body: (row.body as string) ?? '',
+  };
+}
+
+function toPaymentAlertRecipient(row: Row): PaymentAlertRecipient {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    name: (row.name as string) ?? '',
+    phone: (row.phone as string) ?? '',
+    enabled: Boolean(row.enabled),
   };
 }
 
@@ -755,9 +798,68 @@ export const supabaseRepo: Repository = {
     if (error) fail('Tahsilat kaydedilemedi.', error);
   },
 
+  async updatePayment(payment) {
+    const { error } = await db().from('payments').update({
+      date: payment.date, amount: payment.amount,
+      method: payment.method, note: payment.note || null,
+    }).eq('id', payment.id);
+    if (error) fail('Tahsilat güncellenemedi.', error);
+  },
+
   async deletePayment(id) {
     const { error } = await db().from('payments').delete().eq('id', id);
     if (error) fail('Tahsilat silinemedi.', error);
+  },
+
+  /*
+    Ödeme olayları YALNIZCA OKUNUYOR. Satırları veritabanı tetikleyicisi
+    yazıyor; uygulamaya bırakılsaydı panel, mobil ve ileride eklenecek her
+    istemci aynı kaydı ayrı yazmak zorunda kalır, birinin unutması kaydı
+    sessizce eksik bırakırdı.
+  */
+  async listPaymentEvents(businessId) {
+    const { data, error } = await db().from('payment_events')
+      .select('*').eq('business_id', businessId)
+      .order('created_at', { ascending: false }).limit(500);
+    if (error) fail('Ödeme geçmişi alınamadı.', error);
+    return (data ?? []).map(toPaymentEvent);
+  },
+
+  async listPaymentAlerts(businessId) {
+    const { data, error } = await db().from('payment_alerts')
+      .select('*').eq('business_id', businessId);
+    if (error) fail('Bildirim kuralları alınamadı.', error);
+    return (data ?? []).map(toPaymentAlert);
+  },
+
+  async savePaymentAlert(alert) {
+    const { data, error } = await db().from('payment_alerts').upsert({
+      ...kimlikAlani(alert.id), business_id: alert.businessId,
+      event: alert.event, enabled: alert.enabled, body: alert.body,
+    }, { onConflict: 'business_id,event' }).select().single();
+    if (error) fail('Bildirim kuralı kaydedilemedi.', error);
+    return toPaymentAlert(data);
+  },
+
+  async listPaymentAlertRecipients(businessId) {
+    const { data, error } = await db().from('payment_alert_recipients')
+      .select('*').eq('business_id', businessId).order('name');
+    if (error) fail('Bildirim alıcıları alınamadı.', error);
+    return (data ?? []).map(toPaymentAlertRecipient);
+  },
+
+  async savePaymentAlertRecipient(alici) {
+    const { data, error } = await db().from('payment_alert_recipients').upsert({
+      ...kimlikAlani(alici.id), business_id: alici.businessId,
+      name: alici.name, phone: alici.phone, enabled: alici.enabled,
+    }).select().single();
+    if (error) fail('Bildirim alıcısı kaydedilemedi.', error);
+    return toPaymentAlertRecipient(data);
+  },
+
+  async deletePaymentAlertRecipient(id) {
+    const { error } = await db().from('payment_alert_recipients').delete().eq('id', id);
+    if (error) fail('Bildirim alıcısı silinemedi.', error);
   },
 
   async listCashFlow(businessId) {

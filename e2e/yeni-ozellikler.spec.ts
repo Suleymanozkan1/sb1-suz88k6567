@@ -224,3 +224,74 @@ test('Çelik Kasa kasa kartının altında ayrı bakiyeler gösterir', async ({ 
   await expect(ozetKart.getByLabel('Çelik kasayı görmek için hesap şifreniz')).toBeVisible();
   await expect(ozetKart.getByRole('heading', { name: 'Çelik Kasa' })).toHaveCount(0);
 });
+
+/**
+ * Madde 9-10: tahsilat düzenleme, kasaya girmeyen ödeme uyarısı ve
+ * değişiklik geçmişi.
+ *
+ * Uyarı YALNIZCA kasaya girmeyen tahsilatta (çek/senet) çıkıyor; her
+ * kayıtta pencere açan bir sistem birkaç günde tıklanmadan geçilir.
+ */
+test('Çek ile alınan tahsilat uyarı verir, geçmişe düşer', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/rezervasyonlar/yeni');
+
+  const gelecek = new Date();
+  gelecek.setDate(gelecek.getDate() + 100);
+  await page.locator('#customerName').fill('Odeme Uyari Testi');
+  await page.locator('#customerPhone').fill('5321119955');
+  await page.locator('#date').fill(gelecek.toISOString().slice(0, 10));
+  await page.locator('#guestCount').fill('200');
+  await page.locator('#totalAmount').fill('120000');
+  await page.locator('#deposit').fill('20000');
+  await page.getByRole('button', { name: /Kaydet/ }).click();
+  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
+
+  // Nakit tahsilat: uyarı ÇIKMAMALI.
+  await page.locator('#pay-amount').fill('30000');
+  await page.getByRole('button', { name: 'Ekle', exact: true }).click();
+  await expect(page.getByText('Bu tahsilat kasaya girmedi')).toHaveCount(0);
+
+  // Çek ile tahsilat: uyarı çıkmalı.
+  await page.locator('#pay-amount').fill('25000');
+  await page.locator('#pay-method').selectOption('Çek');
+  await page.getByRole('button', { name: 'Ekle', exact: true }).click();
+  await expect(page.getByText('Bu tahsilat kasaya girmedi')).toBeVisible();
+  await page.getByRole('button', { name: 'Şimdilik kalsın' }).click();
+  await expect(page.getByText('kasaya girmedi', { exact: true }).first()).toBeVisible();
+
+  // Geçmiş: hem ekleme hem "kasaya girmedi" satırı olmalı.
+  const gecmis = page.getByRole('region', { name: 'Ödeme Değişiklik Geçmişi' });
+  await expect(gecmis.getByText('Yeni tahsilat').first()).toBeVisible();
+  await expect(gecmis.getByText('Kasaya girmedi').first()).toBeVisible();
+
+  // Düzenleme: tutar değişince geçmişe eski → yeni satırı düşer.
+  await page.getByRole('button', { name: /tahsilatını düzenle/ }).first().click();
+  await page.locator('#duz-amount').fill('35000');
+  await page.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(gecmis.getByText('Tutar değişti').first()).toBeVisible();
+});
+
+/**
+ * Yönetici bildirimi ayarları: metin düzenlenebilir olmalı, kurallar
+ * kapalı başlamalı (SMS ücretli).
+ */
+test('Ödeme bildirim kuralları kapalı başlar ve metni düzenlenebilir', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/odeme-bildirimleri');
+
+  await expect(page.getByRole('heading', { name: 'Ödeme Bildirimleri', level: 1 })).toBeVisible();
+  await expect(page.getByLabel('Yeni tahsilat bildirimi')).not.toBeChecked();
+
+  // Alıcı ekleme: numara normalize edilerek kaydedilir.
+  await page.locator('#al-ad').fill('Emrah Bey');
+  await page.locator('#al-tel').fill('0533 100 00 55');
+  await page.getByRole('button', { name: 'Ekle', exact: true }).click();
+  await expect(page.getByText('0533 100 00 55')).toBeVisible();
+
+  // Geçersiz numara reddedilir.
+  await page.locator('#al-ad').fill('Hatali');
+  await page.locator('#al-tel').fill('0212 555 44 33');
+  await page.getByRole('button', { name: 'Ekle', exact: true }).click();
+  await expect(page.getByText(/Geçerli bir cep telefonu/)).toBeVisible();
+});

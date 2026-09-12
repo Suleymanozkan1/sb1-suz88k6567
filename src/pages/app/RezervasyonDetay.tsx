@@ -12,8 +12,10 @@ import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
   useAddPayment, useDeletePayment, useDeleteReservation,
-  useReservation, useReservationsWithBalances,
+  useReservation, useReservationsWithBalances, useUpdatePayment,
 } from '../../lib/queries';
+import { kasayaGirdiMi } from '../../lib/odemeOlayi';
+import OdemeGecmisi from '../../components/OdemeGecmisi';
 import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
 import { formatDate, formatDateLong, formatMoney, formatPhone, formatTimeRange, todayIso } from '../../lib/format';
@@ -28,6 +30,7 @@ export default function RezervasyonDetay() {
   const reservationQuery = useReservation(id);
   const { balance, isLoading: listLoading } = useReservationsWithBalances();
   const addPaymentMutation = useAddPayment();
+  const updatePaymentMutation = useUpdatePayment();
   const deletePaymentMutation = useDeletePayment();
   const deleteReservationMutation = useDeleteReservation();
   const [actionError, setActionError] = useState('');
@@ -36,6 +39,15 @@ export default function RezervasyonDetay() {
 
   const [payForm, setPayForm] = useState({ date: todayIso(), amount: '', method: 'Nakit', note: '' });
   const [payError, setPayError] = useState('');
+  const [duzenlenen, setDuzenlenen] = useState<
+    { id: string; date: string; amount: string; method: string; note: string } | null
+  >(null);
+  /*
+    Madde 9: kaydedilen tahsilat kasaya GİRMEDİYSE (çek/senet) uyarı
+    çıkıyor. Kasaya giren bir tahsilatta uyarı yok; her kayıtta pencere
+    açan bir sistem birkaç günde tıklanmadan geçilir hâle gelir.
+  */
+  const [kasaUyarisi, setKasaUyarisi] = useState<Payment | null>(null);
 
   const reservation = reservationQuery.data ?? undefined;
   const payments = id
@@ -71,7 +83,7 @@ export default function RezervasyonDetay() {
       return;
     }
     try {
-      await addPaymentMutation.mutateAsync({
+      const kayit: Payment = {
         id: crypto.randomUUID(),
         reservationId: reservation!.id,
         date: payForm.date,
@@ -79,10 +91,69 @@ export default function RezervasyonDetay() {
         method: payForm.method as Payment['method'],
         note: payForm.note.trim() || undefined,
         createdAt: new Date().toISOString(),
-      });
+      };
+      await addPaymentMutation.mutateAsync(kayit);
       setPayForm({ date: todayIso(), amount: '', method: 'Nakit', note: '' });
+      if (!kasayaGirdiMi(kayit.method)) setKasaUyarisi(kayit);
     } catch (err) {
       setPayError(errorMessage(err));
+    }
+  }
+
+  function duzenlemeyeAl(p: Payment) {
+    setPayError('');
+    setDuzenlenen({
+      id: p.id, date: p.date, amount: String(p.amount),
+      method: p.method, note: p.note ?? '',
+    });
+  }
+
+  async function tahsilatGuncelle(e: React.FormEvent) {
+    e.preventDefault();
+    setPayError('');
+    if (!duzenlenen) return;
+
+    const onceki = payments.find((p) => p.id === duzenlenen.id);
+    if (!onceki) { setDuzenlenen(null); return; }
+
+    const amount = Number(duzenlenen.amount);
+    if (!duzenlenen.amount || !Number.isFinite(amount) || amount <= 0) {
+      setPayError('Geçerli bir tahsilat tutarı giriniz.');
+      return;
+    }
+    // Kendi eski tutarı kalan alacağa geri ekleniyor; yoksa bir tahsilatı
+    // yükseltmek kendi tutarı kadar imkânsız görünürdü.
+    const tavan = remaining + onceki.amount;
+    if (amount > tavan) {
+      setPayError(`Tahsilat tutarı kalan alacaktan (${formatMoney(tavan, reservation!.currency)}) fazla olamaz.`);
+      return;
+    }
+
+    try {
+      const kayit: Payment = {
+        ...onceki,
+        date: duzenlenen.date,
+        amount,
+        method: duzenlenen.method as Payment['method'],
+        note: duzenlenen.note.trim() || undefined,
+      };
+      await updatePaymentMutation.mutateAsync(kayit);
+      setDuzenlenen(null);
+      if (!kasayaGirdiMi(kayit.method)) setKasaUyarisi(kayit);
+    } catch (err) {
+      setPayError(errorMessage(err));
+    }
+  }
+
+  /** Uyarıdaki "kasaya gönder": tahsilatı nakde çevirip kasaya alır. */
+  async function kasayaGonder() {
+    const hedef = kasaUyarisi;
+    setKasaUyarisi(null);
+    if (!hedef) return;
+    try {
+      await updatePaymentMutation.mutateAsync({ ...hedef, method: 'Nakit' });
+    } catch (err) {
+      setActionError(errorMessage(err));
     }
   }
 
@@ -261,10 +332,62 @@ export default function RezervasyonDetay() {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => (
+                {payments.map((p) => (duzenlenen?.id === p.id ? (
+                  <tr key={p.id} className="border-b border-line/60 bg-surface last:border-0">
+                    <td className="py-2" colSpan={5}>
+                      <form onSubmit={(e) => { void tahsilatGuncelle(e); }} noValidate
+                        className="grid gap-2 p-2 sm:grid-cols-2 lg:grid-cols-5">
+                        <div>
+                          <label htmlFor="duz-date" className="field-label">Tarih</label>
+                          <input id="duz-date" type="date" className="field-input" value={duzenlenen.date}
+                            onChange={(e) => setDuzenlenen((d) => (d ? { ...d, date: e.target.value } : d))} />
+                        </div>
+                        <div>
+                          <label htmlFor="duz-amount" className="field-label">Tutar</label>
+                          <input id="duz-amount" inputMode="decimal" className="field-input"
+                            value={duzenlenen.amount}
+                            onChange={(e) => setDuzenlenen((d) => (d ? { ...d, amount: e.target.value } : d))} />
+                        </div>
+                        <div>
+                          <label htmlFor="duz-method" className="field-label">Ödeme Şekli</label>
+                          <select id="duz-method" className="field-input" value={duzenlenen.method}
+                            onChange={(e) => setDuzenlenen((d) => (d ? { ...d, method: e.target.value } : d))}>
+                            {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor="duz-note" className="field-label">Açıklama</label>
+                          <input id="duz-note" className="field-input" value={duzenlenen.note}
+                            onChange={(e) => setDuzenlenen((d) => (d ? { ...d, note: e.target.value } : d))} />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <button type="submit" className="btn-primary flex-1 text-white hover:text-white">
+                            Kaydet
+                          </button>
+                          <button type="button" className="btn-secondary" onClick={() => setDuzenlenen(null)}>
+                            Vazgeç
+                          </button>
+                        </div>
+                        {payError && <p className="text-xs text-danger sm:col-span-2 lg:col-span-5" role="alert">{payError}</p>}
+                      </form>
+                    </td>
+                  </tr>
+                ) : (
                   <tr key={p.id} className="border-b border-line/60 last:border-0">
                     <td className="py-2.5 text-brand">{formatDate(p.date)}</td>
-                    <td className="py-2.5 text-brand">{p.method}</td>
+                    <td className="py-2.5 text-brand">
+                      {p.method}
+                      {/*
+                        Çek ve senet kasaya GİRMEZ: tahsil edilmemiş bir
+                        vaattir. Satırda görünmezse o para kasadaymış gibi
+                        sayılır ve olmayan paraya göre karar alınır.
+                      */}
+                      {!kasayaGirdiMi(p.method) && (
+                        <span className="ml-2 rounded bg-[#fef3c7] px-1.5 py-0.5 text-[11px] text-[#92400e]">
+                          kasaya girmedi
+                        </span>
+                      )}
+                    </td>
                     <td className="py-2.5 text-brand-muted">{p.note || '-'}</td>
                     <td className="py-2.5 text-right font-medium text-brand">{formatMoney(p.amount, reservation.currency)}</td>
                     <td className="py-2.5 text-right">
@@ -275,13 +398,20 @@ export default function RezervasyonDetay() {
                         Makbuz
                       </Link>
                       {can('kasa.duzenle') && (
-                        <button type="button" onClick={() => setPaymentToDelete(p)} aria-label="Tahsilatı sil" className="rounded p-1 text-brand-muted hover:text-danger">
-                          <IconTrash size={15} />
-                        </button>
+                        <>
+                          <button type="button" onClick={() => duzenlemeyeAl(p)}
+                            aria-label={`${formatDate(p.date)} tahsilatını düzenle`}
+                            className="rounded p-1 text-brand-muted hover:text-brand">
+                            <IconEdit size={15} />
+                          </button>
+                          <button type="button" onClick={() => setPaymentToDelete(p)} aria-label="Tahsilatı sil" className="rounded p-1 text-brand-muted hover:text-danger">
+                            <IconTrash size={15} />
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -298,6 +428,11 @@ export default function RezervasyonDetay() {
         kalanBakiye={remaining}
         duzenlenebilir={can('kasa.duzenle')}
       />
+
+      {/* Para hareketleri bitti; ne değiştiği hemen altında duruyor. */}
+      {can('kasa.goruntule') && (
+        <OdemeGecmisi reservationId={reservation.id} currency={reservation.currency} />
+      )}
 
       <HatirlatmaGonder reservation={reservation} payments={payments} />
 
@@ -342,6 +477,25 @@ export default function RezervasyonDetay() {
         onConfirm={() => { void removeReservation(); }}
         onCancel={() => setConfirmDelete(false)}
       />
+      {/*
+        Madde 9: kaydedilen tahsilat kasaya girmediyse sorulur. Kasaya
+        giren bir tahsilatta uyarı YOK -- her kayıtta pencere açan bir
+        sistem birkaç günde tıklanmadan geçilir hâle gelir.
+      */}
+      <ConfirmDialog
+        open={Boolean(kasaUyarisi)}
+        title="Bu tahsilat kasaya girmedi"
+        description={kasaUyarisi
+          ? `${formatMoney(kasaUyarisi.amount, reservation.currency)} tutarındaki tahsilat `
+            + `${kasaUyarisi.method} olarak kaydedildi; tahsil edilmediği için kasa toplamına `
+            + 'girmiyor. Para elinize geçtiyse nakde çevirip kasaya gönderebilirsiniz.'
+          : ''}
+        confirmLabel="Nakde çevir, kasaya gönder"
+        cancelLabel="Şimdilik kalsın"
+        onConfirm={() => { void kasayaGonder(); }}
+        onCancel={() => setKasaUyarisi(null)}
+      />
+
       <ConfirmDialog
         open={Boolean(paymentToDelete)}
         title="Tahsilat kaydını silmek istiyor musunuz?"
