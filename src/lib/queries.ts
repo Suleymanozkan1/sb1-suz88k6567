@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
-  Payment, Reservation, SafeMovement, SmsLogEntry, CustomerLead, LeadMessage,
+  Payment, Reservation, SafeMovement, SmsLogEntry, CustomerLead, LeadMessage, WhatsappAccount,
 } from '../types';
 
 export const keys = {
@@ -27,6 +27,7 @@ export const keys = {
   lead: (id: string) => ['lead', id] as const,
   leadMessages: (leadId: string) => ['leadMessages', leadId] as const,
   leadStatusHistory: (leadId: string) => ['leadStatusHistory', leadId] as const,
+  whatsappAccount: (businessId: string) => ['whatsappAccount', businessId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
   audit: (ownerId: string) => ['audit', ownerId] as const,
@@ -448,6 +449,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: ['lead'] });
     qc.invalidateQueries({ queryKey: ['leadMessages'] });
     qc.invalidateQueries({ queryKey: ['leadStatusHistory'] });
+    qc.invalidateQueries({ queryKey: keys.whatsappAccount(businessId) });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
     qc.invalidateQueries({ queryKey: keys.colors(businessId) });
     qc.invalidateQueries({ queryKey: keys.businesses(ownerId) });
@@ -521,6 +523,23 @@ export function useDeleteSafeMovement() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => repo.deleteSafeMovement(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useWhatsappAccount() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.whatsappAccount(businessId),
+    queryFn: () => repo.getWhatsappAccount(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveWhatsappAccount() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (account: WhatsappAccount) => repo.saveWhatsappAccount(account),
     onSuccess: invalidate,
   });
 }

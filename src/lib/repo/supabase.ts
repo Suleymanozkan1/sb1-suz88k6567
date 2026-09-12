@@ -8,7 +8,7 @@ import type {
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, Permission, Reservation, SafeMovement, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
-  CustomerLead, LeadMessage, LeadStatusChange,
+  CustomerLead, LeadMessage, LeadStatusChange, WhatsappAccount,
 } from '../../types';
 import { computeInvoice } from '../invoice';
 
@@ -180,7 +180,26 @@ function toLeadMessage(row: Row): LeadMessage {
     channel: (row.channel as LeadMessage['channel']) ?? 'sistem',
     body: (row.body as string) ?? '',
     waMessageId: (row.wa_message_id as string) ?? undefined,
+    autoKind: (row.auto_kind as LeadMessage['autoKind']) ?? undefined,
     actorEmail: (row.actor_email as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function hesabaCevir(row: Row): WhatsappAccount {
+  return {
+    phoneNumberId: String(row.phone_number_id),
+    businessId: String(row.business_id),
+    displayPhone: (row.display_phone as string) ?? '',
+    autoReplyEnabled: Boolean(row.auto_reply_enabled),
+    welcomeMessage: (row.welcome_message as string) ?? '',
+    afterHoursEnabled: Boolean(row.after_hours_enabled),
+    afterHoursMessage: (row.after_hours_message as string) ?? '',
+    // Postgres "time" değerini "09:00:00" olarak döndürür; form saniye
+    // beklemiyor, saniyesi kırpılıyor.
+    workStart: saatiKirp(row.work_start) ?? '09:00',
+    workEnd: saatiKirp(row.work_end) ?? '19:00',
+    workDays: Array.isArray(row.work_days) ? (row.work_days as number[]) : [1, 2, 3, 4, 5, 6, 7],
     createdAt: (row.created_at as string) ?? '',
   };
 }
@@ -745,6 +764,32 @@ export const supabaseRepo: Repository = {
       actorEmail: (row.actor_email as string) ?? '',
       createdAt: (row.created_at as string) ?? '',
     }));
+  },
+
+  async getWhatsappAccount(businessId) {
+    const { data, error } = await db().from('whatsapp_accounts')
+      .select('*').eq('business_id', businessId).limit(1).maybeSingle();
+    if (error) fail('WhatsApp hesabı alınamadı.', error);
+    return data ? hesabaCevir(data) : null;
+  },
+
+  async saveWhatsappAccount(account) {
+    const { data, error } = await db().from('whatsapp_accounts')
+      .upsert({
+        phone_number_id: account.phoneNumberId,
+        business_id: account.businessId,
+        display_phone: account.displayPhone,
+        auto_reply_enabled: account.autoReplyEnabled,
+        welcome_message: account.welcomeMessage,
+        after_hours_enabled: account.afterHoursEnabled,
+        after_hours_message: account.afterHoursMessage,
+        work_start: account.workStart,
+        work_end: account.workEnd,
+        work_days: account.workDays,
+      })
+      .select('*').single();
+    if (error) fail('WhatsApp hesabı kaydedilemedi.', error);
+    return hesabaCevir(data);
   },
 
   async getColorSettings(businessId) {

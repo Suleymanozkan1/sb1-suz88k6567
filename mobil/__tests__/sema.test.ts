@@ -17,13 +17,38 @@ import { join } from 'node:path';
 const KOK = join(__dirname, '..', '..');
 const GOCLER = join(KOK, 'supabase', 'migrations');
 
+/**
+ * SQL satır yorumlarını atar.
+ *
+ * Yorumun içindeki noktalı virgül, `alter table ... ;` eşleşmesini erken
+ * bitiriyordu: yorumdan sonraki sütunlar şemada yok sayılıyor ve test,
+ * var olan bir sütunu eksik gösteriyordu. Tırnak içindeki `--` yorum
+ * değildir, o yüzden tırnak durumu izleniyor.
+ */
+function yorumlariAt(sql: string): string {
+  let cikti = '';
+  let tirnakta = false;
+  for (let i = 0; i < sql.length; i += 1) {
+    const c = sql[i];
+    if (c === "'") { tirnakta = !tirnakta; cikti += c; continue; }
+    if (!tirnakta && c === '-' && sql[i + 1] === '-') {
+      const son = sql.indexOf('\n', i);
+      if (son === -1) break;
+      i = son - 1;
+      continue;
+    }
+    cikti += c;
+  }
+  return cikti;
+}
+
 /** Göçlerden tablo -> sütun kümesi çıkarır. */
 function semayiOku(): Map<string, Set<string>> {
   const sema = new Map<string, Set<string>>();
   const dosyalar = readdirSync(GOCLER).filter((d) => d.endsWith('.sql')).sort();
 
   for (const d of dosyalar) {
-    const sql = readFileSync(join(GOCLER, d), 'utf8');
+    const sql = yorumlariAt(readFileSync(join(GOCLER, d), 'utf8'));
 
     // create table if not exists public.<ad> ( ... );
     const kurma = /create\s+table\s+(?:if\s+not\s+exists\s+)?public\.(\w+)\s*\(([\s\S]*?)\n\s*\)\s*;/gi;

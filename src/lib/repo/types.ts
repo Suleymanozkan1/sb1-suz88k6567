@@ -11,7 +11,7 @@ import type {
   Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
   EventTask, Vendor, ReservationVendor,
   SafeMovement, SmsLogEntry, SmsQueueEntry, SystemHealth, User,
-  CustomerLead, LeadMessage, LeadStatusChange,
+  CustomerLead, LeadMessage, LeadStatusChange, WhatsappAccount,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
 
@@ -147,6 +147,11 @@ export interface Repository {
   listLeadMessages(leadId: string): Promise<LeadMessage[]>;
   addLeadMessage(message: LeadMessage): Promise<void>;
   listLeadStatusHistory(leadId: string): Promise<LeadStatusChange[]>;
+
+  /* -- WhatsApp hesabı ------------------------------------------------ */
+  /** İşletmenin bağlı WhatsApp numarası ve otomatik cevap ayarları; yoksa null. */
+  getWhatsappAccount(businessId: string): Promise<WhatsappAccount | null>;
+  saveWhatsappAccount(account: WhatsappAccount): Promise<WhatsappAccount>;
 
   /* -- renk ayarları -------------------------------------------------- */
   getColorSettings(businessId: string): Promise<ColorSetting[]>;

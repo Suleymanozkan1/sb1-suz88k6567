@@ -72,6 +72,7 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | `/panel/musteri-adaylari` | Müşteri adayı takibi: durum, sorumlu personel, takip tarihi, süzgeçler |
 | `/panel/musteri-adaylari/yeni` | Elle aday açma (telefonla arayan, kapıdan gelen) |
 | `/panel/musteri-adaylari/:id` | Aday kartı: durum geçmişi, iletişim geçmişi, rezervasyona dönüştürme |
+| `/panel/whatsapp-ayarlari` | Bağlı numara, çalışma saatleri, karşılama ve mesai dışı mesajları |
 | `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi, çelik kasa; rezervasyon tahsilatları sözleşme numarası ve taraflarla birlikte |
 | `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
 | `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
@@ -145,7 +146,8 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
    `0013_kullanilmayan_tablolari_dusur.sql` →
    `0014_sozlesme_alanlari_ve_seri.sql` → `0015_celik_kasa.sql` →
    `0016_celik_kasa_tekrar_giris.sql` → `0017_celik_kasa_gider_yonu.sql` →
-   `0018_sozlesme_no_tireli.sql` → `0019_musteri_adaylari_ve_whatsapp.sql`
+   `0018_sozlesme_no_tireli.sql` → `0019_musteri_adaylari_ve_whatsapp.sql` →
+   `0020_whatsapp_otomatik_cevap.sql`
 
    Sıra önemlidir: `0006` ve `0008` bugün kullanılmayan iki tabloyu
    oluşturur, `0013` ikisini de düşürür. Aradaki göçler o tablolara
@@ -702,16 +704,47 @@ mesaj, gönderildi sanılır ve müşteri cevapsız bekler.
 `WHATSAPP_TOKEN` ve `WHATSAPP_PHONE_ID` yalnızca mesaj **göndermek** için
 gerekir; mesaj almak ikisi olmadan da çalışır.
 
-### Otomatik cevap veren bir bot yoktur
+### Otomatik cevap
 
-Sistem gelen mesajı **alır, çözümler ve kaydeder**; kendiliğinden cevap
-yazmaz. Müşteriye cevabı personel verir — aday kartındaki "WhatsApp'ta Aç"
-ile ya da Cloud API kurulduysa panelden.
+`Panel → Müşteri Adayları → WhatsApp ayarları` ekranında iki otomatik mesaj
+açılabilir. **İkisi de varsayılan olarak kapalıdır**: göç uygulanır
+uygulanmaz müşterilere program adına mesaj gitmesi, salonun haberi olmadan
+onun ağzından konuşmak olurdu.
 
-Bu bilinçli bir tercih: fiyat, tarih ve doluluk sorusuna yanlış cevap veren
-bir otomatik yanıtlayıcı, salon adına verilmiş bir taahhüt gibi okunur.
-Karşılama mesajı ya da mesai dışı bilgilendirmesi gibi sabit metinli bir
-otomatik cevap istenirse ayrıca eklenebilir; bugün yoktur.
+| | Ne zaman gider | Tekrar |
+|---|---|---|
+| **Karşılama** | İlk kez yazan bir müşteri için aday açıldığında | Aynı kişiye bir kez |
+| **Mesai dışı** | Çalışma saatleri dışında gelen mesaja | Aynı kişiye 12 saatte bir |
+
+İkisi birden uygun olduğunda **mesai dışı olan gönderilir**: arka arkaya iki
+mesaj almak yerine müşteri, ne zaman dönüleceğini söyleyen tek mesajı alır.
+
+Tekrar sınırları keyfi değil. Karşılamanın ikinci kez gitmesi, müşteriye
+konuşmanın hatırlanmadığını söyler; bir akşam beş mesaj yazan müşteriye beş
+bilgilendirme gitmesi ise sistemin onu dinlemediğini gösterir.
+
+Saatler **işletmenin yerel saatidir** (Türkiye, UTC+3). Sunucu UTC çalıştığı
+için çevrim kodda yapılıyor; yapılmasaydı "mesai dışı" kararı üç saat kayar
+ve akşam 21:00'de gelen mesaj mesai içi sayılırdı. Açılış saati dahil,
+kapanış saati hariçtir.
+
+Otomatik gönderilen mesaj iletişim geçmişinde **"otomatik" etiketiyle**
+görünür: müşteriye ne söylendiğini bilmeden arayan personel aynı şeyi
+ikinci kez söylerdi.
+
+Gönderim `WHATSAPP_TOKEN` ve `WHATSAPP_PHONE_ID` ister. Tanımlı değilse
+özellik sessizce kapalı kalır; mesaj alınmaya devam eder. Gönderim
+başarısız olursa mesaj geçmişe **yazılmaz** — gitmemiş bir cevabı gitmiş
+göstermek, personeli yanlış bilgiyle arattırırdı.
+
+### Fiyat ve müsaitlik sorusuna otomatik cevap verilmez
+
+Otomatik cevap yalnızca "mesajınız alındı" ve "şu saatte döneceğiz" der.
+Fiyat, tarih ve doluluk sorusuna kendiliğinden cevap **verilmez**: müsaitlik
+söyleyen bir otomatik yanıtlayıcı, müşteri tarafında salon adına verilmiş
+bir taahhüt gibi okunur ve dolu bir günü sattırır. Bu soruların cevabını
+personel verir — aday kartındaki "WhatsApp'ta Aç" ile ya da Cloud API
+kurulduysa panelden.
 
 ### Güvenlik
 

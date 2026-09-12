@@ -26,6 +26,7 @@ const PANEL = [
   '/panel/hatirlatmalar', '/panel/izinler', '/panel/sms', '/panel/kullanicilar', '/panel/musteriler', '/panel/tedarikciler',
   '/panel/isletmeler', '/panel/renk-ayarlari', '/panel/denetim',
   '/panel/ayarlar', '/panel/sistem',
+  '/panel/musteri-adaylari', '/panel/musteri-adaylari/yeni', '/panel/whatsapp-ayarlari',
 ];
 
 /** WCAG 2.0/2.1/2.2 A ve AA ölçütleri. */

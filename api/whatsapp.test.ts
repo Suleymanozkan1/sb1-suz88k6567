@@ -52,6 +52,9 @@ let acilanAday: Record<string, unknown>[] = [];
 let yazilanMesaj: Record<string, unknown>[] = [];
 let guncellenen: Record<string, unknown>[] = [];
 let hesapVar = true;
+let hesapAyari: Record<string, unknown> = {};
+let gonderilen: Record<string, unknown>[] = [];
+let otomatikGecmis: { auto_kind: string; created_at: string }[] = [];
 let mevcutAday: { id: string; name: string; email: string; status: string } | null = null;
 let yazmaHatasi = false;
 
@@ -60,6 +63,9 @@ beforeEach(() => {
   yazilanMesaj = [];
   guncellenen = [];
   hesapVar = true;
+  hesapAyari = {};
+  gonderilen = [];
+  otomatikGecmis = [];
   mevcutAday = null;
   yazmaHatasi = false;
   vi.stubGlobal('fetch', vi.fn(async (girdi: string | URL, init?: RequestInit) => {
@@ -67,7 +73,22 @@ beforeEach(() => {
     const yontem = init?.method ?? 'GET';
 
     if (adres.includes('whatsapp_accounts')) {
-      return new Response(JSON.stringify(hesapVar ? [{ business_id: 'biz-1' }] : []), { status: 200 });
+      const satir = {
+        business_id: 'biz-1',
+        auto_reply_enabled: false,
+        welcome_message: 'Mesajınız bize ulaştı.',
+        after_hours_enabled: false,
+        after_hours_message: 'Şu an kapalıyız.',
+        work_start: '09:00:00',
+        work_end: '19:00:00',
+        work_days: [1, 2, 3, 4, 5, 6, 7],
+        ...hesapAyari,
+      };
+      return new Response(JSON.stringify(hesapVar ? [satir] : []), { status: 200 });
+    }
+    if (adres.includes('graph.facebook.com')) {
+      gonderilen.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return new Response(JSON.stringify({ messages: [{ id: 'wamid.OUT1' }] }), { status: 200 });
     }
     if (adres.includes('customer_leads')) {
       if (yontem === 'GET') {
@@ -82,6 +103,7 @@ beforeEach(() => {
       return new Response(JSON.stringify([{ id: 'lead-1' }]), { status: 201 });
     }
     if (adres.includes('customer_lead_messages')) {
+      if (yontem === 'GET') return new Response(JSON.stringify(otomatikGecmis), { status: 200 });
       yazilanMesaj.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
       return new Response(JSON.stringify([{ id: 'msg-1' }]), { status: 201 });
     }
@@ -292,5 +314,106 @@ describe('yapılandırma', () => {
     const { default: handler } = await moduluYukle();
     const yanit = await handler(new Request('https://x/api/whatsapp', { method: 'DELETE' }));
     expect(yanit.status).toBe(405);
+  });
+});
+
+/**
+ * Otomatik cevap.
+ *
+ * Sistem yalnızca "mesajınız alındı" ve "şu saatte döneceğiz" der; fiyat,
+ * tarih ve doluluk sorusuna cevap vermez. Buradaki testlerin ağırlığı,
+ * gönderilmemesi gereken durumlarda gönderilmediğinde: gereksiz otomatik
+ * mesaj, müşteriye salonun onu dinlemediğini söyler.
+ */
+describe('otomatik cevap', () => {
+  // 2026-09-14 pazartesi. Yerel saat UTC+3.
+  const YEREL_OGLE = String(Date.parse('2026-09-14T09:00:00Z') / 1000); // 12:00
+  const YEREL_GECE = String(Date.parse('2026-09-14T20:00:00Z') / 1000); // 23:00
+
+  const GONDERIM = { WHATSAPP_TOKEN: 'jeton', WHATSAPP_PHONE_ID: '999' };
+
+  async function calistir(
+    env: Record<string, string | undefined>, timestamp: string, metin = 'Ali Veli',
+  ) {
+    const { default: handler } = await moduluYukle(env);
+    const govde = metaGovdesi(metin, { timestamp });
+    return handler(new Request('https://x/api/whatsapp', {
+      method: 'POST', body: govde,
+      headers: { 'x-hub-signature-256': imzala(govde) },
+    }));
+  }
+
+  it('ayar kapalıyken hiçbir şey göndermez', async () => {
+    const yanit = await calistir(GONDERIM, YEREL_OGLE);
+    expect(yanit.status).toBe(200);
+    expect(gonderilen).toHaveLength(0);
+  });
+
+  it('mesai içinde yeni adaya karşılama gönderir ve geçmişe işler', async () => {
+    hesapAyari = { auto_reply_enabled: true };
+    const yanit = await calistir(GONDERIM, YEREL_OGLE);
+
+    expect((await yanit.json() as { otomatik: number }).otomatik).toBe(1);
+    expect(gonderilen).toHaveLength(1);
+    expect(gonderilen[0]).toMatchObject({ to: '905332642537', type: 'text' });
+
+    const giden = yazilanMesaj.find((m) => m.direction === 'giden');
+    expect(giden).toMatchObject({ auto_kind: 'karsilama', channel: 'whatsapp' });
+  });
+
+  it('mevcut adaya ikinci mesajda karşılama göndermez', async () => {
+    hesapAyari = { auto_reply_enabled: true };
+    mevcutAday = { id: 'lead-9', name: 'Ali Veli', email: '', status: 'Arandı' };
+    await calistir(GONDERIM, YEREL_OGLE);
+    expect(gonderilen).toHaveLength(0);
+  });
+
+  it('mesai dışında bilgilendirme gönderir', async () => {
+    hesapAyari = { auto_reply_enabled: true, after_hours_enabled: true };
+    await calistir(GONDERIM, YEREL_GECE);
+
+    expect(gonderilen).toHaveLength(1);
+    const giden = yazilanMesaj.find((m) => m.direction === 'giden');
+    expect(giden).toMatchObject({ auto_kind: 'mesai_disi' });
+  });
+
+  it('aynı akşam ikinci mesajda bilgilendirmeyi tekrarlamaz', async () => {
+    hesapAyari = { after_hours_enabled: true };
+    otomatikGecmis = [{ auto_kind: 'mesai_disi', created_at: '2026-09-14T19:00:00Z' }];
+    await calistir(GONDERIM, YEREL_GECE);
+    expect(gonderilen).toHaveLength(0);
+  });
+
+  it('gönderim yapılandırılmamışsa mesaj yine de kaydedilir', async () => {
+    // Jeton yoksa özellik sessizce kapanmalı: gelen talebin kaydı
+    // otomatik cevaba bağlı değildir.
+    hesapAyari = { auto_reply_enabled: true };
+    const yanit = await calistir({}, YEREL_OGLE);
+
+    expect(yanit.status).toBe(200);
+    expect(gonderilen).toHaveLength(0);
+    expect(acilanAday).toHaveLength(1);
+    expect(yazilanMesaj.some((m) => m.direction === 'gelen')).toBe(true);
+  });
+
+  it('gönderim hatası webhook yanıtını düşürmez', async () => {
+    // 200 dönmezsek Meta aynı mesajı yeniden dener, kuyruk tıkanır ve
+    // aday iki kez açılır.
+    hesapAyari = { auto_reply_enabled: true };
+    const gercekFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (girdi: string | URL, init?: RequestInit) => {
+      if (String(girdi).includes('graph.facebook.com')) {
+        return new Response('hata', { status: 500 });
+      }
+      return gercekFetch(girdi as string, init);
+    }));
+
+    const yanit = await calistir(GONDERIM, YEREL_OGLE);
+    expect(yanit.status).toBe(200);
+    const govde = await yanit.json() as { yeniAday: number; otomatik: number };
+    expect(govde.yeniAday).toBe(1);
+    expect(govde.otomatik).toBe(0);
+    // Gitmemiş bir mesaj geçmişe yazılmamalı.
+    expect(yazilanMesaj.some((m) => m.auto_kind)).toBe(false);
   });
 });
