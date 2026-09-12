@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "_not": "Vercel YALNIZCA demo içindir: derlenmiş statik site sunulur, sunucu tarafı çalışmaz.",
   "builds": [
     {
       "src": "package.json",
