@@ -1,0 +1,4 @@
+{
+  "_not": "Bu dosya derleme çıktısına kopyalanır. Kök package.json 'type: module' olduğu için, tsc'nin ürettiği CommonJS dosyaları ESM sanılıp 'exports is not defined' hatası veriyordu.",
+  "type": "commonjs"
+}

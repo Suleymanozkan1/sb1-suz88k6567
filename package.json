@@ -6,15 +6,15 @@
   "description": "Sahra Takip - Düğün Salonu Rezervasyon ve Ödeme Takip Sistemi",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run build:sunucu",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc -b --force --pretty",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "cf:dev": "wrangler dev --local --test-scheduled",
-    "cf:deploy": "npm run build && wrangler deploy"
+    "build:sunucu": "tsc -p tsconfig.sunucu.json && node -e \"require('fs').copyFileSync('sunucu/derleme-paketi.json','sunucu-dist/package.json')\"",
+    "baslat": "node sunucu-dist/sunucu/baslat.js"
   },
   "dependencies": {
     "@sentry/react": "^10.73.0",
