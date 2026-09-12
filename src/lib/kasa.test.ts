@@ -104,6 +104,7 @@ describe('hareketleri toplama', () => {
     const h = kasaHareketleri(
       [g({ date: '2026-09-10', amount: 1000 }), g({ id: 'c2', date: '2026-08-10', amount: 9999 })],
       [r({ date: '2026-09-12', amount: 5000 }), r({ id: 'k2', date: '2026-07-01', amount: 8888 })],
+      [],
       '2026-09',
     );
     expect(kasaDagilimi(h).toplam).toBe(6000);
@@ -115,6 +116,37 @@ describe('hareketleri toplama', () => {
       [],
     );
     expect(kasaDagilimi(h).toplam).toBe(3000);
+  });
+
+  /*
+    Düğün içi giderler (madde 12) kasadan ÇIKAN para. Hesaba
+    katılmasalardı gider satırı listede görünür ama kasa toplamı
+    azalmaz, aynı para iki ekranda farklı görünürdü (madde 34).
+  */
+  it('düğün içi gideri kasadan düşer', () => {
+    const h = kasaHareketleri(
+      [],
+      [r({ amount: 50000, method: 'Nakit' })],
+      [{ date: '2026-09-12', amount: 20000 }],
+    );
+    expect(kasaDagilimi(h).toplam).toBe(30000);
+  });
+
+  it('düğün içi giderin kanalı yoktur, belirtilmemişe düşer', () => {
+    // Gider satırında hangi kanaldan ödendiği tutulmuyor; bir kanala
+    // yazmak uydurma olurdu.
+    const d = kasaDagilimi(kasaHareketleri([], [], [{ date: '2026-09-12', amount: 20000 }]));
+    expect(d.belirtilmemis).toBe(-20000);
+    expect(d.kanallar.every((k) => k.tutar === 0)).toBe(true);
+  });
+
+  it('ay öneki düğün içi gideri de süzer', () => {
+    const h = kasaHareketleri(
+      [], [],
+      [{ date: '2026-09-12', amount: 20000 }, { date: '2026-08-01', amount: 9999 }],
+      '2026-09',
+    );
+    expect(kasaDagilimi(h).toplam).toBe(-20000);
   });
 
   it('boş listede sıfır döner, çökmez', () => {

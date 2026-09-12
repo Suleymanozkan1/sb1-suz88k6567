@@ -4,23 +4,25 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import {
-  useBusinesses, useHalls, useLeadStatuses, useSurveys, useLeads, useMenus, useReservationsWithBalances,
+  useBusinesses, useHalls, useCashFlow, useLeadStatuses, useReservationExpenses, useSurveys, useLeads, useMenus, useReservationsWithBalances,
 } from '../../lib/queries';
 import { donusumRaporu } from '../../lib/lead';
 import { anketOzeti } from '../../lib/anket';
+import { giderKasaSatirlari } from '../../lib/dugunGideri';
 import { QueryBoundary } from '../../components/QueryState';
 import {
   balanceReport, channelReport, downloadCsv, monthReport, programReport,
-  slotReport, summarize, toCsv, withinRange, type BalanceRow,
+  slotReport, summarize, toCsv, withinRange, type BalanceRow, karRaporu,
 } from '../../lib/reports';
 import { addDays, formatDate, formatMoney, formatNumber, formatPhone, todayIso } from '../../lib/format';
 import { buildProgram, programIsEmpty } from '../../lib/program';
 import { downloadProgramDocx } from '../../lib/programDocx';
 import ProgramCizelgesi from '../../components/ProgramCizelgesi';
 import { KEYS, read, write } from '../../lib/storage';
+import { MONTH_NAMES } from '../../data/constants';
 import { IconDownload, IconPrint } from '../../components/Icons';
 
-type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans' | 'kanal' | 'salon' | 'donusum' | 'anket';
+type Tab = 'cizelge' | 'program' | 'ay' | 'kar' | 'bakiye' | 'seans' | 'kanal' | 'salon' | 'donusum' | 'anket';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'cizelge', label: 'Program raporu' },
@@ -28,6 +30,8 @@ const TABS: { key: Tab; label: string }[] = [
   // ayrı raporu anlatır olmuştu.
   { key: 'program', label: 'Organizasyon bazlı rapor' },
   { key: 'ay', label: 'Ay bazlı rapor' },
+  // Şartnamenin 20. ve 23. maddeleri: ciro, gider ve kâr Raporlama'da.
+  { key: 'kar', label: 'Ciro, gider ve kâr' },
   // Şartnamedeki adı: sözleşme yapıldıktan sonra hangi paranın ne zaman
   // geleceğini gösteren ekran.
   { key: 'bakiye', label: 'Gelecek Kaporalar ve Ödemeler' },
@@ -49,6 +53,8 @@ export default function Raporlar() {
   const { data: adaylar = [] } = useLeads();
   const { data: adayDurumlari = [] } = useLeadStatuses();
   const { data: anketler = [] } = useSurveys();
+  const { data: kasaKayitlari = [] } = useCashFlow();
+  const { data: dugunGiderleri = [] } = useReservationExpenses();
   const [params] = useSearchParams();
   const istenenTab = params.get('tab');
   const [tab, setTab] = useState<Tab>(
@@ -105,6 +111,41 @@ export default function Raporlar() {
   const balances = useMemo(() => balanceReport(scoped, balance), [scoped, balance]);
   const slots = useMemo(() => slotReport(scoped, balance), [scoped, balance]);
   const channels = useMemo(() => channelReport(scoped, balance), [scoped, balance]);
+
+  /*
+    Ciro, gider ve kâr (maddeler 20 ve 23). Yıl/ay seçimi kullanıcıda:
+    "bu yıl ne kazandık" ile "hangi ay zarar ettik" ayrı sorular ve
+    ikisini tek bir tabloda göstermek ikisini de okunmaz yapardı.
+  */
+  const [karYillik, setKarYillik] = useState(true);
+
+  const giderSatirlari = useMemo(
+    () => giderKasaSatirlari(dugunGiderleri, reservations, (r) => r.customerName),
+    [dugunGiderleri, reservations],
+  );
+
+  /*
+    Gelir/gider satırları da tarih aralığına ve SALON SEÇİMİNE göre
+    süzülüyor. Salon seçiliyken serbest gelir/gider satırları dışarıda
+    kalıyor: o satırların salonu yok, hepsini her salona saymak kârı
+    olduğundan farklı gösterirdi.
+  */
+  const salonSecili = seciliSalonlar.length > 0;
+  const karSatirlari = useMemo(() => karRaporu(
+    scoped,
+    balance,
+    salonSecili ? [] : kasaKayitlari.filter((e) => withinRange(e.date, { from, to })),
+    giderSatirlari.filter((g) => withinRange(g.date, { from, to })
+      && (!salonSecili || scoped.some((r) => r.id === g.reservationId))),
+    karYillik,
+  ), [scoped, balance, kasaKayitlari, giderSatirlari, from, to, salonSecili, karYillik]);
+
+  const karToplam = useMemo(() => karSatirlari.reduce((acc, s) => ({
+    ciro: acc.ciro + s.ciro,
+    otherIncome: acc.otherIncome + s.otherIncome,
+    expense: acc.expense + s.expense,
+    kar: acc.kar + s.kar,
+  }), { ciro: 0, otherIncome: 0, expense: 0, kar: 0 }), [karSatirlari]);
 
   /*
     Dönüşüm raporu rezervasyonlardan değil ADAYLARDAN çıkıyor: "kaç kişi
@@ -361,6 +402,97 @@ export default function Raporlar() {
               </div>
             )}
           </>
+        ) : tab === 'kar' ? (
+          karSatirlari.length === 0 ? (
+            <p className="py-10 text-center text-sm text-brand-muted">
+              Seçilen tarih aralığında kayıt bulunmuyor.
+            </p>
+          ) : (
+            <>
+              <div className="no-print mb-4 flex flex-wrap items-center gap-2">
+                <span className="text-sm text-brand-muted">Dönem:</span>
+                {[{ deger: true, etiket: 'Yıllık' }, { deger: false, etiket: 'Aylık' }].map((s) => (
+                  <button
+                    key={s.etiket}
+                    type="button"
+                    aria-pressed={karYillik === s.deger}
+                    onClick={() => setKarYillik(s.deger)}
+                    className={`btn-sm rounded-full px-4 py-1.5 text-sm transition ${
+                      karYillik === s.deger
+                        ? 'bg-accent-ink text-white'
+                        : 'border border-line bg-white text-brand hover:border-accent-ink'
+                    }`}
+                  >
+                    {s.etiket}
+                  </button>
+                ))}
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <caption className="sr-only">Dönem başına ciro, gider ve kâr</caption>
+                  <thead>
+                    <tr className="border-b border-line bg-surface text-left text-xs uppercase text-brand-muted">
+                      <th className="px-3 py-2.5 font-medium">Dönem</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Organizasyon</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Ciro</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Tahsil edilen</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Diğer gelir</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Gider</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Kâr</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {karSatirlari.map((k) => (
+                      <tr key={k.donem} className="border-b border-line/60 last:border-0">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-brand">{donemAdi(k.donem)}</td>
+                        <td className="px-3 py-2.5 text-right text-brand">{formatNumber(k.count)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand">{formatMoney(k.ciro, currency)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#15803d]">{formatMoney(k.collected, currency)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand-muted">{formatMoney(k.otherIncome, currency)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#b91c1c]">{formatMoney(k.expense, currency)}</td>
+                        {/*
+                          Kâr negatif olabilir ve rengi bunu söylüyor:
+                          rakamı okumadan "bu dönem zarar" görünmeli.
+                        */}
+                        <td className={`whitespace-nowrap px-3 py-2.5 text-right font-medium ${
+                          k.kar >= 0 ? 'text-brand' : 'text-[#b91c1c]'
+                        }`}>
+                          {formatMoney(k.kar, currency)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-line font-semibold">
+                      <td className="px-3 py-2.5 text-brand" colSpan={2}>Toplam</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand">{formatMoney(karToplam.ciro, currency)}</td>
+                      <td />
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand-muted">{formatMoney(karToplam.otherIncome, currency)}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#b91c1c]">{formatMoney(karToplam.expense, currency)}</td>
+                      <td className={`whitespace-nowrap px-3 py-2.5 text-right ${
+                        karToplam.kar >= 0 ? 'text-brand' : 'text-[#b91c1c]'
+                      }`}>
+                        {formatMoney(karToplam.kar, currency)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/*
+                Ciro ile tahsilat AYRI sütunlar: sözleşme tutarı
+                kazanılmış para değil, tahsil edilene kadar alacaktır.
+                Tek sütunda gösterilseydi kâr, henüz gelmemiş parayla
+                hesaplanmış olurdu.
+              */}
+              <p className="mt-3 text-xs text-brand-muted">
+                Ciro, organizasyonun yapıldığı döneme yazılır; sözleşmenin açıldığı güne değil.
+                Kâr = ciro + diğer gelir − gider. Düğün içi giderler bu hesaba dahildir.
+                {salonSecili && ' Salon seçiliyken salona bağlı olmayan gelir/gider satırları sayılmaz.'}
+              </p>
+            </>
+          )
         ) : tab === 'anket' ? (
           /*
             Deneyim anketi (madde 31). Tarih aralığından ÖNCE geliyor:
@@ -613,6 +745,18 @@ export default function Raporlar() {
       </section>
     </QueryBoundary>
   );
+}
+
+/**
+ * "2026" ya da "2026-09" -> okunur dönem adı.
+ *
+ * Ham anahtar tabloda bırakılsaydı "2026-09" satırı, ay adıyla yazılan
+ * diğer raporlardan farklı görünürdü.
+ */
+function donemAdi(anahtar: string): string {
+  if (!anahtar.includes('-')) return anahtar;
+  const [yil, ay] = anahtar.split('-');
+  return `${MONTH_NAMES[Number(ay) - 1] ?? ay} ${yil}`;
 }
 
 function Mini({ label, value }: { label: string; value: string }) {

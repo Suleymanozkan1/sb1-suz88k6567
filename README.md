@@ -77,7 +77,7 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | `/panel/whatsapp-ayarlari` | Bağlı numara, çalışma saatleri, karşılama ve mesai dışı mesajları |
 | `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi, çelik kasa; rezervasyon tahsilatları sözleşme numarası ve taraflarla birlikte |
 | `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
-| `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, alacak bakiyesi, gündüz/gece, salon bazlı, görüşme/dönüşüm ve deneyim anketi raporları |
+| `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, ciro/gider/kâr, alacak bakiyesi, gündüz/gece, salon bazlı, görüşme/dönüşüm ve deneyim anketi raporları |
 | `/panel/salonlar` | Salon tanımları, bir işletmede birden çok salon |
 | `/panel/menuler` | Menü ve paket tanımları, kişi başı veya sabit fiyat |
 | `/panel/urun-hizmet` | Ürün ve hizmet defteri: personel, orkestra, fotoğrafçı, fiziksel ürün ve stok |
@@ -246,21 +246,51 @@ done
 | `08_is_emri_tedarikci_test.sql` | 9 | İş emri ve tedarikçi kuralları |
 | `09_hatirlatma_test.sql` | 14 | Otomatik hatırlatma, mükerrer gönderim engeli, kapora dahil tutar |
 | `10_dusurulen_tablolar_test.sql` | 9 | `0013` göçü: düşenler düştü, kullanılanlara dokunulmadı |
-| `11_sozlesme_alanlari_ve_seri_test.sql` | 9 | `0014` göçü: saat/TC alanları, sıralı sözleşme numarası, sayaç yazmaya kapalı |
-| `12_celik_kasa_test.sql` | 9 | `0015` göçü: çift kayıt engeli, ters yönün yazılabilmesi, geçersiz tutarın reddi, güncellemeye kapalı olması, iki bakiyenin ayrı kalması |
+| `11_sozlesme_alanlari_ve_seri_test.sql` | 12 | `0014` göçü: saat/TC alanları, sıralı sözleşme numarası |
+| `13_kanal_ve_whatsapp_test.sql` | 14 | Ulaşım kanalı, müşteri adayı ve WhatsApp eşlemesi |
+| `14_otomatik_cevap_test.sql` | 7 | Karşılama ve mesai dışı otomatik cevabı |
+| `15_kendi_sunucusu_test.sql` | 8 | Kendi kimlik katmanı, oturum fonksiyonları, tablo izinleri |
+| `16_aday_durumlari_test.sql` | 14 | Düzenlenebilir aday durumları ve durum geçmişi |
+| `17_dugun_ici_giderler_test.sql` | 11 | Düğün içi gider satırları, hesaplanan toplam |
+| `18_odeme_bildirimleri_test.sql` | 13 | Tahsilat olay kaydı, yönetici SMS kuyruğu |
+| `19_urun_hizmet_stok_test.sql` | 9 | Ürün/hizmet ayrımı, koliden stok hesabı |
+| `20_gorusme_takip_test.sql` | 10 | Görüşme alanları, otomatik takip tarihi, dönüşüm raporu |
+| `21_sozlesme_no_ve_hizli_yanit_test.sql` | 10 | Düğün yılına bağlı sözleşme numarası, hızlı yanıtlar |
+| `22_aylik_rapor_test.sql` | 8 | Aylık özet ve gönderim kaydı |
+| `23_finansal_yetki_test.sql` | 10 | Finansal yetkilerin SUNUCUDA uygulanması |
+| `24_hata_bildirimi_test.sql` | 9 | Hata bildirimi, kullanıcı/kapsam varsayılanları, ekran kilidi |
+| `25_kur_hava_ozel_gun_anket_test.sql` | 15 | Kur/hava yazma kapalı, özel günler, anket jetonu ve yetkisi |
 
-Toplam **130 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
+Toplam **262 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
 `BASARISIZ:` ile başlayan bir hata görürseniz test gerçekten düşmüştür.
 
 `04_backup_restore_test.sql` yedeği temiz bir şemaya gerçekten geri yükler ve
 satır sayıları, parasal değerler, Türkçe karakterler ile ilişkisel bütünlüğün
 korunduğunu kanıtlar.
 
-> Göçler, `public` şemadaki tablo izinleri için Supabase'in varsayılan
-> yetkilendirmesine dayanır (`anon` / `authenticated` rollerine otomatik verilen
-> izinler). Düz bir Postgres'te bu izinler bulunmadığı için test paketleri
-> gereken `grant` ifadelerini kendileri verir; şemayı Supabase dışında bir
-> sunucuya kuracaksanız bu izinleri açıkça tanımlamanız gerekir.
+### Yükseltme testi: kurulu bir sistemde göçler güvenli mi?
+
+Yukarıdaki paketler temiz bir şemada çalışır ve yalnızca "yeni kurulum doğru
+mu" sorusunu cevaplar. Asıl risk bu değil: **çalışan bir salonun** veritabanına
+göç uygulandığında eski rezervasyonların, tahsilatların ve kasa hesabının
+bozulması.
+
+```bash
+supabase/tests/yukseltme/calistir.sh
+```
+
+Betik sırayla şunu yapar:
+
+1. Temiz bir veritabanına `0000`–`0023` göçlerini uygular (güncelleme öncesi şema)
+2. Gerçek bir salonun verisini yazar: iki yıla ait rezervasyonlar, tahsilatlar,
+   gelir/gider satırları, çelik kasa hareketleri, fatura ve müşteri adayı
+3. `0024` ve sonrasını uygular
+4. Göçleri **ikinci kez** uygular (kurulum belgesi göçleri bir döngüyle
+   uyguluyor; operatörün döngüyü yeniden çalıştırması olağan)
+5. Verinin bozulmadığını sınar: sözleşme numaraları değişmedi mi, tahsilat
+   toplamı aynı mı, kasa hesabı doğru mu, tipi bilinmeyen eski kayıtlara tip
+   **uydurulmuş** mu, çelik kasa defteri düşerken rezervasyonu da götürmüş mü,
+   yeni tablolar göçten önce açılmış işletmelere de gelmiş mi
 
 ## Güvenlik
 
@@ -629,6 +659,35 @@ e-postası" doldurulur.
 
 Gönderilemeyen anket silinmez: satır durur, `sent_at` boş kalır ve bir
 sonraki koşuda yeniden denenir.
+
+## Ciro, gider ve kâr
+
+Raporlar ekranındaki **Ciro, gider ve kâr** sekmesi yıllık ve aylık
+kırılım veriyor. Kâr ayrı bir alan **değil**, hesaplanıyor:
+
+```
+kâr = ciro + diğer gelir − gider
+```
+
+- **Ciro**, sözleşme tutarlarının toplamı ve **düğünün yapıldığı döneme**
+  yazılıyor, sözleşmenin açıldığı güne değil: bir salonun eylül cirosu,
+  eylülde yapılan düğünlerdir.
+- **Tahsil edilen** ayrı bir sütun. Sözleşme tutarı henüz gelmiş para
+  değil; tek sütunda gösterilseydi kâr, gelmemiş parayla hesaplanmış
+  olurdu.
+- **Gider**, Gelir/Gider ekranındaki gider satırları ile **düğün içi
+  giderlerin** toplamı. Düğün içi giderler kâra girmeseydi salon kendini
+  olduğundan kârlı görürdü.
+- İptal edilen organizasyonlar hiçbir toplama girmiyor.
+- Salon süzgeci açıkken salona bağlı olmayan serbest gelir/gider
+  satırları sayılmıyor: o satırların salonu yok ve hepsini her salona
+  saymak kârı olduğundan farklı gösterirdi.
+
+Kasa bakiyesi, Özet ve Gelir/Gider ekranları da aynı üç kaynaktan
+besleniyor (`src/lib/kasa.ts`): gelir/gider satırları, rezervasyon
+tahsilatları (kapora dahil) ve düğün içi giderler. Mobil uygulama da
+aynı tanımı kullanıyor; farklı hesaplasaydı telefondaki kasa ile
+paneldeki kasa aynı salon için farklı rakam gösterirdi.
 
 ## Ulaşım kanalı ve kanal raporu
 

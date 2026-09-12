@@ -53,6 +53,7 @@ grant execute on function public.has_permission(text) to authenticated;
 -- ------------------------------------------------------------ payments
 drop policy if exists payments_all on public.payments;
 
+drop policy if exists payments_select on public.payments;
 create policy payments_select on public.payments for select
   to authenticated using (
     public.has_permission('kasa.goruntule')
@@ -62,6 +63,7 @@ create policy payments_select on public.payments for select
     )
   );
 
+drop policy if exists payments_write on public.payments;
 create policy payments_write on public.payments for all
   to authenticated using (
     public.has_permission('kasa.duzenle')
@@ -81,10 +83,12 @@ create policy payments_write on public.payments for all
 -- ----------------------------------------------------------- cash_flow
 drop policy if exists cash_flow_all on public.cash_flow;
 
+drop policy if exists cash_flow_select on public.cash_flow;
 create policy cash_flow_select on public.cash_flow for select
   to authenticated using (
     public.has_permission('kasa.goruntule') and public.owns_business(business_id));
 
+drop policy if exists cash_flow_write on public.cash_flow;
 create policy cash_flow_write on public.cash_flow for all
   to authenticated using (
     public.has_permission('kasa.duzenle') and public.owns_business(business_id))
@@ -94,10 +98,12 @@ create policy cash_flow_write on public.cash_flow for all
 -- ------------------------------------------------- reservation_expenses
 drop policy if exists reservation_expenses_all on public.reservation_expenses;
 
+drop policy if exists reservation_expenses_select on public.reservation_expenses;
 create policy reservation_expenses_select on public.reservation_expenses for select
   to authenticated using (
     public.has_permission('kasa.goruntule') and public.owns_business(business_id));
 
+drop policy if exists reservation_expenses_write on public.reservation_expenses;
 create policy reservation_expenses_write on public.reservation_expenses for all
   to authenticated using (
     public.has_permission('kasa.duzenle') and public.owns_business(business_id))
@@ -107,12 +113,18 @@ create policy reservation_expenses_write on public.reservation_expenses for all
 -- ------------------------------------------------------------ invoices
 do $$ begin
   if to_regclass('public.invoices') is not null then
+    /*
+      `execute` TEK bir komut çalıştırır; drop ve create ayrı çağrılar
+      olmak zorunda. Aynı metne konsaydı göç sözdizimi hatası verirdi.
+    */
     execute 'drop policy if exists invoices_all on public.invoices';
+    execute 'drop policy if exists invoices_select on public.invoices';
     execute $p$
       create policy invoices_select on public.invoices for select
         to authenticated using (
           public.has_permission('kasa.goruntule') and public.owns_business(business_id))
     $p$;
+    execute 'drop policy if exists invoices_write on public.invoices';
     execute $p$
       create policy invoices_write on public.invoices for all
         to authenticated using (
@@ -158,20 +170,24 @@ create policy monthly_report_log_select on public.monthly_report_log for select
 */
 drop policy if exists reservations_all on public.reservations;
 
+drop policy if exists reservations_select on public.reservations;
 create policy reservations_select on public.reservations for select
   to authenticated using (
     public.has_permission('rezervasyon.goruntule') and public.owns_business(business_id));
 
+drop policy if exists reservations_write on public.reservations;
 create policy reservations_write on public.reservations for insert
   to authenticated with check (
     public.has_permission('rezervasyon.duzenle') and public.owns_business(business_id));
 
+drop policy if exists reservations_update on public.reservations;
 create policy reservations_update on public.reservations for update
   to authenticated using (
     public.has_permission('rezervasyon.duzenle') and public.owns_business(business_id))
   with check (
     public.has_permission('rezervasyon.duzenle') and public.owns_business(business_id));
 
+drop policy if exists reservations_delete on public.reservations;
 create policy reservations_delete on public.reservations for delete
   to authenticated using (
     public.has_permission('rezervasyon.sil') and public.owns_business(business_id));

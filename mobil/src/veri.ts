@@ -450,6 +450,24 @@ const ORNEK_KASA: KasaSatiri[] = [
   { id: 'k6', tarih: gunEkle(-11), tur: 'Gelir', baslik: 'Salon kiralama', kategori: 'Diğer', tutar: 1_500_000 },
 ];
 
+/**
+ * Kasa özeti.
+ *
+ * Hesap, panelin `src/lib/kasa.ts` modülüyle AYNI tanımı kullanıyor:
+ *
+ *   gelir = gelir/gider satırları + kapora + tahsilatlar
+ *   gider = gelir/gider satırları + düğün içi giderler
+ *
+ * Eskiden yalnızca `cash_flow` okunuyordu; kapora ve tahsilatlar o
+ * tabloya yazılmadığı için telefondaki kasa, paneldeki kasadan farklı
+ * bir rakam gösteriyordu. Şartnamenin 34. maddesi bunu açıkça
+ * yasaklıyor: "Aynı ödeme farklı modüllerde farklı rakam
+ * göstermemeli."
+ *
+ * Rezervasyon geliri `cash_flow`'a YAZILMIYOR, buradan türetiliyor.
+ * Yazılsaydı bir tahsilat düzeltildiğinde iki kayıt birbirinden kopar
+ * ve hangisinin doğru olduğu bilinemezdi.
+ */
 export function kasaOzeti(): Promise<KasaOzet> {
   const alacak = ORNEK.reduce((t, r) => t + Math.max(0, r.toplam - r.tahsilat), 0);
   return sorgu({ gelir: 46_750_000, gider: 8_700_000, bakiye: 38_050_000, alacak }, async () => {
@@ -460,13 +478,39 @@ export function kasaOzeti(): Promise<KasaOzet> {
       const k = s as unknown as { kind: string; amount: number };
       if (k.kind === 'Gelir') gelir += k.amount; else gider += k.amount;
     }
-    const { data: rez } = await db().from('reservations').select('id, total_amount');
-    const kimlikler = (rez ?? []).map((r) => (r as unknown as { id: string }).id);
+
+    // İptal edilen organizasyon kasaya para getirmez; kaporası da sayılmaz.
+    const { data: rez } = await db().from('reservations')
+      .select('id, total_amount, deposit, status').neq('status', 'İptal');
+    const kayitlar = (rez ?? []) as unknown as
+      { id: string; total_amount: number; deposit: number }[];
+
+    const kimlikler = kayitlar.map((r) => r.id);
     const t = await tahsilatToplamlari(kimlikler);
-    const kalan = (rez ?? []).reduce((toplam, r) => {
-      const x = r as unknown as { id: string; total_amount: number };
-      return toplam + Math.max(0, x.total_amount - (t[x.id] ?? 0));
-    }, 0);
+
+    for (const r of kayitlar) {
+      gelir += r.deposit ?? 0;
+      gelir += t[r.id] ?? 0;
+    }
+
+    /*
+      Düğün içi giderler (madde 12) kasadan ÇIKAN para. `total` sütunu
+      YOK; tutar birim x birim fiyat olarak hesaplanıyor -- üç sayı
+      birbirini tutmadığında hangisinin doğru olduğu bilinemezdi.
+    */
+    const { data: giderler } = await db().from('reservation_expenses')
+      .select('unit_count, unit_price');
+    for (const g of (giderler ?? []) as unknown as
+      { unit_count: number; unit_price: number }[]) {
+      gider += (g.unit_count ?? 0) * (g.unit_price ?? 0);
+    }
+
+    // Kalan alacak: kapora da ödenmiş paradır, düşülmesi gerekiyor.
+    const kalan = kayitlar.reduce(
+      (toplam, r) => toplam + Math.max(0, r.total_amount - (r.deposit ?? 0) - (t[r.id] ?? 0)),
+      0,
+    );
+
     return { gelir, gider, bakiye: gelir - gider, alacak: kalan };
   });
 }

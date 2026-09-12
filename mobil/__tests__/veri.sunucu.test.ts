@@ -35,7 +35,7 @@ function kurucu(tablo: string) {
   const cagri: Cagri = { tablo, islemler: [] };
   durum.cagrilar.push(cagri);
 
-  const zincir = ['select', 'eq', 'gte', 'lte', 'in', 'order', 'limit', 'insert', 'update', 'delete'];
+  const zincir = ['select', 'eq', 'neq', 'gte', 'lte', 'in', 'order', 'limit', 'insert', 'update', 'delete'];
   const nesne: Record<string, unknown> = {
     then(coz: (y: { data: unknown; error: unknown }) => unknown) {
       return Promise.resolve({
@@ -323,29 +323,70 @@ describe('masa düzeni', () => {
 });
 
 describe('kasa', () => {
-  it('gelir ve gideri ayrı toplar, bakiyeyi farktan çıkarır', async () => {
+  /*
+    Telefondaki kasa ile paneldeki kasa AYNI tanımı kullanmak zorunda
+    (madde 34). Eskiden burada yalnızca `cash_flow` sayılıyordu; kapora
+    ve tahsilatlar o tabloya yazılmadığı için iki ekran aynı salon için
+    farklı rakam gösteriyordu.
+  */
+  it('gelir/gider satırlarını, kaporayı ve tahsilatları birlikte sayar', async () => {
     durum.satirlar.cash_flow = [
       { kind: 'Gelir', amount: 10_000 },
       { kind: 'Gelir', amount: 5_000 },
       { kind: 'Gider', amount: 3_000 },
     ];
-    durum.satirlar.reservations = [{ id: 'r1', total_amount: 100_000 }];
+    durum.satirlar.reservations = [
+      { id: 'r1', total_amount: 100_000, deposit: 20_000, status: 'Kesin Rezervasyon' },
+    ];
     durum.satirlar.payments = [{ reservation_id: 'r1', amount: 40_000 }];
+    durum.satirlar.reservation_expenses = [];
 
     const ozet = await veri.kasaOzeti();
 
-    expect(ozet.gelir).toBe(15_000);
+    // 15.000 serbest gelir + 20.000 kapora + 40.000 tahsilat
+    expect(ozet.gelir).toBe(75_000);
     expect(ozet.gider).toBe(3_000);
-    expect(ozet.bakiye).toBe(12_000);
-    expect(ozet.alacak).toBe(60_000);
+    expect(ozet.bakiye).toBe(72_000);
+    // 100.000 - 20.000 kapora - 40.000 tahsilat
+    expect(ozet.alacak).toBe(40_000);
+  });
+
+  it('düğün içi gideri kasadan düşer', async () => {
+    durum.satirlar.cash_flow = [];
+    durum.satirlar.reservations = [
+      { id: 'r1', total_amount: 50_000, deposit: 50_000, status: 'Tamamlandı' },
+    ];
+    durum.satirlar.payments = [];
+    durum.satirlar.reservation_expenses = [
+      { unit_count: 10, unit_price: 2_000 },
+      { unit_count: 1, unit_price: 5_000 },
+    ];
+
+    const ozet = await veri.kasaOzeti();
+    expect(ozet.gider).toBe(25_000);
+    expect(ozet.bakiye).toBe(25_000);
   });
 
   it('fazla tahsil edilmiş kayıt alacağı eksiye düşürmez', async () => {
     durum.satirlar.cash_flow = [];
-    durum.satirlar.reservations = [{ id: 'r1', total_amount: 10_000 }];
+    durum.satirlar.reservations = [
+      { id: 'r1', total_amount: 10_000, deposit: 0, status: 'Kesin Rezervasyon' },
+    ];
     durum.satirlar.payments = [{ reservation_id: 'r1', amount: 15_000 }];
+    durum.satirlar.reservation_expenses = [];
 
     await expect(veri.kasaOzeti()).resolves.toMatchObject({ alacak: 0 });
+  });
+
+  it('iptal edilen kaydı sorgudan dışarıda bırakır', async () => {
+    durum.satirlar.cash_flow = [];
+    durum.satirlar.reservations = [];
+    durum.satirlar.payments = [];
+    durum.satirlar.reservation_expenses = [];
+
+    await veri.kasaOzeti();
+    const cagri = durum.cagrilar.find((c) => c.tablo === 'reservations');
+    expect(cagri?.islemler.some((i) => i.ad === 'neq' && i.arg[1] === 'İptal')).toBe(true);
   });
 
   it('hareket satırını çevirir', async () => {

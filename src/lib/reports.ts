@@ -1,7 +1,9 @@
 /** Rapor hesaplamaları: program bazlı, ay bazlı, tarih aralığı, alacak bakiyesi */
 import { MONTH_NAMES } from '../data/constants';
 import { daysBetween, todayIso } from './format';
-import type { OrganizationType, Payment, PaymentMethod, Reservation } from '../types';
+import type {
+  CashFlowEntry, OrganizationType, Payment, PaymentMethod, Reservation,
+} from '../types';
 
 /**
  * Tahsilat/bakiye çözücüsü. `makeBalanceLookup` bunu üretir; raporlar
@@ -404,4 +406,90 @@ export function downloadCsv(filename: string, csv: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+/* ------------------------------------------------ ciro, gider ve kâr */
+
+/**
+ * Bir dönemin (yıl ya da ay) finansal özeti.
+ *
+ * Şartnamenin 20. ve 23. maddeleri toplam, ciro, gider ve kârı birlikte
+ * istiyor. Kâr AYRI BİR ALAN DEĞİL, hesaplanıyor: ciro - gider. Ayrı
+ * tutulsaydı üç sayı birbirini tutmadığında hangisinin doğru olduğu
+ * bilinemezdi.
+ */
+export interface KarRow {
+  /** "2026" ya da "2026-09". */
+  donem: string;
+  /** Dönemdeki organizasyon sayısı. */
+  count: number;
+  /** Sözleşme tutarlarının toplamı. */
+  ciro: number;
+  /** Tahsil edilen: kapora + tahsilatlar. */
+  collected: number;
+  /** Serbest gelir/gider satırlarındaki gelirler. */
+  otherIncome: number;
+  /** Gelir/gider giderleri + düğün içi giderler. */
+  expense: number;
+  /** ciro + diğer gelir - gider. */
+  kar: number;
+}
+
+/**
+ * Ciro, gider ve kâr raporu.
+ *
+ * Dönem anahtarı `yillik` ile seçiliyor: yıl bazında "2026", ay
+ * bazında "2026-09".
+ *
+ * TARİH SEÇİMİ ÖNEMLİ. Organizasyon cirosu DÜĞÜN GÜNÜNE yazılıyor,
+ * sözleşmenin açıldığı güne değil: bir salonun eylül ayı cirosu, eylülde
+ * yapılan düğünlerdir. Düğün içi giderler de aynı güne düşüyor, böylece
+ * gelir ve gideri aynı dönemde karşılaşıyor. Serbest gelir/gider
+ * satırları kendi tarihlerini kullanıyor.
+ *
+ * İptal edilen organizasyonlar hiçbir toplama girmiyor: olmamış bir
+ * düğünün cirosu da gideri de yoktur.
+ */
+export function karRaporu(
+  reservations: Reservation[],
+  balance: BalanceLookup,
+  cashFlow: CashFlowEntry[],
+  weddingExpenses: { date: string; amount: number }[] = [],
+  yillik = true,
+): KarRow[] {
+  const donem = (iso: string) => (yillik ? iso.slice(0, 4) : iso.slice(0, 7));
+  const map = new Map<string, KarRow>();
+
+  const satir = (anahtar: string): KarRow => {
+    const mevcut = map.get(anahtar);
+    if (mevcut) return mevcut;
+    const yeni: KarRow = {
+      donem: anahtar, count: 0, ciro: 0, collected: 0,
+      otherIncome: 0, expense: 0, kar: 0,
+    };
+    map.set(anahtar, yeni);
+    return yeni;
+  };
+
+  for (const r of reservations) {
+    if (r.status === 'İptal') continue;
+    const s = satir(donem(r.date));
+    s.count += 1;
+    s.ciro += r.totalAmount;
+    s.collected += balance.paid(r);
+  }
+
+  for (const e of cashFlow) {
+    const s = satir(donem(e.date));
+    if (e.kind === 'Gelir') s.otherIncome += e.amount;
+    else s.expense += e.amount;
+  }
+
+  for (const g of weddingExpenses) {
+    satir(donem(g.date)).expense += g.amount;
+  }
+
+  return [...map.values()]
+    .map((s) => ({ ...s, kar: s.ciro + s.otherIncome - s.expense }))
+    .sort((a, b) => b.donem.localeCompare(a.donem));
 }

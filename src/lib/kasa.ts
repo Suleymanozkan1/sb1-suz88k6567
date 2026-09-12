@@ -6,9 +6,10 @@
  * yazılması, birinin diğerini tutmamasıyla biter ve hangisinin doğru
  * olduğu anlaşılmaz.
  *
- * Para iki kaynaktan geliyor, ikisi de sayılıyor:
+ * Para ÜÇ kaynaktan geliyor, üçü de sayılıyor:
  *   1. Elle girilen gelir/gider satırları (cash_flow)
  *   2. Rezervasyon tahsilatları -- kapora dahil (reports.reservationIncome)
+ *   3. Düğün içi giderler (dugunGideri.giderKasaSatirlari) -- eksi işaretli
  *
  * Eskiden paranın fiziksel yeri "çelik kasa" adlı AYRI bir defterde elle
  * işaretleniyordu. Bu ikinci bir muhasebeydi: her satır iki kez elleniyor,
@@ -97,6 +98,19 @@ export function kasaBakiyesi(hareketler: KasaHareketi[]): number {
 export function kasaHareketleri(
   girdiler: CashFlowEntry[],
   rezervasyonGelirleri: ReservationIncomeRow[],
+  /**
+   * Düğün içi giderler (madde 12).
+   *
+   * Kasadan ÇIKAN para: garson, DJ, vale ücreti o gün ödeniyor. Kasa
+   * hesabına katılmasalardı, gider satırı Gelir/Gider listesinde
+   * görünür ama kasa toplamı azalmaz; aynı para iki ekranda farklı
+   * görünürdü (madde 34).
+   *
+   * Ödeme tipi YOK: gider satırında hangi kanaldan ödendiği
+   * tutulmuyor. Bir kanala yazmak uydurma olurdu, bu yüzden
+   * "Belirtilmemiş" kovasına eksi olarak düşüyorlar.
+   */
+  dugunGiderleri: { date: string; amount: number }[] = [],
   ayOneki?: string,
 ): KasaHareketi[] {
   const ayda = (tarih: string) => !ayOneki || tarih.startsWith(ayOneki);
@@ -105,5 +119,8 @@ export function kasaHareketleri(
     ...rezervasyonGelirleri
       .filter((r) => ayda(r.date))
       .map((r) => ({ tutar: r.amount, method: r.method })),
+    ...dugunGiderleri
+      .filter((g) => ayda(g.date))
+      .map((g) => ({ tutar: -g.amount })),
   ];
 }

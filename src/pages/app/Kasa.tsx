@@ -149,9 +149,14 @@ export default function Kasa() {
     "kasada ne kadar para var" sorusunun cevabı, ekrandaki tarih aralığına
     göre değişmemeli.
   */
+  /*
+    Düğün içi giderler de hesaba giriyor: aşağıdaki listede gider satırı
+    olarak görünüyorlar ve kasa toplamı onları düşmeseydi, aynı para bu
+    ekranın iki yerinde farklı görünürdü (madde 34).
+  */
   const dagilim = useMemo(
-    () => kasaDagilimi(kasaHareketleri(entries, rezervasyonSatirlari)),
-    [entries, rezervasyonSatirlari],
+    () => kasaDagilimi(kasaHareketleri(entries, rezervasyonSatirlari, giderSatirlari)),
+    [entries, rezervasyonSatirlari, giderSatirlari],
   );
 
   const filtered = useMemo(

@@ -8,10 +8,12 @@ import KurSeridi from '../../components/KurSeridi';
 import HavaDurumu from '../../components/HavaDurumu';
 import { useAuth } from '../../context/AuthContext';
 import {
-  useCashFlow, useLeadStatuses, useLeads, useReservationsWithBalances,
+  useCashFlow, useLeadStatuses, useLeads, useReservationExpenses,
+  useReservationsWithBalances,
 } from '../../lib/queries';
 import { leadOzeti, opsiyonuYaklasanlar, toplamAday } from '../../lib/lead';
 import { kasaDagilimi, kasaHareketleri } from '../../lib/kasa';
+import { giderKasaSatirlari } from '../../lib/dugunGideri';
 import type { CustomerLead, LeadStatusDef } from '../../types';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, formatNumber, todayIso } from '../../lib/format';
@@ -33,6 +35,7 @@ export default function Dashboard() {
   const { data: adaylar = [] } = useLeads();
   const { data: adayDurumlari = [] } = useLeadStatuses();
   const cashQuery = useCashFlow();
+  const { data: dugunGiderleri = [] } = useReservationExpenses();
   const today = todayIso();
   const currency = user?.currency ?? 'TL';
 
@@ -79,9 +82,21 @@ export default function Dashboard() {
     hangi ay girdiğine bakmaksızın oradadır. Aylık kesit gösterilseydi
     ayın ilk günü kasa sıfır görünürdü.
   */
+  /*
+    Düğün içi giderler (madde 12) kasadan ÇIKAN para. Kasa ekranında
+    olduğu gibi burada da hesaba giriyorlar; girmeselerdi Özet ile Kasa
+    ekranı aynı kasa için farklı rakam gösterirdi (madde 34).
+
+    Taraf metni burada gerekmiyor -- yalnızca tutar ve tarih sayılıyor.
+  */
+  const giderSatirlari = useMemo(
+    () => giderKasaSatirlari(dugunGiderleri, reservations, (r) => r.customerName),
+    [dugunGiderleri, reservations],
+  );
+
   const dagilim = useMemo(
-    () => kasaDagilimi(kasaHareketleri(cash, rezervasyonGelirleri)),
-    [cash, rezervasyonGelirleri],
+    () => kasaDagilimi(kasaHareketleri(cash, rezervasyonGelirleri, giderSatirlari)),
+    [cash, rezervasyonGelirleri, giderSatirlari],
   );
 
   const opsiyonlular = useMemo(
@@ -199,8 +214,16 @@ export default function Dashboard() {
         <LeadOzetKutulari adaylar={adaylar} durumlar={adayDurumlari} />
       </section>
 
+      {/*
+        Izgara hücrelerinde `min-w-0` ŞART. Varsayılan `min-width: auto`
+        hücreyi içeriğinin en dar hâlinden küçültmüyor; içeride 640px
+        genişliğinde bir tablo olduğu için telefonda hücre 640px'e
+        şişiyor ve sayfanın tamamı ekranı taşıyordu. Tablo zaten kendi
+        `overflow-x-auto` kutusunda kayıyor; taşması gereken tek yer
+        orası.
+      */}
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <section className="card p-5 lg:col-span-2" aria-labelledby="upcoming-title">
+        <section className="card min-w-0 p-5 lg:col-span-2" aria-labelledby="upcoming-title">
           <div className="mb-4 flex items-center justify-between">
             <h2 id="upcoming-title" className="font-heading text-lg font-bold text-brand">
               {ayAdi} ayı yaklaşan organizasyonları
@@ -274,7 +297,7 @@ export default function Dashboard() {
           o organizasyonlara yetecek malzeme var mı sorusu aynı ekranda
           sorulup cevaplanıyor.
         */}
-        <section className="card p-5" aria-labelledby="program-title">
+        <section className="card min-w-0 p-5" aria-labelledby="program-title">
           <h2 id="program-title" className="mb-4 font-heading text-lg font-bold text-brand">
             {ayAdi} ayı program dağılımı
           </h2>
@@ -304,7 +327,7 @@ export default function Dashboard() {
           )}
         </section>
 
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <StokDurumu />
         </div>
       </div>
