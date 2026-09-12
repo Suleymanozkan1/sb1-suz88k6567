@@ -62,9 +62,10 @@ Slayt başına ezberlenecek tek cümleler. Gerisi zaten ekranda.
   kaydediliyor ve bu kayıt silinemiyor."
 - **Altyapı (21):** "İki şey zorunlu, gerisi isteğe bağlı. Birini
   kapatırsanız yalnızca o özellik kapanır."
-- **Neden (22):** "Kendi sunucumuz olsaydı yazılım aynı çalışırdı; fark,
-  yedek ve güvenliğin kimin üzerinde kaldığında."
-- **Maliyet (26):** "Sabit gider iki servis, ayda yaklaşık 30 dolar.
+- **Neden (22):** "Sistem kendi sunucumuzda çalışıyor. Hazır bir servise
+  bağlansak yazılım aynı çalışırdı; fark, ücretsiz planın koşulları
+  değiştiğinde ya da hesap askıya alındığında kimin elinde kaldığında."
+- **Maliyet (26):** "Sabit gider sunucu kirası, ayda 200-400 lira.
   Gerisi kullandıkça."
 
 ## 4. Ezberlenecek sayılar
@@ -72,7 +73,7 @@ Slayt başına ezberlenecek tek cümleler. Gerisi zaten ekranda.
 Yanlış sayı söylemektense "slaytta var, birlikte bakalım" demek daha iyi.
 Şu birkaçı akılda kalsın:
 
-- Sabit aylık gider: **Supabase 25 $ + Cloudflare 5 $ ≈ 30 $**
+- Sabit aylık gider: **sunucu 200-400 ₺ + alan adı ~25 ₺**
 - Mobil mağazalar: **Apple 99 $/yıl**, **Google Play 25 $ tek sefer**
 - SMS: **1.000 adet 370 ₺**, paketsiz **0,42 ₺/adet**
 - İYS: onayları elle yönetirseniz **ücretsiz**; otomatik aktarım için
@@ -80,7 +81,7 @@ Yanlış sayı söylemektense "slaytta var, birlikte bakalım" demek daha iyi.
 - e-Fatura: **Paraşüt 150 ₺/ay** (KDV hariç) + **mali mühür 1.620 ₺ / 3 yıl**
 - Fatura düzenleme süresi: **7 gün** (VUK)
 - İYS'ye onay bildirme süresi: **3 iş günü**
-- Veriler **AB bölgesinde (Frankfurt)**
+- Veriler **kendi sunucumuzda**, Türkiye ya da AB'de kiralanır
 
 Aylık 30 organizasyon kaydeden bir salon, onay ve hatırlatma ile yaklaşık
 **100-150 SMS** gönderir; 1.000'lik paket birkaç ay yeter. Bu örneği soru

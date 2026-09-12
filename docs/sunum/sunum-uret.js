@@ -660,15 +660,15 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
 {
   const s = slayt(SURFACE);
   baslik(s, 'ALTYAPI', 'Sistem neyin üzerinde çalışıyor');
-  s.addText('Sistem üç parçadan oluşur: kullanıcının gördüğü arayüz, arayüzü dağıtan sunucu ve verinin durduğu veritabanı. Yanlarındaki servisler yalnızca ilgili özellik açıksa devreye girer.', {
+  s.addText('Sistem üç parçadan oluşur: kullanıcının gördüğü arayüz, arayüzü sunan kendi sunucumuz ve verinin durduğu veritabanı. Üçü de tek bir makinede çalışır. Yanlarındaki servisler yalnızca ilgili özellik açıksa devreye girer.', {
     x: KENAR, y: 1.66, w: GENIS, h: 0.36, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 13.5, color: MUTED,
   });
 
   // Akış kutuları: e-Fatura slaydındaki düzenin aynısı, üç adımlı.
   [['Tarayıcı / mobil', 'Kullanıcının ekranı'],
-   ['Cloudflare', 'Arayüzü dağıtır, gece görevlerini çalıştırır'],
-   ['Supabase', 'Veriyi tutar, kim neyi görecek ona karar verir'],
+   ['Sahra sunucusu', 'Siteyi sunar, gece görevlerini çalıştırır'],
+   ['PostgreSQL', 'Veriyi tutar, kim neyi görecek ona karar verir'],
   ].forEach(([bas, ack], i) => {
     const w = 3.8, x = KENAR + i * (w + 0.26);
     const son = i === 2;
@@ -698,8 +698,8 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: KENAR, y: 3.6, w: GENIS, colW: [2.6, 5.2, 4.13], rowH: 0.42,
     basliklar: ['BİLEŞEN', 'NE İŞE YARIYOR', 'TANIMLI DEĞİLSE'],
     satirlar: [
-      ['Supabase', 'Veritabanı, kullanıcı girişi, dosya deposu ve gecelik yedek', { text: 'Sistem çalışmaz', color: '9B2C1C', bold: true }],
-      ['Cloudflare Workers', 'Siteyi yayınlar, gece yedek ve İYS aktarımını tetikler', { text: 'Sistem çalışmaz', color: '9B2C1C', bold: true }],
+      ['PostgreSQL', 'Veritabanı; kim neyi görecek kuralları da burada', { text: 'Sistem çalışmaz', color: '9B2C1C', bold: true }],
+      ['Sahra sunucusu', 'Siteyi sunar, girişi korur, gece görevlerini çalıştırır', { text: 'Sistem çalışmaz', color: '9B2C1C', bold: true }],
       ['Netgsm', 'Müşteriye SMS gönderir', 'Mesaj gönderilmez, kaydı tutulur'],
       ['İYS', 'Ticari ileti onaylarını devletin sistemiyle eşler', 'Onaylar aktarılmaz, yerel kayıt işler'],
       ['Paraşüt', 'e-Arşiv / e-Fatura’yı GİB’e gönderir', 'Fatura taslak olarak kalır'],
@@ -707,40 +707,38 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     ],
   });
   dipnot(s, 'İlk iki satır zorunludur; geri kalanı isteğe bağlıdır ve biri kapatıldığında yalnızca o özellik kapanır.', 6.7, { kucuk: true });
-  s.addNotes('Supabase yönetilen bir PostgreSQL servisidir. Cloudflare Workers hem statik dosyaları dağıtır hem de zamanlanmış görevleri çalıştırır.');
+  s.addNotes('Üç parça da kiralanan tek bir sunucuda çalışır: PostgreSQL, veritabanını HTTP\u2019ye açan PostgREST ve siteyi sunup zamanlanmış görevleri çalıştıran Node süreci. Hepsi ücretsiz ve açık kaynak. Dışarıya yalnızca 80 ve 443 portları açıktır; veritabanı internete hiç açılmaz.');
 }
 
-/* ══ 22 · Neden hazır servis ══════════════════════════════════ */
+/* ══ 22 · Neden kendi sunucumuz ══════════════════════════════ */
 {
   const s = slayt(NAVY);
-  baslik(s, 'NEDEN', 'Neden kendi sunucumuz yok', { koyu: true });
-  s.addText('Kendi sunucumuzu kiralasak yazılım aynı çalışırdı; fark, aşağıdaki işlerin kimin üzerinde kaldığında.', {
+  baslik(s, 'NEDEN', 'Neden kendi sunucumuz', { koyu: true });
+  s.addText('Sistem kiralanan tek bir sunucuda çalışır. Hazır bir servise bağlansak yazılım aynı çalışırdı; fark, kimin elinde durduğunda.', {
     x: KENAR, y: 1.66, w: GENIS, h: 0.34, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 13.5, color: PALE,
   });
   kartlar(s, {
-    // Kart yüksekliği metnin en uzun hâline göre seçildi: gövde kutuya
-    // sığmayınca yukarı taşıp başlığın üzerine biniyordu.
     y: 2.15, h: 2.15, sutun: 3, koyu: true,
     items: [
-      ['Kendi sunucumuz', 'Güvenlik yamaları, sertifika yenileme ve yedeğin gerçekten geri yüklenebildiğinin denenmesi bize kalırdı. Sunucuyu kiralamak ucuz, ona bakmak pahalıdır.'],
-      ['Supabase ne veriyor', 'PostgreSQL veritabanı, satır bazlı erişim kuralları, kullanıcı girişi, dosya deposu ve gecelik yedek; tek hizmette, ayrı ayrı kurulmadan.'],
-      ['Cloudflare ne veriyor', 'Site dünya çapında dağıtılır, HTTPS ve saldırı koruması hazır gelir, gecelik görevler ayrı bir sunucu olmadan çalışır.'],
+      ['Bağımlılık yok', 'Hazır bir servisin ücretsiz planı değişebilir, fiyatı artabilir, hesap askıya alınabilir. Kendi sunucumuzda bu risklerin hiçbiri yok; karşılığında bakımı biz üstleniyoruz.'],
+      ['Veri nerede duruyor', 'Sunucu Türkiye’de ya da AB’de kiralanır. Veride müşteri adı, telefonu ve TC kimlik numarası var; yurt dışına aktarımın ayrı kuralları gündeme hiç gelmiyor.'],
+      ['Ne çalışıyor', 'PostgreSQL veritabanı, veritabanını web’e açan PostgREST ve siteyi sunup gece görevlerini çalıştıran Sahra sunucusu. Üçü de ücretsiz ve açık kaynak.'],
     ],
   });
   panel(s, {
     x: KENAR, y: 4.4, w: 5.85, h: 2.05, zemin: BRAND, bas: 'Kilitlenme var mı',
-    metin: 'Yok. Veritabanı standart PostgreSQL’dir, tabloların tanımı depoda SQL dosyası olarak durur. Supabase’ten çıkılmak istenirse veriler olduğu gibi başka bir PostgreSQL sunucusuna taşınır; yazılımın yeniden yazılması gerekmez.',
+    metin: 'Yok. Veritabanı standart PostgreSQL’dir ve tabloların tanımı depoda SQL dosyası olarak durur. Sunucu değiştirmek istenirse veriler olduğu gibi taşınır; yazılımın yeniden yazılması gerekmez.',
   });
   panel(s, {
     x: 6.78, y: 4.4, w: 5.85, h: 2.05, zemin: BRAND, bas: 'Yedek kimin sorumluluğunda',
-    metin: 'İki katman var. Supabase kendi gecelik yedeğini alır; buna ek olarak sistem her gece kendi yedeğini üretip dışarıya kapalı bir alana yazar. İkinci katmanın sebebi, sağlayıcıya ait yedeğin sağlayıcıyla birlikte erişilemez hâle gelebilmesidir.',
+    metin: 'Sistem her gece kendi yedeğini üretip sunucuda dışarıya kapalı bir dizine yazar. Sunucunun kendisi bozulursa yedek de gideceği için, dosyaların düzenli olarak başka bir yere indirilmesi gerekir; kurulum belgesi bunu adım adım anlatır.',
   });
-  s.addText('İki servisin toplamı ayda yaklaşık 30 dolardır. Bu tutar veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar.', {
+  s.addText('Sunucu ayda yaklaşık 200-400 ₺’dir. Bu tutar veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar; ayrıca bir servise ödeme yapılmaz.', {
     x: KENAR, y: 6.75, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12, color: PALE,
   });
-  s.addNotes('Bu slayt “neden bir sürü servise para veriyoruz” sorusunun cevabıdır. Asıl gerekçe maliyet değil, bakım yükünün ve yedek sorumluluğunun kimde olduğudur.');
+  s.addNotes('Bu slayt “altyapı için kime ne ödüyoruz” sorusunun cevabıdır. Tek kalem sunucu kirası. Karşılığında güvenlik güncellemeleri, sertifika yenileme ve yedeğin gerçekten geri yüklenebildiğinin denenmesi bizim üzerimizde; certbot sertifikayı kendisi yeniler, güncellemeler otomatiğe alınmıştır, ama yedeğin dışarı indirilmesi elle yapılan iştir.');
 }
 
 /* ══ 23 · Veri ════════════════════════════════════════════════ */
@@ -767,7 +765,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: KENAR, y: 5.7, w: GENIS, h: 0.9, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 18,
   });
-  s.addNotes('Veriler Supabase (PostgreSQL) üzerinde tutulur.');
+  s.addNotes('Veriler kendi sunucumuzdaki PostgreSQL üzerinde tutulur.');
 }
 
 /* ══ 24 · Kurulum ═════════════════════════════════════════════ */
@@ -827,11 +825,11 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   }
 
   sutun(0, 'Altyapı ve mağaza', [
-    ['Supabase Pro', '$25'],
-    ['Cloudflare Workers', '$5'],
+    ['Sunucu (VPS)', '200-400 ₺'],
+    ['Alan adı', '~25 ₺'],
     ['Apple Developer', '$99/yıl'],
     ['Google Play (tek sefer)', '$25'],
-  ], 'İlk ikisi veritabanı, gecelik yedek, barındırma ve zamanlanmış görevler içindir; Cloudflare’in ücretsiz planı ticari kullanıma açıktır. Son ikisi yalnızca mobil uygulama mağazalarda yayınlanacaksa gerekir.');
+  ], 'İlk ikisi veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar; sunucu üzerindeki yazılımların hepsi ücretsiz ve açık kaynaktır. Alan adı yıllık ücretin aylığa bölümüdür. Son ikisi yalnızca mobil uygulama mağazalarda yayınlanacaksa gerekir.');
 
   sutun(1, 'SMS (kullandıkça)', [
     ['1.000 SMS', '370 ₺'],
@@ -857,11 +855,11 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: KENAR, y: 6.2, w: GENIS, h: 0.6, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17,
   });
-  s.addText('Fiyatlar Eylül 2026’da sağlayıcıların yayımlanmış listelerinden alınmıştır. Supabase ve Cloudflare dolar üzerinden faturalandırır.', {
+  s.addText('Fiyatlar Eylül 2026’da sağlayıcıların yayımlanmış listelerinden alınmıştır. Sunucu ve alan adı Türk sağlayıcılarda ₺, yurt dışında € ya da $ üzerinden faturalandırılır.', {
     x: KENAR, y: 6.85, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 11, color: MUTED,
   });
-  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100-150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider bu iki servisten ibarettir. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
+  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100-150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider sunucu kirası ve alan adından ibarettir; yazılım tarafında lisans ücreti yoktur. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
 }
 
 pres.writeFile({ fileName: 'Sahra-Takip-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));
