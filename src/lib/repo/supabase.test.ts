@@ -307,6 +307,73 @@ describe('şifre işlemleri', () => {
   });
 });
 
+describe('kimlik üretimi', () => {
+  /*
+    Ekranlar kimliği kendileri üretiyor: uid('hall') -> "hall_mtx...".
+    Demo kipinde bu sorun değil (yerel depo metin kimlik kabul ediyor)
+    ama veritabanındaki sütun uuid. Gönderilirse kayıt hiç açılmıyor;
+    PostgREST 22P02 döndürüyor ve kullanıcı yalnızca bir hata görüyor.
+
+    Bu yüzden uygulama gerçek veritabanına karşı hiç çalışmamıştı:
+    yeni salon, menü, tedarikçi, tahsilat, kasa hareketi ve işletme
+    ekleme yollarının HEPSİ bu hatayı veriyordu.
+  */
+  it('uuid olmayan kimliği eklemede göndermez', async () => {
+    durum.kimlik = 'u1';
+    yanitla('halls', { data: { id: 'uuid-den-gelen' } });
+
+    await repo.saveHall({
+      id: 'hall_mtxyuoiswgz45x', businessId: 'biz-1', name: 'Bahçe',
+      capacity: 150, note: '', isActive: true,
+    });
+
+    const govde = islem(cagri('halls'), 'upsert')?.arg[0] as Record<string, unknown>;
+    expect(govde).not.toHaveProperty('id');
+    expect(govde.name).toBe('Bahçe');
+  });
+
+  it('veritabanından gelen uuid kimliği güncellemede gönderir', async () => {
+    // Gönderilmezse upsert güncelleme yerine yeni satır açar.
+    durum.kimlik = 'u1';
+    yanitla('halls', { data: { id: '13f1720e-e2d0-4552-9c49-0075c3db2de6' } });
+
+    await repo.saveHall({
+      id: '13f1720e-e2d0-4552-9c49-0075c3db2de6', businessId: 'biz-1',
+      name: 'Bahçe', capacity: 150, note: '', isActive: true,
+    });
+
+    const govde = islem(cagri('halls'), 'upsert')?.arg[0] as Record<string, unknown>;
+    expect(govde.id).toBe('13f1720e-e2d0-4552-9c49-0075c3db2de6');
+  });
+
+  it('aynı kural menü, tedarikçi ve kasa yollarında da geçerli', async () => {
+    durum.kimlik = 'u1';
+    yanitla('menus', { data: { id: 'x' } });
+    yanitla('vendors', { data: { id: 'x' } });
+    yanitla('cash_flow', { data: { id: 'x' } });
+
+    await repo.saveMenu({
+      id: 'menu_abc', businessId: 'biz-1', name: 'Standart',
+      pricing: 'kisi_basi', priceKurus: 10000, description: '',
+      isActive: true, createdAt: '',
+    });
+    await repo.saveVendor({
+      id: 'vendor_abc', businessId: 'biz-1', name: 'Orkestra',
+      category: 'Orkestra', phone: '', note: '', isActive: true, createdAt: '',
+    });
+    await repo.addCashFlow({
+      id: 'kasa_abc', businessId: 'biz-1', kind: 'Gelir', date: '2026-01-01',
+      category: 'Diğer', amount: 100, description: '', reservationId: '', createdAt: '',
+    });
+
+    for (const tablo of ['menus', 'vendors', 'cash_flow']) {
+      const c = cagri(tablo);
+      const govde = (islem(c, 'upsert') ?? islem(c, 'insert'))?.arg[0] as Record<string, unknown>;
+      expect(govde).not.toHaveProperty('id');
+    }
+  });
+});
+
 describe('profil güncelleme', () => {
   beforeEach(() => {
     durum.kimlik = 'u1';
@@ -554,8 +621,9 @@ describe('tahsilat ve kasa', () => {
       id: 'p1', reservationId: 'r1', date: '2026-01-01', amount: 5000,
       method: 'Havale/EFT', note: '', createdAt: '',
     });
+    // Kimlik GÖNDERİLMEZ: sütun uuid, ekranın ürettiği "p1" kabul edilmez.
     expect(islem(cagri('payments'), 'insert')?.arg[0]).toEqual({
-      id: 'p1', reservation_id: 'r1', date: '2026-01-01',
+      reservation_id: 'r1', date: '2026-01-01',
       amount: 5000, method: 'Havale/EFT', note: null,
     });
   });
@@ -566,7 +634,7 @@ describe('tahsilat ve kasa', () => {
       category: 'Kira', amount: 1000, description: '', reservationId: '', createdAt: '',
     });
     expect(islem(cagri('cash_flow'), 'insert')?.arg[0]).toEqual({
-      id: 'c1', business_id: 'b1', kind: 'Gider', date: '2026-01-01',
+      business_id: 'b1', kind: 'Gider', date: '2026-01-01',
       category: 'Kira', amount: 1000, description: null, reservation_id: null,
     });
   });
@@ -620,7 +688,7 @@ describe('çelik kasa', () => {
       sourceId: 'kapora:r1', createdAt: '',
     });
     expect(islem(cagri('safe_movements'), 'insert')?.arg[0]).toEqual({
-      id: 'k1', business_id: 'b1', date: '2026-01-01', direction: 'Giriş',
+      business_id: 'b1', date: '2026-01-01', direction: 'Giriş',
       amount: 500, description: 'Gelir · Tahsilat', source_kind: 'reservation',
       source_id: 'kapora:r1',
     });

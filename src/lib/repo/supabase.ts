@@ -51,6 +51,26 @@ function db(): PostgrestIstemci {
   return client;
 }
 
+const UUID_KALIBI =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Yeni kayıtta kimliği VERİTABANI üretsin.
+ *
+ * Ekranlar kimliği kendileri üretiyor (`uid('hall')` -> "hall_mtx...").
+ * Demo kipinde bu sorun değil, çünkü yerel depo metin kimlik kabul
+ * ediyor. Veritabanındaki sütun ise `uuid`: gönderildiğinde kayıt hiç
+ * açılmıyor, PostgREST 22P02 döndürüyor ve kullanıcı ekranda yalnızca
+ * bir hata görüyor.
+ *
+ * Güncellemede kimlik zaten veritabanından gelmiş bir uuid olduğu için
+ * olduğu gibi gönderiliyor; upsert'in güncelleme yerine yeni satır
+ * açmaması buna bağlı.
+ */
+function kimlikAlani(id: string | undefined): { id?: string } {
+  return id && UUID_KALIBI.test(id) ? { id } : {};
+}
+
 /* ------------------------------------------------------------- eşleme */
 
 type Row = Record<string, unknown>;
@@ -142,7 +162,7 @@ function toReservation(row: Row): Reservation {
 
 function fromReservation(r: Reservation) {
   return {
-    id: r.id, business_id: r.businessId, hall_id: r.hallId,
+    ...kimlikAlani(r.id), business_id: r.businessId, hall_id: r.hallId,
     // Kod boşsa veritabanı tetikleyicisi sıradaki numarayı yazar.
     menu_id: r.menuId || null, code: r.code || null,
     customer_name: r.customerName, customer_phone: r.customerPhone,
@@ -184,7 +204,7 @@ function toLead(row: Row): CustomerLead {
 
 function fromLead(l: CustomerLead) {
   return {
-    id: l.id, business_id: l.businessId, name: l.name, phone: l.phone, email: l.email,
+    ...kimlikAlani(l.id), business_id: l.businessId, name: l.name, phone: l.phone, email: l.email,
     guest_count: l.guestCount, event_date: l.eventDate || null,
     event_date_text: l.eventDateText, organization_type: l.organizationType,
     source: l.source, source_detail: l.sourceDetail, status: l.status,
@@ -634,7 +654,7 @@ export const supabaseRepo: Repository = {
 
   async saveBusiness(business) {
     const { data, error } = await db().from('businesses').upsert({
-      id: business.id, owner_id: business.ownerId, name: business.name,
+      ...kimlikAlani(business.id), owner_id: business.ownerId, name: business.name,
       category: business.category, city: business.city, district: business.district,
       phone: business.phone, capacity: business.capacity, currency: business.currency,
       address: business.address || null, facebook: business.facebook || null,
@@ -703,7 +723,7 @@ export const supabaseRepo: Repository = {
 
   async addPayment(payment) {
     const { error } = await db().from('payments').insert({
-      id: payment.id, reservation_id: payment.reservationId, date: payment.date,
+      ...kimlikAlani(payment.id), reservation_id: payment.reservationId, date: payment.date,
       amount: payment.amount, method: payment.method, note: payment.note || null,
     });
     if (error) fail('Tahsilat kaydedilemedi.', error);
@@ -723,7 +743,7 @@ export const supabaseRepo: Repository = {
 
   async addCashFlow(entry) {
     const { error } = await db().from('cash_flow').insert({
-      id: entry.id, business_id: entry.businessId, kind: entry.kind, date: entry.date,
+      ...kimlikAlani(entry.id), business_id: entry.businessId, kind: entry.kind, date: entry.date,
       category: entry.category, amount: entry.amount, description: entry.description || null,
       reservation_id: entry.reservationId || null,
     });
@@ -749,7 +769,7 @@ export const supabaseRepo: Repository = {
 
   async addSafeMovement(movement) {
     const { error } = await db().from('safe_movements').insert({
-      id: movement.id, business_id: movement.businessId, date: movement.date,
+      ...kimlikAlani(movement.id), business_id: movement.businessId, date: movement.date,
       direction: movement.direction, amount: movement.amount,
       description: movement.description, source_kind: movement.sourceKind,
       source_id: movement.sourceId,
@@ -813,7 +833,7 @@ export const supabaseRepo: Repository = {
 
   async addLeadMessage(message) {
     const { error } = await db().from('customer_lead_messages').insert({
-      id: message.id, business_id: message.businessId, lead_id: message.leadId,
+      ...kimlikAlani(message.id), business_id: message.businessId, lead_id: message.leadId,
       direction: message.direction, channel: message.channel, body: message.body,
       wa_message_id: message.waMessageId ?? null, actor_email: message.actorEmail,
     });
@@ -1116,7 +1136,7 @@ export const supabaseRepo: Repository = {
 
   async saveHall(hall) {
     const { data, error } = await db().from('halls').upsert({
-      id: hall.id, business_id: hall.businessId, name: hall.name,
+      ...kimlikAlani(hall.id), business_id: hall.businessId, name: hall.name,
       capacity: hall.capacity, note: hall.note, is_active: hall.isActive,
     }).select().single();
     if (error) fail('Salon kaydedilemedi.', error);
@@ -1141,7 +1161,7 @@ export const supabaseRepo: Repository = {
 
   async saveMenu(menu) {
     const { data, error } = await db().from('menus').upsert({
-      id: menu.id, business_id: menu.businessId, name: menu.name,
+      ...kimlikAlani(menu.id), business_id: menu.businessId, name: menu.name,
       pricing: menu.pricing, price_kurus: menu.priceKurus,
       description: menu.description, is_active: menu.isActive,
     }).select().single();
@@ -1241,7 +1261,7 @@ export const supabaseRepo: Repository = {
 
   async saveVendor(vendor) {
     const { data, error } = await db().from('vendors').upsert({
-      id: vendor.id, business_id: vendor.businessId, name: vendor.name,
+      ...kimlikAlani(vendor.id), business_id: vendor.businessId, name: vendor.name,
       category: vendor.category, phone: vendor.phone, note: vendor.note,
       is_active: vendor.isActive,
     }).select().single();
