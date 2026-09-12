@@ -18,6 +18,7 @@ import sms from '../api/sms';
 import sifre from '../api/sifre';
 import whatsapp from '../api/whatsapp';
 import whatsappGonder from '../api/whatsapp-gonder';
+import whatsappTest from '../api/whatsapp-test';
 
 type Isleyici = (request: Request) => Promise<Response>;
 
@@ -34,7 +35,15 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/sms-queue': smsQueue,
   '/api/reminders': reminders,
   '/api/whatsapp': whatsapp,
+  /*
+    Meta panelinde webhook adresi olarak daha çok bu yol yazılıyor; iki
+    adres de AYNI işleyiciye gidiyor. Eski adres kaldırılmadı: kurulumu
+    yapılmış bir sistemde adresi değiştirmek, Meta panelinde de elle
+    güncellenene kadar gelen bütün mesajların düşmesi demek.
+  */
+  '/api/webhooks/whatsapp': whatsapp,
   '/api/whatsapp-gonder': whatsappGonder,
+  '/api/whatsapp-test': whatsappTest,
 };
 
 /**

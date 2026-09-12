@@ -67,6 +67,8 @@ export const KEYS = {
   leadMessages: 'aday-mesajlari',
   /** Adayların durum değişiklikleri */
   leadStatusHistory: 'aday-durum-gecmisi',
+  /** İşletmenin düzenlediği aday durumları */
+  leadStatuses: 'aday-durumlari',
   /** WhatsApp numarası eşlemesi ve otomatik cevap ayarları */
   whatsappAccounts: 'whatsapp-hesaplari',
   colors: 'colors',

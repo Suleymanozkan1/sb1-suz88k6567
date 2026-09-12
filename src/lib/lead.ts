@@ -4,70 +4,159 @@
  * Durum akışı, takip tarihi hesabı ve WhatsApp bağlantısı burada; ekranlar
  * yalnızca sonucu gösteriyor. Aynı kuralın iki ekranda iki türlü yazılması,
  * dashboard sayımı ile listenin birbirini tutmamasına yol açardı.
+ *
+ * Durumlar işletmenin düzenlediği satırlar olduğundan buradaki hiçbir kural
+ * durum ADINA bakmıyor. "Rezervasyona Döndü" yazan bir karşılaştırma,
+ * sahibi durumu "Sözleşme İmzalandı" yaptığı anda sessizce yanlış sayardı;
+ * sayı ekranda durmaya devam eder, kimse fark etmezdi. Kurallar bayrağa
+ * bakıyor: isClosed, isWon.
  */
-import type { CustomerLead, LeadStatus } from '../types';
+import type { CustomerLead, LeadStatusDef, LeadStatusTone } from '../types';
 import { todayIso } from './format';
 
 /**
- * Durumun görsel tonu.
+ * Durum tonunun ekran karşılığı.
  *
- * Kapanmış durumlar (olumsuz, iptal) soluk; iş bekleyenler vurgulu. Personel
- * listede önce yapılacak işi görmeli.
+ * Kapanmış durumlar soluk, iş bekleyenler vurgulu. Personel listede önce
+ * yapılacak işi görmeli.
  */
-export const LEAD_STATUS_TONE: Record<LeadStatus, string> = {
-  'Aranmadı': 'bg-[#fef6e7] text-[#92600e]',
-  'Arandı': 'bg-[#e7f5fb] text-[#0c5e8a]',
-  'Ulaşılamadı': 'bg-[#fdeaea] text-[#b91c1c]',
-  'Tekrar Aranacak': 'bg-[#fef6e7] text-[#92600e]',
-  'Tekrar Arandı': 'bg-[#e7f5fb] text-[#0c5e8a]',
-  "WhatsApp'tan İletişim Kuruldu": 'bg-[#e8f8ef] text-[#15803d]',
-  'İletişim Sağlandı': 'bg-[#e8f8ef] text-[#15803d]',
-  'Teklif Gönderildi': 'bg-[#ede9fe] text-[#5b21b6]',
-  'Rezervasyona Döndü': 'bg-[#e8f8ef] text-[#15803d]',
-  'Olumsuz': 'bg-surface text-brand-muted',
-  'İptal': 'bg-surface text-brand-muted',
+export const TON_SINIFI: Record<LeadStatusTone, string> = {
+  bekleyen: 'bg-[#fef6e7] text-[#92600e]',
+  ilerleyen: 'bg-[#e7f5fb] text-[#0c5e8a]',
+  olumlu: 'bg-[#e8f8ef] text-[#15803d]',
+  teklif: 'bg-[#ede9fe] text-[#5b21b6]',
+  dikkat: 'bg-[#fdeaea] text-[#b91c1c]',
+  kapali: 'bg-surface text-brand-muted',
+  notr: 'bg-surface text-brand-muted',
 };
 
-/** Kapanmış adaylar: artık iş beklemiyorlar. */
-export const KAPANAN_DURUMLAR: LeadStatus[] = ['Rezervasyona Döndü', 'Olumsuz', 'İptal'];
+/** Durum kodu -> tanım. Ekranlar etiketi ve rengi buradan okur. */
+export type DurumHaritasi = Map<string, LeadStatusDef>;
 
-export function acikMi(lead: CustomerLead): boolean {
-  return !KAPANAN_DURUMLAR.includes(lead.status);
+export function durumHaritasi(durumlar: LeadStatusDef[]): DurumHaritasi {
+  return new Map(durumlar.map((d) => [d.code, d]));
+}
+
+/**
+ * Durumun ekranda görünecek adı.
+ *
+ * Tanım bulunamazsa kodun kendisi yazılıyor. Bu, silinmiş bir durumu
+ * taşıyan eski geçmiş satırlarında oluyor; "bilinmiyor" yazmak yerine
+ * kodu göstermek en azından hangi durum olduğunu söyler.
+ */
+export function durumAdi(harita: DurumHaritasi, kod: string | null | undefined): string {
+  if (!kod) return '';
+  return harita.get(kod)?.label ?? kod;
+}
+
+export function durumSinifi(harita: DurumHaritasi, kod: string): string {
+  return TON_SINIFI[harita.get(kod)?.tone ?? 'notr'];
+}
+
+/** Yeni adayın açılacağı durum. */
+export function baslangicDurumu(durumlar: LeadStatusDef[]): string {
+  return (durumlar.find((d) => d.isInitial) ?? durumlar[0])?.code ?? '';
+}
+
+/** Rezervasyona dönüşü işaretleyen durum. */
+export function kazanimDurumu(durumlar: LeadStatusDef[]): string {
+  return durumlar.find((d) => d.isWon)?.code ?? '';
+}
+
+/**
+ * Durum seçim listesi.
+ *
+ * Pasife alınmış durumlar listeden düşer AMA adayın o an taşıdığı durum,
+ * pasif olsa bile listede kalır: yoksa kartı açan personel select'te
+ * kendi kaydının durumunu göremez ve ilk değişiklikte sessizce başka bir
+ * duruma atlar.
+ */
+export function secilebilirDurumlar(
+  durumlar: LeadStatusDef[], mevcutKod?: string,
+): LeadStatusDef[] {
+  return durumlar.filter((d) => d.active || d.code === mevcutKod);
+}
+
+/** Kapanmış aday: artık iş beklemiyor. */
+export function kapandiMi(harita: DurumHaritasi, lead: CustomerLead): boolean {
+  return harita.get(lead.status)?.isClosed ?? false;
+}
+
+export function acikMi(harita: DurumHaritasi, lead: CustomerLead): boolean {
+  return !kapandiMi(harita, lead);
 }
 
 /** Takibi bugüne gelmiş mi? Kapanmış aday sayılmıyor. */
-export function bugunAranacakMi(lead: CustomerLead, bugun = todayIso()): boolean {
-  return acikMi(lead) && lead.nextFollowupAt === bugun;
+export function bugunAranacakMi(
+  harita: DurumHaritasi, lead: CustomerLead, bugun = todayIso(),
+): boolean {
+  return acikMi(harita, lead) && lead.nextFollowupAt === bugun;
 }
 
 /** Takip tarihi geçmiş mi? Gecikmiş iş, bekleyen işten önce görünmeli. */
-export function gecikmisMi(lead: CustomerLead, bugun = todayIso()): boolean {
-  return acikMi(lead) && Boolean(lead.nextFollowupAt) && lead.nextFollowupAt < bugun;
+export function gecikmisMi(
+  harita: DurumHaritasi, lead: CustomerLead, bugun = todayIso(),
+): boolean {
+  return acikMi(harita, lead)
+    && Boolean(lead.nextFollowupAt) && lead.nextFollowupAt < bugun;
 }
 
-export interface LeadOzet {
-  yeni: number;
-  bugun: number;
-  geciken: number;
-  ulasilamayan: number;
-  tekrarAranacak: number;
-  teklif: number;
-  rezervasyon: number;
-  olumsuz: number;
+export interface LeadOzetKutusu {
+  /** Kutunun tıklandığında listeyi hangi süzgeçle açacağı. */
+  anahtar: string;
+  etiket: string;
+  deger: number;
+  /** Durum koduna bağlı kutular için; zaman kutularında boş. */
+  durumKodu?: string;
+  ton: LeadStatusTone;
 }
 
-/** Dashboard'daki müşteri takip özeti. */
-export function leadOzeti(leads: CustomerLead[], bugun = todayIso()): LeadOzet {
-  return {
-    yeni: leads.filter((l) => l.status === 'Aranmadı').length,
-    bugun: leads.filter((l) => bugunAranacakMi(l, bugun)).length,
-    geciken: leads.filter((l) => gecikmisMi(l, bugun)).length,
-    ulasilamayan: leads.filter((l) => l.status === 'Ulaşılamadı').length,
-    tekrarAranacak: leads.filter((l) => l.status === 'Tekrar Aranacak').length,
-    teklif: leads.filter((l) => l.status === 'Teklif Gönderildi').length,
-    rezervasyon: leads.filter((l) => l.status === 'Rezervasyona Döndü').length,
-    olumsuz: leads.filter((l) => l.status === 'Olumsuz' || l.status === 'İptal').length,
-  };
+/**
+ * Dashboard'daki müşteri takip özeti.
+ *
+ * Kutular sabit değil: zaman temelli iki kutu (bugün, geciken) her zaman
+ * var, geri kalanı işletmenin tanımladığı durumlardan üretiliyor. Sabit
+ * kutu listesi, sahibi yeni bir durum eklediğinde o durumu dashboard'da
+ * görünmez bırakırdı.
+ */
+export function leadOzeti(
+  leads: CustomerLead[], durumlar: LeadStatusDef[], bugun = todayIso(),
+): LeadOzetKutusu[] {
+  const harita = durumHaritasi(durumlar);
+  const sayac = new Map<string, number>();
+  for (const l of leads) sayac.set(l.status, (sayac.get(l.status) ?? 0) + 1);
+
+  const kutular: LeadOzetKutusu[] = [
+    {
+      anahtar: 'bugun',
+      etiket: 'Bugün aranacak',
+      deger: leads.filter((l) => bugunAranacakMi(harita, l, bugun)).length,
+      ton: 'bekleyen',
+    },
+    {
+      anahtar: 'geciken',
+      etiket: 'Geciken takip',
+      deger: leads.filter((l) => gecikmisMi(harita, l, bugun)).length,
+      ton: 'dikkat',
+    },
+  ];
+
+  for (const d of durumlar) {
+    // Pasif ve boş durum kutusu gösterilmiyor: sahibi akıştan çıkardığı
+    // bir durumu dashboard'da sıfır olarak görmeye devam etmemeli.
+    const adet = sayac.get(d.code) ?? 0;
+    if (!d.active && adet === 0) continue;
+    kutular.push({
+      anahtar: `durum:${d.code}`, etiket: d.label, deger: adet,
+      durumKodu: d.code, ton: d.tone,
+    });
+  }
+  return kutular;
+}
+
+/** Dashboard'da toplam aday sayısı. */
+export function toplamAday(leads: CustomerLead[]): number {
+  return leads.length;
 }
 
 /**

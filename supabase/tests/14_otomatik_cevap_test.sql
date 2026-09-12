@@ -91,7 +91,7 @@ declare
   v_lead uuid;
 begin
   insert into public.customer_leads (business_id, name, phone, source, status)
-  values (current_setting('test.biz')::uuid, 'Otomatik Deneme', '5551112233', 'WhatsApp', 'Aranmadı')
+  values (current_setting('test.biz')::uuid, 'Otomatik Deneme', '5551112233', 'WhatsApp', 'yeni')
   returning id into v_lead;
 
   -- bilinen deger gecmeli

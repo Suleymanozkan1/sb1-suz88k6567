@@ -30,7 +30,22 @@ export interface WhatsappTalep {
   /** ISO (YYYY-AA-GG). Ay adı verilip gün verilmediyse boş kalır. */
   date: string;
   organizationType: OrganizationType | '';
-  /** Çözümlenemeyen satırlar; kaydı açan kişi görsün diye saklanıyor. */
+  /**
+   * Çözülemeyen ama tarih ANLATAN satır: "Mayısın ilk haftası".
+   *
+   * Uydurma bir güne çevrilmiyor; salonun o gün dolu sanılmasına yol
+   * açardı. Kartta etkinlik tarihinin yerinde olduğu gibi görünüyor.
+   */
+  dateText: string;
+  /**
+   * Müşterinin ne sorduğu: "yemekli yemeksiz fiyat" gibi.
+   *
+   * Nottan ayrı duruyor, çünkü personel kartı açtığında önce müşterinin
+   * TALEBİNİ görmeli; genel notun içinde kaybolduğunda aranan kişiye ne
+   * için arandığı sorulmadan konuşmaya başlanıyordu.
+   */
+  request: string;
+  /** Yukarıdakilerin hiçbirine girmeyen satırlar. */
   note: string;
 }
 
@@ -148,12 +163,39 @@ function isimOlabilir(satir: string): boolean {
   return sozcukler.length >= 1 && sozcukler.length <= 4 && satir.trim().length >= 3;
 }
 
+/**
+ * Satır bir tarih ANLATIYOR mu?
+ *
+ * Kesin tarih değil, "Mayıs ilk hafta" / "yaz sonu" gibi ifadeler. Talep
+ * cümlesinden ayırmak için; ikisi aynı torbaya girince kartta tarih alanı
+ * boş, not alanı kalabalık görünüyordu.
+ *
+ * Ay adı ararken sonuna en çok dört harflik ek kabul ediliyor ("mayısta",
+ * "mayısın"). Ek sınırsız bırakılsaydı "martı", "ekimden" gibi kelimelerin
+ * yanında ay adıyla başlayan alakasız kelimeler de tarih sayılırdı.
+ */
+function tarihAnlatiyorMu(satir: string): boolean {
+  const s = sade(satir);
+  if (/\b(hafta|ayin|ayinin|basi|basinda|sonu|sonunda|ortasi|ortasinda)\b/.test(s)) return true;
+  if (/\b(yaz|kis|ilkbahar|sonbahar|bayram|sezon)\b/.test(s)) return true;
+  for (const ay of Object.keys(AYLAR)) {
+    if (new RegExp(`(^|\\W)${ay}[a-z]{0,4}(\\W|$)`).test(s)) return true;
+  }
+  return false;
+}
+
 export function talebiCoz(ham: string, bugun = new Date()): WhatsappTalep {
   const sonuc: WhatsappTalep = {
     name: '', phone: '', email: '', guestCount: null, date: '',
-    organizationType: '', note: '',
+    organizationType: '', dateText: '', request: '', note: '',
   };
-  const artan: string[] = [];
+  /*
+    Artan satırlar bayrakla taşınıyor. "turDan" işareti gerekli: "nisan"
+    hem bir ay adı hem de bir organizasyon türü ("Nişan"). Bayrak olmadan
+    "nişan yapacağız, salon arıyoruz" satırı tarih ifadesi sanılır ve
+    kartta etkinlik tarihinin yerine yazılırdı.
+  */
+  const artan: { metin: string; turDan: boolean }[] = [];
 
   for (const satirHam of ham.split(/\r?\n/)) {
     const satir = satirHam.trim();
@@ -185,15 +227,30 @@ export function talebiCoz(ham: string, bugun = new Date()): WhatsappTalep {
       if (tur) {
         sonuc.organizationType = tur;
         if (sade(satir).split(/\s+/).length <= 2) continue;
+        // Tür buradan çıktı: aynı satır tarih ifadesi olarak sayılmasın.
+        artan.push({ metin: satir, turDan: true });
+        continue;
       }
     }
 
     if (!sonuc.name && isimOlabilir(satir)) { sonuc.name = satir; continue; }
 
-    artan.push(satir);
+    artan.push({ metin: satir, turDan: false });
   }
 
-  sonuc.note = artan.join('\n');
+  /*
+    Artan satırlar üçe ayrılıyor. Tarih anlatan satır kartın tarih
+    alanına, geri kalanın İLKİ talebe, kalanı nota gidiyor: müşteri
+    genellikle tek cümleyle ne istediğini yazıyor, sonrakiler ek bilgi.
+  */
+  const tarihMi = (a: { metin: string; turDan: boolean }) =>
+    !a.turDan && tarihAnlatiyorMu(a.metin);
+  const tarihSatirlari = artan.filter(tarihMi).map((a) => a.metin);
+  const digerleri = artan.filter((a) => !tarihMi(a)).map((a) => a.metin);
+  sonuc.dateText = sonuc.date ? '' : (tarihSatirlari[0] ?? '');
+  sonuc.request = digerleri[0] ?? '';
+  // Tarih satırı ayrıca nota yazılmıyor: kartta iki yerde görünürdü.
+  sonuc.note = [...digerleri.slice(1), ...tarihSatirlari.slice(1)].join('\n');
   return sonuc;
 }
 

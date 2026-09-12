@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import StatCard from '../../components/StatCard';
 import { useAuth } from '../../context/AuthContext';
-import { useCashFlow, useLeads, useReservationsWithBalances } from '../../lib/queries';
-import { leadOzeti } from '../../lib/lead';
-import type { CustomerLead } from '../../types';
+import {
+  useCashFlow, useLeadStatuses, useLeads, useReservationsWithBalances,
+} from '../../lib/queries';
+import { leadOzeti, toplamAday } from '../../lib/lead';
+import type { CustomerLead, LeadStatusDef } from '../../types';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, formatNumber, todayIso } from '../../lib/format';
 import { lastMonthsReport, programReport, summarize } from '../../lib/reports';
@@ -16,6 +18,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
   const { data: adaylar = [] } = useLeads();
+  const { data: adayDurumlari = [] } = useLeadStatuses();
   const cashQuery = useCashFlow();
   const today = todayIso();
   const currency = user?.currency ?? 'TL';
@@ -75,7 +78,7 @@ export default function Dashboard() {
           <h2 id="lead-title" className="font-heading text-lg font-bold text-brand">Müşteri takip</h2>
           <Link to="/panel/musteri-adaylari" className="text-sm">Tümü →</Link>
         </div>
-        <LeadOzetKutulari adaylar={adaylar} />
+        <LeadOzetKutulari adaylar={adaylar} durumlar={adayDurumlari} />
       </section>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -213,32 +216,51 @@ function Summary({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Dashboard'daki müşteri takip sayıları; her biri listedeki bir süzgece gider. */
-function LeadOzetKutulari({ adaylar }: { adaylar: CustomerLead[] }) {
-  const ozet = leadOzeti(adaylar);
-  const kutular: { etiket: string; deger: number; adres: string; vurgu?: string }[] = [
-    { etiket: 'Yeni (aranmadı)', deger: ozet.yeni, adres: '/panel/musteri-adaylari?durum=Aranmadı' },
-    { etiket: 'Bugün aranacak', deger: ozet.bugun, adres: '/panel/musteri-adaylari?suzgec=bugun', vurgu: 'text-[#92600e]' },
-    { etiket: 'Geciken takip', deger: ozet.geciken, adres: '/panel/musteri-adaylari?suzgec=geciken', vurgu: 'text-[#b91c1c]' },
-    { etiket: 'Ulaşılamayan', deger: ozet.ulasilamayan, adres: '/panel/musteri-adaylari?durum=Ulaşılamadı' },
-    { etiket: 'Tekrar aranacak', deger: ozet.tekrarAranacak, adres: '/panel/musteri-adaylari?durum=Tekrar Aranacak' },
-    { etiket: 'Teklif gönderilen', deger: ozet.teklif, adres: '/panel/musteri-adaylari?durum=Teklif Gönderildi' },
-    { etiket: 'Rezervasyona dönen', deger: ozet.rezervasyon, adres: '/panel/musteri-adaylari?durum=Rezervasyona Döndü', vurgu: 'text-[#15803d]' },
-    { etiket: 'Olumsuz', deger: ozet.olumsuz, adres: '/panel/musteri-adaylari?durum=Olumsuz' },
-  ];
+/**
+ * Dashboard'daki müşteri takip sayıları; her biri listedeki bir süzgece gider.
+ *
+ * Kutular sabit değil, işletmenin tanımladığı durumlardan üretiliyor.
+ * Sabit liste, sahibi yeni bir durum eklediğinde o durumu dashboard'da
+ * görünmez bırakırdı.
+ */
+function LeadOzetKutulari(
+  { adaylar, durumlar }: { adaylar: CustomerLead[]; durumlar: LeadStatusDef[] },
+) {
+  const kutular = leadOzeti(adaylar, durumlar);
 
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {kutular.map((k) => (
-        <li key={k.etiket}>
-          <Link to={k.adres} className="block rounded-lg border border-line px-3 py-2.5 hover:border-brand">
-            <span className="block text-xs text-brand-muted">{k.etiket}</span>
-            <span className={`mt-0.5 block font-heading text-xl font-bold ${k.vurgu ?? 'text-brand'}`}>
-              {k.deger}
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <>
+      <p className="mb-3 text-sm text-brand-muted">
+        Toplam <strong className="text-brand">{toplamAday(adaylar)}</strong> müşteri adayı
+      </p>
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {kutular.map((k) => (
+          <li key={k.anahtar}>
+            <Link
+              to={k.durumKodu
+                ? `/panel/musteri-adaylari?durum=${encodeURIComponent(k.durumKodu)}`
+                : `/panel/musteri-adaylari?suzgec=${k.anahtar}`}
+              className="block rounded-lg border border-line px-3 py-2.5 hover:border-brand"
+            >
+              <span className="block text-xs text-brand-muted">{k.etiket}</span>
+              <span className={`mt-0.5 block font-heading text-xl font-bold ${VURGU[k.ton]}`}>
+                {k.deger}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
+
+/** Sayının rengi. Tonun kendisi veritabanından, karşılığı buradan. */
+const VURGU: Record<LeadStatusDef['tone'], string> = {
+  bekleyen: 'text-[#92600e]',
+  ilerleyen: 'text-brand',
+  olumlu: 'text-[#15803d]',
+  teklif: 'text-[#5b21b6]',
+  dikkat: 'text-[#b91c1c]',
+  kapali: 'text-brand-muted',
+  notr: 'text-brand',
+};

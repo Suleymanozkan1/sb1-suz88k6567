@@ -6,13 +6,14 @@ import { QueryBoundary } from '../../components/QueryState';
 import { useAuth } from '../../context/AuthContext';
 import {
   useAddLeadMessage, useDeleteLead, useLead, useLeadMessages,
-  useLeadStatusHistory, useSaveLead, useStaff,
+  useLeadStatusHistory, useLeadStatuses, useSaveLead, useStaff,
 } from '../../lib/queries';
 import { formatDate, formatPhone, todayIso } from '../../lib/format';
 import { errorMessage } from '../../lib/authHelpers';
 import { uid } from '../../lib/ids';
-import { LEAD_STATUS_TONE, whatsappWebLinki } from '../../lib/lead';
-import { LEAD_STATUSES } from '../../types';
+import {
+  durumAdi, durumHaritasi, durumSinifi, secilebilirDurumlar, whatsappWebLinki,
+} from '../../lib/lead';
 import type { CustomerLead, LeadMessage, LeadStatus } from '../../types';
 
 /**
@@ -29,6 +30,8 @@ export default function MusteriAdayiDetay() {
   const { data: lead, isLoading, error } = useLead(id);
   const { data: gecmis = [] } = useLeadMessages(id);
   const { data: durumGecmisi = [] } = useLeadStatusHistory(id);
+  const { data: durumlar = [] } = useLeadStatuses();
+  const harita = durumHaritasi(durumlar);
   const { data: personel = [] } = useStaff();
   const kaydet = useSaveLead();
   const mesajEkle = useAddLeadMessage();
@@ -76,10 +79,17 @@ export default function MusteriAdayiDetay() {
       p.set('kanal', 'Diğer');
       p.set('kanalDetay', lead.sourceDetail || lead.source);
     }
-    // Çözülemeyen tarih ifadesi nota geçiyor: "Mayıs ilk hafta" bilgisi
-    // kaybolmamalı.
-    const notlar = [lead.note, lead.eventDate ? '' : lead.eventDateText]
-      .filter(Boolean).join('\n');
+    /*
+      Nota taşınanlar: müşterinin TALEBİ, çözülemeyen tarih ifadesi ve
+      personelin notu. Üçü de rezervasyon formunda görünmeli -- talep
+      taşınmasaydı "yemekli mi yemeksiz mi sormuştu" bilgisi adayın
+      kartında kalır, rezervasyonu açan kişiye hiç ulaşmazdı.
+    */
+    const notlar = [
+      lead.requestText,
+      lead.eventDate ? '' : lead.eventDateText,
+      lead.note,
+    ].filter(Boolean).join('\n');
     if (notlar) p.set('not', notlar);
     p.set('aday', lead.id);
     navigate(`/panel/rezervasyonlar/yeni?${p.toString()}`);
@@ -170,13 +180,25 @@ export default function MusteriAdayiDetay() {
               <Bilgi etiket="Kişi sayısı" deger={lead.guestCount !== null ? String(lead.guestCount) : ''} />
               <Bilgi etiket="Organizasyon" deger={lead.organizationType} />
               <Bilgi etiket="Kaynak" deger={`${lead.source}${lead.sourceDetail ? ` · ${lead.sourceDetail}` : ''}`} />
+              <Bilgi etiket="İlk iletişim" deger={lead.createdAt ? formatDate(lead.createdAt.slice(0, 10)) : ''} />
               <Bilgi etiket="Son iletişim" deger={lead.lastContactAt ? formatDate(lead.lastContactAt.slice(0, 10)) : ''} />
+              <Bilgi etiket="Sonraki aranma" deger={lead.nextFollowupAt ? formatDate(lead.nextFollowupAt) : ''} />
               <Bilgi
                 etiket="Rezervasyon"
                 deger={lead.reservationId ? 'Oluşturuldu' : ''}
                 link={lead.reservationId ? `/panel/rezervasyonlar/${lead.reservationId}` : undefined}
               />
             </dl>
+            {/*
+              Talep nottan ayrı ve önce duruyor: personel numarayı çevirmeden
+              önce müşterinin NE SORDUĞUNU görmeli.
+            */}
+            {lead.requestText && (
+              <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm text-brand">
+                <span className="font-medium text-brand-muted">Talep: </span>
+                {lead.requestText}
+              </p>
+            )}
             {lead.note && <p className="mt-3 whitespace-pre-wrap text-sm text-brand">{lead.note}</p>}
           </header>
 
@@ -193,12 +215,14 @@ export default function MusteriAdayiDetay() {
                 onChange={(e) => {
                   const yeni = e.target.value as LeadStatus;
                   void yaz({ status: yeni, lastContactAt: new Date().toISOString() },
-                    `Durum "${lead.status}" → "${yeni}" olarak değiştirildi.`);
+                    `Durum "${durumAdi(harita, lead.status)}" → "${durumAdi(harita, yeni)}" olarak değiştirildi.`);
                 }}
               >
-                {LEAD_STATUSES.map((d) => <option key={d} value={d}>{d}</option>)}
+                {secilebilirDurumlar(durumlar, lead.status).map((d) => (
+                  <option key={d.code} value={d.code}>{d.label}</option>
+                ))}
               </select>
-              <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs ${LEAD_STATUS_TONE[lead.status]}`}>
+              <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs ${durumSinifi(harita, lead.status)}`}>
                 {lead.status}
               </span>
 
@@ -292,7 +316,15 @@ export default function MusteriAdayiDetay() {
                   <ul className="mt-2 space-y-1 text-sm">
                     {durumGecmisi.map((d) => (
                       <li key={d.id} className="text-brand-muted">
-                        {formatDate(d.createdAt.slice(0, 10))} · {d.fromStatus ?? 'Yeni kayıt'} → {d.toStatus}
+                        {/*
+                          Geçmiş KODU saklıyor, ekran adı gösteriyor.
+                          Durum silinmişse durumAdi kodun kendisine düşer;
+                          "bilinmiyor" yazmak hangi durum olduğunu hiç
+                          söylemezdi.
+                        */}
+                        {formatDate(d.createdAt.slice(0, 10))} ·{' '}
+                        {d.fromStatus ? durumAdi(harita, d.fromStatus) : 'Yeni kayıt'}
+                        {' → '}{durumAdi(harita, d.toStatus)}
                         {d.actorEmail ? ` · ${d.actorEmail}` : ''}
                       </li>
                     ))}

@@ -33,8 +33,8 @@ export default function DemoNotice({ className = '' }: { className?: string }) {
       <div className="flex items-start gap-3">
         <p className="flex-1">
           <strong>Demo modu.</strong> Veritabanı bağlı değil; kayıtlarınız yalnızca bu tarayıcıda
-          saklanır ve başka bir cihazdan görünmez. Gerçek kullanım için Supabase bağlantısını
-          yapılandırın.
+          saklanır ve başka bir cihazdan görünmez. Gerçek kullanım için sunucu
+          bağlantısını yapılandırın.
         </p>
         <button
           type="button"

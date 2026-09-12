@@ -3,11 +3,14 @@ import { Link, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import { QueryBoundary } from '../../components/QueryState';
 import { useAuth } from '../../context/AuthContext';
-import { useLeads, useStaff } from '../../lib/queries';
+import { useLeadStatuses, useLeads, useStaff } from '../../lib/queries';
 import { formatDate, formatPhone, normalizeTr } from '../../lib/format';
-import { LEAD_STATUS_TONE, bugunAranacakMi, etkinlikTarihi, gecikmisMi } from '../../lib/lead';
+import {
+  bugunAranacakMi, durumAdi, durumHaritasi, durumSinifi, etkinlikTarihi, gecikmisMi,
+  type DurumHaritasi,
+} from '../../lib/lead';
 import { IconSearch } from '../../components/Icons';
-import { LEAD_SOURCES, LEAD_STATUSES } from '../../types';
+import { LEAD_SOURCES } from '../../types';
 import type { CustomerLead, LeadSource, LeadStatus } from '../../types';
 
 /**
@@ -24,24 +27,36 @@ type Suzgec = 'hepsi' | 'bugun' | 'geciken' | 'acik';
 
 export default function MusteriAdaylari() {
   const { data, isLoading, error } = useLeads();
+  const { data: durumlar = [] } = useLeadStatuses();
   const { data: personel = [] } = useStaff();
   const { can } = useAuth();
   // Dashboard'daki kutular buraya süzgeçle geliyor; tıklanan kutu ile
   // açılan listenin farklı şey göstermesi güveni bozardı.
   const [param] = useSearchParams();
   const [arama, setArama] = useState('');
-  const [durum, setDurum] = useState<'' | LeadStatus>(
-    () => (LEAD_STATUSES as string[]).includes(param.get('durum') ?? '')
-      ? (param.get('durum') as LeadStatus) : '',
-  );
+  // Durum süzgeci adres satırından geliyor. Geçerliliği burada
+  // denetlenmiyor: durumlar henüz yüklenmemiş olabilir ve bilinmeyen bir
+  // kod zaten hiçbir adayla eşleşmez, listeyi boş gösterir.
+  const [durum, setDurum] = useState<'' | LeadStatus>(() => param.get('durum') ?? '');
   const [kaynak, setKaynak] = useState<'' | LeadSource>('');
   const [sorumlu, setSorumlu] = useState('');
+  /*
+    Tarih aralıkları. İki ayrı eksen var ve karıştırılmamalı: kaydın
+    AÇILDIĞI tarih ("geçen hafta kaç talep geldi") ile ETKİNLİĞİN
+    tarihi ("ağustosta kimler var"). Tek bir tarih süzgeci olsaydı
+    bunlardan biri hep eksik kalırdı.
+  */
+  const [kayitBas, setKayitBas] = useState('');
+  const [kayitBit, setKayitBit] = useState('');
+  const [etkBas, setEtkBas] = useState('');
+  const [etkBit, setEtkBit] = useState('');
   const [suzgec, setSuzgec] = useState<Suzgec>(() => {
     const istenen = param.get('suzgec');
     return istenen === 'bugun' || istenen === 'geciken' || istenen === 'acik' ? istenen : 'hepsi';
   });
 
   const adaylar = useMemo(() => data ?? [], [data]);
+  const harita = useMemo(() => durumHaritasi(durumlar), [durumlar]);
 
   const gorunen = useMemo(() => {
     const q = normalizeTr(arama);
@@ -49,16 +64,30 @@ export default function MusteriAdaylari() {
       if (durum && l.status !== durum) return false;
       if (kaynak && l.source !== kaynak) return false;
       if (sorumlu && l.assignedTo !== sorumlu) return false;
-      if (suzgec === 'bugun' && !bugunAranacakMi(l)) return false;
-      if (suzgec === 'geciken' && !gecikmisMi(l)) return false;
-      if (suzgec === 'acik' && (l.status === 'Rezervasyona Döndü'
-        || l.status === 'Olumsuz' || l.status === 'İptal')) return false;
+      if (suzgec === 'bugun' && !bugunAranacakMi(harita, l)) return false;
+      if (suzgec === 'geciken' && !gecikmisMi(harita, l)) return false;
+      if (suzgec === 'acik' && (harita.get(l.status)?.isClosed ?? false)) return false;
+
+      // Kayıt tarihi ISO damga; ilk on karakter gün demek.
+      const kayitGunu = l.createdAt.slice(0, 10);
+      if (kayitBas && kayitGunu < kayitBas) return false;
+      if (kayitBit && kayitGunu > kayitBit) return false;
+      /*
+        Etkinlik tarihi süzgeci, tarihi ÇÖZÜLMEMİŞ adayları eler
+        ("Mayısın ilk haftası"). Bu bilinçli: hangi güne denk geldiği
+        bilinmeyen bir kaydı aralığın içinde ya da dışında saymak,
+        ikisi de yanlış bir cevap üretirdi.
+      */
+      if ((etkBas || etkBit) && !l.eventDate) return false;
+      if (etkBas && l.eventDate < etkBas) return false;
+      if (etkBit && l.eventDate > etkBit) return false;
       if (q && !normalizeTr(`${l.name} ${l.phone} ${l.email} ${l.organizationType}`).includes(q)) {
         return false;
       }
       return true;
     });
-  }, [adaylar, arama, durum, kaynak, sorumlu, suzgec]);
+  }, [adaylar, arama, durum, kaynak, sorumlu, suzgec, harita,
+    kayitBas, kayitBit, etkBas, etkBit]);
 
   const personelAdi = (id?: string) =>
     personel.find((p) => p.id === id)?.fullName ?? '';
@@ -78,6 +107,7 @@ export default function MusteriAdaylari() {
             <Link to="/panel/musteri-adaylari/yeni" className="btn-primary text-white hover:text-white">
               Yeni aday
             </Link>
+            <Link to="/panel/musteri-adaylari/durumlar" className="btn-ghost">Durumlar</Link>
             <Link to="/panel/whatsapp-ayarlari" className="btn-ghost">WhatsApp ayarları</Link>
           </div>
         )}
@@ -116,7 +146,7 @@ export default function MusteriAdaylari() {
           <span className="sr-only">Durum filtresi</span>
           <select className="field-input" value={durum} onChange={(e) => setDurum(e.target.value as '' | LeadStatus)}>
             <option value="">Tüm durumlar</option>
-            {LEAD_STATUSES.map((d) => <option key={d} value={d}>{d}</option>)}
+            {durumlar.map((d) => <option key={d.code} value={d.code}>{d.label}</option>)}
           </select>
         </label>
         <label className="block">
@@ -135,6 +165,42 @@ export default function MusteriAdaylari() {
             </select>
           </label>
         )}
+
+        <fieldset className="md:col-span-2">
+          <legend className="field-label">Kayıt tarihi</legend>
+          <div className="flex items-center gap-2">
+            <input type="date" className="field-input" aria-label="Kayıt tarihi başlangıç"
+              value={kayitBas} onChange={(e) => setKayitBas(e.target.value)} />
+            <span className="text-brand-muted">–</span>
+            <input type="date" className="field-input" aria-label="Kayıt tarihi bitiş"
+              value={kayitBit} onChange={(e) => setKayitBit(e.target.value)} />
+          </div>
+        </fieldset>
+
+        <fieldset className="md:col-span-2">
+          <legend className="field-label">Etkinlik tarihi</legend>
+          <div className="flex items-center gap-2">
+            <input type="date" className="field-input" aria-label="Etkinlik tarihi başlangıç"
+              value={etkBas} onChange={(e) => setEtkBas(e.target.value)} />
+            <span className="text-brand-muted">–</span>
+            <input type="date" className="field-input" aria-label="Etkinlik tarihi bitiş"
+              value={etkBit} onChange={(e) => setEtkBit(e.target.value)} />
+          </div>
+        </fieldset>
+
+        {(kayitBas || kayitBit || etkBas || etkBit) && (
+          <div className="md:col-span-4">
+            <button
+              type="button"
+              className="text-sm text-brand-muted underline hover:text-brand"
+              onClick={() => {
+                setKayitBas(''); setKayitBit(''); setEtkBas(''); setEtkBit('');
+              }}
+            >
+              Tarih süzgeçlerini temizle
+            </button>
+          </div>
+        )}
       </div>
 
       <p className="mb-3 text-sm text-brand-muted">
@@ -151,7 +217,9 @@ export default function MusteriAdaylari() {
         </div>
       ) : (
         <ul className="grid gap-3">
-          {gorunen.map((l) => <Kart key={l.id} lead={l} personelAdi={personelAdi} />)}
+          {gorunen.map((l) => (
+            <Kart key={l.id} lead={l} personelAdi={personelAdi} harita={harita} />
+          ))}
         </ul>
       )}
     </QueryBoundary>
@@ -165,9 +233,11 @@ export default function MusteriAdaylari() {
  * sorumlu, sonraki takip. Personel telefonu elinde arama yaparken karta
  * bakıp konuşabilmeli.
  */
-function Kart({ lead, personelAdi }: { lead: CustomerLead; personelAdi: (id?: string) => string }) {
-  const geciken = gecikmisMi(lead);
-  const bugun = bugunAranacakMi(lead);
+function Kart({ lead, personelAdi, harita }: {
+  lead: CustomerLead; personelAdi: (id?: string) => string; harita: DurumHaritasi;
+}) {
+  const geciken = gecikmisMi(harita, lead);
+  const bugun = bugunAranacakMi(harita, lead);
 
   return (
     <li className={`card p-4 ${geciken ? 'border-l-4 border-l-[#b91c1c]' : bugun ? 'border-l-4 border-l-[#92600e]' : ''}`}>
@@ -181,8 +251,8 @@ function Kart({ lead, personelAdi }: { lead: CustomerLead; personelAdi: (id?: st
           </Link>
           <p className="text-sm text-brand-muted">{formatPhone(lead.phone) || 'Telefon yok'}</p>
         </div>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs ${LEAD_STATUS_TONE[lead.status]}`}>
-          {lead.status}
+        <span className={`rounded-full px-2.5 py-0.5 text-xs ${durumSinifi(harita, lead.status)}`}>
+          {durumAdi(harita, lead.status)}
         </span>
       </div>
 
@@ -191,6 +261,7 @@ function Kart({ lead, personelAdi }: { lead: CustomerLead; personelAdi: (id?: st
         <Kalem etiket="Kişi" deger={lead.guestCount !== null ? String(lead.guestCount) : ''} />
         <Kalem etiket="Organizasyon" deger={lead.organizationType} />
         <Kalem etiket="Kaynak" deger={lead.source} />
+        <Kalem etiket="İlk iletişim" deger={lead.createdAt ? formatDate(lead.createdAt.slice(0, 10)) : ''} />
         <Kalem etiket="Sorumlu" deger={personelAdi(lead.assignedTo)} />
         <Kalem
           etiket="Sonraki takip"
@@ -198,6 +269,12 @@ function Kart({ lead, personelAdi }: { lead: CustomerLead; personelAdi: (id?: st
           vurgu={geciken ? 'text-[#b91c1c]' : bugun ? 'text-[#92600e]' : undefined}
         />
       </dl>
+
+      {lead.requestText && (
+        <p className="mt-2 text-sm text-brand">
+          <span className="text-brand-muted">Talep: </span>{lead.requestText}
+        </p>
+      )}
 
       {geciken && (
         <p className="mt-2 text-xs font-medium text-[#b91c1c]">Takip tarihi geçti.</p>

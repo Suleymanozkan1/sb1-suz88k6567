@@ -14,8 +14,8 @@ async function moduluYukle(env: Record<string, string | undefined> = {}) {
     ...ESKI_ENV,
     PGRST_URL: 'http://veri.yerel',
         JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
-    WHATSAPP_TOKEN: 'jeton',
-    WHATSAPP_PHONE_ID: '111222333',
+    WHATSAPP_ACCESS_TOKEN: 'jeton',
+    WHATSAPP_PHONE_NUMBER_ID: '111222333',
     ...env,
   };
   vi.resetModules();
@@ -134,7 +134,7 @@ describe('gönderim', () => {
   });
 
   it('jeton tanımlı değilse çalışmaz', async () => {
-    const { default: handler, isSendConfigured } = await moduluYukle({ WHATSAPP_TOKEN: undefined });
+    const { default: handler, isSendConfigured } = await moduluYukle({ WHATSAPP_ACCESS_TOKEN: undefined });
     expect(isSendConfigured()).toBe(false);
     expect((await handler(istek({ leadId: 'l', body: 'x' }))).status).toBe(503);
   });

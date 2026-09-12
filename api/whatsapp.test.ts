@@ -54,8 +54,11 @@ let hesapVar = true;
 let hesapAyari: Record<string, unknown> = {};
 let gonderilen: Record<string, unknown>[] = [];
 let otomatikGecmis: { auto_kind: string; created_at: string }[] = [];
-let mevcutAday: { id: string; name: string; email: string; status: string } | null = null;
+let mevcutAday: Record<string, unknown> | null = null;
 let yazmaHatasi = false;
+let durumYok = false;
+let baslangicIsaretliYok = false;
+let hizSiniriAsildi = false;
 
 beforeEach(() => {
   acilanAday = [];
@@ -67,6 +70,9 @@ beforeEach(() => {
   otomatikGecmis = [];
   mevcutAday = null;
   yazmaHatasi = false;
+  durumYok = false;
+  baslangicIsaretliYok = false;
+  hizSiniriAsildi = false;
   vi.stubGlobal('fetch', vi.fn(async (girdi: string | URL, init?: RequestInit) => {
     const adres = String(girdi);
     const yontem = init?.method ?? 'GET';
@@ -88,6 +94,21 @@ beforeEach(() => {
     if (adres.includes('graph.facebook.com')) {
       gonderilen.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
       return new Response(JSON.stringify({ messages: [{ id: 'wamid.OUT1' }] }), { status: 200 });
+    }
+    // Hız sınırı: sunucu fonksiyonu. Sınıra takılmadığını söylüyor.
+    if (adres.includes('/rpc/check_rate_limit')) {
+      return new Response(JSON.stringify(hizSiniriAsildi ? false : true), { status: 200 });
+    }
+    // İşletmenin tanımlı durumları. Yeni aday başlangıç durumuyla açılır.
+    if (adres.includes('lead_statuses')) {
+      if (durumYok) return new Response('[]', { status: 200 });
+      // Başlangıç işaretli durum sorgusu ile "sıradaki ilk durum" sorgusu
+      // AYRI cevaplanıyor; yoksa yedek yol hiç sınanmamış olurdu.
+      if (adres.includes('is_initial=is.true')) {
+        return new Response(
+          JSON.stringify(baslangicIsaretliYok ? [] : [{ code: 'yeni' }]), { status: 200 });
+      }
+      return new Response(JSON.stringify([{ code: 'ilk_sirada' }]), { status: 200 });
     }
     if (adres.includes('customer_leads')) {
       if (yontem === 'GET') {
@@ -210,7 +231,7 @@ düğün`;
     }));
   }
 
-  it('yeni adayı Aranmadı durumuyla açar', async () => {
+  it('yeni adayı işletmenin başlangıç durumuyla açar', async () => {
     const yanit = await gonder(ORNEK);
 
     expect(yanit.status).toBe(200);
@@ -218,7 +239,7 @@ düğün`;
     expect(acilanAday[0]).toMatchObject({
       business_id: 'biz-1', name: 'Ömer Ay', phone: '5332642537',
       email: 'oay685126@gmail.com', guest_count: 1000, event_date: '2029-07-14',
-      organization_type: 'Düğün', source: 'WhatsApp', status: 'Aranmadı',
+      organization_type: 'Düğün', source: 'WhatsApp', status: 'yeni',
     });
     expect(await yanit.json()).toMatchObject({ yeniAday: 1 });
   });
@@ -233,7 +254,10 @@ düğün`;
 
   it('aynı numaradan ikinci mesaj YENİ aday açmaz', async () => {
     // "Bu müşteri daha önce arandı mı" sorusunun cevapsız kalmaması buna bağlı.
-    mevcutAday = { id: 'lead-eski', name: 'Ömer Ay', email: 'o@x.com', status: 'Arandı' };
+    mevcutAday = {
+      id: 'lead-eski', name: 'Ömer Ay', email: 'o@x.com', status: 'arandi',
+      request_text: '', event_date_text: '', event_date: null,
+    };
     const yanit = await gonder('İkinci mesajım');
 
     expect(acilanAday).toHaveLength(0);
@@ -241,10 +265,92 @@ düğün`;
     expect(await yanit.json()).toMatchObject({ eklenen: 1, yeniAday: 0 });
   });
 
+  /*
+    Şartnamedeki örnek mesaj ve beklenen çıktısı. Bu test bilerek
+    "uçtan uca" yazılmış: çözümleyicinin birim testleri ayrı duruyor,
+    burada mesajın webhook'tan geçip veritabanı satırına ne olarak
+    yazıldığı doğrulanıyor. İkisi ayrıştığında bir yerde alan adı
+    değişmiştir ve bu test tutar.
+  */
+  it('şartnamedeki örnek mesajı beklenen alanlara ayırır', async () => {
+    const SARTNAME = `Ömer Ay
++905332642537
+oay685126@gmail.com
+Fiyat tahminen yemekli ve yemeksiz
+1000
+Mayısın ilk haftası
+düğün`;
+    await gonder(SARTNAME);
+
+    expect(acilanAday).toHaveLength(1);
+    expect(acilanAday[0]).toMatchObject({
+      name: 'Ömer Ay',
+      phone: '5332642537',
+      email: 'oay685126@gmail.com',
+      request_text: 'Fiyat tahminen yemekli ve yemeksiz',
+      guest_count: 1000,
+      event_date_text: 'Mayısın ilk haftası',
+      organization_type: 'Düğün',
+      status: 'yeni',
+      source: 'WhatsApp',
+    });
+    // Gün verilmedi: uydurulmuş bir tarih YAZILMAMALI.
+    expect(acilanAday[0].event_date).toBeNull();
+  });
+
+  it('aynı mesaj ikinci kez gelince ikinci aday oluşmaz', async () => {
+    const SARTNAME = 'Ömer Ay\n+905332642537\noay685126@gmail.com\n1000\ndüğün';
+    await gonder(SARTNAME);
+    expect(acilanAday).toHaveLength(1);
+
+    // İkinci teslimatta aday artık var; webhook onu bulmalı.
+    mevcutAday = {
+      id: 'lead-1', name: 'Ömer Ay', email: 'oay685126@gmail.com', status: 'yeni',
+      request_text: '', event_date_text: '', event_date: null,
+    };
+    const yanit = await gonder(SARTNAME);
+
+    expect(acilanAday).toHaveLength(1);
+    expect(await yanit.json()).toMatchObject({ yeniAday: 0, eklenen: 1 });
+    // İkinci mesaj mevcut adayın geçmişine eklendi.
+    expect(yazilanMesaj.filter((m) => m.direction === 'gelen')).toHaveLength(2);
+  });
+
+  it('başlangıç durumu işaretli değilse sıradaki ilk durumu kullanır', async () => {
+    // Talebi kaybetmektense yanlış kutuya koymak yeğdir.
+    baslangicIsaretliYok = true;
+    await gonder(ORNEK);
+    expect(acilanAday[0]).toMatchObject({ status: 'ilk_sirada' });
+  });
+
+  it('işletmenin hiç durumu yoksa talep sessizce düşmez', async () => {
+    /*
+      Durum yoksa aday açılamaz (yabancı anahtar). Önemli olan webhook'un
+      yine de 200 dönmesi: Meta 200 almazsa aynı mesajı tekrar tekrar
+      gönderir ve kuyruk tıkanır. Atlanan mesaj sayacında görünüyor.
+    */
+    durumYok = true;
+    const yanit = await gonder(ORNEK);
+
+    expect(yanit.status).toBe(200);
+    expect(acilanAday).toHaveLength(0);
+    expect(await yanit.json()).toMatchObject({ atlanan: 1, yeniAday: 0 });
+  });
+
+  it('hız sınırına takılan istek 429 döner', async () => {
+    hizSiniriAsildi = true;
+    const yanit = await gonder(ORNEK);
+    expect(yanit.status).toBe(429);
+    expect(acilanAday).toHaveLength(0);
+  });
+
   it('mevcut adayın dolu alanlarını EZMEZ', async () => {
     // Personelin elle düzelttiği adı, gelen mesajdaki çözümleme yanlışıyla
     // bozmak kaydı kötüleştirirdi.
-    mevcutAday = { id: 'lead-eski', name: 'Elle Düzeltilmiş Ad', email: 'eski@x.com', status: 'Arandı' };
+    mevcutAday = {
+      id: 'lead-eski', name: 'Elle Düzeltilmiş Ad', email: 'eski@x.com', status: 'arandi',
+      request_text: 'Elle yazılmış talep', event_date_text: '', event_date: null,
+    };
     await gonder('Başka Bir İsim\nyeni@x.com');
 
     expect(guncellenen[0]).not.toHaveProperty('name');
@@ -253,7 +359,10 @@ düğün`;
   });
 
   it('mevcut adayın BOŞ alanlarını doldurur', async () => {
-    mevcutAday = { id: 'lead-eski', name: '', email: '', status: 'Aranmadı' };
+    mevcutAday = {
+      id: 'lead-eski', name: '', email: '', status: 'yeni',
+      request_text: '', event_date_text: '', event_date: null,
+    };
     await gonder('Ömer Ay\nomer@x.com');
 
     expect(guncellenen[0]).toMatchObject({ name: 'Ömer Ay', email: 'omer@x.com' });
@@ -329,7 +438,7 @@ describe('otomatik cevap', () => {
   const YEREL_OGLE = String(Date.parse('2026-09-14T09:00:00Z') / 1000); // 12:00
   const YEREL_GECE = String(Date.parse('2026-09-14T20:00:00Z') / 1000); // 23:00
 
-  const GONDERIM = { WHATSAPP_TOKEN: 'jeton', WHATSAPP_PHONE_ID: '999' };
+  const GONDERIM = { WHATSAPP_ACCESS_TOKEN: 'jeton', WHATSAPP_PHONE_NUMBER_ID: '999' };
 
   async function calistir(
     env: Record<string, string | undefined>, timestamp: string, metin = 'Ali Veli',

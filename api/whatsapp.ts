@@ -14,10 +14,14 @@
  *   POST Mesaj bildirimi. İmza doğrulanır, mesaj kaydedilir.
  *
  * Gerekli ortam değişkenleri (HEPSİ SUNUCUDA KALIR, VITE_ ÖN EKİ ALMAZ):
- *   WHATSAPP_VERIFY_TOKEN  Meta panelinde webhook'u kurarken yazdığınız dize
- *   WHATSAPP_APP_SECRET    Meta uygulamasının App Secret değeri (imza için)
+ *   WHATSAPP_VERIFY_TOKEN        Meta panelinde webhook'u kurarken yazdığınız dize
+ *   WHATSAPP_APP_SECRET          Meta uygulamasının App Secret değeri (imza için)
+ *   WHATSAPP_BUSINESS_ACCOUNT_ID WABA kimliği. Zorunlu DEĞİL; verilirse gelen
+ *                                bildirimin beklenen hesaptan geldiği de
+ *                                doğrulanır. Meta panelinde bir uygulamaya
+ *                                birden çok WABA bağlanabiliyor.
  *
- * Mesaj GÖNDERMEK için ayrıca WHATSAPP_TOKEN ve WHATSAPP_PHONE_ID gerekir;
+ * Mesaj GÖNDERMEK için ayrıca WHATSAPP_ACCESS_TOKEN ve WHATSAPP_PHONE_NUMBER_ID gerekir;
  * bu uç nokta yalnızca mesaj ALIR, o yüzden onları istemiyor.
  *
  * İmza neden zorunlu: bu adres herkese açık. İmza doğrulanmazsa isteyen
@@ -26,7 +30,7 @@
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { insertRow, isDbConfigured, patchRows, selectRows } from './_db';
-import { json } from './_guard';
+import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard';
 import { talebiCoz, telefonSadelestir } from '../src/lib/whatsappTalep';
 import { otomatikCevapSec } from '../src/lib/whatsappOtomatik';
 import type { OtomatikAyar, OtomatikTur } from '../src/lib/whatsappOtomatik';
@@ -34,6 +38,20 @@ import { isSendConfigured, metinGonder } from './whatsapp-gonder';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const APP_SECRET = process.env.WHATSAPP_APP_SECRET;
+const WABA_ID = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+
+/**
+ * Mock mod: Meta bağlanmadan sistemi denemek için.
+ *
+ * Açıkken /api/whatsapp-test uç noktası çalışır ve oturum açmış bir
+ * yönetici panelden mesaj yapıştırıp aynı boru hattından geçirebilir.
+ * Gerçek webhook'un imza doğrulaması bundan ETKİLENMEZ: mock mod açık
+ * diye imzasız bildirim kabul edilseydi, unutulan bir ayar üretimde
+ * herkesin sahte talep yazabildiği bir kapı bırakırdı.
+ */
+export function isMockMode(): boolean {
+  return process.env.WHATSAPP_MOCK_MODE === 'true';
+}
 
 export function isWhatsappConfigured(): boolean {
   return Boolean(VERIFY_TOKEN && APP_SECRET);
@@ -57,7 +75,7 @@ export function imzaDogru(govde: string, baslik: string | null, sir: string): bo
   return timingSafeEqual(a, b);
 }
 
-interface MetaMesaj {
+export interface MetaMesaj {
   id?: string;
   from?: string;
   timestamp?: string;
@@ -68,6 +86,7 @@ interface MetaMesaj {
 interface MetaGovde {
   object?: string;
   entry?: {
+    id?: string;
     changes?: {
       value?: {
         metadata?: { phone_number_id?: string };
@@ -102,7 +121,33 @@ function ayaraCevir(hesap: HesapSatiri): OtomatikAyar {
     workDays: hesap.work_days ?? [1, 2, 3, 4, 5, 6, 7],
   };
 }
-interface AdaySatiri { id: string; name: string; email: string; status: string }
+interface AdaySatiri {
+  id: string; name: string; email: string; status: string;
+  request_text: string; event_date_text: string; event_date: string | null;
+}
+
+/**
+ * İşletmenin yeni adayları hangi durumla açtığı.
+ *
+ * Durumlar artık işletmeye ait satırlar, sabit bir "Aranmadı" değeri yok.
+ * Sabit yazılsaydı sahibi başlangıç durumunu yeniden adlandırdığı anda
+ * webhook yabancı anahtar hatası alır ve gelen her talep sessizce
+ * düşerdi.
+ */
+async function baslangicDurumu(businessId: string): Promise<string> {
+  const satirlar = await selectRows<{ code: string }>(
+    `lead_statuses?business_id=eq.${businessId}&is_initial=is.true&select=code&limit=1`,
+  );
+  if (satirlar[0]?.code) return satirlar[0].code;
+
+  // Başlangıç işaretli durum yoksa sıradaki ilk durum kullanılıyor:
+  // talebi kaybetmektense yanlış kutuya koymak yeğdir.
+  const ilk = await selectRows<{ code: string }>(
+    `lead_statuses?business_id=eq.${businessId}&select=code&order=sort_order.asc&limit=1`,
+  );
+  if (ilk[0]?.code) return ilk[0].code;
+  throw new Error('İşletmenin tanımlı müşteri adayı durumu yok.');
+}
 
 /** Mesajın geldiği numarayı işletmeye ve o numaranın ayarlarına bağlar. */
 async function hesabiBul(phoneNumberId: string): Promise<HesapSatiri | null> {
@@ -123,7 +168,7 @@ async function hesabiBul(phoneNumberId: string): Promise<HesapSatiri | null> {
 async function adayBul(
   businessId: string, telefon: string, eposta: string,
 ): Promise<AdaySatiri | null> {
-  const alan = 'select=id,name,email,status&limit=1';
+  const alan = 'select=id,name,email,status,request_text,event_date_text,event_date&limit=1';
   if (telefon) {
     const bulunan = await selectRows<AdaySatiri>(
       `customer_leads?business_id=eq.${businessId}&phone=eq.${encodeURIComponent(telefon)}&${alan}`,
@@ -140,11 +185,14 @@ async function adayBul(
 }
 
 /** Meta gövdesindeki metin mesajlarını numara kimliğiyle birlikte çıkarır. */
-export function mesajlariCikar(govde: MetaGovde): {
+export function mesajlariCikar(govde: MetaGovde, wabaId?: string): {
   phoneNumberId: string; mesaj: MetaMesaj;
 }[] {
   const cikan: { phoneNumberId: string; mesaj: MetaMesaj }[] = [];
   for (const entry of govde.entry ?? []) {
+    // WABA kimliği verilmişse eşleşmeyen bildirim atlanıyor. entry.id,
+    // bildirimin hangi WhatsApp Business hesabından geldiğini söyler.
+    if (wabaId && entry.id && entry.id !== wabaId) continue;
     for (const change of entry.changes ?? []) {
       const phoneNumberId = change.value?.metadata?.phone_number_id;
       if (!phoneNumberId) continue;
@@ -167,7 +215,7 @@ export function mesajlariCikar(govde: MetaGovde): {
  * personelin elle düzelttiği bir adı, gelen mesajdaki çözümleme yanlışıyla
  * bozmak kaydı kötüleştirirdi. Yalnızca boş alanlar doldurulur.
  */
-async function mesajiIsle(
+export async function mesajiIsle(
   businessId: string, mesaj: MetaMesaj,
 ): Promise<{ leadId: string; telefon: string; zaman: string; sonuc: 'yeni' | 'eklendi' }> {
   const metin = mesaj.text?.body ?? '';
@@ -190,6 +238,10 @@ async function mesajiIsle(
     const eksikler: Record<string, unknown> = { last_contact_at: zaman };
     if (!mevcut.name && cozum.name) eksikler.name = cozum.name;
     if (!mevcut.email && cozum.email) eksikler.email = cozum.email;
+    if (!mevcut.request_text && cozum.request) eksikler.request_text = cozum.request;
+    if (!mevcut.event_date_text && !mevcut.event_date && cozum.dateText) {
+      eksikler.event_date_text = cozum.dateText;
+    }
     await patchRows(`customer_leads?id=eq.${leadId}`, eksikler);
   } else {
     const acilan = await insertRow<{ id: string }[]>('customer_leads', {
@@ -199,11 +251,12 @@ async function mesajiIsle(
       email: cozum.email,
       guest_count: cozum.guestCount,
       event_date: cozum.date || null,
-      event_date_text: cozum.date ? '' : cozum.note.split('\n').find((s) => /\d|hafta|ay/i.test(s)) ?? '',
+      event_date_text: cozum.dateText,
       organization_type: cozum.organizationType,
       source: 'WhatsApp',
       source_detail: '',
-      status: 'Aranmadı',
+      status: await baslangicDurumu(businessId),
+      request_text: cozum.request,
       note: cozum.note,
       last_contact_at: zaman,
     });
@@ -304,6 +357,22 @@ export default async function handler(request: Request): Promise<Response> {
     return json({ error: 'WhatsApp yapılandırılmamış.' }, 503);
   }
 
+  /*
+    Hız sınırı imza doğrulamasından ÖNCE.
+
+    İmza asıl kapı, ama imzasız istek de bedava değil: her biri bir HMAC
+    hesabı ve bir veritabanı turu demek. Sınır olmadan bu adrese saniyede
+    binlerce çöp istek atıp sunucuyu meşgul etmek mümkün.
+
+    Sınır yüksek tutuluyor: Meta bir kerede yığın bildirim gönderebiliyor
+    ve sınıra takılan gerçek bir bildirim, 200 alamadığı için tekrar
+    tekrar denenir. Amaç kötüye kullanımı kesmek, normal trafiği değil.
+  */
+  const sinir = await enforceRateLimit(clientIp(request), {
+    bucket: 'whatsapp_webhook', limit: 600, windowSeconds: 60,
+  });
+  if (!sinir.allowed) return tooManyRequests(60);
+
   // İmza ham gövde üzerinden hesaplanıyor; JSON'a çevirip geri yazmak
   // boşlukları değiştirir ve imzayı bozar.
   const ham = await request.text();
@@ -323,7 +392,7 @@ export default async function handler(request: Request): Promise<Response> {
   let atlanan = 0;
   let otomatik = 0;
 
-  for (const { phoneNumberId, mesaj } of mesajlariCikar(govde)) {
+  for (const { phoneNumberId, mesaj } of mesajlariCikar(govde, WABA_ID)) {
     const hesap = await hesabiBul(phoneNumberId);
     // Tanımadığımız numaraya gelen mesaj kaydedilmez: hangi işletmeye ait
     // olduğu bilinmeden yazılan satır kimsenin göremeyeceği bir kayıt olur.

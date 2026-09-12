@@ -438,12 +438,13 @@ test.describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     await page.goto('/panel/musteri-adaylari/lead_seed_1');
     await expect(page.getByRole('heading', { name: 'Ömer Ay' })).toBeVisible();
 
-    await page.getByLabel('Durum').selectOption('Arandı');
-    await expect(page.getByText(/Durum "Aranmadı" → "Arandı"/)).toBeVisible();
+    // Seçenek DEĞERİ durum kodu, görünen metin işletmenin verdiği ad.
+    await page.getByLabel('Durum').selectOption('arandi');
+    await expect(page.getByText(/Durum "Yeni" → "Arandı"/)).toBeVisible();
 
     // Kim, ne zaman, neyden neye: geçmiş ayrıca durum listesinde de duruyor.
     await page.getByText(/Durum değişiklikleri/).click();
-    await expect(page.getByText(/Aranmadı → Arandı/)).toBeVisible();
+    await expect(page.getByText(/Yeni → Arandı/)).toBeVisible();
   });
 
   test("WhatsApp'ta Aç wa.me adresine gider, Cloud API'ye değil", async ({ page }) => {
@@ -473,8 +474,10 @@ test.describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     await expect(page.locator('#customerPhone')).toHaveValue('5332642537');
     await expect(page.locator('#guestCount')).toHaveValue('1000');
     await expect(page.locator('#sourceChannel')).toHaveValue('Instagram');
-    // Çözülemeyen tarih ifadesi nota geçiyor; bilgi kaybolmamalı.
+    // Çözülemeyen tarih ifadesi ve müşterinin talebi nota geçiyor; ikisi de
+    // kaybolmamalı.
     await expect(page.locator('#note')).toHaveValue(/Mayısın ilk haftası/);
+    await expect(page.locator('#note')).toHaveValue(/yemekli ve yemeksiz/);
 
     await page.locator('#hallId').selectOption({ index: 1 });
     await page.locator('#date').fill('2029-05-02');
@@ -484,7 +487,127 @@ test.describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
 
     // Aday kapanmış ve kayda bağlanmış olmalı.
     await page.goto('/panel/musteri-adaylari/lead_seed_1');
-    await expect(page.getByLabel('Durum')).toHaveValue('Rezervasyona Döndü');
+    await expect(page.getByLabel('Durum')).toHaveValue('rezervasyona_dondu');
     await expect(page.getByRole('link', { name: 'Oluşturuldu' })).toBeVisible();
+  });
+});
+
+/**
+ * Müşteri adayı durumlarının düzenlenmesi.
+ *
+ * Bu akış e2e'de duruyor çünkü hatası tam burada çıktı: durumu yazan kod
+ * doğruydu, ama sorgu önbelleği tazelenmediği için ekran eskisini
+ * göstermeye devam ediyordu. Depoyu taklit eden birim testleri bunu
+ * göremez -- yazma başarılı görünür, kullanıcı hiçbir şey olmadığını
+ * sanır.
+ */
+test.describe('Müşteri adayı durumları', () => {
+  test('varsayılan akış on iki durumla gelir', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari/durumlar');
+    await expect(page.getByRole('heading', { name: 'Müşteri Adayı Durumları' })).toBeVisible();
+    await expect(page.locator('table tbody tr')).toHaveCount(12);
+
+    // Şartnamedeki ilk ve son durum yerinde olmalı.
+    await expect(page.getByLabel('Yeni adı', { exact: true })).toHaveValue('Yeni');
+    await expect(page.getByLabel('İptal adı', { exact: true })).toHaveValue('İptal');
+  });
+
+  test('yeni durum eklenir ve listede görünür', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari/durumlar');
+
+    await page.getByLabel('Durum adı').fill('Yer Gösterildi');
+    // Kod addan türetiliyor; kullanıcı kod yazmıyor.
+    await expect(page.getByText('Kod: yer_gosterildi')).toBeVisible();
+    await page.getByRole('button', { name: 'Ekle' }).click();
+
+    await expect(page.locator('table tbody tr')).toHaveCount(13);
+    await expect(page.getByLabel('Yer Gösterildi adı', { exact: true })).toBeVisible();
+  });
+
+  test('durum adı değişince aday kaydı bozulmaz', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari/durumlar');
+
+    const alan = page.getByLabel('Arandı adı', { exact: true });
+    await alan.fill('Görüşüldü');
+    await alan.blur();
+    await expect(page.getByLabel('Görüşüldü adı', { exact: true })).toBeVisible();
+
+    /*
+      Asıl mesele: kayıtlar adı değil kodu taşıyor. Aday hâlâ açılıyor ve
+      seçim listesinde yeni ad görünüyor. Ada bakan bir kod burada
+      "Arandı" bulamaz ve durumu sessizce kaybederdi.
+    */
+    await page.goto('/panel/musteri-adaylari/lead_seed_1');
+    await expect(page.getByRole('heading', { name: 'Ömer Ay' })).toBeVisible();
+    await page.getByLabel('Durum').selectOption('arandi');
+    await expect(page.getByText(/Durum "Yeni" → "Görüşüldü"/)).toBeVisible();
+  });
+
+  test('kullanımdaki durum silinemez, başlangıç durumu da', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari/durumlar');
+
+    // "Yeni" hem başlangıç durumu hem de demo adayında kullanımda.
+    const yeniSatir = page.locator('table tbody tr').first();
+    await expect(yeniSatir.getByRole('button', { name: 'Sil' })).toBeDisabled();
+
+    // Hiç kullanılmayan bir durum silinebilir.
+    const iptalSatir = page.locator('table tbody tr', { hasText: 'kod: iptal' });
+    await expect(iptalSatir.getByRole('button', { name: 'Sil' })).toBeEnabled();
+  });
+
+  test('dashboard kutuları tanımlı durumlardan üretilir', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari/durumlar');
+    await page.getByLabel('Durum adı').fill('Yer Gösterildi');
+    await page.getByRole('button', { name: 'Ekle' }).click();
+    await expect(page.locator('table tbody tr')).toHaveCount(13);
+
+    // Sabit kutu listesi, eklenen durumu dashboard'da görünmez bırakırdı.
+    await page.goto('/panel');
+    const kutular = page.locator('[aria-labelledby="lead-title"] li');
+    await expect(kutular).toHaveCount(15); // 2 zaman kutusu + 13 durum
+    await expect(page.getByRole('link', { name: /Yer Gösterildi/ })).toBeVisible();
+  });
+});
+
+/**
+ * Aday listesindeki tarih süzgeçleri.
+ *
+ * İki ayrı eksen var ve karıştırılmamalı: kaydın AÇILDIĞI tarih ile
+ * ETKİNLİĞİN tarihi.
+ */
+test.describe('Aday listesi tarih süzgeçleri', () => {
+  test('kayıt tarihi aralığı listeyi daraltır ve temizlenebilir', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteri-adaylari');
+    // Liste eşzamansız yükleniyor; sayı almadan önce ilk kart gelmeli.
+    await expect(page.getByRole('link', { name: 'Ömer Ay' })).toBeVisible();
+    const once = await page.locator('ul > li.card').count();
+    expect(once).toBeGreaterThan(0);
+
+    await page.getByLabel('Kayıt tarihi başlangıç').fill('2030-01-01');
+    await expect(page.getByText(/Bu süzgeçle eşleşen aday bulunmuyor/)).toBeVisible();
+
+    await page.getByRole('button', { name: /Tarih süzgeçlerini temizle/ }).click();
+    await expect(page.locator('ul > li.card')).toHaveCount(once);
+  });
+
+  test('etkinlik tarihi süzgeci tarihi çözülmemiş adayı eler', async ({ page }) => {
+    /*
+      "Mayısın ilk haftası" hangi güne denk geldiği bilinmeyen bir ifade.
+      Aralığın içinde ya da dışında saymak, ikisi de yanlış cevap üretirdi.
+    */
+    await login(page);
+    await page.goto('/panel/musteri-adaylari');
+    await expect(page.getByRole('link', { name: 'Ömer Ay' })).toBeVisible();
+    await page.getByLabel('Etkinlik tarihi başlangıç').fill('2020-01-01');
+    await page.getByLabel('Etkinlik tarihi bitiş').fill('2099-12-31');
+
+    await expect(page.getByRole('link', { name: 'Ömer Ay' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Burak Şen' })).toBeVisible();
   });
 });

@@ -643,7 +643,8 @@ describe('müşteri adayları', () => {
     id: 'lead1', businessId: BIZ, name: 'Ömer Ay', phone: '5332642537',
     email: 'omer@ornek.com', guestCount: 1000, eventDate: '', eventDateText: 'Mayıs ilk hafta',
     organizationType: 'Düğün', source: 'WhatsApp', sourceDetail: '',
-    status: 'Aranmadı', nextFollowupAt: '', lastContactAt: '', note: '',
+    status: 'yeni', nextFollowupAt: '', lastContactAt: '',
+    requestText: '', note: '',
     createdAt: '2026-09-01T10:00:00.000Z', updatedAt: '2026-09-01T10:00:00.000Z', ...over,
   });
 
@@ -651,7 +652,7 @@ describe('müşteri adayları', () => {
     await localRepo.saveLead(aday());
     const liste = await localRepo.listLeads(BIZ);
     expect(liste).toHaveLength(1);
-    expect(liste[0]).toMatchObject({ name: 'Ömer Ay', status: 'Aranmadı' });
+    expect(liste[0]).toMatchObject({ name: 'Ömer Ay', status: 'yeni' });
   });
 
   it('aynı telefonla ikinci aday açılamaz', async () => {
@@ -670,12 +671,12 @@ describe('müşteri adayları', () => {
 
   it('durum değişince geçmişe satır yazar', async () => {
     await localRepo.saveLead(aday());
-    await localRepo.saveLead(aday({ status: 'Arandı' }));
+    await localRepo.saveLead(aday({ status: 'arandi' }));
 
     const gecmis = await localRepo.listLeadStatusHistory('lead1');
     expect(gecmis).toHaveLength(2);
-    expect(gecmis[0]).toMatchObject({ fromStatus: 'Aranmadı', toStatus: 'Arandı' });
-    expect(gecmis[1]).toMatchObject({ fromStatus: null, toStatus: 'Aranmadı' });
+    expect(gecmis[0]).toMatchObject({ fromStatus: 'yeni', toStatus: 'arandi' });
+    expect(gecmis[1]).toMatchObject({ fromStatus: null, toStatus: 'yeni' });
   });
 
   it('durum değişmediyse geçmişe satır yazmaz', async () => {
