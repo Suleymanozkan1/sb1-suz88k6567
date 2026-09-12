@@ -1,3 +1,7 @@
+# Vercel YALNIZCA demo içindir: derlenmiş statik site sunulur, sunucu
+# tarafı orada çalışmaz. Veriler tarayıcıda durur; gerçek müşteri kaydı
+# girilmemelidir. Ayrıntı: README, "Vercel'e demo dağıtımı".
+#
 # Vercel yalnızca derlenmiş statik siteyi sunar; aşağıdakiler derlemeye
 # girmez ve yüklenmelerinin tek etkisi dağıtımı şişirmektir.
 mobil
