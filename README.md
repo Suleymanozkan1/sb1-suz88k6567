@@ -16,8 +16,8 @@ npm run dev                  # http://localhost:5173
 
 | Mod | Ne zaman | Davranış |
 |-----|----------|----------|
-| **Demo** | `VITE_SUPABASE_URL` boş | Veriler yalnızca tarayıcıda saklanır, arayüzde uyarı gösterilir |
-| **Gerçek** | Supabase değişkenleri tanımlı | Veriler Postgres'te, şifreler sunucuda hash'li |
+| **Demo** | `VITE_SUNUCU_MODU` tanımsız | Veriler yalnızca tarayıcıda saklanır, arayüzde uyarı gösterilir |
+| **Gerçek** | `VITE_SUNUCU_MODU=1` | Veriler kendi sunucunuzdaki Postgres'te, şifreler scrypt ile karmalı |
 
 ### Demo hesabı
 
@@ -93,7 +93,11 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 
 ```
 api/            Sunucu tarafı uç noktalar
-worker/         Cloudflare Worker giriş noktası (yönlendirici + zamanlanmış görevler)
+sunucu/         Node.js sunucusu (statik site + /api/* + zamanlanmış görevler)
+  index.ts      HTTP sunucusu, PostgREST vekili
+  rotalar.ts    Uç nokta ve cron listesi
+  zamanlayici.ts  Cron çözümleyici
+  basliklar.ts  Güvenlik ve önbellek başlıkları
   sms.ts        SMS gönderimi, sağlayıcı anahtarı yalnızca burada
   otp.ts        Giriş SMS doğrulaması (HMAC imzalı, 5 dk geçerli)
   login.ts      Korumalı giriş, hesap kilidi ve hız sınırı
@@ -111,7 +115,9 @@ src/
   data/         Site içeriği, sabitler, yasal metinler, referans listesi
   layouts/      PublicLayout (site) ve AppLayout (panel)
   lib/
-    repo/       Veri erişim sözleşmesi + Supabase ve yerel uygulamaları
+    repo/       Veri erişim sözleşmesi + sunucu ve yerel uygulamaları
+    postgrest.ts  PostgREST istemcisi
+    oturum.ts   Tarayıcı oturumu (jeton saklama ve yenileme)
     queries.ts  TanStack Query kancaları
     money.ts    Tahsilat / bakiye hesapları (saf)
     invoice.ts  Fatura tutar hesapları, kuruş tabanlı tamsayı aritmetiği (saf)
@@ -124,7 +130,7 @@ src/
 ### Veri katmanı
 
 Arayüz katmanı yalnızca `src/lib/repo` sözleşmesini tanır. İki uygulaması vardır:
-Supabase (gerçek Postgres) ve yerel (demo/test). Hangisinin kullanılacağına ortam
+sunucu (gerçek Postgres) ve yerel (demo/test). Hangisinin kullanılacağına ortam
 değişkenleri karar verir; ekran kodu değişmez.
 
 Kiracı izolasyonu **veritabanı seviyesinde** satır bazlı güvenlik (RLS) ile
@@ -136,29 +142,24 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
 
 ## Veritabanı kurulumu
 
-1. [supabase.com](https://supabase.com) üzerinde proje açın (**bölge: Frankfurt**, KVKK açısından AB tercih edilir).
-2. SQL Editor'da migration dosyalarını **sırayla** çalıştırın:
-   `0001_init.sql` → `0002_security.sql` → `0003_iys_queue.sql` →
-   `0004_backup_health.sql` → `0005_invoices.sql` → `0006_talepler.sql` →
-   `0007_salon_menu_masa.sql` → `0008_odeme_plani_is_emri_tedarikci.sql` →
-   `0009_nikah_yazimi.sql` → `0010_hatirlatma_sablonlari.sql` →
-   `0011_kisa_hatirlatma_metinleri.sql` → `0012_hatirlatmada_kapora.sql` →
-   `0013_kullanilmayan_tablolari_dusur.sql` →
-   `0014_sozlesme_alanlari_ve_seri.sql` → `0015_celik_kasa.sql` →
-   `0016_celik_kasa_tekrar_giris.sql` → `0017_celik_kasa_gider_yonu.sql` →
-   `0018_sozlesme_no_tireli.sql` → `0019_musteri_adaylari_ve_whatsapp.sql` →
-   `0020_whatsapp_otomatik_cevap.sql`
+Sistem **kendi sunucunuzda** çalışır; Cloudflare ve Supabase kullanılmaz.
+Sıfırdan kurulum adım adım [`docs/KURULUM.md`](docs/KURULUM.md) dosyasında,
+sunucu seçimi ve maliyet [`docs/SUNUCU-SECIMI.md`](docs/SUNUCU-SECIMI.md)
+dosyasında anlatılıyor.
 
-   Sıra önemlidir: `0006` ve `0008` bugün kullanılmayan iki tabloyu
-   oluşturur, `0013` ikisini de düşürür. Aradaki göçler o tablolara
-   dokunduğu için atlanamazlar.
-3. Project Settings → API bölümünden `URL` ve `anon key` değerlerini alın.
-4. Bu değerleri `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` olarak tanımlayın.
-5. Authentication → Users bölümünden kendi hesabınızı oluşturun.
-6. İlk girişten sonra Firmalarım ekranından işletmenizi ekleyin.
+Özet:
 
-Personel hesapları da Supabase → Authentication → Users bölümünden açılır;
-yetkileri panelin **Kullanıcılar** ekranından düzenlenir.
+1. Ubuntu bir VPS'e PostgreSQL, PostgREST, Node.js ve nginx kurulur.
+2. `supabase/migrations/*.sql` dosyaları **sırayla** uygulanır.
+3. `JWT_SECRET` hem uygulamada hem PostgREST'te **aynı** tanımlanır.
+4. `VITE_SUNUCU_MODU=1` ile derlenir, `systemd` ile çalıştırılır.
+
+> Göç klasörünün adı tarihsel sebeple `supabase/`; içeriği sade
+> PostgreSQL'dir ve Supabase'e bağımlı değildir.
+
+Sıra önemlidir: `0000` kimlik katmanını kurar ve `0001` ona dayanır;
+`0006` ile `0008` bugün kullanılmayan iki tablo açar, `0013` ikisini de
+düşürür; `0021` tablo yetkilerini verdiği için en sonda çalışmalıdır.
 
 ### Kurulu bir projeye yeni göç uygulama
 
@@ -214,14 +215,15 @@ veritabanında art arda çalıştırılırsa ikinci paket birincil anahtar çak�
 durur.
 
 ```bash
-for t in supabase/tests/0[1-9]_*.sql supabase/tests/1[01]_*.sql; do
+for t in supabase/tests/[0-9]*_*test.sql; do
   db="qa_$(basename "$t" .sql)"
   psql -c "drop database if exists $db" postgres
   psql -c "create database $db" postgres
 
-  # Şema: yerel auth taklidi + tüm göçler
-  psql -v ON_ERROR_STOP=1 -d "$db" -f supabase/tests/00_supabase_stub.sql
-  for m in supabase/migrations/000*.sql; do
+  # Şema: göçlerin tamamı, sırayla. Ayrı bir auth taklidi YOK --
+  # kimlik katmanı artık 0000 ile ürünün kendisinde; testler üretimde
+  # çalışacak şeyi sınıyor.
+  for m in supabase/migrations/*.sql; do
     psql -v ON_ERROR_STOP=1 -d "$db" -f "$m"
   done
 
@@ -271,17 +273,23 @@ korunduğunu kanıtlar.
 | **Kapsam bütünlüğü** | `check_reservation_scope()` | Başka işletmenin salonu veya menüsü bir rezervasyona bağlanamaz |
 | **Tedarikçi kapsamı** | `check_vendor_scope()` | Başka işletmenin tedarikçisi bir organizasyona atanamaz |
 | **Yedek erişimi** | Postgres RLS | Yedek yalnızca kendi kapsamını içerir; başka hesabın verisi dışa aktarılamaz |
-| **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `service_role` anahtarı yalnızca sunucuda; `VITE_` öneki taşımaz |
+| **Sır yönetimi** | Ortam değişkenleri | Sağlayıcı şifreleri ve `JWT_SECRET` yalnızca sunucuda; `VITE_` öneki taşımaz |
+| **Şifre saklama** | `api/_kimlik.ts` | scrypt; tuzlu, sabit zamanlı karşılaştırma |
+| **Oturum** | `api/oturum.ts` | Kısa ömürlü imzalı erişim jetonu, iptal edilebilir ve dönüşümlü yenileme jetonu |
 | **Hata izleme** | `src/lib/monitoring.ts` | İsteğe bağlı Sentry; gönderilen olaylarda e-posta ve telefon maskelenir |
-| **Güvenlik başlıkları** | `public/_headers` | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
+| **Güvenlik başlıkları** | `sunucu/basliklar.ts` | CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` |
 
 Giriş kilidi ve hız sınırı **sunucu tarafında** uygulanır; istemci bunları
-atlayamaz. `SUPABASE_SERVICE_ROLE_KEY` tanımlı değilse bu korumalar devre dışı
-kalır (uygulama çalışmaya devam eder, ancak kilit uygulanmaz).
+atlayamaz. Giriş için doğrudan veritabanına giden bir yedek yol yoktur:
+sunucu yanıt vermiyorsa giriş reddedilir. Eskiden böyle bir yol vardı ve o
+yolda kilit hiç uygulanmıyordu; sessizce korumasız çalışan bir giriş, hiç
+çalışmayandan kötüdür.
 
-> **Uyarı:** `SUPABASE_SERVICE_ROLE_KEY` satır bazlı güvenliği atlar. Yalnızca
-> sunucu ortam değişkeni olarak tanımlayın; asla `VITE_` öneki kullanmayın ve
-> istemci koduna aktarmayın.
+> **Uyarı:** `JWT_SECRET` ile `service_role` talebi taşıyan bir jeton
+> üretilebilir ve o rol satır bazlı güvenliği **atlar**. Yalnızca sunucu
+> ortam değişkeni olarak tanımlayın, en az 32 karakter olsun, asla `VITE_`
+> öneki kullanmayın ve istemci koduna aktarmayın. Aynı değer PostgREST'in
+> `jwt-secret` ayarıyla aynı olmalıdır.
 
 ## SMS ve İYS uyumu
 
@@ -315,7 +323,7 @@ mesaj kaybına yol açmaz.
 - İşletme başına günlük 500 mesaj tavanı (hatalı döngülerin faturayı şişirmesini önler)
 - Kuyruk durumu panelde **SMS Kayıtları → Kuyruk** sekmesinde görülür
 
-Kuyruk `api/sms-queue.ts` tarafından **5 dakikada bir** işlenir (Cloudflare Cron Trigger).
+Kuyruk `api/sms-queue.ts` tarafından **5 dakikada bir** işlenir (sunucunun kendi zamanlayıcısı).
 
 ### İYS senkronizasyonu
 
@@ -352,101 +360,57 @@ gönderilir. Kod sunucuda üretilir ve yalnızca HMAC imzası istemciye döner.
 **Yapılması gerekenler:** Netgsm'den marka başlığı (gönderici adı) onayı alın;
 ticari ileti gönderecekseniz İYS üyeliği ve entegrasyon bilgilerinizi temin edin.
 
-## Cloudflare'e dağıtım
+## Dağıtım
 
-Adım adım kurulum için: [docs/DAGITIM-KONTROL-LISTESI.md](docs/DAGITIM-KONTROL-LISTESI.md)
+Sistem kendi sunucunuzda çalışır. Adım adım kurulum:
+[`docs/KURULUM.md`](docs/KURULUM.md). Sunucu seçimi ve maliyet:
+[`docs/SUNUCU-SECIMI.md`](docs/SUNUCU-SECIMI.md).
 
-Tek bir Worker hem derlenmiş siteyi sunar, hem `/api/*` uç noktalarını
-karşılar, hem de zamanlanmış görevleri çalıştırır. Yapılandırma
-`wrangler.jsonc` içindedir.
+Tek bir Node süreci hem derlenmiş siteyi sunar, hem `/api/*` uç
+noktalarını karşılar, hem `/veri` altında PostgREST'i vekiller, hem de
+zamanlanmış görevleri çalıştırır.
 
 ```bash
-npm run cf:dev      # yerelde çalıştır (zamanlanmış görevler denenebilir)
-npm run cf:deploy   # derle ve yayınla
+npm run build     # site + sunucu derlenir
+npm run baslat    # sunucuyu çalıştırır (üretimde systemd yapar)
 ```
 
 Ortam değişkenleri iki yere girilir:
 
 | Tür | Nasıl |
 |-----|-------|
-| Gizli olmayanlar (`VITE_*`) | Derleme sırasında okunur; CI/CD ortam değişkeni olarak verin |
-| Sunucu sırları | `wrangler secret put ADI` ya da Cloudflare panelinden Variables & Secrets |
+| Gizli olmayanlar (`VITE_*`) | Derleme sırasında okunur; `.env.production` dosyasına yazın |
+| Sunucu sırları | `/etc/sahra.env` dosyasında, `chmod 600` ile |
 
-Sunucu sırları `process.env` üzerinden okunur; `wrangler.jsonc` içindeki
-`nodejs_compat` bayrağı ve 2025-04-01 sonrası uyumluluk tarihi bunu sağlar.
+Sunucu sırları `process.env` üzerinden okunur ve **derlenmiş tarayıcı
+paketine hiç girmez**; bir test bunu her derlemede doğruluyor.
 
-### Vercel bağlıysa
+### PostgREST neden dışarı açılmıyor
 
-Depoya ayrıca bir Vercel projesi bağlıysa, Vercel **yalnızca derlenmiş
-statik siteyi** sunar; `vercel.json` bunu böyle sabitler.
+Veritabanı arayüzü yalnızca `127.0.0.1` üzerinde dinliyor ve isteklere
+kendi sunucumuz üzerinden ulaşılıyor. Üç sebebi var:
 
-Sebebi: Vercel'in sıfır yapılandırma algılaması kökteki `api/` klasörünü
-kendi sunucusuz işlev kuralına göre yorumluyor ve iki sorun çıkarıyordu.
-
-1. Her `api/*.ts` dosyasını projenin `tsconfig.node.json` ayarı yerine
-   kendi `node16` ayarıyla derliyordu; uzantısız içe aktarımlar (TS2835) ve
-   `Array.prototype.at` (TS2550) hata verip derlemeyi düşürüyordu.
-2. `api/*.test.ts` dosyalarını da işlev sanıyordu. Derleme geçseydi test
-   dosyaları `/api/backup.test` gibi herkese açık uç noktalar olarak yayına
-   çıkacaktı.
-
-`vercel.json` içindeki `builds` alanı sıfır yapılandırmayı kapatır;
-`.vercelignore` ise test dosyalarının ve derlemeye girmeyen klasörlerin
-dağıtıma hiç yüklenmemesini sağlar.
-
-`api/` altındaki işleyiciler Vercel işlevi değildir: `worker/index.ts`
-tarafından içe aktarılan Worker işleyicileridir. Bu yüzden Vercel
-dağıtımında `/api/*` uç noktaları **çalışmaz** ve şunlar devre dışı kalır:
-
-- Giriş kilidi ve hız sınırı (giriş doğrudan Supabase'e düşer)
-- SMS ile iki adımlı doğrulama
-- Fatura gönderimi
-- Zamanlanmış görevlerin tamamı (hatırlatma, kuyruk, yedek, İYS)
-
-İstemci bu durumu algılayacak biçimde yazılmıştır: `/api/*` JSON yerine
-HTML döndürdüğünde uç nokta yok sayılır ve uygulama çökmez
-(`supabase.test.ts` → "uç nokta yoksa doğrudan Supabase ile giriş yapar").
-Sistemin tamamı için dağıtım Cloudflare üzerinden yapılmalıdır.
+1. Aynı kökenden geçtiği için tarayıcıda CORS'a gerek kalmıyor.
+2. İçerik güvenlik politikası `connect-src 'self'` kadar dar tutulabiliyor.
+3. Veritabanı arayüzü internete ayrı bir kapı açmıyor; açılsaydı tek
+   koruma RLS'e kalırdı.
 
 ### Zamanlanmış görevler
 
-`wrangler.jsonc` içindeki `triggers.crons` listesinde tanımlıdır; her biri
-`worker/index.ts` içindeki `CRON_GOREVLERI` eşlemesi üzerinden ilgili uç
-noktaya bağlanır ve `CRON_SECRET` ile yetkilendirilir.
+Cron ifadeleri `sunucu/rotalar.ts` içinde, saatler **UTC**:
 
-| Görev | Sıklık |
-|-------|--------|
-| `/api/sms-queue`, kuyruk işleme | 5 dakikada bir |
-| `/api/invoice`, bekleyen faturaları gönder | 15 dakikada bir |
-| `/api/backup`, günlük yedek | Her gece 02:30 |
-| `/api/iys`, İYS senkronizasyonu | Her gece 03:00 |
+| İfade | Görev |
+|---|---|
+| `*/5 * * * *` | SMS kuyruğu |
+| `*/15 * * * *` | Fatura gönderimi |
+| `30 2 * * *` | Günlük yedek |
+| `0 3 * * *` | İYS eşitleme |
+| `0 7 * * *` | Hatırlatma taraması |
 
-Listeye cron eklenip eşlemeye eklenmezse görev sessizce hiç çalışmaz;
-`worker/index.test.ts` bu tutarsızlığı yakalar.
-
-### Yönlendirme ve başlıklar
-
-- **SPA yönlendirmesi:** `wrangler.jsonc` içindeki
-  `not_found_handling: "single-page-application"` sayesinde bilinmeyen
-  yollar `index.html` döndürür ve `/salon/...` gibi derin bağlantılar
-  doğrudan açıldığında çalışır. Tanımsız bir `/api/*` yolu ise siteye
-  düşmez, JSON 404 döner.
-- **Önbellekleme ve güvenlik başlıkları:** `public/_headers` dosyasında
-  tanımlıdır. `assets/*` bir yıl `immutable`; `robots.txt`, `sitemap.xml`
-  ve `favicon.svg` bir saat önbelleklenir. Tüm yanıtlarda
-  `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` ve
-  `Permissions-Policy` gönderilir.
-
-Yerel önizleme için:
-
-```bash
-npm run build && npm run preview
-```
-
-Not: `npm run preview` yalnızca derlenmiş arayüzü sunar; `/api/*` uç noktaları
-ve zamanlanmış görevler için `npm run cf:dev` gerekir. Supabase değişkenleri
-tanımlı değilse uygulama demo modunda açılır ve veriler yalnızca tarayıcıdaki
-`localStorage` üzerinde tutulur.
+Zamanlayıcı sürecin içinde çalışıyor; ayrıca bir cron kurulumu
+gerekmiyor. Aynı dakikada iki kez tetiklenmemesi için son çalıştığı
+dakika tutuluyor: erken uyanılsaydı SMS kuyruğu aynı mesajı iki defa
+gönderirdi.
 
 ## Salonlar, menüler ve masa düzeni
 

@@ -33,11 +33,11 @@ npm test                     # 923 birim + tümleşik test
 npm run build                # üretim derlemesi
 npm run e2e                  # 121 Playwright testi (Chromium)
 
-cd mobil && npx tsc --noEmit && npx jest    # 133 mobil testi
+cd mobil && npx tsc --noEmit && npx jest    # 145 mobil testi
 
 # SQL paketleri her biri temiz bir veritabanında çalıştırılır:
 createdb sahra_test
-psql -d sahra_test -f supabase/tests/00_supabase_stub.sql
+# Ayrı bir auth taklidi yok: kimlik katmanı 0000 ile ürünün kendisinde.
 for f in supabase/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -d sahra_test -f "$f"; done
 psql -v ON_ERROR_STOP=1 -d sahra_test -f supabase/tests/01_rls_test.sql
 ```
