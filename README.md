@@ -69,6 +69,9 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | `/panel/rezervasyonlar/yeni`, `/:id`, `/:id/duzenle` | Detaylı rezervasyon kaydı, tahsilat yönetimi |
 | `/panel/rezervasyonlar/:id/sozlesme` | Yazdırılabilir salon kiralama sözleşmesi: bilgi sütunu, menü içeriği ve 16 maddelik şartlar |
 | `/panel/musteriler` | Rezervasyonlardan türetilen müşteri listesi |
+| `/panel/musteri-adaylari` | Müşteri adayı takibi: durum, sorumlu personel, takip tarihi, süzgeçler |
+| `/panel/musteri-adaylari/yeni` | Elle aday açma (telefonla arayan, kapıdan gelen) |
+| `/panel/musteri-adaylari/:id` | Aday kartı: durum geçmişi, iletişim geçmişi, rezervasyona dönüştürme |
 | `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi, çelik kasa; rezervasyon tahsilatları sözleşme numarası ve taraflarla birlikte |
 | `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
 | `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
@@ -140,7 +143,9 @@ ziyaretçiler yalnızca tanıtım sitesinin paketini indirir.
    `0009_nikah_yazimi.sql` → `0010_hatirlatma_sablonlari.sql` →
    `0011_kisa_hatirlatma_metinleri.sql` → `0012_hatirlatmada_kapora.sql` →
    `0013_kullanilmayan_tablolari_dusur.sql` →
-   `0014_sozlesme_alanlari_ve_seri.sql` → `0015_celik_kasa.sql`
+   `0014_sozlesme_alanlari_ve_seri.sql` → `0015_celik_kasa.sql` →
+   `0016_celik_kasa_tekrar_giris.sql` → `0017_celik_kasa_gider_yonu.sql` →
+   `0018_sozlesme_no_tireli.sql` → `0019_musteri_adaylari_ve_whatsapp.sql`
 
    Sıra önemlidir: `0006` ve `0008` bugün kullanılmayan iki tabloyu
    oluşturur, `0013` ikisini de düşürür. Aradaki göçler o tablolara
@@ -598,6 +603,19 @@ Mevcut adayın dolu alanları **ezilmez**: personelin elle düzelttiği bir adı
 gelen mesajdaki çözümleme yanlışıyla bozmak kaydı kötüleştirirdi. Yalnızca
 boş alanlar doldurulur.
 
+### Elle aday açma
+
+Modül WhatsApp bağlantısını beklemez. `Panel → Müşteri Adayları → Yeni aday`
+telefonla arayan, kapıdan giren ya da Instagram'dan yazan müşteriyi aynı
+deftere yazar; kaynak alanı hangi kanaldan geldiğini tutar. Ekran yalnızca
+webhook'la beslenseydi, Meta kurulumu bitene kadar hiç kullanılamazdı ve o
+arada gelen müşteriler yine bir yere not edilirdi.
+
+Telefon zorunlu değil, ama yazıldıysa geçerli olmak zorunda: yanlış numara
+aynı kişinin ikinci bir kayıt olarak açılmasına yol açıyor. Kesin olmayan
+tarih ("Mayıs ilk hafta") ayrı bir alana yazılır, uydurma bir güne
+çevrilmez.
+
 ### Takip
 
 Her adayın bir **durumu** (Aranmadı → Arandı → … → Rezervasyona Döndü),
@@ -642,6 +660,13 @@ Mesajın aslı her talepte açılabilir durumda duruyor.
 2. Sahra'nın sabit numarasını WhatsApp Business hesabına bağlayıp
    doğrulayın. Numara başka bir WhatsApp hesabında kayıtlıysa önce oradan
    düşürülmesi gerekir.
+
+   > **Dikkat — numara seçimi.** Cloud API'ye bağlanan numara, telefondaki
+   > WhatsApp ve WhatsApp Business uygulamalarından **düşer**; o numaranın
+   > mesajlarına artık yalnızca API üzerinden, yani bu panelden bakılır.
+   > Salonun personelin elinde günlük kullandığı numarası bağlanırsa
+   > telefondan yazışma imkânı kalmaz. Bağlantı için ayrı bir hat
+   > açılması, günlük hattın elde kalması bakımından daha güvenlidir.
 3. Webhook adresi olarak `https://<alanadınız>/api/whatsapp` verin,
    **Verify token** alanına kendi belirlediğiniz uzun bir dizeyi yazın ve
    `messages` alanına abone olun.
@@ -676,6 +701,17 @@ mesaj, gönderildi sanılır ve müşteri cevapsız bekler.
 
 `WHATSAPP_TOKEN` ve `WHATSAPP_PHONE_ID` yalnızca mesaj **göndermek** için
 gerekir; mesaj almak ikisi olmadan da çalışır.
+
+### Otomatik cevap veren bir bot yoktur
+
+Sistem gelen mesajı **alır, çözümler ve kaydeder**; kendiliğinden cevap
+yazmaz. Müşteriye cevabı personel verir — aday kartındaki "WhatsApp'ta Aç"
+ile ya da Cloud API kurulduysa panelden.
+
+Bu bilinçli bir tercih: fiyat, tarih ve doluluk sorusuna yanlış cevap veren
+bir otomatik yanıtlayıcı, salon adına verilmiş bir taahhüt gibi okunur.
+Karşılama mesajı ya da mesai dışı bilgilendirmesi gibi sabit metinli bir
+otomatik cevap istenirse ayrıca eklenebilir; bugün yoktur.
 
 ### Güvenlik
 
