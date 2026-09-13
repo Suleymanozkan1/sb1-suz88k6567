@@ -28,7 +28,7 @@ import HizliYanitlar from '../../components/HizliYanitlar';
 export default function Hatirlatmalar() {
   const { user, can } = useAuth();
   const businessId = user?.activeBusinessId ?? '';
-  const duzenleyebilir = can('ayarlar.duzenle');
+  const duzenleyebilir = can('mesaj.duzenle');
 
   const { data: sablonlar = [], isLoading, error: yuklemeHatasi } = useTemplates(businessId);
   const { data: kurallar = [] } = useReminderRules(businessId);

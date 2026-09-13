@@ -33,7 +33,7 @@ import {
  */
 export default function OdemeBildirimleri() {
   const { can } = useAuth();
-  const duzenleyebilir = can('ayarlar.duzenle');
+  const duzenleyebilir = can('kasa.duzenle');
 
   const { data: kurallar = [], isLoading, error: yuklemeHatasi } = usePaymentAlerts();
   const { data: alicilar = [] } = usePaymentAlertRecipients();

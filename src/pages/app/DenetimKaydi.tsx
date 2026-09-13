@@ -72,7 +72,7 @@ export default function DenetimKaydi() {
     });
   }, [entries, query, action]);
 
-  if (!can('ayarlar.duzenle')) {
+  if (!can('denetim.goruntule')) {
     return <Alert kind="error">Denetim kaydını görüntüleme yetkiniz bulunmuyor.</Alert>;
   }
 

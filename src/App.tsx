@@ -97,6 +97,11 @@ export default function App() {
             element={
               <RequireAuth>
                 <Suspense fallback={<PanelLoading />}>
+                  {/*
+                    Yetki kapısı yerleşimin İÇİNDE: yetkisiz ekranda da
+                    menü açık kalsın, kullanıcı başka bir ekrana
+                    geçebilsin. Dışarıda olsaydı boş bir sayfa kalırdı.
+                  */}
                   <AppLayout />
                 </Suspense>
               </RequireAuth>

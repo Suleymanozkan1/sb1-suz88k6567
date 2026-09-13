@@ -41,7 +41,7 @@ export default function RenkAyarlari() {
     setSaved(false);
   }
 
-  if (!can('ayarlar.duzenle')) {
+  if (!can('tanim.duzenle')) {
     return <Alert kind="error">Ayarları düzenleme yetkiniz bulunmuyor.</Alert>;
   }
 

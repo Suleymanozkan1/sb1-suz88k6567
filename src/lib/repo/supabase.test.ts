@@ -435,6 +435,8 @@ describe('personel', () => {
 
     expect(islem(cagri('profiles'), 'update')?.arg[0]).toEqual({
       full_name: 'P', mobile: '5321112233', permissions: ['kasa.goruntule'],
+      // Panelden yazılan liste bugünkü şemada; okunurken taşınmamalı.
+      permissions_version: 1,
     });
     expect(islem(cagri('profiles'), 'eq')?.arg).toEqual(['id', 's1']);
   });

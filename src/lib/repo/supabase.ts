@@ -17,13 +17,13 @@ import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult, ErrorReport,
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent, PaymentMethod,
-  Permission, QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
+  QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
   ExchangeCode, ExchangeRate, WeatherForecast, SpecialDay, SpecialDayKind,
   SpecialDaySource, Survey,
 } from '../../types';
-import { VARSAYILAN_BASLANGIC_DURUMU } from '../../types';
+import { VARSAYILAN_BASLANGIC_DURUMU, YETKI_SURUMU, yetkileriTasi } from '../../types';
 import { computeInvoice } from '../invoice';
 
 /**
@@ -89,7 +89,16 @@ function toUser(row: Row): User {
     mobile: (row.mobile as string) ?? '',
     role: (row.role as User['role']) ?? 'owner',
     ownerId: (row.owner_id as string) ?? undefined,
-    permissions: ((row.permissions as Permission[]) ?? OWNER_PERMISSIONS),
+    /*
+      Eski kayıtlar yedi yetkilik listeden geliyor; `yetkileriTasi`
+      bugünkü karşılıklarını üretiyor. Göç SQL tarafında da yapılıyor
+      (0036), burası göçü uygulamamış bir kurulum için güvenlik ağı.
+    */
+    permissions: yetkileriTasi(
+      (row.permissions as string[]) ?? OWNER_PERMISSIONS,
+      Number(row.permissions_version ?? 0),
+    ),
+    permissionsVersion: Number(row.permissions_version ?? 0),
     city: (row.city as string) ?? '',
     district: (row.district as string) ?? '',
     category: (row.category as string) ?? '',
@@ -816,6 +825,8 @@ export const supabaseRepo: Repository = {
     const { error } = await db().from('profiles')
       .update({
         full_name: input.fullName, mobile: input.mobile, permissions: input.permissions,
+        // Panelden yazılan liste bugünkü şemada; taşıma bir daha çalışmasın.
+        permissions_version: YETKI_SURUMU,
         ...(input.monthlyReport === undefined ? {} : { monthly_report: input.monthlyReport }),
       })
       .eq('id', input.id);

@@ -5,10 +5,18 @@ import { useBusinesses } from '../lib/queries';
 import DemoNotice from '../components/DemoNotice';
 import HataBildir from '../components/HataBildir';
 import EkranKilidi from '../components/EkranKilidi';
+import YetkiKapisi from '../components/YetkiKapisi';
+import { yolunYetkisi } from '../lib/yetkiAlanlari';
 import {
   IconAlert, IconBell, IconBuilding, IconCalendar, IconChart, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu, IconMessage, IconPalette, IconPlus, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
 
+/*
+  Menüdeki her satır bir yetkiye bağlı (`yolunYetkisi`). Yetki listesi
+  ayrı bir dosyada duruyor ki rota koruması ile menü aynı tablodan
+  beslensin; ikisi ayrı yazılsaydı menüden kalkan bir ekran adres
+  satırından açılmaya devam ederdi.
+*/
 const NAV = [
   { to: '/panel', label: 'Özet', icon: IconGrid, end: true },
   { to: '/panel/takvim', label: 'Rezervasyon Takvimi', icon: IconCalendar },
@@ -23,7 +31,7 @@ const NAV = [
   { to: '/panel/urun-hizmet', label: 'Ürün ve Hizmet', icon: IconUsers },
   { to: '/panel/renk-ayarlari', label: 'Renk Ayarları', icon: IconPalette },
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
-  { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser, ownerOnly: true },
+  { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser },
   { to: '/panel/hatirlatmalar', label: 'Hatırlatmalar', icon: IconBell },
   { to: '/panel/odeme-bildirimleri', label: 'Ödeme Bildirimleri', icon: IconBell },
   { to: '/panel/musteri-adaylari', label: 'Müşteri Adayları', icon: IconMessage },
@@ -33,6 +41,7 @@ const NAV = [
   { to: '/panel/sistem', label: 'Sistem Durumu', icon: IconAlert },
   { to: '/panel/ayarlar', label: 'Ayarlar', icon: IconSettings },
 ];
+
 
 export default function AppLayout() {
   const { user, signOut, setActiveBusiness, can } = useAuth();
@@ -48,8 +57,12 @@ export default function AppLayout() {
   if (!user) return null;
 
   const active = businesses.find((b) => b.id === user.activeBusinessId) ?? businesses[0];
-  // Yalnızca yöneticiye açık ekranlar personelde bağlantı olarak gösterilmez.
-  const visibleNav = NAV.filter((item) => !item.ownerOnly || user.role === 'owner');
+  // Yetkisi olmayan ekran menüde hiç görünmez: açılmayacak bir bağlantı,
+  // olmayan bir bağlantıdan daha kötü.
+  const visibleNav = NAV.filter((item) => {
+    const gereken = yolunYetkisi(item.to);
+    return !gereken || can(gereken);
+  });
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition ${
@@ -156,7 +169,14 @@ export default function AppLayout() {
 
         <main className="min-w-0 flex-1 p-4 md:p-6">
           <DemoNotice className="mb-5" />
-          <Outlet />
+          {/*
+            Yetkisiz ekran menünün İÇİNDE kapatılıyor: kullanıcı boş bir
+            sayfada kalmasın, yanındaki menüden girebildiği bir ekrana
+            geçebilsin.
+          */}
+          <YetkiKapisi>
+            <Outlet />
+          </YetkiKapisi>
         </main>
 
         {/*

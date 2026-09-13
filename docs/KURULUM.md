@@ -85,6 +85,24 @@ Sıra önemlidir ve atlanamaz:
 >
 > Gelir/gider kayıtları, rezervasyonlar ve tahsilatlar etkilenmez.
 
+- `0036` panel yetkilerini yediden yirmi beşe çıkarır ve panelin daha önce
+  hiçbir yetkiye bağlı olmayan ekranlarını (müşteriler, ürün-hizmet,
+  müşteri adayları, hatırlatmalar, SMS kayıtları, İYS izinleri) kendi
+  yetkilerine bağlar.
+
+> **`0036` kimsenin erişimini daraltmaz.** Göç, her personele bugün fiilen
+> yapabildiği işin karşılığını yazar: yetkiye bağlı olmayan ekranlar
+> herkese açıktı, o yüzden herkese verilir; `ayarlar.duzenle` panelin
+> yönetim tarafının tamamıydı, parçalarına açılır. Taşınan kayıt
+> `profiles.permissions_version = 1` ile damgalanır; göç yeniden
+> çalıştırılırsa listeyi ikinci kez genişletmez.
+>
+> Göçten SONRA açılan personel hesabının varsayılanı yalnızca
+> görüntülemedir (rezervasyon, müşteri, tanımlar). Eskiden varsayılan tam
+> yetkiydi: elle daraltılmadıkça yeni açılan her hesap kasayı da silmeyi
+> de yapabiliyordu. Yeni hesapların yetkisini Kullanıcılar ekranından
+> verin; "Tüm yetkileri ver" kutusu hepsini tek hamlede işaretler.
+
 PostgREST'in bağlanacağı role şifre verin:
 
 ```bash

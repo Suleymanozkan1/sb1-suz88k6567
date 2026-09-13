@@ -102,7 +102,13 @@ export default function Takvim() {
         açılıyor; seçim yokken takvim tam genişlikte.
       */}
       <div className={`grid gap-6 ${selected ? 'lg:grid-cols-3' : ''}`}>
-        <section className={`card p-4 ${selected ? 'lg:col-span-2' : ''}`}>
+        {/*
+          `min-w-0`: içerideki 840px'lik ızgara, ızgara hücresinin
+          varsayılan `min-width:auto` davranışı yüzünden kartı telefon
+          genişliğinin dışına taşırıyordu. Yatay kaydırma kutunun
+          İÇİNDE kalmalı.
+        */}
+        <section className={`card min-w-0 p-4 ${selected ? 'lg:col-span-2' : ''}`}>
           {/*
             Ay ileri/geri okları yerine on iki ayın tamamı şerit hâlinde.
             Eylülden Marta gitmek altı tıklama sürüyordu; artık bir tane.

@@ -54,7 +54,7 @@ export default function AdayDurumlari() {
   const [yeniAd, setYeniAd] = useState('');
   const [yeniTon, setYeniTon] = useState<LeadStatusTone>('bekleyen');
 
-  const duzenlenebilir = can('ayarlar.duzenle');
+  const duzenlenebilir = can('aday.duzenle');
   const kullanim = (kod: string) => adaylar.filter((a) => a.status === kod).length;
 
   async function yaz(durum: LeadStatusDef) {

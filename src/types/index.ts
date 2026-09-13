@@ -492,6 +492,11 @@ export interface User {
   role: UserRole;
   ownerId?: string; // Alt kullanıcı ise bağlı olduğu ana üye
   permissions: Permission[];
+  /**
+   * `permissions` dizisinin şema sürümü (bkz. YETKI_SURUMU). Eksikse 0
+   * sayılır: 0036 öncesinden kalmış bir kayıttır, okunurken taşınır.
+   */
+  permissionsVersion?: number;
   city: string;
   district: string;
   category: string;
@@ -511,24 +516,164 @@ export interface User {
   monthlyReport?: boolean;
 }
 
+/**
+ * Panel yetkileri.
+ *
+ * Her panel ekranı bir yetkiye bağlı: yetkisi olmayan personel ekranı
+ * menüde görmez, adresi elle yazsa da giremez, veritabanı da satırı
+ * vermez (bkz. `has_permission`, 0032 ve 0036 numaralı göçler).
+ *
+ * Görüntüleme ile düzenleme AYRI: muhasebeye bakan personelin rakamları
+ * görmesi gerekir ama değiştirmesi gerekmez.
+ *
+ * Anahtar adları KALICI: veritabanındaki `profiles.permissions` dizisinde
+ * ve RLS kurallarında metin olarak duruyorlar. Bir anahtarı yeniden
+ * adlandırmak, o yetkiyi taşıyan herkesi yetkisiz bırakır.
+ */
 export type Permission =
+  // Rezervasyon
   | 'rezervasyon.goruntule'
   | 'rezervasyon.duzenle'
   | 'rezervasyon.sil'
+  | 'rezervasyon.sozlesme'
+  // Müşteri
+  | 'musteri.goruntule'
+  | 'musteri.duzenle'
+  | 'aday.goruntule'
+  | 'aday.duzenle'
+  // Finans
   | 'kasa.goruntule'
   | 'kasa.duzenle'
+  | 'fatura.goruntule'
+  | 'fatura.duzenle'
+  // Stok
+  | 'stok.goruntule'
+  | 'stok.duzenle'
+  // Rapor
   | 'rapor.goruntule'
-  | 'ayarlar.duzenle';
+  | 'rapor.disaAktar'
+  // Tanımlar
+  | 'tanim.goruntule'
+  | 'tanim.duzenle'
+  // Mesaj
+  | 'mesaj.goruntule'
+  | 'mesaj.duzenle'
+  // Yönetim
+  | 'kullanici.goruntule'
+  | 'kullanici.duzenle'
+  | 'ayarlar.duzenle'
+  | 'denetim.goruntule'
+  | 'sistem.yonet';
 
-export const ALL_PERMISSIONS: { key: Permission; label: string }[] = [
-  { key: 'rezervasyon.goruntule', label: 'Rezervasyonları görüntüle' },
-  { key: 'rezervasyon.duzenle', label: 'Rezervasyon ekle / düzenle' },
-  { key: 'rezervasyon.sil', label: 'Rezervasyon sil' },
-  { key: 'kasa.goruntule', label: 'Gelir / gider görüntüle' },
-  { key: 'kasa.duzenle', label: 'Gelir / gider ekle / düzenle' },
-  { key: 'rapor.goruntule', label: 'Raporları görüntüle' },
-  { key: 'ayarlar.duzenle', label: 'Ayarları düzenle' },
+/** Yetki kartındaki başlıklar; sıralama ekrandaki sırayı belirler. */
+export type PermissionGroup =
+  | 'Rezervasyon'
+  | 'Müşteri'
+  | 'Finans'
+  | 'Stok'
+  | 'Rapor'
+  | 'Tanımlar'
+  | 'Mesaj ve bildirim'
+  | 'Yönetim';
+
+export interface PermissionInfo {
+  key: Permission;
+  label: string;
+  group: PermissionGroup;
+  /** Hangi ekranları açtığı; yetki kartında küçük yazıyla gösteriliyor. */
+  hint?: string;
+}
+
+export const ALL_PERMISSIONS: PermissionInfo[] = [
+  { key: 'rezervasyon.goruntule', label: 'Rezervasyonları ve takvimi görüntüle', group: 'Rezervasyon', hint: 'Rezervasyon Takvimi, Rezervasyonlar' },
+  { key: 'rezervasyon.duzenle', label: 'Rezervasyon ekle / düzenle', group: 'Rezervasyon' },
+  { key: 'rezervasyon.sil', label: 'Rezervasyon sil', group: 'Rezervasyon' },
+  { key: 'rezervasyon.sozlesme', label: 'Sözleşme ve makbuz yazdır', group: 'Rezervasyon', hint: 'TC kimlik sözleşmede görünür' },
+
+  { key: 'musteri.goruntule', label: 'Müşterileri görüntüle', group: 'Müşteri' },
+  { key: 'musteri.duzenle', label: 'Müşteri ekle / düzenle', group: 'Müşteri' },
+  { key: 'aday.goruntule', label: 'Müşteri adaylarını görüntüle', group: 'Müşteri', hint: 'Müşteri Adayları, WhatsApp talepleri' },
+  { key: 'aday.duzenle', label: 'Müşteri adayı ekle / düzenle', group: 'Müşteri' },
+
+  { key: 'kasa.goruntule', label: 'Gelir / gider görüntüle', group: 'Finans', hint: 'Gelir / Gider, Ödeme Bildirimleri' },
+  { key: 'kasa.duzenle', label: 'Gelir / gider ekle / düzenle', group: 'Finans' },
+  { key: 'fatura.goruntule', label: 'Faturaları görüntüle', group: 'Finans' },
+  { key: 'fatura.duzenle', label: 'Fatura kes / iptal et', group: 'Finans' },
+
+  { key: 'stok.goruntule', label: 'Ürün ve hizmetleri görüntüle', group: 'Stok' },
+  { key: 'stok.duzenle', label: 'Ürün, hizmet ve stok düzenle', group: 'Stok' },
+
+  { key: 'rapor.goruntule', label: 'Raporları görüntüle', group: 'Rapor' },
+  { key: 'rapor.disaAktar', label: 'Rapor çıktısı al', group: 'Rapor', hint: 'Word ve yazdırma' },
+
+  { key: 'tanim.goruntule', label: 'Salon, menü, renk ve özel günleri görüntüle', group: 'Tanımlar' },
+  { key: 'tanim.duzenle', label: 'Salon, menü, renk ve özel gün düzenle', group: 'Tanımlar' },
+
+  { key: 'mesaj.goruntule', label: 'SMS kayıtlarını ve hatırlatmaları görüntüle', group: 'Mesaj ve bildirim', hint: 'SMS Kayıtları, Hatırlatmalar, İYS İzinleri' },
+  { key: 'mesaj.duzenle', label: 'Hatırlatma ve izin ayarlarını düzenle', group: 'Mesaj ve bildirim' },
+
+  { key: 'kullanici.goruntule', label: 'Kullanıcıları görüntüle', group: 'Yönetim' },
+  { key: 'kullanici.duzenle', label: 'Kullanıcı ekle / yetki ver', group: 'Yönetim', hint: 'Bu yetki, yetki dağıtma yetkisidir' },
+  { key: 'ayarlar.duzenle', label: 'İşletme ayarlarını düzenle', group: 'Yönetim', hint: 'Firmalarım, Ayarlar' },
+  { key: 'denetim.goruntule', label: 'Denetim kaydını görüntüle', group: 'Yönetim' },
+  { key: 'sistem.yonet', label: 'Sistem durumu ve yedekleme', group: 'Yönetim' },
 ];
+
+/**
+ * 0036 öncesi yedi yetki vardı ve ekranların çoğu hiç yetkiye bağlı
+ * değildi. Eski bir kaydı okurken o günkü ERİŞİMİN AYNISI üretiliyor:
+ * yetki listesi genişledi diye hiç kimse dün yapabildiği bir işi
+ * bugün yapamaz hâle gelmemeli.
+ */
+const ESKI_YETKI_KARSILIGI: Record<string, Permission[]> = {
+  'rezervasyon.goruntule': ['rezervasyon.goruntule', 'rezervasyon.sozlesme'],
+  'rezervasyon.duzenle': ['rezervasyon.duzenle'],
+  'rezervasyon.sil': ['rezervasyon.sil'],
+  'kasa.goruntule': ['kasa.goruntule', 'fatura.goruntule'],
+  'kasa.duzenle': ['kasa.duzenle', 'fatura.duzenle'],
+  'rapor.goruntule': ['rapor.goruntule', 'rapor.disaAktar'],
+  'ayarlar.duzenle': ['ayarlar.duzenle', 'tanim.duzenle', 'denetim.goruntule', 'sistem.yonet'],
+};
+
+/** Eskiden hiçbir yetkiye bağlı olmayan, herkese açık ekranlar. */
+const ESKIDEN_HERKESE_ACIK: Permission[] = [
+  'musteri.goruntule', 'musteri.duzenle',
+  'aday.goruntule', 'aday.duzenle',
+  'stok.goruntule', 'stok.duzenle',
+  'tanim.goruntule',
+  'mesaj.goruntule', 'mesaj.duzenle',
+];
+
+const GECERLI_YETKILER = new Set<string>(ALL_PERMISSIONS.map((p) => p.key));
+
+/**
+ * Yetki listesinin şema sürümü.
+ *
+ * 0 = 0036 öncesi yedi yetkilik liste, 1 = bugünkü liste.
+ *
+ * Sürüm SAYILIYOR, listenin içeriğine BAKILMIYOR: "içinde yeni anahtar
+ * var mı" gibi bir sezgi, yöneticinin bilerek yalnızca
+ * `kasa.goruntule` verdiği yeni bir kaydı da eski sanıp dokuz yetki
+ * daha eklerdi.
+ */
+export const YETKI_SURUMU = 1;
+
+/**
+ * Bir kullanıcının yetki dizisini bugünkü listeye çevirir.
+ *
+ * `surum` bugünküyse liste olduğu gibi (yalnızca geçersiz anahtarlar
+ * ayıklanarak) döner.
+ */
+export function yetkileriTasi(eski: readonly string[], surum = 0): Permission[] {
+  const yeni = new Set<Permission>();
+  eski.forEach((y) => { if (GECERLI_YETKILER.has(y)) yeni.add(y as Permission); });
+
+  if (surum < YETKI_SURUMU) {
+    eski.forEach((y) => ESKI_YETKI_KARSILIGI[y]?.forEach((k) => yeni.add(k)));
+    ESKIDEN_HERKESE_ACIK.forEach((k) => yeni.add(k));
+  }
+  return ALL_PERMISSIONS.filter((p) => yeni.has(p.key)).map((p) => p.key);
+}
 
 export interface ColorSetting {
   key: string;

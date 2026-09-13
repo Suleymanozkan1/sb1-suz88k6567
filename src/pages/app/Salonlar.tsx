@@ -79,7 +79,7 @@ export default function Salonlar() {
     }
   }
 
-  if (!can('ayarlar.duzenle')) {
+  if (!can('tanim.duzenle')) {
     return <Alert kind="error">Salon tanımlarını yalnızca yetkili kullanıcı düzenleyebilir.</Alert>;
   }
 

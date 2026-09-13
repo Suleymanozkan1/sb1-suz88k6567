@@ -51,7 +51,7 @@ export default function OzelGunler() {
   const [tur, setTur] = useState<SpecialDayKind>('okul');
   const [silinecek, setSilinecek] = useState<SpecialDay | null>(null);
 
-  const duzenlenebilir = can('ayarlar.duzenle');
+  const duzenlenebilir = can('tanim.duzenle');
 
   /*
     Geçmiş günler VARSAYILAN OLARAK gizli: liste yıllar geçtikçe

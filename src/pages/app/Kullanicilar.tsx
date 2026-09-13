@@ -7,6 +7,7 @@ import { errorMessage } from '../../lib/authHelpers';
 import { useDeleteStaff, useSaveStaff, useStaff } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { ALL_PERMISSIONS } from '../../types';
+import { OWNER_PERMISSIONS } from '../../data/constants';
 import { formatPhone } from '../../lib/format';
 import { IconEdit, IconPlus, IconReport, IconTrash, IconUser } from '../../components/Icons';
 import type { Permission, User } from '../../types';
@@ -88,7 +89,32 @@ export default function Kullanicilar() {
     }));
   }
 
-  if (!can('ayarlar.duzenle') || user?.role !== 'owner') {
+  /*
+    Yirmi beş kutuyu tek tek işaretlemek, yardımcısına her şeyi açmak
+    isteyen salon sahibi için gereksiz bir iş. "Tümünü ver" listeyi
+    OWNER_PERMISSIONS'tan kuruyor: yeni bir yetki eklendiğinde buraya
+    da yazmak gerekmiyor.
+  */
+  const tumYetkilerVar = OWNER_PERMISSIONS.every((k) => form.permissions.includes(k));
+
+  function tumunuDegistir(checked: boolean) {
+    setForm((f) => ({ ...f, permissions: checked ? [...OWNER_PERMISSIONS] : [] }));
+  }
+
+  /** Bir başlıktaki yetkilerin tamamını birlikte aç/kapat. */
+  function grubuDegistir(grup: string, checked: boolean) {
+    const anahtarlar = ALL_PERMISSIONS.filter((p) => p.group === grup).map((p) => p.key);
+    setForm((f) => ({
+      ...f,
+      permissions: checked
+        ? [...new Set([...f.permissions, ...anahtarlar])]
+        : f.permissions.filter((x) => !anahtarlar.includes(x)),
+    }));
+  }
+
+  const gruplar = [...new Set(ALL_PERMISSIONS.map((p) => p.group))];
+
+  if (!can('kullanici.duzenle') || user?.role !== 'owner') {
     return <Alert kind="error">Kullanıcı yönetimi yalnızca yönetici hesabı ile yapılabilir.</Alert>;
   }
 
@@ -159,18 +185,58 @@ export default function Kullanicilar() {
 
           <fieldset className="mt-5">
             <legend className="field-label">Yetkiler</legend>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {ALL_PERMISSIONS.map((p) => (
-                <label key={p.key} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-line text-accent-ink focus:ring-accent"
-                    checked={form.permissions.includes(p.key)}
-                    onChange={(e) => togglePermission(p.key, e.target.checked)}
-                  />
-                  {p.label}
-                </label>
-              ))}
+
+            <label className="mb-3 flex items-center gap-2 rounded-md border border-accent-ink/40 bg-accent-ink/5 px-3 py-2.5 text-sm font-semibold text-brand">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-line text-accent-ink focus:ring-accent"
+                checked={tumYetkilerVar}
+                onChange={(e) => tumunuDegistir(e.target.checked)}
+              />
+              Tüm yetkileri ver ({OWNER_PERMISSIONS.length} yetki)
+            </label>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {gruplar.map((grup) => {
+                const satirlar = ALL_PERMISSIONS.filter((p) => p.group === grup);
+                const hepsi = satirlar.every((p) => form.permissions.includes(p.key));
+                return (
+                  <div key={grup} className="rounded-md border border-line p-3">
+                    {/*
+                      Başlık da bir kutu: "finansın tamamını kapat" tek
+                      hareket olsun, dört satırı tek tek aramaya gerek
+                      kalmasın.
+                    */}
+                    <label className="mb-2 flex items-center gap-2 border-b border-line pb-2 text-sm font-semibold text-brand">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-line text-accent-ink focus:ring-accent"
+                        checked={hepsi}
+                        onChange={(e) => grubuDegistir(grup, e.target.checked)}
+                      />
+                      {grup}
+                    </label>
+                    <div className="space-y-2">
+                      {satirlar.map((p) => (
+                        <label key={p.key} className="flex items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-line text-accent-ink focus:ring-accent"
+                            checked={form.permissions.includes(p.key)}
+                            onChange={(e) => togglePermission(p.key, e.target.checked)}
+                          />
+                          <span>
+                            {p.label}
+                            {p.hint && (
+                              <span className="block text-xs text-brand-muted">{p.hint}</span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </fieldset>
 
@@ -206,7 +272,11 @@ export default function Kullanicilar() {
                   </td>
                   <td className="px-4 py-3 text-brand-muted">{u.email}</td>
                   <td className="px-4 py-3 text-brand-muted">{u.mobile ? formatPhone(u.mobile) : '-'}</td>
-                  <td className="px-4 py-3 text-xs text-brand-muted">{u.permissions.length} yetki</td>
+                  <td className="px-4 py-3 text-xs text-brand-muted">
+                    {OWNER_PERMISSIONS.every((k) => u.permissions.includes(k))
+                      ? 'Tam yetki'
+                      : `${u.permissions.length} yetki`}
+                  </td>
                   <td className="px-4 py-3 text-xs">
                     {u.monthlyReport
                       ? <span className="flex items-center gap-1 text-[#15803d]"><IconReport size={14} /> Açık</span>

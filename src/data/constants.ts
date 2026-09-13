@@ -1,3 +1,4 @@
+import { ALL_PERMISSIONS } from '../types';
 import type { ColorSetting, LeadChannel, OrganizationType, Permission } from '../types';
 
 /** İşletme kayıt formlarındaki 81 il + yurt dışı seçenekleri */
@@ -169,10 +170,13 @@ export const EXPENSE_CATEGORIES: string[] = [
 
 export const PAYMENT_METHODS = ['Nakit', 'Kredi Kartı', 'Havale/EFT', 'Çek', 'Senet'] as const;
 
-export const OWNER_PERMISSIONS: Permission[] = [
-  'rezervasyon.goruntule', 'rezervasyon.duzenle', 'rezervasyon.sil',
-  'kasa.goruntule', 'kasa.duzenle', 'rapor.goruntule', 'ayarlar.duzenle',
-];
+/**
+ * İşletme sahibinin yetkileri: listenin TAMAMI.
+ *
+ * Tek tek sayılsaydı, yeni bir yetki eklendiğinde buraya yazmayı unutan
+ * biri sahibi kendi ekranından dışarıda bırakırdı.
+ */
+export const OWNER_PERMISSIONS: Permission[] = ALL_PERMISSIONS.map((p) => p.key);
 
 export const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',

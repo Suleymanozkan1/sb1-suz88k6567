@@ -547,3 +547,51 @@ test('Ekran kilidi süresi ayarlanabilir', async ({ page }) => {
     await expect(secim.locator(`option[value="${saniye}"]`)).toHaveCount(1);
   }
 });
+
+/*
+  Yetkilerin tüm alanlara genişletilmesi (0036). Demo hesabı işletme
+  SAHİBİ, yani her yetkiye sahip; ekranın kendisi burada sınanıyor.
+  Yetkinin gerçekten engellediği durum SQL paketinde (26_yetki_genisletme)
+  veritabanı düzeyinde sınanıyor -- asıl engel orada.
+*/
+test('Kullanıcı yetkileri gruplanmış ve tek tuşla verilebiliyor', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/kullanicilar');
+  await page.getByRole('button', { name: 'Yeni Kullanıcı' }).click();
+
+  // Yetkiler başlıklara ayrılmış olmalı.
+  for (const grup of ['Rezervasyon', 'Müşteri', 'Finans', 'Stok', 'Rapor',
+    'Tanımlar', 'Mesaj ve bildirim', 'Yönetim']) {
+    await expect(page.getByRole('checkbox', { name: grup, exact: true })).toBeVisible();
+  }
+
+  const hepsi = page.getByRole('checkbox', { name: /^Tüm yetkileri ver/ });
+  await expect(hepsi).not.toBeChecked();
+
+  // Tek tuşla hepsi: yirmi beş kutuyu tek tek işaretlemek gerekmiyor.
+  await hepsi.check();
+  await expect(page.getByRole('checkbox', { name: 'Rezervasyon sil' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Sistem durumu ve yedekleme' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Fatura kes / iptal et' })).toBeChecked();
+
+  // Geri alınca hepsi kalkıyor.
+  await hepsi.uncheck();
+  await expect(page.getByRole('checkbox', { name: 'Rezervasyon sil' })).not.toBeChecked();
+
+  // Başlık kutusu yalnızca kendi grubunu açıyor.
+  await page.getByRole('checkbox', { name: 'Finans', exact: true }).check();
+  await expect(page.getByRole('checkbox', { name: 'Gelir / gider görüntüle' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Fatura kes / iptal et' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Rezervasyon sil' })).not.toBeChecked();
+});
+
+test('Menüdeki her ekran sahibe açık', async ({ page }) => {
+  await login(page);
+  // Sahipte yetki listesi tam: menüden hiçbir satır düşmemeli.
+  const menu = page.getByRole('complementary', { name: 'Panel menüsü' });
+  for (const ad of ['Rezervasyon Takvimi', 'Müşteriler', 'Gelir / Gider', 'Faturalar',
+    'Raporlar', 'Salonlar', 'Ürün ve Hizmet', 'Kullanıcılar', 'Denetim Kaydı',
+    'Sistem Durumu', 'Ayarlar']) {
+    await expect(menu.getByRole('link', { name: ad, exact: true })).toBeVisible();
+  }
+});
