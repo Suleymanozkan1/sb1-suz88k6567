@@ -32,6 +32,8 @@ interface HavaYaniti {
   uretim?: string;
   gunluk?: { gun: string; enDusuk: number | null; enYuksek: number | null; hadise?: string }[];
   saatlik?: { saat: string; sicaklik: number | null; hadise: string }[];
+  /** Anlık gözlem: "şu an kaç derece". */
+  simdi?: number | null;
 }
 
 export const DEMO_GUN_ADRESI = '/api/demo-gunler';
@@ -105,10 +107,11 @@ export async function havayiTazele(zamanAsimi = 6_000): Promise<boolean> {
 
     const govde = (await yanit.json()) as HavaYaniti;
     const gunluk = govde.gunluk ?? [];
-    if (gunluk.length === 0) return false;
+    const simdi = govde.simdi ?? null;
+    if (gunluk.length === 0 && simdi === null) return false;
     const cekilme = govde.uretim ?? new Date().toISOString();
 
-    write(KEYS.weather, gunluk.map((h): WeatherForecast => ({
+    const satirlar = gunluk.map((h): WeatherForecast => ({
       businessId: DEMO_ISLETME,
       day: h.gun,
       minC: h.enDusuk ?? undefined,
@@ -118,7 +121,32 @@ export async function havayiTazele(zamanAsimi = 6_000): Promise<boolean> {
       icon: h.hadise ?? '',
       hadise: h.hadise,
       fetchedAt: cekilme,
-    })));
+    }));
+
+    /*
+      BUGÜNÜN SATIRI. MGM'nin günlük tahmini gün içinde yarından başlıyor
+      ve ekrandaki hava satırı bugünü arıyor; bugün olmadan tahmin gelse
+      bile hiç çizilmiyordu. Anlık gözlem varsa bugünün satırı ondan
+      doluyor -- uydurma değil, o anki ölçüm.
+    */
+    if (simdi !== null) {
+      const bugun = new Date();
+      const bugunIso = `${bugun.getFullYear()}-${String(bugun.getMonth() + 1).padStart(2, '0')}-${String(bugun.getDate()).padStart(2, '0')}`;
+      const mevcut = satirlar.find((s) => s.day === bugunIso);
+      if (mevcut) mevcut.currentC = simdi;
+      else {
+        satirlar.unshift({
+          businessId: DEMO_ISLETME,
+          day: bugunIso,
+          currentC: simdi,
+          summary: '',
+          icon: '',
+          fetchedAt: cekilme,
+        });
+      }
+    }
+
+    write(KEYS.weather, satirlar);
 
     write(KEYS.weatherHours, (govde.saatlik ?? []).map((s): WeatherHour => ({
       businessId: DEMO_ISLETME,

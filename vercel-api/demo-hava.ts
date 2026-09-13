@@ -16,7 +16,9 @@
  * ÖNBELLEK. Üç saat. Tahmin gün içinde değişiyor; takvim gibi otuz gün
  * beklenseydi ekranda bayat bir sıcaklık dururdu.
  */
-import { gunlukCoz, merkezSec, merkezleriCoz, mgmCek, saatlikCoz } from '../api/_mgm.js';
+import {
+  gunlukCoz, merkezSec, merkezleriCoz, mgmCek, saatlikCoz, sonDurumCoz,
+} from '../api/_mgm.js';
 
 /** Tanıtım işletmesinin konumu; tohumdaki salonla aynı il. */
 const DEMO_IL = 'Konya';
@@ -44,7 +46,9 @@ interface VercelYanit {
 export default async function handler(_req: unknown, res: VercelYanit): Promise<void> {
   let gunluk: DemoHava[] = [];
   let saatlik: DemoHavaSaati[] = [];
+  let simdi: number | null = null;
   let hata = '';
+  let saatlikHatasi = '';
 
   try {
     const merkezler = merkezleriCoz(
@@ -61,10 +65,23 @@ export default async function handler(_req: unknown, res: VercelYanit): Promise<
       ekran zaten çizilebiliyor, saatlik şeridin yokluğu onu götürmemeli.
     */
     try {
-      saatlik = (await saatlikCoz(await mgmCek(`/tahminler/saatlik?istno=${merkez.saatlikNo}`)))
+      saatlik = saatlikCoz(await mgmCek(`/tahminler/saatlik?istno=${merkez.saatlikNo}`))
         .map((s) => ({ saat: s.saat, sicaklik: s.sicaklikC, hadise: s.hadise }));
-    } catch {
+    } catch (e) {
       saatlik = [];
+      saatlikHatasi = String(e instanceof Error ? e.message : e).slice(0, 200);
+    }
+
+    /*
+      ANLIK GÖZLEM. MGM'nin günlük tahmini gün içinde YARINDAN başlıyor;
+      bugünün satırı hiç gelmiyor. Ekrandaki hava satırı bugünü aradığı
+      için tahmin gelse bile hiç çizilmiyordu. "Şu an kaç derece" ayrı bir
+      istasyondan geliyor ve bugünün satırını o dolduruyor.
+    */
+    try {
+      simdi = sonDurumCoz(await mgmCek(`/sondurumlar?istNo=${merkez.sonDurumNo}`));
+    } catch {
+      simdi = null;
     }
   } catch (e) {
     /*
@@ -78,12 +95,13 @@ export default async function handler(_req: unknown, res: VercelYanit): Promise<
   res.setHeader('content-type', 'application/json; charset=utf-8');
   res.setHeader(
     'cache-control',
-    gunluk.length > 0
+    gunluk.length > 0 || simdi !== null
       ? 'public, s-maxage=10800, stale-while-revalidate=86400'
       // Başarısız yanıt uzun süre önbellekte kalmamalı.
       : 'public, s-maxage=300',
   );
-  res.status(gunluk.length > 0 ? 200 : 503).send(JSON.stringify({
-    uretim: new Date().toISOString(), il: DEMO_IL, ilce: DEMO_ILCE, gunluk, saatlik, hata,
+  res.status(gunluk.length > 0 || simdi !== null ? 200 : 503).send(JSON.stringify({
+    uretim: new Date().toISOString(), il: DEMO_IL, ilce: DEMO_ILCE,
+    gunluk, saatlik, simdi, hata, saatlikHatasi,
   }));
 }

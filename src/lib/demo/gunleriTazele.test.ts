@@ -22,6 +22,7 @@ const HAVA_YANITI = {
     { gun: '2026-09-14', enDusuk: 15, enYuksek: 24, hadise: 'PB' },
   ],
   saatlik: [{ saat: '2026-09-13T19:00', sicaklik: 21, hadise: 'A' }],
+  simdi: 23,
 };
 
 function yanitla(govde: unknown, ok = true) {
@@ -56,9 +57,29 @@ describe('gunleriTazele', () => {
   });
 
   it('hava gelmezse uydurmuyor', async () => {
-    yanitla({ ...HAVA_YANITI, gunluk: [] });
+    yanitla({ ...HAVA_YANITI, gunluk: [], simdi: null });
     expect(await havayiTazele()).toBe(false);
     expect(await localRepo.listWeather('biz_demo')).toEqual([]);
+  });
+
+  /*
+    MGM'nin günlük tahmini gün içinde YARINDAN başlıyor. Ekrandaki hava
+    satırı bugünü aradığı için, bugünün satırı olmadan tahmin gelse bile
+    hiç çizilmiyordu.
+  */
+  it('tahmin yarından başlıyorsa bugünü anlık gözlemden kurar', async () => {
+    const bugun = new Date();
+    const iso = `${bugun.getFullYear()}-${String(bugun.getMonth() + 1).padStart(2, '0')}-${String(bugun.getDate()).padStart(2, '0')}`;
+    yanitla({
+      uretim: '2026-09-13T04:30:00.000Z',
+      gunluk: [{ gun: '2099-01-01', enDusuk: 1, enYuksek: 5, hadise: 'A' }],
+      simdi: 23,
+    });
+    await havayiTazele();
+
+    const okunan = await localRepo.listWeather('biz_demo');
+    const bugunSatiri = okunan.find((h) => h.day === iso);
+    expect(bugunSatiri?.currentC).toBe(23);
   });
 
   it('saatlik tahmini de yazar', async () => {
