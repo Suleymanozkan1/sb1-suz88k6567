@@ -37,6 +37,11 @@ export interface DemoHavaSaati {
   hadise: string;
 }
 
+/** İki haneli sayı; saat ve tarih birleştirmede kullanılıyor. */
+function iki(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
 interface VercelYanit {
   status(kod: number): VercelYanit;
   setHeader(ad: string, deger: string): void;
@@ -146,6 +151,25 @@ export default async function handler(req: unknown, res: VercelYanit): Promise<v
       } catch (e) {
         simdiHatasi = String(e instanceof Error ? e.message : e).slice(0, 200);
       }
+    }
+
+    /*
+      GÖZLEM YOKSA SAATLİK TAHMİN. MGM'nin `/sondurumlar` servisi Konya'nın
+      hiçbir istasyonunda karşılık vermedi (canlıda ham yanıtla
+      doğrulandı: boş dizi). Saatlik tahmin ise dolu ve içinde
+      bulunulan saat de var; bugünün sıcaklığı oradan alınıyor.
+
+      Bu bir ÖLÇÜM DEĞİL TAHMİN: ikisi birkaç derece ayrışabilir. Yine de
+      MGM'nin kendi verisi ve o saate ait; ekranda boş bırakmaktan
+      iyi. Saat dilimi sabit +03 (Türkiye).
+    */
+    if (simdi === null && saatlik.length > 0) {
+      const tr = new Date(Date.now() + 3 * 60 * 60_000);
+      const simdiKi = `${tr.getUTCFullYear()}-${iki(tr.getUTCMonth() + 1)}-${iki(tr.getUTCDate())}T${iki(tr.getUTCHours())}:00`;
+      // Geçmiş saatlerin en yenisi: MGM üç saatte bir veri veriyor.
+      const uygun = saatlik.filter((s) => s.saat <= simdiKi && s.sicaklik !== null);
+      const secilen = uygun[uygun.length - 1] ?? saatlik.find((s) => s.sicaklik !== null);
+      if (secilen) simdi = secilen.sicaklik;
     }
   } catch (e) {
     /*
