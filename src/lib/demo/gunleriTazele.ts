@@ -19,7 +19,7 @@
  * gömülü veri kalıyor; tanıtım ekranında hata mesajı çıkarmanın anlamı
  * yok.
  */
-import type { SpecialDay, WeatherForecast, WeatherHour } from '../../types';
+import type { ExchangeRate, SpecialDay, WeatherForecast, WeatherHour } from '../../types';
 import { hadiseAdi } from '../mgm';
 import { KEYS, read, write } from '../storage';
 
@@ -45,6 +45,14 @@ export const DEMO_GUN_ADRESI = '/api/demo-gunler';
   götürürdü -- takvimin pakete gömülü yedeği var, tahminin yok.
 */
 export const DEMO_HAVA_ADRESI = '/api/demo-hava';
+
+/*
+  Döviz kuru da ayrı uç noktada ve ayrı tazeleniyor: TCMB kuru iş günü
+  içinde bir kez yayımlanıyor, hava tahmini gün içinde değişiyor. Tek
+  çağrıda birleştirilseydi ikisinden hızlı değişene göre önbellek
+  kurulur, TCMB boşuna sorulurdu.
+*/
+export const DEMO_KUR_ADRESI = '/api/demo-kur';
 
 /** Tanıtım işletmesi; tahmin satırları bu kimliğe yazılıyor. */
 const DEMO_ISLETME = 'biz_demo';
@@ -155,6 +163,41 @@ export async function havayiTazele(zamanAsimi = 6_000): Promise<boolean> {
       hadise: s.hadise,
     })));
 
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+interface KurYaniti {
+  uretim?: string;
+  tarih?: string | null;
+  kurlar?: { code: string; buy: number; sell: number; quotedAt: string }[];
+}
+
+/**
+ * Döviz kurunu çeker ve depoya yazar.
+ *
+ * Uydurma kur YOK: TCMB'ye ulaşılamazsa liste boş kalıyor ve şerit hiç
+ * çizilmiyor. Örnek bir rakam konsaydı salon sahibi ona bakarak fiyat
+ * verirdi.
+ */
+export async function kurlariTazele(zamanAsimi = 6_000): Promise<boolean> {
+  try {
+    const yanit = await fetch(DEMO_KUR_ADRESI, { signal: AbortSignal.timeout(zamanAsimi) });
+    if (!yanit.ok) return false;
+
+    const govde = (await yanit.json()) as KurYaniti;
+    const gelen = govde.kurlar ?? [];
+    if (gelen.length === 0) return false;
+
+    write(KEYS.exchangeRates, gelen.map((k): ExchangeRate => ({
+      code: k.code as ExchangeRate['code'],
+      buy: k.buy,
+      sell: k.sell,
+      quotedAt: k.quotedAt,
+      fetchedAt: govde.uretim ?? new Date().toISOString(),
+    })));
     return true;
   } catch {
     return false;

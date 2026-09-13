@@ -7,7 +7,7 @@
  */
 import { KEYS, read, remove, write } from '../storage';
 import { DEFAULT_COLOR_SETTINGS, seedIfEmpty } from '../seed';
-import { gunleriTazele, havayiTazele } from '../demo/gunleriTazele';
+import { gunleriTazele, havayiTazele, kurlariTazele } from '../demo/gunleriTazele';
 import { nextContractCode, normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
@@ -320,6 +320,7 @@ function takvimiTazele(): void {
   tazelemeSozu = Promise.all([
     gunleriTazele().catch(() => undefined),
     havayiTazele().catch(() => undefined),
+    kurlariTazele().catch(() => undefined),
   ]);
 }
 
@@ -726,8 +727,14 @@ export const localRepo: Repository = {
     diyor -- örnek bir kur yazılsaydı gerçek sanılırdı ve salon sahibi
     ona bakarak fiyat verirdi.
   */
+  /*
+    Kur, `/api/demo-kur` üzerinden TCMB'den geliyor ve `kurlariTazele()`
+    tarafından depoya yazılıyor. Uydurma kur YOK: TCMB'ye ulaşılamadıysa
+    liste boş kalıyor ve şerit hiç çizilmiyor.
+  */
   async listExchangeRates() {
-    return wait<ExchangeRate[]>([]);
+    await tazelemeyiBekle();
+    return wait(read<ExchangeRate[]>(KEYS.exchangeRates, []));
   },
 
   /*
