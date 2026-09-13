@@ -171,6 +171,8 @@ function toReservation(row: Row): Reservation {
     colorKey: (row.color_key as string) ?? 'diger',
     note: (row.note as string) ?? undefined,
     address: (row.address as string) ?? undefined,
+    city: (row.city as string) ?? undefined,
+    district: (row.district as string) ?? undefined,
     sourceChannel: (row.source_channel as Reservation['sourceChannel']) ?? undefined,
     sourceDetail: (row.source_detail as string) ?? undefined,
     services: (row.services as string[]) ?? [],
@@ -193,6 +195,7 @@ function fromReservation(r: Reservation) {
     deposit_method: r.depositMethod ?? null,
     currency: r.currency, status: r.status, color_key: r.colorKey,
     note: r.note || null, address: r.address || null, services: r.services,
+    city: r.city?.trim() || '', district: r.district?.trim() || '',
     source_channel: r.sourceChannel || null, source_detail: r.sourceDetail?.trim() || null,
   };
 }

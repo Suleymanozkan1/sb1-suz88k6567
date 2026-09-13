@@ -595,3 +595,84 @@ test('Menüdeki her ekran sahibe açık', async ({ page }) => {
     await expect(menu.getByRole('link', { name: ad, exact: true })).toBeVisible();
   }
 });
+
+/*
+  Raporlar bölümü rakip programın listesiyle tamamlandı: 17 rapor eklendi,
+  var olanlar korundu. Bu test her raporun AÇILDIĞINI ve kırık değer
+  üretmediğini sınıyor -- hesaplamaların doğruluğu birim testlerde
+  (src/lib/reports.yeni.test.ts).
+*/
+const RAPORLAR = [
+  'Günlük rezervasyonlar', 'Program raporu', 'Haftalık rapor', 'Rezervasyon süreçleri',
+  'Salon bazlı rapor', 'Aylık rezervasyon raporu', 'Yıllık / aylık rezervasyon',
+  'Aylık davetli sayısı', 'İşletme bazlı rezervasyon', 'Organizasyon bazlı rapor',
+  'Gündüz / Gece', 'İl bazlı rezervasyon', 'Ciro, gider ve kâr', 'Aylık tahsilat (gelir)',
+  'Gelecek Kaporalar ve Ödemeler', 'Rezervasyon ek kalemleri', 'Ulaşım kanalı',
+  'Öneren / tavsiye eden', 'Görüşme ve dönüşüm', 'Deneyim anketi',
+  'Aylık rezervasyon işlemleri', 'İşlem logları', 'SMS logları', 'Yetkililer raporu',
+];
+
+test('Rapor listesi gruplu ve her rapor açılıyor', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/raporlar');
+
+  for (const grup of ['Günlük işler', 'Rezervasyon', 'Gelir ve tahsilat', 'Müşteri', 'Kayıtlar']) {
+    await expect(page.getByRole('heading', { name: grup, level: 2 })).toBeVisible();
+  }
+
+  const sorunlar: string[] = [];
+  for (const ad of RAPORLAR) {
+    await page.getByRole('tab', { name: ad, exact: true }).click();
+    const panel = page.getByRole('tabpanel');
+    await expect(panel.getByRole('heading', { name: ad, level: 2 })).toBeVisible();
+    const govde = await panel.innerText();
+    // NaN/undefined bir hesaplamanın çöktüğünü gösterir; boş panel de rapor sayılmaz.
+    if (/NaN|undefined|Infinity|\[object/.test(govde)) sorunlar.push(`${ad}: kırık değer`);
+    if (govde.trim().length < 5) sorunlar.push(`${ad}: boş panel`);
+  }
+  expect(sorunlar, sorunlar.join('\n')).toEqual([]);
+});
+
+test('İl bazlı rapor girilen ile göre gruplar', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/rezervasyonlar/yeni');
+
+  await page.locator('#customerName').fill('İl Testi');
+  await page.locator('#customerPhone').fill('5321119988');
+  await page.locator('#date').fill('2029-07-14');
+  await page.locator('#guestCount').fill('180');
+  await page.locator('#totalAmount').fill('90000');
+  await page.locator('#city').fill('Karaman');
+  await page.locator('#district').fill('Ermenek');
+  await page.getByRole('button', { name: /Kaydet/ }).click();
+  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
+
+  await page.goto('/panel/raporlar');
+  await page.getByRole('tab', { name: 'İl bazlı rezervasyon', exact: true }).click();
+  const panel = page.getByRole('tabpanel');
+  await expect(panel.getByRole('cell', { name: 'Karaman' })).toBeVisible();
+  // İli girilmemiş eski kayıtlar uydurulmuyor, ayrı satırda toplanıyor.
+  await expect(panel.getByRole('cell', { name: 'Belirtilmemiş' })).toBeVisible();
+});
+
+test('Günlük rezervasyonlar seçilen günü gösterir', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/rezervasyonlar/yeni');
+
+  await page.locator('#customerName').fill('Gunluk Testi');
+  await page.locator('#customerPhone').fill('5321117733');
+  await page.locator('#date').fill('2029-08-18');
+  await page.locator('#guestCount').fill('150');
+  await page.locator('#totalAmount').fill('70000');
+  await page.getByRole('button', { name: /Kaydet/ }).click();
+  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
+
+  await page.goto('/panel/raporlar');
+  await page.getByRole('tab', { name: 'Günlük rezervasyonlar', exact: true }).click();
+  const panel = page.getByRole('tabpanel');
+  // Aralık seçilmeden bugün gösterilir; o günde bu kayıt yok.
+  await expect(panel.getByRole('cell', { name: 'Gunluk Testi' })).toHaveCount(0);
+
+  await page.locator('#rp-from').fill('2029-08-18');
+  await expect(panel.getByRole('cell', { name: 'Gunluk Testi' })).toBeVisible();
+});

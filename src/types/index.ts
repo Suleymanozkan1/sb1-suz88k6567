@@ -101,6 +101,16 @@ export interface Reservation {
   note?: string;
   services: string[];
   address?: string;
+  /**
+   * Müşterinin ili ve ilçesi (il bazlı rapor).
+   *
+   * Serbest metin `address`ten ayrı duruyorlar: "Merkez/Konya" ile
+   * "Konya Merkez" aynı ili anlatır ama metin olarak farklıdır, ayrı il
+   * sayılırlardı. Eski kayıtlarda boş; rapor onları "Belirtilmemiş"
+   * satırında topluyor.
+   */
+  city?: string;
+  district?: string;
   /** Müşteri bize hangi kanaldan ulaştı; yıl sonu kanal raporunun kaynağı. */
   sourceChannel?: LeadChannel;
   /** Referansta tavsiye edenin adı, "Diğer"de açıklama. */

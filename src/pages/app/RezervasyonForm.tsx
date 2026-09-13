@@ -39,6 +39,8 @@ interface FormState {
   status: ReservationStatus;
   note: string;
   address: string;
+  city: string;
+  district: string;
   sourceChannel: LeadChannel | '';
   sourceDetail: string;
   services: string[];
@@ -64,6 +66,8 @@ const EMPTY: FormState = {
   status: 'Kesin Rezervasyon',
   note: '',
   address: '',
+  city: '',
+  district: '',
   sourceChannel: '',
   sourceDetail: '',
   services: [],
@@ -137,6 +141,8 @@ export default function RezervasyonForm() {
       status: existing.status,
       note: existing.note ?? '',
       address: existing.address ?? '',
+      city: existing.city ?? '',
+      district: existing.district ?? '',
       sourceChannel: existing.sourceChannel ?? '',
       sourceDetail: existing.sourceDetail ?? '',
       services: existing.services,
@@ -264,6 +270,8 @@ export default function RezervasyonForm() {
       colorKey: ORG_TO_COLOR_KEY[form.organizationType] ?? 'diger',
       note: form.note.trim() || undefined,
       address: form.address.trim() || undefined,
+      city: form.city.trim() || undefined,
+      district: form.district.trim() || undefined,
       sourceChannel: form.sourceChannel || undefined,
       sourceDetail: form.sourceDetail.trim() || undefined,
       services: form.services,
@@ -371,6 +379,17 @@ export default function RezervasyonForm() {
               hint="Yalnızca sözleşme düzenlemek için tutulur; kod doğrulama ekranında görünmez."
             >
               <input id="identityNo" inputMode="numeric" maxLength={11} className="field-input" value={form.identityNo} onChange={(e) => update('identityNo', e.target.value)} aria-describedby="identityNo-hint" aria-invalid={Boolean(errors.identityNo)} />
+            </Field>
+            {/*
+              İl ve ilçe serbest metin adresten AYRI: "il bazlı rapor"
+              adresi ayrıştırarak üretilseydi "Merkez/Konya" ile "Konya
+              Merkez" ayrı il sayılırdı.
+            */}
+            <Field id="city" label="İl">
+              <input id="city" className="field-input" value={form.city} onChange={(e) => update('city', e.target.value)} />
+            </Field>
+            <Field id="district" label="İlçe">
+              <input id="district" className="field-input" value={form.district} onChange={(e) => update('district', e.target.value)} />
             </Field>
             <Field id="address" label="Adres" className="md:col-span-2">
               <input id="address" className="field-input" value={form.address} onChange={(e) => update('address', e.target.value)} />

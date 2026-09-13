@@ -446,7 +446,7 @@ describe('Program raporu', () => {
     const user = userEvent.setup();
     seedIfEmpty();
     renderPanel('/panel/raporlar?tab=cizelge');
-    await user.click(await screen.findByRole('tab', { name: 'Ay bazlı rapor' }));
+    await user.click(await screen.findByRole('tab', { name: 'Aylık rezervasyon raporu' }));
     expect(screen.getByRole('button', { name: /CSV indir/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Word indir/ })).not.toBeInTheDocument();
   });
@@ -540,8 +540,8 @@ describe('Raporlar', () => {
   it('ay bazlı rapora geçiş yapar', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/raporlar');
-    await user.click(await screen.findByRole('tab', { name: 'Ay bazlı rapor' }));
-    expect(screen.getByRole('tab', { name: 'Ay bazlı rapor' })).toHaveAttribute('aria-selected', 'true');
+    await user.click(await screen.findByRole('tab', { name: 'Aylık rezervasyon raporu' }));
+    expect(screen.getByRole('tab', { name: 'Aylık rezervasyon raporu' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('gelecek kaporalar sekmesi toplam satırı içerir', async () => {
@@ -555,7 +555,7 @@ describe('Raporlar', () => {
     const user = userEvent.setup();
     renderPanel('/panel/raporlar');
     // Çizelge boş günleri de çizer; "kayıt yok" iletisi diğer raporlarda.
-    await user.click(await screen.findByRole('tab', { name: 'Ay bazlı rapor' }));
+    await user.click(await screen.findByRole('tab', { name: 'Aylık rezervasyon raporu' }));
     await user.type(await screen.findByLabelText('Başlangıç tarihi'), '2099-01-01');
     expect(await screen.findByText('Seçilen tarih aralığında kayıt bulunmuyor.')).toBeInTheDocument();
   });
@@ -613,7 +613,8 @@ describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     seedIfEmpty();
     renderPanel('/panel/raporlar?tab=kanal');
 
-    expect(await screen.findByText('Ulaşım kanalı')).toBeInTheDocument();
+    // Ad hem sol listedeki sekmede hem panel başlığında geçiyor.
+    expect(await screen.findByRole('tab', { name: 'Ulaşım kanalı' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByText('Instagram')).toBeInTheDocument();
     // Kanalı boş bırakılan kayıtlar gizlenmiyor; payları bozmasın diye sayılıyor.
     expect(screen.getByText('Belirtilmemiş')).toBeInTheDocument();

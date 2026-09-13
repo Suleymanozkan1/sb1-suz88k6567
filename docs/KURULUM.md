@@ -103,6 +103,11 @@ Sıra önemlidir ve atlanamaz:
 > de yapabiliyordu. Yeni hesapların yetkisini Kullanıcılar ekranından
 > verin; "Tüm yetkileri ver" kutusu hepsini tek hamlede işaretler.
 
+- `0037` rezervasyona `city` ve `district` kolonları ekler (il bazlı rapor).
+  Alanlar isteğe bağlı; eski kayıtlarda boş kalır ve rapor onları
+  "Belirtilmemiş" satırında toplar. Boş ili işletmenin iliyle doldurmak,
+  gerçekte başka ilden gelen müşterileri yanlış ile yazmak olurdu.
+
 PostgREST'in bağlanacağı role şifre verin:
 
 ```bash

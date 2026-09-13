@@ -4,15 +4,19 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import {
-  useBusinesses, useHalls, useCashFlow, useLeadStatuses, useReservationExpenses, useSurveys, useLeads, useMenus, useReservationsWithBalances,
+  useAuditLog, useBusinesses, useHalls, useCashFlow, useLeadStatuses, usePaymentEvents,
+  usePayments, useReservationExpenses, useSmsLog, useStaff, useSurveys, useLeads, useMenus,
+  useReservationsWithBalances,
 } from '../../lib/queries';
 import { donusumRaporu } from '../../lib/lead';
 import { anketOzeti } from '../../lib/anket';
 import { giderKasaSatirlari } from '../../lib/dugunGideri';
 import { QueryBoundary } from '../../components/QueryState';
 import {
-  balanceReport, channelReport, downloadCsv, monthReport, programReport,
-  slotReport, summarize, toCsv, withinRange, type BalanceRow, karRaporu,
+  balanceReport, channelReport, downloadCsv, ekGiderRaporu, haftalikRapor, ilRaporu,
+  islemAyRaporu, isletmeRaporu, monthReport, programReport, slotReport, summarize,
+  surecRaporu, tahsilatAyRaporu, tavsiyeRaporu, toCsv, withinRange, yilAyRaporu,
+  type BalanceRow, karRaporu,
 } from '../../lib/reports';
 import { addDays, formatDate, formatMoney, formatNumber, formatPhone, todayIso } from '../../lib/format';
 import { buildProgram, programIsEmpty } from '../../lib/program';
@@ -20,26 +24,62 @@ import { downloadProgramDocx } from '../../lib/programDocx';
 import ProgramCizelgesi from '../../components/ProgramCizelgesi';
 import { KEYS, read, write } from '../../lib/storage';
 import { MONTH_NAMES } from '../../data/constants';
+import { ALL_PERMISSIONS } from '../../types';
 import { IconDownload, IconPrint } from '../../components/Icons';
 
-type Tab = 'cizelge' | 'program' | 'ay' | 'kar' | 'bakiye' | 'seans' | 'kanal' | 'salon' | 'donusum' | 'anket';
+type Tab =
+  | 'cizelge' | 'program' | 'ay' | 'kar' | 'bakiye' | 'seans' | 'kanal'
+  | 'salon' | 'donusum' | 'anket'
+  // Rakip programın listesinden gelen raporlar
+  | 'gunluk' | 'hafta' | 'yilay' | 'davetli' | 'tahsilat' | 'islem'
+  | 'isletme' | 'il' | 'tavsiye' | 'surec' | 'ekgider' | 'yetkili'
+  | 'islemlog' | 'smslog';
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'cizelge', label: 'Program raporu' },
+type RaporGrubu = 'Günlük işler' | 'Rezervasyon' | 'Gelir ve tahsilat' | 'Müşteri' | 'Kayıtlar';
+
+const TABS: { key: Tab; label: string; grup: RaporGrubu }[] = [
+  // --- Günlük işler
+  { key: 'gunluk', label: 'Günlük rezervasyonlar', grup: 'Günlük işler' },
+  { key: 'cizelge', label: 'Program raporu', grup: 'Günlük işler' },
+  { key: 'hafta', label: 'Haftalık rapor', grup: 'Günlük işler' },
+  { key: 'surec', label: 'Rezervasyon süreçleri', grup: 'Günlük işler' },
+
+  // --- Rezervasyon
+  { key: 'salon', label: 'Salon bazlı rapor', grup: 'Rezervasyon' },
+  { key: 'ay', label: 'Aylık rezervasyon raporu', grup: 'Rezervasyon' },
+  { key: 'yilay', label: 'Yıllık / aylık rezervasyon', grup: 'Rezervasyon' },
+  { key: 'davetli', label: 'Aylık davetli sayısı', grup: 'Rezervasyon' },
+  { key: 'isletme', label: 'İşletme bazlı rezervasyon', grup: 'Rezervasyon' },
   // Eski adı "Program bazlı rapor" idi; çizelge eklenince aynı sözcük iki
   // ayrı raporu anlatır olmuştu.
-  { key: 'program', label: 'Organizasyon bazlı rapor' },
-  { key: 'ay', label: 'Ay bazlı rapor' },
+  { key: 'program', label: 'Organizasyon bazlı rapor', grup: 'Rezervasyon' },
+  { key: 'seans', label: 'Gündüz / Gece', grup: 'Rezervasyon' },
+  { key: 'il', label: 'İl bazlı rezervasyon', grup: 'Rezervasyon' },
+
+  // --- Gelir ve tahsilat
   // Şartnamenin 20. ve 23. maddeleri: ciro, gider ve kâr Raporlama'da.
-  { key: 'kar', label: 'Ciro, gider ve kâr' },
+  { key: 'kar', label: 'Ciro, gider ve kâr', grup: 'Gelir ve tahsilat' },
+  { key: 'tahsilat', label: 'Aylık tahsilat (gelir)', grup: 'Gelir ve tahsilat' },
   // Şartnamedeki adı: sözleşme yapıldıktan sonra hangi paranın ne zaman
   // geleceğini gösteren ekran.
-  { key: 'bakiye', label: 'Gelecek Kaporalar ve Ödemeler' },
-  { key: 'seans', label: 'Gündüz / Gece' },
-  { key: 'kanal', label: 'Ulaşım kanalı' },
-  { key: 'salon', label: 'Salon bazlı rapor' },
-  { key: 'donusum', label: 'Görüşme ve dönüşüm' },
-  { key: 'anket', label: 'Deneyim anketi' },
+  { key: 'bakiye', label: 'Gelecek Kaporalar ve Ödemeler', grup: 'Gelir ve tahsilat' },
+  { key: 'ekgider', label: 'Rezervasyon ek kalemleri', grup: 'Gelir ve tahsilat' },
+
+  // --- Müşteri
+  { key: 'kanal', label: 'Ulaşım kanalı', grup: 'Müşteri' },
+  { key: 'tavsiye', label: 'Öneren / tavsiye eden', grup: 'Müşteri' },
+  { key: 'donusum', label: 'Görüşme ve dönüşüm', grup: 'Müşteri' },
+  { key: 'anket', label: 'Deneyim anketi', grup: 'Müşteri' },
+
+  // --- Kayıtlar
+  { key: 'islem', label: 'Aylık rezervasyon işlemleri', grup: 'Kayıtlar' },
+  { key: 'islemlog', label: 'İşlem logları', grup: 'Kayıtlar' },
+  { key: 'smslog', label: 'SMS logları', grup: 'Kayıtlar' },
+  { key: 'yetkili', label: 'Yetkililer raporu', grup: 'Kayıtlar' },
+];
+
+const RAPOR_GRUPLARI: RaporGrubu[] = [
+  'Günlük işler', 'Rezervasyon', 'Gelir ve tahsilat', 'Müşteri', 'Kayıtlar',
 ];
 
 const TAB_KEYS = TABS.map((t) => t.key);
@@ -55,6 +95,11 @@ export default function Raporlar() {
   const { data: anketler = [] } = useSurveys();
   const { data: kasaKayitlari = [] } = useCashFlow();
   const { data: dugunGiderleri = [] } = useReservationExpenses();
+  const { data: tahsilatlar = [] } = usePayments();
+  const { data: odemeOlaylari = [] } = usePaymentEvents();
+  const { data: smsKayitlari = [] } = useSmsLog();
+  const { data: denetimKayitlari = [] } = useAuditLog(200);
+  const { data: personel = [] } = useStaff();
   const [params] = useSearchParams();
   const istenenTab = params.get('tab');
   const [tab, setTab] = useState<Tab>(
@@ -105,12 +150,61 @@ export default function Raporlar() {
       .filter((s) => s.count > 0);
   }, [halls, seciliSalonlar, scoped, balance]);
 
+  const salonSecili = seciliSalonlar.length > 0;
   const totals = useMemo(() => summarize(scoped, balance), [scoped, balance]);
   const programs = useMemo(() => programReport(scoped, balance), [scoped, balance]);
   const months = useMemo(() => monthReport(scoped, balance), [scoped, balance]);
   const balances = useMemo(() => balanceReport(scoped, balance), [scoped, balance]);
   const slots = useMemo(() => slotReport(scoped, balance), [scoped, balance]);
   const channels = useMemo(() => channelReport(scoped, balance), [scoped, balance]);
+  const haftalar = useMemo(() => haftalikRapor(scoped, balance), [scoped, balance]);
+  const yilAy = useMemo(() => yilAyRaporu(scoped), [scoped]);
+  const iller = useMemo(() => ilRaporu(scoped, balance), [scoped, balance]);
+  const tavsiyeler = useMemo(() => tavsiyeRaporu(scoped, balance), [scoped, balance]);
+  const surecler = useMemo(() => surecRaporu(scoped, balance), [scoped, balance]);
+  const isletmeler = useMemo(
+    () => isletmeRaporu(scoped, balance, (id) => businesses.find((b) => b.id === id)?.name ?? ''),
+    [scoped, balance, businesses],
+  );
+
+  /*
+    Tahsilat ve ek kalem raporları TARİH SÜZGECİNİ kendi tarihlerine
+    uyguluyor: tahsilat kasaya girdiği güne, ek kalem harcandığı güne
+    yazılır. Rezervasyonun düğün tarihine göre süzülselerdi "bu ay elime
+    ne geçti" sorusu, gelecek yılın düğünü için bugün alınan kaporayı
+    göstermezdi.
+  */
+  const scopedIdler = useMemo(() => new Set(scoped.map((r) => r.id)), [scoped]);
+  const tahsilatSatirlari = useMemo(
+    () => tahsilatAyRaporu(tahsilatlar.filter(
+      (t) => withinRange(t.date, { from, to }) && (!salonSecili || scopedIdler.has(t.reservationId)),
+    )),
+    [tahsilatlar, from, to, salonSecili, scopedIdler],
+  );
+  const islemSatirlari = useMemo(
+    () => islemAyRaporu(odemeOlaylari.filter(
+      (o) => withinRange((o.createdAt || '').slice(0, 10), { from, to }),
+    )),
+    [odemeOlaylari, from, to],
+  );
+  const ekKalemler = useMemo(
+    () => ekGiderRaporu(dugunGiderleri.filter((g) => !salonSecili || scopedIdler.has(g.reservationId))),
+    [dugunGiderleri, salonSecili, scopedIdler],
+  );
+
+  /*
+    Günlük rezervasyonlar aralığın BAŞLANGICINI gün olarak alıyor;
+    aralık seçilmemişse bugünü. Aralığın tamamını listelemek, bu raporu
+    rezervasyon listesinin kopyası yapardı.
+  */
+  const gunlukGun = from || todayIso();
+  const gunlukKayitlar = useMemo(
+    () => reservations
+      .filter((r) => r.date === gunlukGun && r.status !== 'İptal'
+        && (seciliSalonlar.length === 0 || seciliSalonlar.includes(r.hallId)))
+      .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? '')),
+    [reservations, gunlukGun, seciliSalonlar],
+  );
 
   /*
     Ciro, gider ve kâr (maddeler 20 ve 23). Yıl/ay seçimi kullanıcıda:
@@ -130,7 +224,6 @@ export default function Raporlar() {
     kalıyor: o satırların salonu yok, hepsini her salona saymak kârı
     olduğundan farklı gösterirdi.
   */
-  const salonSecili = seciliSalonlar.length > 0;
   const karSatirlari = useMemo(() => karRaporu(
     scoped,
     balance,
@@ -232,6 +325,90 @@ export default function Raporlar() {
           k.channel, k.count, k.share.toFixed(1), k.detail,
           k.guests, k.total, k.collected, k.remaining,
         ]),
+      );
+    } else if (tab === 'gunluk') {
+      csv = toCsv(
+        ['Saat', 'Müşteri', 'Salon', 'Tür', 'Davetli', 'Toplam', 'Kalan'],
+        gunlukKayitlar.map((r) => [
+          r.startTime && r.endTime ? `${r.startTime} - ${r.endTime}` : r.slot,
+          r.customerName, halls.find((h) => h.id === r.hallId)?.name ?? '',
+          r.organizationType, r.guestCount, r.totalAmount, balance.remaining(r),
+        ]),
+      );
+    } else if (tab === 'hafta') {
+      csv = toCsv(
+        ['Hafta', 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan'],
+        haftalar.map((h) => [h.etiket, h.count, h.guests, h.total, h.collected, h.remaining]),
+      );
+    } else if (tab === 'yilay') {
+      csv = toCsv(
+        ['Yıl', ...MONTH_NAMES, 'Toplam'],
+        yilAy.map((y) => [y.yil, ...y.aylar.map((a) => a.count), y.toplam.count]),
+      );
+    } else if (tab === 'davetli') {
+      csv = toCsv(
+        ['Ay', 'Organizasyon', 'Davetli', 'Ortalama davetli'],
+        months.map((m) => [
+          m.label, m.count, m.guests, m.count ? Math.round(m.guests / m.count) : 0,
+        ]),
+      );
+    } else if (tab === 'isletme' || tab === 'il' || tab === 'tavsiye') {
+      // Üç rapor da aynı kırılım şeklinde; başlık satırı raporun adını taşıyor.
+      const kaynak = tab === 'isletme' ? isletmeler : tab === 'il' ? iller : tavsiyeler;
+      const basSutun = tab === 'isletme' ? 'İşletme' : tab === 'il' ? 'İl' : 'Tavsiye eden';
+      csv = toCsv(
+        [basSutun, 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan'],
+        kaynak.map((k) => [k.etiket, k.count, k.guests, k.total, k.collected, k.remaining]),
+      );
+    } else if (tab === 'surec') {
+      csv = toCsv(
+        ['Müşteri', 'Tarih', 'Sözleşme', 'Kapora', 'Tahsilat (%)', 'Kalan', 'Sıradaki iş'],
+        surecler.map((sr) => [
+          sr.reservation.customerName, formatDate(sr.reservation.date),
+          sr.sozlesme ? 'Var' : 'Yok', sr.kapora ? 'Var' : 'Yok',
+          sr.yuzde, sr.kalan, sr.sonraki || 'Tamam',
+        ]),
+      );
+    } else if (tab === 'tahsilat') {
+      csv = toCsv(
+        ['Ay', 'Tahsilat adedi', 'Toplam', 'Nakit', 'Kredi Kartı', 'Havale/EFT'],
+        tahsilatSatirlari.map((t) => [
+          t.etiket, t.adet, t.tutar,
+          t.tipler.Nakit ?? 0, t.tipler['Kredi Kartı'] ?? 0, t.tipler['Havale/EFT'] ?? 0,
+        ]),
+      );
+    } else if (tab === 'islem') {
+      csv = toCsv(
+        ['Ay', 'Toplam işlem', 'Eklendi', 'Güncellendi', 'Silindi'],
+        islemSatirlari.map((i) => [
+          i.etiket, i.toplam,
+          i.olaylar.eklendi ?? 0, i.olaylar.guncellendi ?? 0, i.olaylar.silindi ?? 0,
+        ]),
+      );
+    } else if (tab === 'ekgider') {
+      csv = toCsv(
+        ['Kalem', 'Kaç organizasyonda', 'Adet', 'Toplam tutar'],
+        ekKalemler.map((e) => [e.kind, e.organizasyon, e.adet, e.tutar]),
+      );
+    } else if (tab === 'yetkili') {
+      csv = toCsv(
+        ['Kullanıcı', 'E-posta', 'Telefon', 'Yetki sayısı', 'Aylık rapor', 'Yetkiler'],
+        personel.map((u) => [
+          u.fullName, u.email, u.mobile, u.permissions.length,
+          u.monthlyReport ? 'Açık' : 'Kapalı', u.permissions.join(' | '),
+        ]),
+      );
+    } else if (tab === 'islemlog') {
+      csv = toCsv(
+        ['Tarih', 'Kullanıcı', 'İşlem', 'Tablo', 'Özet'],
+        denetimKayitlari.map((k) => [
+          k.createdAt, k.actorEmail, k.action, k.tableName, k.summary ?? '',
+        ]),
+      );
+    } else if (tab === 'smslog') {
+      csv = toCsv(
+        ['Tarih', 'Alıcı', 'Tür', 'Mesaj'],
+        smsKayitlari.map((m) => [m.sentAt, m.to, m.kind, m.body]),
       );
     } else {
       csv = toCsv(
@@ -353,24 +530,57 @@ export default function Raporlar() {
         <Mini label="Kalan alacak" value={formatMoney(totals.remaining, currency)} />
       </div>
 
-      <div className="no-print mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Rapor türü">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.key}
-            onClick={() => setTab(t.key)}
-            className={`btn-sm rounded-full px-4 py-2 text-sm transition ${
-              tab === t.key ? 'bg-accent-ink text-white' : 'border border-line bg-white text-brand hover:border-accent-ink'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/*
+        Yirmi dört rapor tek sıra halinde yan yana dizilseydi ekranın
+        yarısını kaplar ve aradığını bulmak listeyi baştan sona okumayı
+        gerektirirdi. Rakip programdaki gibi başlıklı DİKEY liste:
+        aranan rapor önce grubuyla, sonra adıyla bulunuyor.
+      */}
+      <div className="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <nav className="no-print lg:sticky lg:top-4 lg:self-start" aria-label="Rapor listesi">
+          <div className="card p-3 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+            {RAPOR_GRUPLARI.map((grup) => (
+              <div key={grup} className="mb-3 last:mb-0">
+                <h2 className="mb-1.5 px-2 text-xs font-bold uppercase tracking-wide text-brand-muted">
+                  {grup}
+                </h2>
+                {/*
+                  Düğmeler tablist'in DOĞRUDAN çocuğu. Araya <ul>/<li>
+                  girdiğinde ARIA ebeveyn zinciri kırılıyor ve ekran
+                  okuyucu sekmeleri bir liste gibi okuyor.
+                */}
+                <div
+                  className="space-y-0.5"
+                  role="tablist"
+                  aria-orientation="vertical"
+                  aria-label={grup}
+                >
+                  {TABS.filter((t) => t.grup === grup).map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === t.key}
+                      onClick={() => setTab(t.key)}
+                      className={`block w-full rounded px-2.5 py-2 text-left text-sm transition ${
+                        tab === t.key
+                          ? 'bg-accent-ink font-semibold text-white'
+                          : 'text-brand hover:bg-surface'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </nav>
 
-      <section className="card p-5" role="tabpanel" aria-label={TABS.find((t) => t.key === tab)?.label}>
+        <section className="card min-w-0 p-5" role="tabpanel" aria-label={TABS.find((t) => t.key === tab)?.label}>
+        <h2 className="mb-4 font-heading text-lg font-bold text-brand">
+          {TABS.find((t) => t.key === tab)?.label}
+        </h2>
         {tab === 'cizelge' ? (
           <>
             {aralikSecilmedi && (
@@ -721,6 +931,360 @@ export default function Raporlar() {
               formatMoney(s.total, currency), formatMoney(s.collected, currency), formatMoney(s.remaining, currency),
             ])}
           />
+
+        ) : tab === 'gunluk' ? (
+          <>
+            <p className="no-print mb-3 text-sm text-brand-muted">
+              {formatDate(gunlukGun)} günü. Başka bir gün için yukarıdaki
+              &quot;Başlangıç tarihi&quot; alanını değiştirin.
+            </p>
+            {gunlukKayitlar.length === 0 ? (
+              <p className="py-10 text-center text-base text-brand-muted">
+                Bu güne ait organizasyon bulunmuyor.
+              </p>
+            ) : (
+              <Table
+                headers={['Saat', 'Müşteri', 'Salon', 'Tür', 'Davetli', 'Toplam', 'Kalan']}
+                rows={gunlukKayitlar.map((r) => [
+                  r.startTime && r.endTime ? `${r.startTime} - ${r.endTime}` : r.slot,
+                  r.customerName,
+                  halls.find((h) => h.id === r.hallId)?.name ?? '-',
+                  r.organizationType,
+                  formatNumber(r.guestCount),
+                  formatMoney(r.totalAmount, currency),
+                  formatMoney(balance.remaining(r), currency),
+                ])}
+              />
+            )}
+          </>
+
+        ) : tab === 'hafta' ? (
+          haftalar.length === 0 ? (
+            <Bos />
+          ) : (
+            <Table
+              headers={['Hafta', 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan']}
+              rows={haftalar.map((h) => [
+                h.etiket, formatNumber(h.count), formatNumber(h.guests),
+                formatMoney(h.total, currency), formatMoney(h.collected, currency),
+                formatMoney(h.remaining, currency),
+              ])}
+            />
+          )
+
+        ) : tab === 'yilay' ? (
+          yilAy.length === 0 ? (
+            <Bos />
+          ) : (
+            <>
+              {/*
+                Yıllar ALT ALTA, aylar yan yana: "geçen eylül ile bu
+                eylül" ancak böyle karşılaştırılabiliyor. Ay bazlı rapor
+                aynı veriyi tek sütunda diziyor, o başka bir soru.
+              */}
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] text-sm">
+                  <thead>
+                    <tr className="border-b border-line bg-surface text-xs uppercase text-brand-muted">
+                      <th className="px-2 py-2.5 text-left font-medium">Yıl</th>
+                      {MONTH_NAMES.map((ad) => (
+                        <th key={ad} className="px-2 py-2.5 text-right font-medium">{ad.slice(0, 3)}</th>
+                      ))}
+                      <th className="px-2 py-2.5 text-right font-medium">Toplam</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {yilAy.map((y) => (
+                      <tr key={y.yil} className="border-b border-line/60 last:border-0">
+                        <td className="px-2 py-2.5 font-semibold text-brand">{y.yil}</td>
+                        {y.aylar.map((h, i) => (
+                          <td key={i} className={`px-2 py-2.5 text-right ${h.count ? 'text-brand' : 'text-brand-muted/60'}`}>
+                            {h.count || '-'}
+                          </td>
+                        ))}
+                        <td className="px-2 py-2.5 text-right font-semibold text-brand">{y.toplam.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-3 text-xs text-brand-muted">
+                Hücreler organizasyon SAYISINI gösterir. Yıl toplamı sütunundaki ciro
+                için Aylık rezervasyon raporuna bakın.
+              </p>
+            </>
+          )
+
+        ) : tab === 'davetli' ? (
+          months.length === 0 ? (
+            <Bos />
+          ) : (
+            <>
+              <Table
+                headers={['Ay', 'Organizasyon', 'Davetli', 'Ortalama davetli']}
+                rows={months.map((m) => [
+                  m.label, formatNumber(m.count), formatNumber(m.guests),
+                  formatNumber(m.count ? Math.round(m.guests / m.count) : 0),
+                ])}
+              />
+              <p className="mt-3 text-xs text-brand-muted">
+                Ortalama davetli, menü ve personel planlaması için: sayı büyürken
+                ortalama düşüyorsa salon küçük organizasyonlarla doluyor demektir.
+              </p>
+            </>
+          )
+
+        ) : tab === 'isletme' ? (
+          isletmeler.length === 0 ? (
+            <Bos />
+          ) : (
+            <Table
+              headers={['İşletme', 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan']}
+              rows={isletmeler.map((i) => [
+                i.etiket, formatNumber(i.count), formatNumber(i.guests),
+                formatMoney(i.total, currency), formatMoney(i.collected, currency),
+                formatMoney(i.remaining, currency),
+              ])}
+            />
+          )
+
+        ) : tab === 'il' ? (
+          iller.length === 0 ? (
+            <Bos />
+          ) : (
+            <>
+              <Table
+                headers={['İl', 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan']}
+                rows={iller.map((i) => [
+                  i.etiket, formatNumber(i.count), formatNumber(i.guests),
+                  formatMoney(i.total, currency), formatMoney(i.collected, currency),
+                  formatMoney(i.remaining, currency),
+                ])}
+              />
+              {/*
+                Boş il doldurulmuyor. İşletmenin iliyle doldurulsaydı,
+                gerçekte başka ilden gelen müşteriler yanlış ile yazılır ve
+                rapor kendine göre tutarlı ama gerçekte yanlış olurdu.
+              */}
+              <p className="mt-3 text-xs text-brand-muted">
+                İl, rezervasyon formundaki &quot;İl&quot; alanından gelir. Girilmemiş
+                kayıtlar &quot;Belirtilmemiş&quot; satırında toplanır; o satırın büyüklüğü
+                alanın ne kadar doldurulduğunu gösterir.
+              </p>
+            </>
+          )
+
+        ) : tab === 'tavsiye' ? (
+          tavsiyeler.length === 0 ? (
+            <p className="py-10 text-center text-base text-brand-muted">
+              Seçilen aralıkta tavsiye ile gelen rezervasyon bulunmuyor.
+            </p>
+          ) : (
+            <>
+              <Table
+                headers={['Tavsiye eden', 'Getirdiği kayıt', 'Davetli', 'Toplam ciro', 'Tahsilat']}
+                rows={tavsiyeler.map((t) => [
+                  t.etiket, formatNumber(t.count), formatNumber(t.guests),
+                  formatMoney(t.total, currency), formatMoney(t.collected, currency),
+                ])}
+              />
+              <p className="mt-3 text-xs text-brand-muted">
+                Yalnızca ulaşım kanalı &quot;Tavsiye&quot; seçilmiş kayıtlar. Tavsiye edenin
+                adı rezervasyon formundaki açıklama alanından gelir.
+              </p>
+            </>
+          )
+
+        ) : tab === 'surec' ? (
+          surecler.length === 0 ? (
+            <Bos />
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[820px] text-sm">
+                  <thead>
+                    <tr className="border-b border-line bg-surface text-left text-xs uppercase text-brand-muted">
+                      <th className="px-3 py-2.5 font-medium">Müşteri</th>
+                      <th className="px-3 py-2.5 font-medium">Tarih</th>
+                      <th className="px-3 py-2.5 font-medium">Sözleşme</th>
+                      <th className="px-3 py-2.5 font-medium">Kapora</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Tahsilat</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Kalan</th>
+                      <th className="px-3 py-2.5 font-medium">Sıradaki iş</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {surecler.map((sr) => (
+                      <tr key={sr.reservation.id} className="border-b border-line/60 last:border-0">
+                        <td className="px-3 py-2.5">
+                          <Link to={`/panel/rezervasyonlar/${sr.reservation.id}`}>
+                            {sr.reservation.customerName}
+                          </Link>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-brand-muted">
+                          {formatDate(sr.reservation.date)}
+                        </td>
+                        <td className="px-3 py-2.5">{sr.sozlesme ? '✓' : '—'}</td>
+                        <td className="px-3 py-2.5">{sr.kapora ? '✓' : '—'}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand">%{sr.yuzde}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#b91c1c]">
+                          {formatMoney(sr.kalan, currency)}
+                        </td>
+                        <td className={`px-3 py-2.5 text-xs ${sr.sonraki ? 'font-medium text-[#b91c1c]' : 'text-[#15803d]'}`}>
+                          {sr.sonraki || 'Tamam'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-3 text-xs text-brand-muted">
+                İş bekleyen kayıtlar üstte. &quot;Tamam&quot;, sözleşmesi ve parası
+                tamamlanmış organizasyon demektir.
+              </p>
+            </>
+          )
+
+        ) : tab === 'tahsilat' ? (
+          tahsilatSatirlari.length === 0 ? (
+            <Bos />
+          ) : (
+            <>
+              <Table
+                headers={['Ay', 'Tahsilat adedi', 'Toplam', 'Nakit', 'Kredi Kartı', 'Havale/EFT', 'Diğer']}
+                rows={tahsilatSatirlari.map((t) => [
+                  t.etiket, formatNumber(t.adet), formatMoney(t.tutar, currency),
+                  formatMoney(t.tipler.Nakit ?? 0, currency),
+                  formatMoney(t.tipler['Kredi Kartı'] ?? 0, currency),
+                  formatMoney(t.tipler['Havale/EFT'] ?? 0, currency),
+                  formatMoney(
+                    t.tutar - (t.tipler.Nakit ?? 0) - (t.tipler['Kredi Kartı'] ?? 0)
+                      - (t.tipler['Havale/EFT'] ?? 0),
+                    currency,
+                  ),
+                ])}
+              />
+              {/*
+                Bu tablo ile "Aylık rezervasyon raporu" birbirini tutmaz
+                ve tutmamalıdır: orada ciro düğün gününe, burada para
+                kasaya girdiği güne yazılır.
+              */}
+              <p className="mt-3 text-xs text-brand-muted">
+                Para KASAYA GİRDİĞİ aya yazılır. Eylül düğününün martta alınan kaporası
+                bu tabloda martta, aylık rezervasyon raporunda eylülde görünür; iki tablo
+                bu yüzden birbirini tutmaz.
+              </p>
+            </>
+          )
+
+        ) : tab === 'islem' ? (
+          islemSatirlari.length === 0 ? (
+            <Bos />
+          ) : (
+            <>
+              <Table
+                headers={['Ay', 'Toplam işlem', 'Eklendi', 'Güncellendi', 'Silindi']}
+                rows={islemSatirlari.map((i) => [
+                  i.etiket, formatNumber(i.toplam),
+                  formatNumber(i.olaylar.eklendi ?? 0),
+                  formatNumber(i.olaylar.guncellendi ?? 0),
+                  formatNumber(i.olaylar.silindi ?? 0),
+                ])}
+              />
+              <p className="mt-3 text-xs text-brand-muted">
+                &quot;Kaç rezervasyon var&quot; değil, o ay tahsilatlarda ne yapıldığı.
+                Bir tutarsızlığın hangi ay doğduğunu bulmanın en kısa yolu.
+              </p>
+            </>
+          )
+
+        ) : tab === 'ekgider' ? (
+          ekKalemler.length === 0 ? (
+            <p className="py-10 text-center text-base text-brand-muted">
+              Seçilen kapsamda düğün içi gider kalemi bulunmuyor.
+            </p>
+          ) : (
+            <>
+              <Table
+                headers={['Kalem', 'Kaç organizasyonda', 'Adet', 'Toplam tutar']}
+                rows={ekKalemler.map((e) => [
+                  e.kind, formatNumber(e.organizasyon), formatNumber(e.adet),
+                  formatMoney(e.tutar, currency),
+                ])}
+              />
+              <p className="mt-3 text-xs text-brand-muted">
+                Düğün içi gider kalemleri (garson, DJ, vale...). Rezervasyon kartındaki
+                &quot;Düğün içi giderler&quot; bölümünden girilir.
+              </p>
+            </>
+          )
+
+        ) : tab === 'yetkili' ? (
+          <>
+            <Table
+              headers={['Kullanıcı', 'E-posta', 'Telefon', 'Yetki sayısı', 'Aylık rapor']}
+              rows={personel.map((u) => [
+                u.fullName, u.email, u.mobile ? formatPhone(u.mobile) : '-',
+                String(u.permissions.length), u.monthlyReport ? 'Açık' : 'Kapalı',
+              ])}
+            />
+            {personel.length === 0 && (
+              <p className="py-10 text-center text-base text-brand-muted">
+                Henüz alt kullanıcı eklenmemiş.
+              </p>
+            )}
+            {personel.map((u) => (
+              <div key={u.id} className="mt-4 rounded-md border border-line p-3">
+                <h3 className="font-heading text-sm font-bold text-brand">{u.fullName}</h3>
+                <p className="mt-1 text-xs text-brand-muted">
+                  {u.permissions.length === 0
+                    ? 'Hiçbir yetkisi yok.'
+                    : u.permissions
+                      .map((k) => ALL_PERMISSIONS.find((a) => a.key === k)?.label ?? k)
+                      .join(' · ')}
+                </p>
+              </div>
+            ))}
+          </>
+
+        ) : tab === 'islemlog' ? (
+          denetimKayitlari.length === 0 ? (
+            <Bos />
+          ) : (
+            <>
+              <Table
+                headers={['Tarih', 'Kullanıcı', 'İşlem', 'Tablo', 'Özet']}
+                rows={denetimKayitlari.slice(0, 200).map((k) => [
+                  `${formatDate(k.createdAt.slice(0, 10))} ${k.createdAt.slice(11, 16)}`,
+                  k.actorEmail || '-', k.action, k.tableName, k.summary ?? '-',
+                ])}
+              />
+              <p className="mt-3 text-xs text-brand-muted">
+                Son 200 kayıt. Tamamı ve süzgeçleri için{' '}
+                <Link to="/panel/denetim">Denetim Kaydı</Link> ekranına bakın.
+              </p>
+            </>
+          )
+
+        ) : tab === 'smslog' ? (
+          smsKayitlari.length === 0 ? (
+            <Bos />
+          ) : (
+            <>
+              <Table
+                headers={['Tarih', 'Alıcı', 'Tür', 'Mesaj']}
+                rows={smsKayitlari.slice(0, 200).map((m) => [
+                  formatDate(m.sentAt.slice(0, 10)),
+                  formatPhone(m.to), m.kind,
+                  m.body.length > 60 ? `${m.body.slice(0, 60)}…` : m.body,
+                ])}
+              />
+              <p className="mt-3 text-xs text-brand-muted">
+                Son 200 kayıt. Tamamı için <Link to="/panel/sms">SMS Kayıtları</Link> ekranına bakın.
+              </p>
+            </>
+          )
+
         ) : (
           <>
             <Table
@@ -742,7 +1306,8 @@ export default function Raporlar() {
             </p>
           </>
         )}
-      </section>
+        </section>
+      </div>
     </QueryBoundary>
   );
 }
@@ -757,6 +1322,15 @@ function donemAdi(anahtar: string): string {
   if (!anahtar.includes('-')) return anahtar;
   const [yil, ay] = anahtar.split('-');
   return `${MONTH_NAMES[Number(ay) - 1] ?? ay} ${yil}`;
+}
+
+/** Seçilen kapsamda veri yoksa gösterilen ortak satır. */
+function Bos() {
+  return (
+    <p className="py-10 text-center text-base text-brand-muted">
+      Seçilen aralıkta kayıt bulunmuyor.
+    </p>
+  );
 }
 
 function Mini({ label, value }: { label: string; value: string }) {
