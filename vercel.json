@@ -11,12 +11,20 @@
     {
       "src": "vercel-api/demo-gunler.ts",
       "use": "@vercel/node"
+    },
+    {
+      "src": "vercel-api/demo-hava.ts",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/demo-gunler",
       "dest": "/vercel-api/demo-gunler.ts"
+    },
+    {
+      "src": "/api/demo-hava",
+      "dest": "/vercel-api/demo-hava.ts"
     },
     {
       "handle": "filesystem"
@@ -30,6 +38,10 @@
     {
       "path": "/api/demo-gunler",
       "schedule": "30 4 4 * *"
+    },
+    {
+      "path": "/api/demo-hava",
+      "schedule": "0 5 * * *"
     }
   ]
 }

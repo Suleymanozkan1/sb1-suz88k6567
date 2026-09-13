@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { gunleriTazele } from './gunleriTazele';
+import { gunleriTazele, havayiTazele } from './gunleriTazele';
 import { localRepo } from '../repo/local';
 import { clearAll, KEYS, read } from '../storage';
 import type { SpecialDay, WeatherForecast } from '../../types';
@@ -10,13 +10,18 @@ import type { SpecialDay, WeatherForecast } from '../../types';
   hava durumu satırı hiç görünmüyordu. Bu dosya zincirin iki ucunu da
   bağlıyor.
 */
-const YANIT = {
+const GUN_YANITI = {
   uretim: '2026-09-13T04:30:00.000Z',
   gunler: [{ day: '2026-10-29', label: 'Cumhuriyet Bayramı', kind: 'resmi' }],
-  hava: [
+};
+
+const HAVA_YANITI = {
+  uretim: '2026-09-13T04:30:00.000Z',
+  gunluk: [
     { gun: '2026-09-13', enDusuk: 14, enYuksek: 27, hadise: 'A' },
     { gun: '2026-09-14', enDusuk: 15, enYuksek: 24, hadise: 'PB' },
   ],
+  saatlik: [{ saat: '2026-09-13T19:00', sicaklik: 21, hadise: 'A' }],
 };
 
 function yanitla(govde: unknown, ok = true) {
@@ -30,8 +35,8 @@ describe('gunleriTazele', () => {
   afterEach(() => { vi.unstubAllGlobals(); });
 
   it('hava tahminini depoya yazar ve depo katmanı okur', async () => {
-    yanitla(YANIT);
-    expect(await gunleriTazele()).toBe(true);
+    yanitla(HAVA_YANITI);
+    expect(await havayiTazele()).toBe(true);
 
     const yazilan = read<WeatherForecast[]>(KEYS.weather, []);
     expect(yazilan).toHaveLength(2);
@@ -45,19 +50,27 @@ describe('gunleriTazele', () => {
   });
 
   it('başka işletmenin tahminini vermez', async () => {
-    yanitla(YANIT);
-    await gunleriTazele();
+    yanitla(HAVA_YANITI);
+    await havayiTazele();
     expect(await localRepo.listWeather('biz_baska')).toEqual([]);
   });
 
   it('hava gelmezse uydurmuyor', async () => {
-    yanitla({ ...YANIT, hava: [] });
-    await gunleriTazele();
+    yanitla({ ...HAVA_YANITI, gunluk: [] });
+    expect(await havayiTazele()).toBe(false);
     expect(await localRepo.listWeather('biz_demo')).toEqual([]);
   });
 
+  it('saatlik tahmini de yazar', async () => {
+    yanitla(HAVA_YANITI);
+    await havayiTazele();
+    const saatler = await localRepo.listWeatherHours('biz_demo');
+    expect(saatler).toHaveLength(1);
+    expect(saatler[0]).toMatchObject({ hour: '2026-09-13T19:00', tempC: 21 });
+  });
+
   it('özel günleri yazarken işletmenin kendi gününü korur', async () => {
-    yanitla(YANIT);
+    yanitla(GUN_YANITI);
     await gunleriTazele();
     const gunler = read<SpecialDay[]>(KEYS.specialDays, []);
     expect(gunler.some((g) => g.label === 'Cumhuriyet Bayramı')).toBe(true);

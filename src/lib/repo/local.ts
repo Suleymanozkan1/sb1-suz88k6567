@@ -7,7 +7,7 @@
  */
 import { KEYS, read, remove, write } from '../storage';
 import { DEFAULT_COLOR_SETTINGS, seedIfEmpty } from '../seed';
-import { gunleriTazele } from '../demo/gunleriTazele';
+import { gunleriTazele, havayiTazele } from '../demo/gunleriTazele';
 import { nextContractCode, normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
@@ -316,7 +316,11 @@ function pushQueue(
 let tazelemeSozu: Promise<unknown> | null = null;
 function takvimiTazele(): void {
   if (tazelemeSozu) return;
-  tazelemeSozu = gunleriTazele().catch(() => undefined);
+  // Takvim ve hava AYRI uç noktalar: biri düşse diğeri yine geliyor.
+  tazelemeSozu = Promise.all([
+    gunleriTazele().catch(() => undefined),
+    havayiTazele().catch(() => undefined),
+  ]);
 }
 
 /**
@@ -742,8 +746,11 @@ export const localRepo: Repository = {
     Demo kipinde hava durumu YOK. Uydurma bir tahmin gösterilseydi
     salon sahibi demoyu gerçek sanıp o rakama göre plan yapabilirdi.
   */
-  async listWeatherHours() {
-    return wait<WeatherHour[]>([]);
+  async listWeatherHours(businessId) {
+    await tazelemeyiBekle();
+    return wait(read<WeatherHour[]>(KEYS.weatherHours, [])
+      .filter((h) => h.businessId === businessId)
+      .sort((a, b) => a.hour.localeCompare(b.hour)));
   },
 
   async listSpecialDays(businessId) {
