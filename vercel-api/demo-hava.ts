@@ -54,7 +54,7 @@ export default async function handler(_req: unknown, res: VercelYanit): Promise<
     if (!merkez) throw new Error('MGM merkezi bulunamadı.');
 
     gunluk = (await gunlukCoz(await mgmCek(`/tahminler/gunluk?istno=${merkez.gunlukNo}`)))
-      .map((t) => ({ gun: t.gun, enDusuk: t.enDusuk, enYuksek: t.enYuksek, hadise: t.hadise }));
+      .map((t) => ({ gun: t.gun, enDusuk: t.minC, enYuksek: t.maxC, hadise: t.hadise }));
 
     /*
       Saatlik tahmin ayrı bir çağrı ve DÜŞEBİLİR: günlük tahmin geldiyse

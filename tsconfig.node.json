@@ -20,6 +20,8 @@
     "vite.config.ts",
     "playwright.config.ts",
     "api/**/*.ts",
-    "sunucu/**/*.ts"
+    "sunucu/**/*.ts",
+    "scripts/**/*.ts",
+    "vercel-api/**/*.ts"
   ]
 }
