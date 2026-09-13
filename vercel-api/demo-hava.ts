@@ -84,8 +84,15 @@ export default async function handler(req: unknown, res: VercelYanit): Promise<v
   let istasyon: Record<string, string> = {};
 
   try {
+    /*
+      İL BAZINDA ARAMA. Önce ilçe adı da geçiriliyordu; MGM o kayıtta
+      günlük tahmin veriyor ama saatlik tahmin ve anlık gözlem için BOŞ
+      DİZİ dönüyor (canlıda ham yanıtla doğrulandı: Selçuklu 94231/17244,
+      ikisi de boş). İstasyonlar her merkezde eşit dolu değil; ilin tamamı
+      alınıp veri VEREN merkez seçiliyor.
+    */
     const merkezler = merkezleriCoz(
-      await mgmCek(`/merkezler?il=${encodeURIComponent(DEMO_IL)}&ilce=${encodeURIComponent(DEMO_ILCE)}`),
+      await mgmCek(`/merkezler?il=${encodeURIComponent(DEMO_IL)}`),
     );
     const merkez = merkezSec(merkezler, DEMO_ILCE);
     if (!merkez) throw new Error(`MGM merkezi bulunamadı (${merkezler.length} kayıt).`);
@@ -104,15 +111,25 @@ export default async function handler(req: unknown, res: VercelYanit): Promise<v
       .map((t) => ({ gun: t.gun, enDusuk: t.minC, enYuksek: t.maxC, hadise: t.hadise }));
 
     /*
-      Saatlik tahmin ayrı bir çağrı ve DÜŞEBİLİR: günlük tahmin geldiyse
+      Seçilen merkez başta, ilin geri kalanı arkasında: ilk VERİ VEREN
+      istasyonda duruluyor. Sıra sabit (MGM'nin kendi önceliği); her
+      çağrıda başka bir ilçeye düşülseydi ekrandaki sıcaklık sebepsiz
+      oynardı.
+
+      Saatlik tahmin ayrı bir çağrı ve düşebilir: günlük tahmin geldiyse
       ekran zaten çizilebiliyor, saatlik şeridin yokluğu onu götürmemeli.
     */
-    try {
-      saatlik = saatlikCoz(await mgmCek(`/tahminler/saatlik?istno=${merkez.saatlikNo}`))
-        .map((s) => ({ saat: s.saat, sicaklik: s.sicaklikC, hadise: s.hadise }));
-    } catch (e) {
-      saatlik = [];
-      saatlikHatasi = String(e instanceof Error ? e.message : e).slice(0, 200);
+    const adaylar = [merkez, ...merkezler.filter((m) => m !== merkez)];
+
+    for (const aday of adaylar) {
+      if (saatlik.length > 0 || !aday.saatlikNo) continue;
+      try {
+        saatlik = saatlikCoz(await mgmCek(`/tahminler/saatlik?istno=${aday.saatlikNo}`))
+          .map((s) => ({ saat: s.saat, sicaklik: s.sicaklikC, hadise: s.hadise }));
+        if (saatlik.length > 0) istasyon.saatlik = aday.saatlikNo;
+      } catch (e) {
+        saatlikHatasi = String(e instanceof Error ? e.message : e).slice(0, 200);
+      }
     }
 
     /*
@@ -121,11 +138,14 @@ export default async function handler(req: unknown, res: VercelYanit): Promise<v
       için tahmin gelse bile hiç çizilmiyordu. "Şu an kaç derece" ayrı bir
       istasyondan geliyor ve bugünün satırını o dolduruyor.
     */
-    try {
-      simdi = sonDurumCoz(await mgmCek(`/sondurumlar?istNo=${merkez.sonDurumNo}`));
-    } catch (e) {
-      simdi = null;
-      simdiHatasi = String(e instanceof Error ? e.message : e).slice(0, 200);
+    for (const aday of adaylar) {
+      if (simdi !== null || !aday.sonDurumNo) continue;
+      try {
+        simdi = sonDurumCoz(await mgmCek(`/sondurumlar?istNo=${aday.sonDurumNo}`));
+        if (simdi !== null) istasyon.anlik = aday.sonDurumNo;
+      } catch (e) {
+        simdiHatasi = String(e instanceof Error ? e.message : e).slice(0, 200);
+      }
     }
   } catch (e) {
     /*
