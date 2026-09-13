@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays, daysBetween, formatDate, formatDateLong, formatDateTime, formatMoney,
-  formatNumber, formatPhone, formatTimeRange, fromIso, initials, normalizeTr, slugify, toIso,
+  formatNumber, formatPhone, formatTimeRange, fromIso, initials, normalizeTr,
+  okunakliMetinRengi, slugify, toIso,
 } from './format';
+import { DEFAULT_COLOR_SETTINGS } from '../data/constants';
 
 describe('formatMoney', () => {
   it('TL tutarını Türkçe biçimde gösterir', () => {
@@ -157,5 +159,38 @@ describe('formatTimeRange', () => {
 
   it('gece yarısını aşan aralığı olduğu gibi yazar', () => {
     expect(formatTimeRange('22:00', '02:00')).toBe('22:00-02:00');
+  });
+});
+
+/*
+  Takvimdeki organizasyon etiketi, rengin üzerine yazılıyor. Renk
+  palete elle giriliyor ve gözle "yeterince koyu" görünen bir ton
+  WCAG eşiğini tutturmayabiliyor: Nikâh (#2c82c9) ve Toplantı
+  (#607d8b) tam olarak böyleydi, beyazla da siyahla da 4,5'in altında
+  kalıyorlardı. Demo verisinde o iki tür bulunmadığı için erişilebilirlik
+  denetimi de onları hiç görmemişti.
+*/
+describe('varsayılan renk paleti okunaklı', () => {
+  const parlaklik = (hex: string): number => {
+    const h = hex.replace('#', '');
+    const kanal = (i: number) => {
+      const c = parseInt(h.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * kanal(0) + 0.7152 * kanal(2) + 0.0722 * kanal(4);
+  };
+  const oran = (a: string, b: string) => {
+    const [ust, alt] = [parlaklik(a), parlaklik(b)].sort((x, y) => y - x) as [number, number];
+    return (ust + 0.05) / (alt + 0.05);
+  };
+
+  it.each(DEFAULT_COLOR_SETTINGS)('$label rengi metinle 4,5 kontrast veriyor', ({ color }) => {
+    expect(oran(color, okunakliMetinRengi(color))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('seçilen renk iki seçenekten DAHA İYİ olanı', () => {
+    // Koyu zeminde beyaz, açık zeminde koyu metin gelmeli.
+    expect(okunakliMetinRengi('#000000')).toBe('#ffffff');
+    expect(okunakliMetinRengi('#ffffff')).toBe('#111827');
   });
 });

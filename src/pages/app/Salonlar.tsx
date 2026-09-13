@@ -150,7 +150,7 @@ export default function Salonlar() {
               <div className="mb-2 flex items-start justify-between gap-2">
                 <h2 className="font-heading font-bold text-brand">{h.name}</h2>
                 {!h.isActive && (
-                  <span className="rounded-full bg-[#f2ece4] px-2 py-0.5 text-xs text-brand-muted">Pasif</span>
+                  <span className="rounded-full bg-[#f2ece4] px-2 py-0.5 text-xs text-brand">Pasif</span>
                 )}
               </div>
               <dl className="mb-4 space-y-1 text-sm">

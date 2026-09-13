@@ -170,7 +170,7 @@ export default function Menuler() {
               <div className="mb-2 flex items-start justify-between gap-2">
                 <h2 className="font-heading font-bold text-brand">{m.name}</h2>
                 {!m.isActive && (
-                  <span className="rounded-full bg-[#f2ece4] px-2 py-0.5 text-xs text-brand-muted">Pasif</span>
+                  <span className="rounded-full bg-[#f2ece4] px-2 py-0.5 text-xs text-brand">Pasif</span>
                 )}
               </div>
               <p className="mb-3 font-heading text-xl font-bold text-brand">

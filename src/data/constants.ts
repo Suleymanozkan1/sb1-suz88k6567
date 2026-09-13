@@ -132,9 +132,15 @@ export const DEFAULT_COLOR_SETTINGS: ColorSetting[] = [
   { key: 'kina', label: 'Kına', color: '#e74c3c' },
   { key: 'konferans', label: 'Konferans', color: '#8e44ad' },
   { key: 'kokteyl', label: 'Kokteyl', color: '#16a085' },
-  { key: 'nikah', label: 'Nikâh', color: '#2c82c9' },
+  /*
+    Nikâh ve Toplantı renkleri KOYULAŞTIRILDI. Eskiden #2c82c9 ve #607d8b
+    idi; takvimdeki etiket yazısı beyazla da siyahla da en fazla 4,35 ve
+    4,37 kontrast veriyordu, oysa normal metin için 4,5 gerekiyor.
+    Demo verisinde bu iki tür hiç bulunmadığı için denetime de takılmamıştı.
+  */
+  { key: 'nikah', label: 'Nikâh', color: '#2875b5' },
   { key: 'dogumgunu', label: 'Doğum Günü', color: '#d81b60' },
-  { key: 'toplanti', label: 'Toplantı', color: '#607d8b' },
+  { key: 'toplanti', label: 'Toplantı', color: '#56717d' },
   { key: 'diger', label: 'Diğer', color: '#95a5a6' },
 ];
 

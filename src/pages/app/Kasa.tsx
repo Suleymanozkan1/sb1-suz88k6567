@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
@@ -27,6 +27,15 @@ import type { CashFlowEntry, CashFlowKind, PaymentMethod } from '../../types';
  * Satırın nereden geldiği. Elle girilen silinebilir, türetilenler
  * silinemez -- düzeltme kaynağında yapılır.
  */
+/*
+  Kasa tablosu sayfalanıyor. Üç yıllık bir salonda elle girilen kayıtlar,
+  rezervasyon tahsilatları ve düğün giderleri birlikte bini aşıyor; hepsi
+  tek seferde basıldığında form alanına yazarken bile ekran takılıyordu.
+  Toplamlar, kasa dağılımı ve CSV çıktısı sayfaya DEĞİL süzülmüş listenin
+  tamamına bakar -- sayfalama yalnızca ekrana basılan satırı sınırlar.
+*/
+const SAYFA_BOYUTU = 50;
+
 const KAYNAK_ETIKETI: Record<'elle' | 'rezervasyon' | 'dugunGideri', string> = {
   elle: 'Elle girilen',
   rezervasyon: 'Rezervasyon',
@@ -66,6 +75,14 @@ export default function Kasa() {
   const [kindFilter, setKindFilter] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [sayfa, setSayfa] = useState(1);
+  /*
+    Yeni eklenen kaydın kimliği. Liste tarihe göre tersten sıralı olduğu
+    için bugün girilen bir kayıt, ileri tarihli rezervasyon tahsilatlarının
+    altında kalır ve ilk sayfada görünmez. Kayıt eklendikten sonra o satırın
+    bulunduğu sayfaya geçiliyor ve satır bir süre işaretli kalıyor.
+  */
+  const [yeniKayit, setYeniKayit] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<CashFlowEntry | null>(null);
   const currency = user?.currency ?? 'TL';
 
@@ -180,6 +197,27 @@ export default function Kasa() {
     [filtered],
   );
 
+  /*
+    Süzgeç listeyi kısalttığında elde kalan sayfa numarası aralığın dışına
+    düşebilir. Sayfa burada kırpılıyor; aksi hâlde kayıt varken boş tablo
+    görünürdü.
+  */
+  useEffect(() => {
+    if (!yeniKayit) return;
+    const sira = filtered.findIndex((e) => e.id === yeniKayit);
+    // Süzgeç yeni kaydı dışarıda bırakmışsa sayfa değiştirmenin anlamı yok.
+    if (sira < 0) return;
+    setSayfa(Math.floor(sira / SAYFA_BOYUTU) + 1);
+  }, [yeniKayit, filtered]);
+
+  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / SAYFA_BOYUTU));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const ilkSira = (gecerliSayfa - 1) * SAYFA_BOYUTU;
+  const sayfalanan = useMemo(
+    () => filtered.slice(ilkSira, ilkSira + SAYFA_BOYUTU),
+    [filtered, ilkSira],
+  );
+
   const categories = form.kind === 'Gelir' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   async function submit(e: React.FormEvent) {
@@ -194,9 +232,10 @@ export default function Kasa() {
       setError('Tarih seçiniz.');
       return;
     }
+    const id = crypto.randomUUID();
     try {
       await addMutation.mutateAsync({
-        id: crypto.randomUUID(),
+        id,
         businessId,
         kind: form.kind,
         date: form.date,
@@ -210,6 +249,7 @@ export default function Kasa() {
         kind: form.kind, date: todayIso(), category: categories[0],
         amount: '', method: form.method, description: '',
       });
+      setYeniKayit(id);
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -335,7 +375,8 @@ export default function Kasa() {
       <form className="card mb-5 grid gap-3 p-4 sm:grid-cols-3" onSubmit={(e) => e.preventDefault()}>
         <div>
           <label htmlFor="cf-filter-kind" className="field-label">Tür filtresi</label>
-          <select id="cf-filter-kind" className="field-input" value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
+          <select id="cf-filter-kind" className="field-input" value={kindFilter}
+            onChange={(e) => { setKindFilter(e.target.value); setSayfa(1); }}>
             <option value="">Tümü</option>
             <option value="Gelir">Gelir</option>
             <option value="Gider">Gider</option>
@@ -343,11 +384,13 @@ export default function Kasa() {
         </div>
         <div>
           <label htmlFor="cf-from" className="field-label">Başlangıç</label>
-          <input id="cf-from" type="date" className="field-input" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <input id="cf-from" type="date" className="field-input" value={from}
+            onChange={(e) => { setFrom(e.target.value); setSayfa(1); }} />
         </div>
         <div>
           <label htmlFor="cf-to" className="field-label">Bitiş</label>
-          <input id="cf-to" type="date" className="field-input" value={to} onChange={(e) => setTo(e.target.value)} />
+          <input id="cf-to" type="date" className="field-input" value={to}
+            onChange={(e) => { setTo(e.target.value); setSayfa(1); }} />
         </div>
       </form>
 
@@ -369,8 +412,9 @@ export default function Kasa() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((e) => (
-                <tr key={e.id} className="border-b border-line/60 last:border-0 hover:bg-surface/60">
+              {sayfalanan.map((e) => (
+                <tr key={e.id}
+                  className={`border-b border-line/60 last:border-0 hover:bg-surface/60 ${e.id === yeniKayit ? 'bg-[#f3faf5]' : ''}`}>
                   <td className="px-4 py-3 text-brand">{formatDate(e.date)}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs ${e.kind === 'Gelir' ? 'bg-[#e8f8ef] text-[#15803d]' : 'bg-[#fdecea] text-[#b91c1c]'}`}>
@@ -417,6 +461,25 @@ export default function Kasa() {
           </table>
         )}
       </div>
+
+      {filtered.length > SAYFA_BOYUTU && (
+        <nav className="mt-3 flex flex-wrap items-center justify-between gap-3" aria-label="Kayıt sayfaları">
+          <p className="text-sm text-brand-muted">
+            {ilkSira + 1}-{ilkSira + sayfalanan.length} / {filtered.length} kayıt
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" className="btn-ghost" disabled={gecerliSayfa <= 1}
+              onClick={() => setSayfa(gecerliSayfa - 1)}>
+              Önceki
+            </button>
+            <span className="text-sm text-brand">Sayfa {gecerliSayfa} / {toplamSayfa}</span>
+            <button type="button" className="btn-ghost" disabled={gecerliSayfa >= toplamSayfa}
+              onClick={() => setSayfa(gecerliSayfa + 1)}>
+              Sonraki
+            </button>
+          </div>
+        </nav>
+      )}
 
       <ConfirmDialog
         open={Boolean(toDelete)}

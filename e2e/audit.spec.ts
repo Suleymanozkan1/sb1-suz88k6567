@@ -193,14 +193,24 @@ test('DENETIM: kasa kaydı eklenir, listeye ve bakiyeye yansır', async ({ page 
   await login(page);
   await page.goto('/panel/kasa');
   await expect(page.locator('tbody tr').first()).toBeVisible();
-  const before = await page.locator('tbody tr').count();
+
+  /*
+    Ölçüt EKRANDAKİ SATIR SAYISI DEĞİL, kayıt sayısı: kasa sayfalanıyor ve
+    dolu bir sayfada satır sayısı eklemeden sonra da elli kalıyor. Kayıt
+    sayısı sayfalamanın altındaki bilgi satırında yazıyor.
+  */
+  const sayac = page.getByRole('navigation', { name: 'Kayıt sayfaları' })
+    .getByText(/\/ \d+ kayıt/);
+  const oku = async () => Number((await sayac.innerText()).match(/\/ (\d+) kayıt/)![1]);
+  const once = await oku();
 
   await page.getByLabel('Açıklama').fill('Denetim gideri');
   await page.getByLabel('Tutar', { exact: true }).fill('12345');
   await page.getByRole('button', { name: /Ekle|Kaydet/ }).first().click();
 
+  // Yeni kayıt görünür olmalı: kaydın düştüğü sayfaya kendiliğinden geçilir.
   await expect(page.getByText('Denetim gideri')).toBeVisible();
-  await expect(page.locator('tbody tr')).toHaveCount(before + 1);
+  await expect.poll(oku).toBe(once + 1);
 });
 
 test('DENETIM: rapor toplamları kasa ve rezervasyon verisiyle tutarlı', async ({ page }) => {

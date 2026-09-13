@@ -88,11 +88,16 @@ test.describe('Program raporu', () => {
     await login(page);
     await page.goto('/panel/raporlar?tab=cizelge');
 
-    // Tanıtım haftasında cumartesi Zümrüt Salon'da gündüz ve gece iki düğün var.
-    const gunduz = page.getByText('13:00-17:00 DÜĞÜN');
-    const gece = page.getByText('19:00-23:00 DÜĞÜN');
-    await expect(gunduz).toBeVisible();
-    await expect(gece).toBeVisible();
+    /*
+      Tanıtım haftasında bir günde Zümrüt Salon'da gündüz ve gece iki düğün
+      var. Ölçüt, iki bandın AYNI HÜCREDE olması: sayfadaki metni tek tek
+      aramak, aynı saat bandını başka salonda ya da başka günde yakalar ve
+      "aynı gün aynı salon" iddiasını doğrulamazdı.
+    */
+    const hucre = page.getByRole('cell')
+      .filter({ hasText: '13:00-17:00 DÜĞÜN' })
+      .filter({ hasText: '19:00-23:00 DÜĞÜN' });
+    await expect(hucre.first()).toBeVisible();
   });
 
   test('ek not girilince çizelgeyle birlikte görünür', async ({ page }) => {

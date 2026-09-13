@@ -32,8 +32,12 @@ test('Özel Günler ekranı resmî tatilleri sistem kaynağıyla listeler', asyn
 
   const satir = page.getByRole('row', { name: /Cumhuriyet Bayramı/ }).first();
   await expect(satir).toBeVisible();
-  // Ortak günler "Sistem" kaynaklı: silme düğmesi hiç çizilmemeli.
-  await expect(satir.getByRole('cell', { name: 'Sistem' })).toBeVisible();
+  /*
+    Kaynak "Otomatik": resmî tatiller artık pakete gömülü bir listeden
+    değil sağlayıcıdan (date.nager.at) çekiliyor. Ortak günde silme
+    düğmesi hiç çizilmiyor; etiket zaten sebebi söylüyor.
+  */
+  await expect(satir.getByRole('cell', { name: 'Otomatik' })).toBeVisible();
   await expect(satir.getByRole('button')).toHaveCount(0);
 });
 
@@ -55,11 +59,13 @@ test('İşletmenin kendi özel günü eklenir, takvimde görünür ve silinir', 
   const iso = `${hedef.getFullYear()}-${String(hedef.getMonth() + 1).padStart(2, '0')}-01`;
 
   await page.locator('#og-tarih').fill(iso);
-  await page.locator('#og-ad').fill('Okullar kapanıyor');
+  // Ad, MEB'den gelen gerçek gün adlarıyla ÇAKIŞMAMALI: "Okullar
+  // kapanıyor" otomatik listede de var ve satır iki kez eşleşiyordu.
+  await page.locator('#og-ad').fill('Salon deneme günü');
   await page.locator('#og-tur').selectOption('okul');
   await page.getByRole('button', { name: 'Ekle' }).click();
 
-  const satir = page.getByRole('row', { name: /Okullar kapanıyor/ });
+  const satir = page.getByRole('row', { name: /Salon deneme günü/ });
   await expect(satir).toBeVisible();
   await expect(satir.getByRole('cell', { name: 'İşletme' })).toBeVisible();
 
@@ -68,14 +74,14 @@ test('İşletmenin kendi özel günü eklenir, takvimde görünür ve silinir', 
   await page.getByLabel('Yıl').selectOption(String(hedef.getFullYear()));
   await page.getByRole('button', { name: AY_ADLARI[hedef.getMonth()], exact: true }).click();
   await expect(page.getByRole('button', {
-    name: new RegExp(`1 ${AY_ADLARI[hedef.getMonth()]} .*Okullar kapanıyor`),
+    name: new RegExp(`1 ${AY_ADLARI[hedef.getMonth()]} .*Salon deneme günü`),
   })).toBeVisible();
 
   // Silme: onay penceresinden geçiyor.
   await page.goto('/panel/ozel-gunler');
-  await page.getByRole('button', { name: 'Okullar kapanıyor gününü sil' }).click();
+  await page.getByRole('button', { name: 'Salon deneme günü gününü sil' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Sil' }).click();
-  await expect(page.getByRole('row', { name: /Okullar kapanıyor/ })).toHaveCount(0);
+  await expect(page.getByRole('row', { name: /Salon deneme günü/ })).toHaveCount(0);
 });
 
 test('Aynı gün ve isimde ikinci özel gün reddedilir', async ({ page }) => {
@@ -103,7 +109,9 @@ test('Otomatik gelen türler elle girilemiyor, sebebi ekranda yazıyor', async (
 
   await expect(page.getByText(/otomatik olarak/i)).toBeVisible();
   await expect(page.getByText(/Millî Eğitim Bakanlığı/)).toBeVisible();
-  await expect(page.getByText(/kesinleşmedi/)).toBeVisible();
+  // Listede de "kesinleşmedi" rozetleri var; aranan, açıklamadaki
+  // vurgulu sözcük.
+  await expect(page.getByRole('strong').filter({ hasText: 'kesinleşmedi' })).toBeVisible();
 
   const turler = await page.locator('#og-tur option').allTextContents();
   expect(turler).toEqual(['Okul', 'Özel gün']);

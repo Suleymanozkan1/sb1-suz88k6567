@@ -529,9 +529,14 @@ test('Hata bildirimi kaydedilir ve denetim ekranında görünür', async ({ page
 
   await page.goto('/panel/denetim');
   const bolum = page.getByRole('region', { name: 'Kullanıcı Hata Bildirimleri' });
-  await expect(bolum.getByText('Kasa toplamı yanlış görünüyor.')).toBeVisible();
-  // Hangi sayfada olduğu da kayıtta duruyor (madde 32).
-  await expect(bolum.getByText('/panel/kasa')).toBeVisible();
+  const kayit = bolum.getByRole('listitem').filter({ hasText: 'Kasa toplamı yanlış görünüyor.' });
+  await expect(kayit).toBeVisible();
+  /*
+    Sayfa yolu AYNI KAYDIN içinde aranıyor: listede başka bildirimler de
+    var ve bir kısmı da /panel/kasa'dan gelmiş. Sayfa genelinde arandığında
+    yol başka birinin kaydından gelse de test geçerdi.
+  */
+  await expect(kayit.getByText('/panel/kasa')).toBeVisible();
 });
 
 test('Ekran kilidi süresi ayarlanabilir', async ({ page }) => {

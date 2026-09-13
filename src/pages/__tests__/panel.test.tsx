@@ -27,6 +27,7 @@ import { clearAll, KEYS, write } from '../../lib/storage';
 import { localRepo } from '../../lib/repo/local';
 import { seedIfEmpty } from '../../lib/seed';
 import { addDays, todayIso } from '../../lib/format';
+import { sadelestir } from '../../lib/sablon';
 import type { Reservation } from '../../types';
 
 const BIZ = 'biz_demo';
@@ -266,8 +267,18 @@ describe('Yeni rezervasyon formu', () => {
 describe('Rezervasyon detayı', () => {
   it('tahsilat ekler ve kalan bakiyeyi düşürür', async () => {
     seedIfEmpty();
+    /*
+      Ölçüt KALAN BAKİYE: kapora düşülmüş toplam yetmez, kaydın üzerinde
+      daha önce girilmiş tahsilatlar da olabilir. Demo veride taksitle
+      kapatılmış sözleşmeler var ve onlarda 10.000 TL'lik ek tahsilat
+      "kalan alacaktan fazla" diye reddedilirdi.
+    */
+    const odemeler = await localRepo.listPayments(BIZ);
+    const odenen = new Map<string, number>();
+    for (const p of odemeler) odenen.set(p.reservationId, (odenen.get(p.reservationId) ?? 0) + p.amount);
     const target = (await getReservations(BIZ)).find(
-      (r: Reservation) => r.date >= todayIso() && r.totalAmount - r.deposit > 20000)!;
+      (r: Reservation) => r.date >= todayIso() && r.status !== 'İptal'
+        && r.totalAmount - r.deposit - (odenen.get(r.id) ?? 0) > 20000)!;
     const user = userEvent.setup();
     renderPanel(`/panel/rezervasyonlar/${target.id}`);
 
@@ -276,7 +287,10 @@ describe('Rezervasyon detayı', () => {
     await user.click(screen.getByRole('button', { name: 'Ekle' }));
 
     await waitFor(() => {
-      expect(within(screen.getByRole('table')).getAllByRole('row').length).toBeGreaterThan(1);
+      // Sayfada düğün gideri, tedarikçi ve masa düzeni tabloları da var;
+      // tahsilat tablosu adıyla seçiliyor.
+      const tablo = screen.getByRole('table', { name: 'Tahsilatlar' });
+      expect(within(tablo).getAllByRole('row').length).toBeGreaterThan(1);
     });
   });
 
@@ -314,7 +328,8 @@ describe('Rezervasyon detayı', () => {
     // Metin sadeleştirilmiş hâliyle geliyor ("Sayın" değil "Sayin"):
     // ş, ğ, ı, İ, ç harfleri GSM-7'de olmadığı için biri bile geçtiğinde
     // mesaj 160 yerine 70 karaktere düşüyor ve tek SMS'e sığmıyor.
-    const onizleme = await screen.findByText(new RegExp(`Sayin ${target.customerName}`));
+    const onizleme = await screen.findByText(
+      new RegExp(`Sayin ${sadelestir(target.customerName)}`));
     expect(onizleme).toBeInTheDocument();
     expect(onizleme.textContent).not.toContain('{musteri}');
     expect(onizleme.textContent).not.toMatch(/[şŞğĞıİç]/);
@@ -470,13 +485,26 @@ describe('Gelir gider kayıtları', () => {
 
   it('rezervasyon tahsilatlarını sözleşme numarası ve taraflarla listeler', async () => {
     seedIfEmpty();
-    const kayit = (await getReservations(BIZ)).find((r) => r.deposit > 0 && r.status !== 'İptal')!;
+    const kayitlar = new Map((await getReservations(BIZ)).map((r) => [r.code, r]));
     renderPanel('/panel/kasa');
 
     await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
-    // Kasa satırı hangi sözleşmeye ait olduğunu kendi başına anlatmalı.
-    expect(screen.getAllByText(kayit.code).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Kapora').length).toBeGreaterThan(0);
+    /*
+      Kasa sayfalandığı için önceden seçilmiş bir sözleşme ilk sayfada
+      olmayabilir. Ölçüt zaten kaydın kendisi değil: EKRANDAKİ kapora
+      satırı, hangi sözleşmeye ait olduğunu kendi başına anlatmalı.
+    */
+    const tablo = screen.getByRole('table', { name: 'Gelir ve gider kayıtları' });
+    const kaporaSatiri = within(tablo).getAllByRole('row').slice(1)
+      .find((satir) => within(satir).queryByText('Kapora'));
+    expect(kaporaSatiri).toBeTruthy();
+
+    const kod = within(kaporaSatiri!).getByText(/^\d{4}-\d+$/).textContent!;
+    const kayit = kayitlar.get(kod)!;
+    expect(kayit).toBeTruthy();
+    // Satırdaki bağlantı o sözleşmenin kendi sayfasına gitmeli.
+    expect(within(kaporaSatiri!).getByRole('link')).toHaveAttribute(
+      'href', `/panel/rezervasyonlar/${kayit.id}`);
   });
 
   it('rezervasyondan gelen satır silinemez', async () => {

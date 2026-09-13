@@ -211,13 +211,14 @@ test.describe('hacimli veriyle panel taraması', () => {
     await expect(page.locator('main')).toBeVisible();
 
     const fs = await import('node:fs/promises');
-    /** İndirilen dosyanın gerçekten dolu olduğunu doğrular. */
+    /** İndirilen dosyanın içeriğini okur; boş dosya baştan eleniyor. */
     async function indirilen(dosya: { suggestedFilename(): string; path(): Promise<string | null> }) {
       const yol = await dosya.path();
       expect(yol, dosya.suggestedFilename()).toBeTruthy();
-      const icerik = await fs.readFile(yol!, 'utf-8');
-      // Yüzlerce satırlık veriden boş dosya üretilmemeli.
-      expect(icerik.trim().length).toBeGreaterThan(50);
+      const icerik = (await fs.readFile(yol!, 'utf-8')).trim();
+      // Başlık satırı her hâlükârda yazılmalı: içi boş bir dosya, aracın
+      // hiç çalışmadığı anlamına gelir.
+      expect(icerik.length, dosya.suggestedFilename()).toBeGreaterThan(20);
       return icerik;
     }
 
@@ -232,16 +233,22 @@ test.describe('hacimli veriyle panel taraması', () => {
       await wordDugme.click();
       const dosya = await bekle;
       expect(dosya.suggestedFilename()).toMatch(/\.doc[x]?$/);
-      await indirilen(dosya);
+      expect((await indirilen(dosya)).length).toBeGreaterThan(50);
     }
 
-    // CSV düğmesi çizelge DIŞINDAKİ sekmelerde çıkıyor; ilk bulunanda
-    // deneniyor.
+    /*
+      CSV düğmesi çizelge DIŞINDAKİ sekmelerde çıkıyor. HEPSİ deneniyor:
+      ilkinde durulsaydı, günlük rapor gibi tek güne bakan bir sekmeye
+      denk geldiğinde -- o gün organizasyon yoksa başlıktan ibaret, doğru
+      bir dosya üretir -- test hem yanlış yere bakmış hem de geri kalan
+      on altı raporu hiç sınamamış olurdu.
+    */
     const sekmeler = page.getByRole('tab');
     const adet = await sekmeler.count();
-    let csvDenendi = false;
+    let csvSayisi = 0;
+    let satirliRapor = 0;
 
-    for (let i = 0; i < adet && !csvDenendi; i += 1) {
+    for (let i = 0; i < adet; i += 1) {
       await sekmeler.nth(i).click();
       const csvDugme = page.getByRole('button', { name: /CSV indir/ });
       if (!(await csvDugme.isVisible())) continue;
@@ -251,12 +258,13 @@ test.describe('hacimli veriyle panel taraması', () => {
       const dosya = await bekle;
       expect(dosya.suggestedFilename()).toMatch(/^rapor-.*\.csv$/);
       const icerik = await indirilen(dosya);
-      // Başlık satırı + en az bir veri satırı.
-      expect(icerik.trim().split('\n').length).toBeGreaterThan(1);
-      csvDenendi = true;
+      csvSayisi += 1;
+      if (icerik.split('\n').length > 1) satirliRapor += 1;
     }
 
-    expect(csvDenendi, 'CSV indirme düğmesi hiçbir sekmede bulunamadı').toBe(true);
+    expect(csvSayisi, 'CSV indirme düğmesi hiçbir sekmede bulunamadı').toBeGreaterThan(0);
+    // Yüzlerce kayıtlık veride raporların çoğu satır üretmeli.
+    expect(satirliRapor, 'hiçbir rapor veri satırı yazmadı').toBeGreaterThan(0);
     expect(hatalar).toEqual([]);
   });
 

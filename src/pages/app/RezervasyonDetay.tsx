@@ -342,6 +342,7 @@ export default function RezervasyonDetay() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-sm">
+              <caption className="sr-only">Tahsilatlar</caption>
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase text-brand-muted">
                   <th className="pb-2 font-medium">Tarih</th>
