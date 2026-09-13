@@ -40,8 +40,9 @@ export const PRIVACY_POLICY: LegalDoc = {
     {
       heading: 'Veri Güvenliği',
       paragraphs: [
-        '128 bit SSL güvenlik katmanı ile tüm veri trafiği şifrelenmektedir.',
-        'Sistemimizde saklamış olduğunuz bilgileri şifrenizi kimseye söylemediğiniz sürece başkaları tarafından görülemez ve görüntülenemez.',
+        'Tarayıcı ile sunucu arasındaki tüm veri trafiği TLS ile şifrelenir; şifresiz bağlantılar kabul edilmez.',
+        'Parolalar geri döndürülemez biçimde (scrypt) özetlenerek saklanır; veritabanı yedeği bir başkasının eline geçse dahi parolalar okunamaz.',
+        'Her kullanıcı yalnızca kendi işletmesinin verisini görür. Bu sınır uygulama kodunda değil, veritabanının satır bazlı güvenlik katmanında uygulanır.',
       ],
     },
   ],
@@ -99,10 +100,12 @@ export const KVKK_NOTICE: LegalDoc = {
       ],
     },
     {
-      heading: 'Aktarım',
+      heading: 'Aktarım ve Verilerin Saklandığı Yer',
       paragraphs: [
         'Veriler; barındırma ve veritabanı hizmeti, SMS sağlayıcısı ve e-fatura entegratörü olmak üzere hizmetin sunulabilmesi için zorunlu tedarikçilere aktarılır.',
-        'Veritabanı ve yedekler Avrupa Birliği bölgesinde (Frankfurt) tutulmaktadır. Yurt dışına aktarım KVKK m.9 çerçevesinde yapılır.',
+        'Sistem iki sunucuda çalışır. Hesap verileri, müşteri kayıtları, işlem güvenliği verileri ve yedekler Almanya’da bulunan sunucuda; fatura kayıtları ise Vergi Usul Kanunu’nun belge saklama kuralı gereği Türkiye’de bulunan ikinci sunucuda tutulur.',
+        'Almanya’ya aktarım, KVKK m.9 kapsamında yurt dışına aktarımdır. Türkiye’nin bu ülke için yeterlilik kararı bulunmadığından aktarım, Kurul’un yayımladığı standart sözleşme imzalanarak yapılmakta ve sözleşme imza tarihinden itibaren beş iş günü içinde Kurul’a bildirilmektedir. Standart sözleşmenin bir örneğini aşağıdaki başvuru adreslerinden talep edebilirsiniz.',
+        'SMS gönderimi için telefon numarası ve mesaj içeriği Türkiye’de yerleşik SMS sağlayıcısına, e-fatura düzenlenmesi için fatura alıcısının bilgileri Gelir İdaresi Başkanlığı sistemine aktarılır. Bu iki aktarım yurt içindedir.',
       ],
     },
     {
