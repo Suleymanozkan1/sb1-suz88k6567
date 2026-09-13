@@ -49,13 +49,23 @@ export default async function handler(_req: unknown, res: VercelYanit): Promise<
   let simdi: number | null = null;
   let hata = '';
   let saatlikHatasi = '';
+  let simdiHatasi = '';
+  /*
+    İstasyon numaraları yanıtta duruyor. MGM üç ayrı numara veriyor
+    (günlük, saatlik, anlık) ve biri boş geldiğinde istek 200 dönüp boş
+    liste veriyor -- hata da olmadığı için sorun görünmez oluyordu.
+  */
+  let istasyon: Record<string, string> = {};
 
   try {
     const merkezler = merkezleriCoz(
       await mgmCek(`/merkezler?il=${encodeURIComponent(DEMO_IL)}&ilce=${encodeURIComponent(DEMO_ILCE)}`),
     );
     const merkez = merkezSec(merkezler, DEMO_ILCE);
-    if (!merkez) throw new Error('MGM merkezi bulunamadı.');
+    if (!merkez) throw new Error(`MGM merkezi bulunamadı (${merkezler.length} kayıt).`);
+    istasyon = {
+      gunluk: merkez.gunlukNo, saatlik: merkez.saatlikNo, anlik: merkez.sonDurumNo,
+    };
 
     gunluk = (await gunlukCoz(await mgmCek(`/tahminler/gunluk?istno=${merkez.gunlukNo}`)))
       .map((t) => ({ gun: t.gun, enDusuk: t.minC, enYuksek: t.maxC, hadise: t.hadise }));
@@ -80,8 +90,9 @@ export default async function handler(_req: unknown, res: VercelYanit): Promise<
     */
     try {
       simdi = sonDurumCoz(await mgmCek(`/sondurumlar?istNo=${merkez.sonDurumNo}`));
-    } catch {
+    } catch (e) {
       simdi = null;
+      simdiHatasi = String(e instanceof Error ? e.message : e).slice(0, 200);
     }
   } catch (e) {
     /*
@@ -102,6 +113,6 @@ export default async function handler(_req: unknown, res: VercelYanit): Promise<
   );
   res.status(gunluk.length > 0 || simdi !== null ? 200 : 503).send(JSON.stringify({
     uretim: new Date().toISOString(), il: DEMO_IL, ilce: DEMO_ILCE,
-    gunluk, saatlik, simdi, hata, saatlikHatasi,
+    gunluk, saatlik, simdi, istasyon, hata, saatlikHatasi, simdiHatasi,
   }));
 }
