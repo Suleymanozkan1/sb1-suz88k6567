@@ -13,7 +13,7 @@ import type {
   EventTask, Vendor, ReservationVendor,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
-  ExchangeRate, WeatherForecast, SpecialDay, Survey,
+  ExchangeRate, WeatherForecast, WeatherHour, SpecialDay, Survey,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
 
@@ -177,6 +177,8 @@ export interface Repository {
   /* -- hava durumu (madde 29) ------------------------------------------- */
   /** İşletmenin konumu için çekilmiş günlük tahminler. Yoksa boş liste. */
   listWeather(businessId: string): Promise<WeatherForecast[]>;
+  /** Saatlik tahminler (bugün ve yarın). Yoksa boş liste. */
+  listWeatherHours(businessId: string): Promise<WeatherHour[]>;
 
   /* -- özel günler (madde 30) ------------------------------------------- */
   /** Ortak resmî tatiller + işletmenin kendi eklediği günler. */

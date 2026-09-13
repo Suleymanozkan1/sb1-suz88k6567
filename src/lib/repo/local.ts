@@ -16,7 +16,7 @@ import type {
   ErrorReport, PaymentEventKind, QuickReply, Reservation, ReservationExpense, ReservationVendor,
   SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
-  SmsQueueEntry, User, ExchangeRate, WeatherForecast, SpecialDay, Survey,
+  SmsQueueEntry, User, ExchangeRate, WeatherForecast, WeatherHour, SpecialDay, Survey,
 } from '../../types';
 import { ODEME_OLAYLARI, VARSAYILAN_LEAD_DURUMLARI, YETKI_SURUMU, yetkileriTasi } from '../../types';
 import { odemeOlaylari } from '../odemeOlayi';
@@ -690,6 +690,14 @@ export const localRepo: Repository = {
 
   async listWeather() {
     return wait<WeatherForecast[]>([]);
+  },
+
+  /*
+    Demo kipinde hava durumu YOK. Uydurma bir tahmin gösterilseydi
+    salon sahibi demoyu gerçek sanıp o rakama göre plan yapabilirdi.
+  */
+  async listWeatherHours() {
+    return wait<WeatherHour[]>([]);
   },
 
   async listSpecialDays(businessId) {

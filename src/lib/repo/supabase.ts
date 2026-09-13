@@ -20,7 +20,7 @@ import type {
   QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
-  ExchangeCode, ExchangeRate, WeatherForecast, SpecialDay, SpecialDayKind,
+  ExchangeCode, ExchangeRate, WeatherForecast, WeatherHour, SpecialDay, SpecialDayKind,
   SpecialDaySource, Survey,
 } from '../../types';
 import { VARSAYILAN_BASLANGIC_DURUMU, YETKI_SURUMU, yetkileriTasi } from '../../types';
@@ -287,7 +287,22 @@ function toWeather(row: Row): WeatherForecast {
     currentC: sayiVeyaYok(row.current_c),
     summary: (row.summary as string) ?? '',
     icon: (row.icon as string) ?? '',
+    hadise: (row.hadise as string) ?? '',
+    humidity: sayiVeyaYok(row.humidity),
+    windKmh: sayiVeyaYok(row.wind_kmh),
     fetchedAt: (row.fetched_at as string) ?? '',
+  };
+}
+
+function toWeatherHour(row: Row): WeatherHour {
+  return {
+    businessId: (row.business_id as string) ?? '',
+    hour: (row.hour as string) ?? '',
+    tempC: sayiVeyaYok(row.temp_c),
+    feelsC: sayiVeyaYok(row.feels_c),
+    humidity: sayiVeyaYok(row.humidity),
+    windKmh: sayiVeyaYok(row.wind_kmh),
+    hadise: (row.hadise as string) ?? '',
   };
 }
 
@@ -1097,6 +1112,20 @@ export const supabaseRepo: Repository = {
       .select('*').eq('business_id', businessId).order('day');
     if (error) fail('Hava durumu okunamadı.', error);
     return (data ?? []).map(toWeather);
+  },
+
+  async listWeatherHours(businessId) {
+    /*
+      Yalnızca BUGÜNDEN İTİBAREN. Geçmiş saatler sunucuda temizleniyor
+      ama temizlik bir kez atlanırsa ekran dün sabahın tahminiyle
+      açılmasın.
+    */
+    const bugun = new Date().toISOString().slice(0, 10);
+    const { data, error } = await db().from('weather_hourly')
+      .select('*').eq('business_id', businessId)
+      .gte('hour', `${bugun}T00:00`).order('hour');
+    if (error) fail('Saatlik hava durumu okunamadı.', error);
+    return (data ?? []).map(toWeatherHour);
   },
 
   async listSpecialDays(businessId) {

@@ -671,6 +671,22 @@ export function useWeather() {
   });
 }
 
+/**
+ * Saatlik hava tahmini.
+ *
+ * Sunucu saatte bir yazıyor; istemci 10 dakikada bir tazeliyor. Daha
+ * sık sorulsaydı hiç değişmemiş veriyi tekrar tekrar çekerdi.
+ */
+export function useWeatherHours() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: [...keys.weather(businessId), 'saatlik'],
+    queryFn: () => repo.listWeatherHours(businessId),
+    enabled: Boolean(businessId),
+    staleTime: 10 * 60_000,
+  });
+}
+
 export function useSpecialDays() {
   const businessId = useActiveBusinessId();
   return useQuery({

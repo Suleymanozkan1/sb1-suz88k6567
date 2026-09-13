@@ -1016,7 +1016,29 @@ export interface WeatherForecast {
   currentC?: number;
   summary: string;
   icon: string;
+  /** MGM hava olayı kodu (A, PB, HY...). Okunur adı `src/lib/mgm.ts`'te. */
+  hadise?: string;
+  humidity?: number;
+  windKmh?: number;
   fetchedAt: string;
+}
+
+/**
+ * Saatlik hava tahmini (MGM).
+ *
+ * Günlük tahminden AYRI bir tablo: "düğün saatinde yağmur var mı"
+ * sorusunun cevabı gün ortalamasında yok. Yalnızca bugün ve yarın için
+ * yazılıyor; geçmiş saatler temizleniyor.
+ */
+export interface WeatherHour {
+  businessId: string;
+  /** Yerel saat, yyyy-mm-ddTHH:00. */
+  hour: string;
+  tempC?: number;
+  feelsC?: number;
+  humidity?: number;
+  windKmh?: number;
+  hadise: string;
 }
 
 /* --------------------------------------------------- özel günler (30) */

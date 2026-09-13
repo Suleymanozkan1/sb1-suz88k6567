@@ -632,15 +632,43 @@ fiyatı yazılmaz. Sağlayıcı hiç cevap vermezse **eski kur durur** ve
 tablo temizlenmez: bir dakikalık kesinti ekrandaki kuru silmemeli,
 satırın kendi tarihi zaten ne kadar eski olduğunu söyler.
 
-**Hava durumu.** Sağlayıcı AccuWeather (`ACCUWEATHER_API_KEY`). Her
-işletmenin konum anahtarı panelden girilir (Firmalarım → işletme →
-"Hava durumu konum anahtarı"); boş bırakılan işletme için tahmin
-çekilmez. Ücretsiz katman yalnızca birkaç günlük tahmin verdiği için
-**uzak tarihlerde satır hiç yazılmaz** ve ekran "Tahmin henüz mevcut
-değil" der. Boş satır yazılsaydı düğün gününde "0°" görünür, olmayan bir
-tahmin doğruymuş gibi sunulurdu. Bugünün satırında ayrıca o anki
-sıcaklık tutulur; gözlem alınamazsa yalnızca o alan boş kalır, tahmin
-yine gösterilir.
+**Hava durumu.** Sağlayıcı **Meteoroloji Genel Müdürlüğü**
+(`servis.mgm.gov.tr`). **Anahtar gerekmiyor**: kayıt, ücret ve kota yok
+-- AccuWeather'dan bu yüzden geçildi.
+
+Konum da elle girilmiyor. İşletmenin **il ve ilçesinden** MGM istasyonu
+bulunup `businesses.weather_station` alanına yazılır; yeni bir salon
+eklendiğinde alan boş gelir ve ilk çekimde kendiliğinden dolar. İli
+girilmemiş işletme için tahmin çekilmez ve sebebi görev günlüğüne
+yazılır.
+
+İki ayrı görev çalışır:
+
+| Görev | Sıklık | Ne çeker |
+|---|---|---|
+| `/api/hava` | her gün 05:15 | MGM'nin verdiği bütün günler (5 gün) + o anki sıcaklık |
+| `/api/hava-saatlik` | her saat :20 | O günün saat saat tahmini; eski saatleri temizler |
+
+Saatlik veri ayrı tutuluyor çünkü gün ortalaması "düğün saatinde yağmur
+var mı" sorusunu yanıtlamıyor: 30 derece açık bir günün 19:00'unda
+sağanak olabilir. Şerit Özet ekranında ve rezervasyon kartında görünür.
+
+MGM'nin tahmini beş gün olduğu için **uzak tarihlerde satır hiç
+yazılmaz** ve ekran "Tahmin henüz mevcut değil" der. Boş satır
+yazılsaydı düğün gününde "0°" görünür, olmayan bir tahmin doğruymuş gibi
+sunulurdu. Bugünün satırında ayrıca o anki sıcaklık tutulur; gözlem
+alınamazsa yalnızca o alan boş kalır, tahmin yine gösterilir.
+
+MGM belgelenmiş bir API değil; alan adları değişirse tahmin sessizce boş
+kalabilir. Bunun için uç noktada **tanı kipi** var:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  "https://<alan-adiniz>/api/hava?tani=1&il=Konya"
+```
+
+Ham MGM yanıtını olduğu gibi döndürür; alan adı farkı tek istekte
+görülür.
 
 **Özel günler.** Takvimde bayram, arife, kandil, resmî tatil ve okul
 tarihleri renkli nokta ve etiketle işaretlenir. Resmî tatiller, dini

@@ -1437,15 +1437,31 @@ describe('kur önbelleği', () => {
 
 describe('hava durumu', () => {
   it('satırı arayüz tipine çevirir', async () => {
+    // MGM hava olayını kodla veriyor (PB = parçalı bulutlu); okunur adı
+    // istemcide üretiliyor (src/lib/mgm.ts).
     yanitla('weather_forecasts', { data: [{
       business_id: 'b1', day: '2026-09-12', min_c: '17.4', max_c: '28.6',
-      current_c: '24.2', summary: 'Parçalı bulutlu', icon: '4',
+      current_c: '24.2', summary: 'PB', icon: 'PB', hadise: 'PB',
+      humidity: '55', wind_kmh: '12.0',
       fetched_at: '2026-09-12T06:15:00Z',
     }] });
     const [t] = await repo.listWeather('b1');
     expect(t).toEqual({
       businessId: 'b1', day: '2026-09-12', minC: 17.4, maxC: 28.6, currentC: 24.2,
-      summary: 'Parçalı bulutlu', icon: '4', fetchedAt: '2026-09-12T06:15:00Z',
+      summary: 'PB', icon: 'PB', hadise: 'PB', humidity: 55, windKmh: 12,
+      fetchedAt: '2026-09-12T06:15:00Z',
+    });
+  });
+
+  it('saatlik satırı arayüz tipine çevirir', async () => {
+    yanitla('weather_hourly', { data: [{
+      business_id: 'b1', hour: '2026-09-12T19:00', temp_c: '22.5',
+      feels_c: '21.0', humidity: '60', wind_kmh: '8.0', hadise: 'HY',
+    }] });
+    const [s] = await repo.listWeatherHours('b1');
+    expect(s).toEqual({
+      businessId: 'b1', hour: '2026-09-12T19:00', tempC: 22.5, feelsC: 21,
+      humidity: 60, windKmh: 8, hadise: 'HY',
     });
   });
 

@@ -220,21 +220,18 @@ export default function Isletmeler() {
                 onChange={(e) => setForm((f) => ({ ...f, surveyEmail: e.target.value }))} />
             </div>
             {/*
-              Hava durumu konum anahtarı (madde 29). Şehir adı değil,
-              sağlayıcının kendi anahtarı yazılıyor: "Merkez" adında
-              onlarca ilçe var ve ad üzerinden aranırsa yanlış şehrin
-              havası gösterilebilir.
+              Hava durumu ELLE AYARLANMIYOR (madde 29). Önce sağlayıcının
+              konum anahtarı isteniyordu ve salon sahibinin AccuWeather'ın
+              sitesine girip anahtar araması gerekiyordu. Meteoroloji
+              Genel Müdürlüğü'ne geçilince o adım kalktı: istasyon,
+              yukarıdaki il/ilçeden bulunuyor.
             */}
-            <div className="md:col-span-2">
-              <label htmlFor="bz-weather" className="field-label">
-                Hava durumu konum anahtarı
-              </label>
-              <input id="bz-weather" className="field-input"
-                placeholder="Örn. 318251"
-                value={form.weatherLocation}
-                onChange={(e) => setForm((f) => ({ ...f, weatherLocation: e.target.value }))} />
+            <div className="md:col-span-2 rounded-md border border-line bg-surface px-3 py-2.5">
+              <p className="text-sm font-medium text-brand">Hava durumu</p>
               <p className="mt-1 text-xs text-brand-muted">
-                Boş bırakılırsa hava durumu gösterilmez.
+                Meteoroloji Genel Müdürlüğü&apos;nden otomatik çekilir; ayar gerekmez.
+                İstasyon yukarıdaki <strong>il ve ilçe</strong> bilgisinden bulunur, ilk
+                çekimde kaydedilir. İl boş bırakılırsa tahmin gösterilmez.
               </p>
             </div>
             {/*

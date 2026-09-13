@@ -9,6 +9,7 @@ import anket from '../api/anket';
 import anketYanit from '../api/anket-yanit';
 import backup from '../api/backup';
 import hava from '../api/hava';
+import havaSaatlik from '../api/hava-saatlik';
 import health from '../api/health';
 import kurlar from '../api/kurlar';
 import invoice from '../api/invoice';
@@ -38,6 +39,7 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/anket-yanit': anketYanit,
   '/api/backup': backup,
   '/api/hava': hava,
+  '/api/hava-saatlik': havaSaatlik,
   '/api/health': health,
   '/api/kurlar': kurlar,
   '/api/invoice': invoice,
@@ -88,11 +90,19 @@ export const CRON_GOREVLERI: Record<string, keyof typeof ROTALAR> = {
   */
   '0 * * * *': '/api/kurlar',
   /*
-    Hava durumu günde iki kez: sabah ve akşamüstü. AccuWeather'ın
-    ücretsiz katmanı günlük istek sayısını sınırlıyor ve tahmin gün
-    içinde bu kadar sık değişmiyor.
+    Günlük tahmin GÜNDE BİR KEZ, sabah 05:15'te: MGM gecelik modelini
+    sabaha karşı yayımlıyor, o saatten önce çekilen tahmin bir önceki
+    günün verisi olurdu. Sağlayıcının kotası yok ama günde beş günlük
+    tahmin saat başı değişmiyor; boşuna istek atmanın anlamı da yok.
   */
-  '15 6,15 * * *': '/api/hava',
+  '15 5 * * *': '/api/hava',
+  /*
+    Saatlik tahmin SAATTE BİR. Günlük tahminden ayrı, çünkü "düğün
+    saatinde yağmur var mı" sorusunun cevabı gün ortalamasında yok:
+    30 derece sıcak bir günün 19:00'unda sağanak olabilir. Dakika 20:
+    saat başındaki diğer görevlerle (kur) aynı anda çalışmasın.
+  */
+  '20 * * * *': '/api/hava-saatlik',
   /*
     Anket sabah 9'da: organizasyondan bir hafta sonra, çiftin
     uyanık olduğu bir saatte. Gece gönderilen posta sabah gelen
