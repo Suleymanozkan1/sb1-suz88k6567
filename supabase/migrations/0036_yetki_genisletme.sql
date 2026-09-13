@@ -180,6 +180,14 @@ create policy special_days_write on public.special_days for all
   kuruluyor (`owns_reservation`).
 */
 drop policy if exists reservation_vendors_all on public.reservation_vendors;
+/*
+  Yeni politikalar da önce DÜŞÜRÜLÜYOR. Kurulum belgesi göçleri bir
+  döngüyle uyguluyor ve operatörün döngüyü yeniden çalıştırması olağan;
+  düşürülmeseydi ikinci koşu "policy already exists" ile durur ve
+  yükseltme yarıda kalırdı.
+*/
+drop policy if exists reservation_vendors_select on public.reservation_vendors;
+drop policy if exists reservation_vendors_write on public.reservation_vendors;
 create policy reservation_vendors_select on public.reservation_vendors for select
   to authenticated using (
     public.has_permission('stok.goruntule') and public.owns_reservation(reservation_id));
