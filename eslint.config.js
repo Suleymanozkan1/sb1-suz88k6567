@@ -5,7 +5,17 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'playwright-report', 'test-results'] },
+  /*
+    Derleme çıktıları lint edilmiyor. `sunucu-dist` sunucunun derlenmiş
+    hâli: kaynaktaki lint yorumlarını da taşıyor ama JavaScript olarak
+    lint edildiği için TypeScript kuralları tanımlı olmuyor ve "kural
+    bulunamadı" hatası veriyordu.
+  */
+  {
+    ignores: [
+      'dist', 'sunucu-dist', 'node_modules', 'playwright-report', 'test-results',
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
