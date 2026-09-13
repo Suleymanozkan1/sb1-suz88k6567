@@ -274,19 +274,20 @@ export function seedIfEmpty(): void {
 
   /*
     Program çizelgesi haftalık bir çıktıdır; yukarıdaki tohum ayda bir kayıt
-    ürettiği için çizelge tanıtımda boş görünüyordu. Bu blok içinde
-    bulunulan haftayı doldurur: iki salon, kına ve düğün karışık, bir günde
+    ürettiği için çizelge tanıtımda boş görünüyordu. Bu blok çizelgenin
+    gösterdiği haftayı doldurur: iki salon, kına ve düğün karışık, bir günde
     aynı salonda gündüz ve gece iki ayrı tören.
+
+    BUGÜNDEN başlıyor, takvim haftasının pazartesisinden değil. Çizelge
+    varsayılan aralığı "bugün + 6 gün" (Raporlar ekranı); tohum takvim
+    haftasını doldurduğunda ikisi yalnızca haftanın ortasında örtüşüyordu.
+    Pazar günü açıldığında tohumun cumartesi töreni dünde kalıyor ve
+    çizelge neredeyse boş görünüyordu -- haftada bir gün, sebebi
+    anlaşılmadan.
   */
-  const haftaBasi = (() => {
-    const g = new Date();
-    // Pazartesi'ye çek (getDay: 0 = Pazar).
-    g.setDate(g.getDate() - ((g.getDay() + 6) % 7));
-    return g;
-  })();
   const haftaGunu = (n: number) => {
-    const g = new Date(haftaBasi);
-    g.setDate(haftaBasi.getDate() + n);
+    const g = new Date();
+    g.setDate(g.getDate() + n);
     return toIso(g);
   };
 

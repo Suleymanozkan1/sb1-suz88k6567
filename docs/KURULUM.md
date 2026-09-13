@@ -432,6 +432,7 @@ etkiler; veri olduğu gibi kalır.
 | `/api/*` 404 veriyor | `sahra` servisi çalışmıyor (`systemctl status sahra`) |
 | Giriş 500 veriyor | `/etc/sahra.env` okunamıyor ya da `JWT_SECRET` kısa (< 32) |
 | Yedek alınmıyor | `YEDEK_DIZINI` yok ya da `www-data` yazamıyor |
+| Takvimde bayram/kandil görünmüyor | `/api/ozel-gunler` görevi henüz çalışmadı (ayın 2'si) ya da sunucudan dışarı çıkış kapalı |
 | Dağıtım "Permission denied (publickey)" | Açık anahtar `dagitim` kullanıcısına eklenmemiş ya da `SUNUCU_KULLANICI` yanlış |
 | Dağıtım `systemctl restart` adımında düşüyor | `/etc/sudoers.d/dagitim` yok ya da komut yolu farklı (`which systemctl`) |
 | Dağıtım geçti ama site eski | Tarayıcı önbelleği; sert yenileyin. Sürmüyorsa `systemctl status sahra` |

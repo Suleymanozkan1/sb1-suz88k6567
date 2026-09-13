@@ -397,15 +397,31 @@ describe('Program raporu', () => {
     seedIfEmpty();
     renderPanel('/panel/raporlar?tab=cizelge');
 
-    await user.type(await screen.findByLabelText('Başlangıç tarihi'), '2026-09-11');
-    await user.type(screen.getByLabelText('Bitiş tarihi'), '2026-09-13');
+    /*
+      Tarihler BUGÜNE GÖRE hesaplanıyor, sabit yazılmıyor. Tohum
+      çizelgenin gösterdiği haftayı (bugün + 6 gün) dolduruyor; sabit bir
+      eylül tarihi yazılsaydı test takvim ilerledikçe bir gün düşerdi --
+      nitekim düştü.
+    */
+    const gun = (n: number) => {
+      const t = new Date();
+      t.setDate(t.getDate() + n);
+      return t;
+    };
+    const iso = (t: Date) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    const bant = (t: Date) => new RegExp(
+      `^${String(t.getDate()).padStart(2, '0')}\\.${String(t.getMonth() + 1).padStart(2, '0')}\\.${t.getFullYear()}`,
+    );
+
+    await user.type(await screen.findByLabelText('Başlangıç tarihi'), iso(gun(1)));
+    await user.type(screen.getByLabelText('Bitiş tarihi'), iso(gun(3)));
 
     // Boş günler de satır olarak durur: çizelge "o gün boş" bilgisini de
     // verir. Dolu bir hücrenin bandına tür de yazıldığı için tam eşleşme
     // yerine tarihe bakılır.
-    expect(await screen.findAllByText(/^11\.09\.2026 CUMA/)).toHaveLength(2);
-    expect(screen.getAllByText(/^13\.09\.2026 PAZAR/)).toHaveLength(2);
-    expect(screen.queryByText(/^10\.09\.2026/)).not.toBeInTheDocument();
+    expect(await screen.findAllByText(bant(gun(1)))).toHaveLength(2);
+    expect(screen.getAllByText(bant(gun(3)))).toHaveLength(2);
+    expect(screen.queryByText(bant(gun(0)))).not.toBeInTheDocument();
   });
 
   it('ek notlar çizelgenin altına yazılır', async () => {

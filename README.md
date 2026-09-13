@@ -485,6 +485,7 @@ Cron ifadeleri `sunucu/rotalar.ts` içinde, saatler **UTC**:
 | `0 * * * *` | Döviz ve altın kurları |
 | `15 6,15 * * *` | Hava durumu tahmini |
 | `0 9 * * *` | Deneyim anketi gönderimi |
+| `0 4 2 * *` | Özel günler (resmî tatil, bayram, arife, kandil) |
 
 Zamanlayıcı sürecin içinde çalışıyor; ayrıca bir cron kurulumu
 gerekmiyor. Aynı dakikada iki kez tetiklenmemesi için son çalıştığı
@@ -642,19 +643,43 @@ sıcaklık tutulur; gözlem alınamazsa yalnızca o alan boş kalır, tahmin
 yine gösterilir.
 
 **Özel günler.** Takvimde bayram, arife, kandil, resmî tatil ve okul
-tarihleri renkli nokta ve etiketle işaretlenir. İki kaynak var:
+tarihleri renkli nokta ve etiketle işaretlenir. Resmî tatiller, dini
+bayramlar, arifeler ve kandiller **otomatik çekilir**
+(`api/ozel-gunler.ts`, ayda bir); panelden elle girilecek tek şey okul
+tarihleri ve salonun kendi günleridir.
 
-- **Ortak günler** — sabit tarihli resmî tatiller (1 Ocak, 23 Nisan,
-  1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 28-29 Ekim). Göç sırasında
-  içinde bulunulan yıl ve sonraki üç yıl için tohumlanır, panelde
-  "Sistem" kaynaklı görünür ve değiştirilemez.
-- **İşletmenin günleri** — panelden eklenir ve silinir.
+Üç kalem, üç ayrı güven düzeyi:
 
-**Dini günler ve okul tarihleri tohumlanmaz.** İlki Diyanet'in yıllık
-takvimine, ikincisi Millî Eğitim Bakanlığı'nın kararına bağlıdır;
-hesaplanmış bir hicri tarih gerçeğinden bir gün sapabilir ve o günü
-tatil sanıp salonu kapatmak ya da açmak salona zarar verir. Ekranda bu
-sebep yazılı duruyor ki kullanıcı eksik sanıp beklemesin.
+| Kalem | Nereden | Kesinlik |
+|---|---|---|
+| Resmî tatil, dini bayram | Ücretsiz tatil sağlayıcısı, anahtar istemez | Sağlayıcı ne derse o; uzak yıllar "kesinleşmedi" |
+| Arife | Bayramın bir gün öncesi | Bayram kadar kesin — bu bir tanım, tahmin değil |
+| Kandil | Hicri takvimden, **bayrama göre ofsetle** | Hesaplanıyor; her zaman "kesinleşmedi" |
+
+**Kandil neden ofsetle hesaplanıyor?** İki bağımsız takvim — tatil
+sağlayıcısı ve hicri takvim servisi — uzak yıllarda bir gün kayabiliyor;
+ölçüldü, 2027-2030 arası Ramazan Bayramı'nda tam olarak bu oluyor. Hicri
+servisin verdiği mutlak tarih yazılsaydı Kadir Gecesi, bayrama göre
+yanlış yerde dururdu. Bunun yerine yalnızca **fark** kullanılıyor: fark
+takvimin kendi içinde sabit, takvim bir gün kaysa bile iki tarih
+arasındaki mesafe değişmiyor. Çıpa, sağlayıcının verdiği resmî bayram
+tarihi. Çıpa yoksa kandil **hiç yazılmıyor**.
+
+**Kesinleşmemiş tarihler ekranda işaretleniyor.** Kandiller ve uzak
+yılların dini bayramları "kesinleşmedi" rozetiyle görünür — hem Özel
+Günler listesinde hem takvimde. O güne göre rezervasyon kapatan salon
+sahibi, tarihin değişebileceğini görmeli ve Diyanet takviminden
+doğrulamalı.
+
+**Okul tarihleri çekilmez.** Millî Eğitim Bakanlığı yıllık çalışma
+takvimini bir duyuruyla yayımlıyor; makine okunur bir kaynağı yok.
+Panelden giriliyor ve ekranda sebebi yazılı.
+
+Bir yılın ortak günleri tek işlemde değişiyor (`ozel_gunleri_yaz`):
+sağlayıcı listesi "o yılın tamamı" demek ve satırlar tek tek eklenseydi,
+bir tatilin adı değiştiğinde eskisi takvimde asılı kalırdı. Sağlayıcı
+boş cevap döndürdüğünde **hiçbir şey yapılmıyor** — bir kesinti takvimi
+silmemeli. İşletmenin kendi günlerine hiç dokunulmuyor.
 
 **Deneyim anketi.** Organizasyondan bir hafta sonra, müşterinin e-posta
 adresi kayıtlıysa çifte anket bağlantısı gider. Bağlantı **rezervasyon
@@ -1099,10 +1124,10 @@ Aynı kontroller panelde **Sistem Durumu** ekranında Türkçe açıklamalarla v
   yanıt biçimleri üzerinden doğrulandı. İlk çalıştırmada alan adı
   uyuşmazlığı çıkarsa görev günlüğünde sağlayıcının döndürdüğü durum
   kodu görünür ve tablo eski değeriyle kalır.
-- Dini bayram, arife, kandil ve okul tarihleri **hazır gelmez**; her yıl
-  Diyanet ve Millî Eğitim Bakanlığı'nın açıkladığı takvime göre panelden
-  girilir. Hesaplanmış bir hicri tarih gerçeğinden bir gün sapabileceği
-  için tohumlanmadı.
+- Kandil tarihleri **hesaplanıyor**, ilan edilmiş bir listeden
+  gelmiyor; ekranda "kesinleşmedi" olarak işaretlenir ve Diyanet
+  takviminden doğrulanmalıdır. Okul açılış/kapanış tarihleri Millî
+  Eğitim Bakanlığı'nın duyurusuyla belirlendiği için panelden girilir.
 - Anket ve aylık rapor e-postaları `MAIL_API_URL/KEY/FROM` tanımlı
   değilse **gönderilmez**; kayıtlar oluşur ve panelden okunur. Anket
   bağlantısı için ayrıca `SITE_URL` gerekir.

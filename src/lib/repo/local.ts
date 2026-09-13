@@ -85,7 +85,10 @@ function ozelGunler(): SpecialDay[] {
   const tohum: SpecialDay[] = [];
   for (let i = 0; i <= 3; i += 1) {
     for (const t of resmiTatiller(yil + i)) {
-      tohum.push({ ...t, id: uid('ozel-gun'), createdAt: new Date().toISOString() });
+      tohum.push({
+        ...t, id: uid('ozel-gun'), source: 'tohum', tentative: false,
+        createdAt: new Date().toISOString(),
+      });
     }
   }
   write(KEYS.specialDays, tohum);
@@ -691,11 +694,15 @@ export const localRepo: Repository = {
       && g.label.trim().toLocaleLowerCase('tr') === gun.label.trim().toLocaleLowerCase('tr'));
     if (ayni) throw new RepoError('Bu gün için aynı isimde bir kayıt zaten var.');
 
-    const yeni = hepsi.some((g) => g.id === gun.id)
-      ? hepsi.map((g) => (g.id === gun.id ? gun : g))
-      : [...hepsi, gun];
+    // Kaynak istemciden gelmiyor: panelden girilen gün her zaman
+    // işletmenin kendi günü. Gerçek kurulumda bunu kolon varsayılanı
+    // yapıyor; iki taraf aynı davransın.
+    const kayit: SpecialDay = { ...gun, source: 'isletme', tentative: false };
+    const yeni = hepsi.some((g) => g.id === kayit.id)
+      ? hepsi.map((g) => (g.id === kayit.id ? kayit : g))
+      : [...hepsi, kayit];
     write(KEYS.specialDays, yeni);
-    return wait(gun);
+    return wait(kayit);
   },
 
   async deleteSpecialDay(id) {

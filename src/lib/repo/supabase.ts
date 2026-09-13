@@ -20,7 +20,8 @@ import type {
   Permission, QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
-  ExchangeCode, ExchangeRate, WeatherForecast, SpecialDay, SpecialDayKind, Survey,
+  ExchangeCode, ExchangeRate, WeatherForecast, SpecialDay, SpecialDayKind,
+  SpecialDaySource, Survey,
 } from '../../types';
 import { VARSAYILAN_BASLANGIC_DURUMU } from '../../types';
 import { computeInvoice } from '../invoice';
@@ -286,6 +287,9 @@ function toSpecialDay(row: Row): SpecialDay {
     day: (row.day as string) ?? '',
     label: (row.label as string) ?? '',
     kind: (row.kind as SpecialDayKind) ?? 'ozel',
+    // 0035 öncesi satırlarda kaynak yok; elle girilmiş sayılıyorlar.
+    source: (row.source as SpecialDaySource) ?? 'isletme',
+    tentative: Boolean(row.tentative),
     createdAt: (row.created_at as string) ?? '',
   };
 }
@@ -1106,6 +1110,12 @@ export const supabaseRepo: Repository = {
   async saveSpecialDay(gun) {
     if (!gun.businessId) throw new RepoError('Ortak günler değiştirilemez.');
 
+    /*
+      `source` ve `tentative` GÖNDERİLMİYOR. İlki veritabanı
+      varsayılanıyla 'isletme' oluyor; istemciden gelseydi panelden
+      girilen bir gün kendini "otomatik" gösterebilir ve bir sonraki
+      taramada silinirdi. İkincisi yalnızca sağlayıcının bildiği bir şey.
+    */
     const { data, error } = await db().from('special_days').upsert({
       ...kimlikAlani(gun.id), business_id: gun.businessId,
       day: gun.day, label: gun.label.trim(), kind: gun.kind,

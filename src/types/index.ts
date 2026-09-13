@@ -893,6 +893,20 @@ export const OZEL_GUN_RENGI: Record<SpecialDayKind, string> = {
   ozel: '#475569',
 };
 
+/**
+ * Satırın nereden geldiği.
+ *
+ * Ekranda ayrım gerekiyor: sağlayıcıdan gelen bir gün her ay yeniden
+ * yazılıyor, işletmenin girdiği gün ise yalnızca kendisi silebiliyor.
+ */
+export type SpecialDaySource = 'tohum' | 'saglayici' | 'isletme';
+
+export const OZEL_GUN_KAYNAGI: Record<SpecialDaySource, string> = {
+  tohum: 'Sistem',
+  saglayici: 'Otomatik',
+  isletme: 'İşletme',
+};
+
 export interface SpecialDay {
   id: string;
   /** Boş: bütün işletmelerde görünen ortak gün (resmî tatiller). */
@@ -901,6 +915,16 @@ export interface SpecialDay {
   day: string;
   label: string;
   kind: SpecialDayKind;
+  /** Eski kayıtlarda boş olabilir; ekran 'isletme' varsayıyor. */
+  source?: SpecialDaySource;
+  /**
+   * Tarih henüz kesinleşmedi.
+   *
+   * Uzak yılların dini bayramları ve hesaplanan kandiller için doğru.
+   * Ekranda belirtiliyor: kesinleşmemiş bir tarihe göre rezervasyon
+   * kapatmak, sonradan düzeltilmesi gereken bir karar olurdu.
+   */
+  tentative?: boolean;
   createdAt: string;
 }
 
