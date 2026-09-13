@@ -413,6 +413,31 @@ test('Takvimde ay listesi yok, gün seçilince panel açılır', async ({ page }
   await expect(page.getByRole('button', { name: 'Kapat' })).toBeVisible();
 });
 
+test('Takvimdeki organizasyona basılınca rezervasyon doğrudan açılır', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/takvim');
+
+  const izgara = page.locator('div.grid.grid-cols-7').last();
+  const etiket = izgara.locator('a[href^="/panel/rezervasyonlar/"]').first();
+  await expect(etiket).toBeVisible();
+  const hedef = await etiket.getAttribute('href');
+
+  // Yazı boyutu 60 yaşındaki bir kullanıcı için de okunur olmalı:
+  // etiket en az 14px, gün rakamı en az 18px.
+  const etiketPuntosu = await etiket.evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  expect(etiketPuntosu).toBeGreaterThanOrEqual(14);
+  const gunPuntosu = await izgara
+    .locator('span.font-bold')
+    .first()
+    .evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  expect(gunPuntosu).toBeGreaterThanOrEqual(18);
+
+  // Gün seçme düğmesi etiketin tıklamasını yutmamalı.
+  await etiket.click();
+  await expect(page).toHaveURL(new RegExp(`${hedef}$`));
+  await expect(page.getByRole('button', { name: 'Kapat' })).toHaveCount(0);
+});
+
 test('Hızlı yanıt kaydedilir ve müşteri kartında kullanılır', async ({ page }) => {
   await login(page);
   await page.goto('/panel/hatirlatmalar');

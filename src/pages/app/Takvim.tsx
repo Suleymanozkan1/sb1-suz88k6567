@@ -94,15 +94,15 @@ export default function Takvim() {
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-brand-muted">
+          <div className="grid grid-cols-7 gap-1 text-center text-sm font-semibold text-brand-muted">
             {DAY_NAMES_SHORT.map((d) => (
-              <span key={d} className="py-1">{d}</span>
+              <span key={d} className="py-1.5">{d}</span>
             ))}
           </div>
 
           <div className="mt-1 grid grid-cols-7 gap-1">
             {cells.map((cell, i) => {
-              if (!cell) return <span key={`e${i}`} className="min-h-[74px] rounded bg-surface/50" />;
+              if (!cell) return <span key={`e${i}`} className="min-h-[150px] rounded bg-surface/50" />;
               const items = byDate.get(cell) ?? [];
               const ozel = ozelGunHaritasi.get(cell) ?? [];
               const isToday = cell === today;
@@ -118,71 +118,121 @@ export default function Takvim() {
                 `${items.length} rezervasyon`,
                 ...ozel.map((g) => g.label),
               ].join(', ');
+
               return (
-                <button
+                /*
+                  Hücre artık tek bir düğme DEĞİL. Rezervasyon etiketleri
+                  kendi bağlantıları: üstüne basınca kayıt doğrudan
+                  açılıyor. Önce günü seçip sağdaki panelden kaydı bulmak
+                  gerekiyordu -- aynı şeye ulaşmak için iki tıklama.
+
+                  Günü seçen düğme hücrenin ARKASINDA, tam boy duruyor
+                  (`absolute inset-0`): boş bir yere basmak da günü
+                  seçiyor, yalnızca rakamın üstüne değil. İçerik
+                  `pointer-events-none`, etiketler yeniden açıyor; böylece
+                  düğmenin içine düğme yerleştirilmiş olmuyor.
+                */
+                <div
                   key={cell}
-                  type="button"
-                  onClick={() => setSelected(isSelected ? null : cell)}
-                  aria-pressed={isSelected}
-                  aria-label={etiket}
-                  className={`min-h-[74px] rounded border p-1.5 text-left transition ${
-                    isSelected ? 'border-accent-ink bg-accent-ink/5' : isToday ? 'border-accent-ink/50 bg-white' : 'border-line bg-white hover:border-accent-ink/50'
+                  className={`relative min-h-[150px] rounded border transition ${
+                    isSelected
+                      ? 'border-accent-ink bg-accent-ink/5'
+                      : isToday
+                        ? 'border-accent-ink/50 bg-white'
+                        : 'border-line bg-white hover:border-accent-ink/50'
                   }`}
                 >
-                  <span className="flex items-center justify-between gap-1">
-                    <span className={`text-xs font-semibold ${isToday ? 'text-accent-ink' : 'text-brand'}`}>{day}</span>
-                    {/*
-                      Özel gün NOKTA ile işaretleniyor, hücrenin zeminini
-                      boyamakla değil: zemin boyansaydı üstündeki
-                      rezervasyon etiketlerinin rengi okunmaz olurdu.
-                    */}
+                  <button
+                    type="button"
+                    onClick={() => setSelected(isSelected ? null : cell)}
+                    aria-pressed={isSelected}
+                    aria-label={etiket}
+                    className="absolute inset-0 h-full w-full rounded"
+                  />
+
+                  <div className="pointer-events-none relative p-2">
+                    <div className="flex items-center justify-between gap-1">
+                      {/* Ayın günü: takvimde ilk okunan rakam, en büyük punto. */}
+                      <span className={`text-lg font-bold leading-none ${isToday ? 'text-accent-ink' : 'text-brand'}`}>
+                        {day}
+                      </span>
+                      {/*
+                        Özel gün NOKTA ile işaretleniyor, hücrenin zeminini
+                        boyamakla değil: zemin boyansaydı üstündeki
+                        rezervasyon etiketlerinin rengi okunmaz olurdu.
+                      */}
+                      {ozel.length > 0 && (
+                        <span className="flex shrink-0 gap-0.5">
+                          {ozel.slice(0, 3).map((g) => (
+                            <span
+                              key={g.id}
+                              className="h-2 w-2 rounded-full"
+                              style={{ background: OZEL_GUN_RENGI[g.kind] }}
+                            />
+                          ))}
+                        </span>
+                      )}
+                    </div>
+
                     {ozel.length > 0 && (
-                      <span className="flex shrink-0 gap-0.5">
-                        {ozel.slice(0, 3).map((g) => (
-                          <span
-                            key={g.id}
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ background: OZEL_GUN_RENGI[g.kind] }}
-                          />
-                        ))}
+                      <span
+                        className="mt-1 block truncate text-xs font-medium leading-tight"
+                        style={{ color: OZEL_GUN_RENGI[ozel[0]!.kind] }}
+                        title={ozel.map((g) => g.label).join(' · ')}
+                      >
+                        {ozel[0]!.label}
                       </span>
                     )}
-                  </span>
-                  {ozel.length > 0 && (
-                    <span
-                      className="mt-0.5 block truncate text-[9px] leading-tight"
-                      style={{ color: OZEL_GUN_RENGI[ozel[0]!.kind] }}
-                      title={ozel.map((g) => g.label).join(' · ')}
-                    >
-                      {ozel[0]!.label}
-                    </span>
-                  )}
-                  <span className="mt-1 block space-y-0.5">
-                    {items.slice(0, 2).map((r) => {
-                      const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
-                      return (
-                        <span
-                          key={r.id}
-                          className="block truncate rounded px-1 py-0.5 text-[9px]"
-                          style={{ background: color, color: okunakliMetinRengi(color) }}
+
+                    <div className="pointer-events-auto mt-1.5 space-y-1">
+                      {items.slice(0, 3).map((r) => {
+                        const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
+                        return (
+                          <Link
+                            key={r.id}
+                            to={`/panel/rezervasyonlar/${r.id}`}
+                            title={`${r.customerName} · ${r.slot} · ${r.organizationType}`}
+                            /*
+                              İsim KIRPILMIYOR, alt satıra sarıyor.
+                              Punto büyüyünce hücreye sığan harf sayısı
+                              azaldı ve "Zuhal…" gibi yarım isimler
+                              kaldı; yarım bir isim, küçük puntolu tam
+                              isimden daha az işe yarıyor. İki satır
+                              sınırı var ki tek bir uzun isim hücreyi
+                              sayfa boyu uzatmasın; tamamı `title`'da.
+                            */
+                            className="block rounded px-1.5 py-1 text-sm font-medium leading-snug [overflow-wrap:anywhere] line-clamp-2 hover:opacity-90 hover:underline"
+                            style={{ background: color, color: okunakliMetinRengi(color) }}
+                          >
+                            {r.slot === 'Gündüz' ? '☀' : '☾'} {r.customerName}
+                          </Link>
+                        );
+                      })}
+                      {items.length > 3 && (
+                        /*
+                          Kalanları göstermek de bir eylem: günü seçip
+                          sağdaki panele bakmak. Yazı olarak kalsaydı
+                          tıklanabilir olduğu anlaşılmazdı.
+                        */
+                        <button
+                          type="button"
+                          onClick={() => setSelected(cell)}
+                          className="block w-full rounded px-1.5 py-0.5 text-left text-sm text-brand-muted underline hover:text-brand"
                         >
-                          {r.slot === 'Gündüz' ? '☀' : '☾'} {r.customerName}
-                        </span>
-                      );
-                    })}
-                    {items.length > 2 && (
-                      <span className="block text-[9px] text-brand-muted">+{items.length - 2} daha</span>
-                    )}
-                  </span>
-                </button>
+                          +{items.length - 3} daha
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               );
             })}
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-3 border-t border-line pt-4 text-xs">
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-line pt-4 text-sm">
             {colors.map((c) => (
               <span key={c.key} className="flex items-center gap-1.5 text-brand-muted">
-                <span className="h-3 w-3 rounded" style={{ background: c.color }} />
+                <span className="h-3.5 w-3.5 rounded" style={{ background: c.color }} />
                 {c.label}
               </span>
             ))}
@@ -197,7 +247,7 @@ export default function Takvim() {
                 .map((g) => g.kind),
             )].map((kind) => (
               <span key={kind} className="flex items-center gap-1.5 text-brand-muted">
-                <span className="h-3 w-3 rounded-full" style={{ background: OZEL_GUN_RENGI[kind] }} />
+                <span className="h-3.5 w-3.5 rounded-full" style={{ background: OZEL_GUN_RENGI[kind] }} />
                 {OZEL_GUN_ADI[kind]}
               </span>
             ))}
@@ -210,7 +260,7 @@ export default function Takvim() {
             <h2 className="font-heading text-lg font-bold text-brand">
               {Number(selected.slice(-2))} {MONTH_NAMES[month]} kayıtları
             </h2>
-            <button type="button" className="text-xs text-brand-muted underline hover:text-brand"
+            <button type="button" className="text-sm text-brand-muted underline hover:text-brand"
               onClick={() => setSelected(null)}>
               Kapat
             </button>
@@ -225,14 +275,14 @@ export default function Takvim() {
                 <li key={g.id} className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: OZEL_GUN_RENGI[g.kind] }} />
                   <span className="text-brand">{g.label}</span>
-                  <span className="text-xs text-brand-muted">{OZEL_GUN_ADI[g.kind]}</span>
+                  <span className="text-sm text-brand-muted">{OZEL_GUN_ADI[g.kind]}</span>
                   {/*
                     Kandiller hesaplanıyor, uzak yılların bayramları da
                     henüz ilan edilmedi. Takvimde de belirtiliyor: bu
                     ekran rezervasyon açarken bakılan ekran.
                   */}
                   {g.tentative && (
-                    <span className="rounded bg-[#fef6e7] px-1.5 py-0.5 text-[10px] text-[#92600e]">
+                    <span className="rounded bg-[#fef6e7] px-1.5 py-0.5 text-xs text-[#92600e]">
                       kesinleşmedi
                     </span>
                   )}
@@ -242,7 +292,7 @@ export default function Takvim() {
           )}
 
           {selectedItems.length === 0 ? (
-            <p className="py-6 text-center text-sm text-brand-muted">
+            <p className="py-6 text-center text-base text-brand-muted">
               Bu güne ait rezervasyon bulunmuyor.
             </p>
           ) : (
@@ -250,23 +300,31 @@ export default function Takvim() {
               {selectedItems.map((r) => {
                 const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
                 return (
-                  <li key={r.id} className="rounded-md border border-line p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <Link to={`/panel/rezervasyonlar/${r.id}`} className="block truncate font-medium">
-                          {r.customerName}
-                        </Link>
-                        <p className="mt-0.5 text-xs text-brand-muted">
-                          {Number(r.date.slice(-2))} {MONTH_NAMES[Number(r.date.slice(5, 7)) - 1]} · {r.slot} · {r.guestCount} kişi
-                        </p>
+                  <li key={r.id}>
+                    {/*
+                      Kartın TAMAMI bağlantı, yalnızca isim değil. Küçük
+                      bir metnin üstünü tutturmaya çalışmak, elinin titrek
+                      olduğu bir kullanıcı için gereksiz bir engel.
+                    */}
+                    <Link
+                      to={`/panel/rezervasyonlar/${r.id}`}
+                      className="block rounded-md border border-line p-3 text-brand no-underline transition hover:border-accent-ink hover:bg-surface"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="block truncate text-base font-semibold">{r.customerName}</span>
+                          <span className="mt-0.5 block text-sm text-brand-muted">
+                            {Number(r.date.slice(-2))} {MONTH_NAMES[Number(r.date.slice(5, 7)) - 1]} · {r.slot} · {r.guestCount} kişi
+                          </span>
+                        </div>
+                        <span className="shrink-0 rounded px-2 py-1 text-xs font-medium" style={{ background: color, color: okunakliMetinRengi(color) }}>
+                          {r.organizationType}
+                        </span>
                       </div>
-                      <span className="shrink-0 rounded px-2 py-0.5 text-[10px]" style={{ background: color, color: okunakliMetinRengi(color) }}>
-                        {r.organizationType}
+                      <span className="mt-2 block text-sm text-brand-muted">
+                        Kalan: <strong className="text-brand">{formatMoney(balance.remaining(r), r.currency)}</strong>
                       </span>
-                    </div>
-                    <p className="mt-2 text-xs text-brand-muted">
-                      Kalan: <strong className="text-brand">{formatMoney(balance.remaining(r), r.currency)}</strong>
-                    </p>
+                    </Link>
                   </li>
                 );
               })}
