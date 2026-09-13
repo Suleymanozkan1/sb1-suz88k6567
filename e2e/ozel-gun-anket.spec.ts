@@ -128,6 +128,48 @@ test('Kur verisi yokken şerit hiç çizilmiyor', async ({ page }) => {
 });
 
 /*
+  Kur zinciri: uç nokta -> kurlariTazele -> depo -> şerit.
+
+  Hava zincirinin aynısı burada da kopmuştu ve yine sessizdi: canlıda
+  `/api/demo-kur` uzantısız içe aktarma yüzünden yükleyemeden çöküyordu,
+  ekranda yalnızca şerit hiç görünmüyordu. Bu test zincirin tamamını
+  bağlıyor.
+
+  Yanıt gövdesi canlı uç noktanın gerçek biçimiyle aynı: TCMB yalnızca
+  döviz veriyor, altın satırı YOK.
+*/
+test('Kur gelince şerit çiziliyor', async ({ page }) => {
+  await block(page);
+  await page.route('**/api/demo-kur', (r) => r.fulfill({
+    status: 200,
+    contentType: 'application/json; charset=utf-8',
+    body: JSON.stringify({
+      uretim: new Date().toISOString(),
+      tarih: '2026-09-11T00:00:00Z',
+      kurlar: [
+        { code: 'USD', buy: 48.4305, sell: 48.5178, quotedAt: '2026-09-11T00:00:00Z' },
+        { code: 'EUR', buy: 56.1754, sell: 56.2766, quotedAt: '2026-09-11T00:00:00Z' },
+      ],
+      hata: '',
+    }),
+  }));
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
+  await page.getByRole('button', { name: 'Giriş Yap' }).click();
+  await expect(page).toHaveURL(/\/panel$/);
+
+  const serit = page.getByRole('heading', { name: 'Döviz / Altın' });
+  await expect(serit).toBeVisible({ timeout: 15_000 });
+
+  // Rakamlar tr-TR biçiminde: ondalık ayıracı virgül.
+  await expect(page.getByText('48,4305')).toBeVisible();
+  await expect(page.getByText('56,2766')).toBeVisible();
+  // TCMB altın vermiyor; uydurma satır eklenmediği burada korunuyor.
+  await expect(page.getByText('Gram Altın')).toHaveCount(0);
+});
+
+/*
   Hava tahmini zinciri: uç nokta -> gunleriTazele -> depo -> ekran.
 
   Zincirin ÜÇ ayrı yerinde kopukluk vardı ve üçü de sessizdi: uç nokta
