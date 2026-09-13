@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   useAuditLog, useBusinesses, useHalls, useCashFlow, useLeadStatuses, usePaymentEvents,
   usePayments, useReservationExpenses, useSmsLog, useStaff, useSurveys, useLeads, useMenus,
+  useReservationsForBusinesses,
   useReservationsWithBalances,
 } from '../../lib/queries';
 import { donusumRaporu } from '../../lib/lead';
@@ -86,9 +87,24 @@ const TAB_KEYS = TABS.map((t) => t.key);
 
 export default function Raporlar() {
   const { user, can } = useAuth();
-  const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
+  const { colors } = useReservationsWithBalances();
   const { data: halls = [] } = useHalls();
   const { data: businesses = [] } = useBusinesses();
+
+  /*
+    RAPOR KAPSAMI. Varsayılan etkin işletme; sahibi birden çok salon
+    işletiyorsa buradan hepsini birden seçebiliyor. Eskiden rapor yalnızca
+    etkin işletmeye bakıyordu ve "toplam ne kadar iş yaptım" sorusunun
+    cevabı için iki raporu elle toplamak gerekiyordu.
+  */
+  const [secilenIsletmeler, setSecilenIsletmeler] = useState<string[]>([]);
+  const kapsam = useMemo(() => {
+    const gecerli = secilenIsletmeler.filter((id) => businesses.some((b) => b.id === id));
+    if (gecerli.length > 0) return gecerli;
+    return user?.activeBusinessId ? [user.activeBusinessId] : [];
+  }, [secilenIsletmeler, businesses, user?.activeBusinessId]);
+
+  const { reservations, balance, isLoading, error } = useReservationsForBusinesses(kapsam);
   const { data: menus = [] } = useMenus();
   const { data: adaylar = [] } = useLeads();
   const { data: adayDurumlari = [] } = useLeadStatuses();
@@ -455,6 +471,60 @@ export default function Raporlar() {
           </button>
         </div>
       </div>
+
+      {/*
+        RAPOR KAPSAMI. Yalnızca birden çok işletmesi olan sahibe
+        gösteriliyor: tek salonlu kurulumda seçilecek bir şey yok ve kutu
+        ekranı kalabalıklaştırırdı. Seçim yapılmadığında etkin işletme
+        geçerli -- rapor açan herkes bugüne kadarki davranışı görüyor.
+      */}
+      {businesses.length > 1 && (
+        <fieldset className="no-print card mb-5 p-4">
+          <legend className="field-label">Rapor kapsamı</legend>
+          <div className="flex flex-wrap items-center gap-2">
+            {businesses.map((b) => {
+              const secili = kapsam.includes(b.id);
+              return (
+                <label
+                  key={b.id}
+                  className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm ${
+                    secili ? 'border-accent-ink bg-accent/10 text-accent-ink' : 'border-line text-brand'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={secili}
+                    onChange={() => setSecilenIsletmeler(
+                      secili ? kapsam.filter((x) => x !== b.id) : [...kapsam, b.id],
+                    )}
+                  />
+                  {b.name}
+                </label>
+              );
+            })}
+            <button
+              type="button"
+              className="btn-outline btn-sm"
+              onClick={() => setSecilenIsletmeler(businesses.map((b) => b.id))}
+            >
+              Tümünü seç
+            </button>
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              onClick={() => setSecilenIsletmeler([])}
+            >
+              Yalnızca etkin işletme
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-brand-muted">
+            {kapsam.length > 1
+              ? `${kapsam.length} işletmenin kayıtları birlikte raporlanıyor.`
+              : 'Tek işletme raporlanıyor.'}
+          </p>
+        </fieldset>
+      )}
 
       <form className="no-print card mb-5 grid gap-3 p-4 sm:grid-cols-3" onSubmit={(e) => e.preventDefault()}>
         <div>

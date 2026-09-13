@@ -23,7 +23,7 @@ import MusteriAdayiYeni from '../app/MusteriAdayiYeni';
 import MusteriAdayiDetay from '../app/MusteriAdayiDetay';
 import UyeGirisi from '../UyeGirisi';
 
-import { clearAll, KEYS, write } from '../../lib/storage';
+import { clearAll, KEYS, read, write } from '../../lib/storage';
 import { localRepo } from '../../lib/repo/local';
 import { seedIfEmpty } from '../../lib/seed';
 import { addDays, todayIso } from '../../lib/format';
@@ -99,6 +99,45 @@ describe('Özet ekranı', () => {
     expect(screen.getByText('Bu ay satılan düğün')).toBeInTheDocument();
     expect(screen.getAllByText(/Kalan alacağı/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Kasa Durumu' })).toBeInTheDocument();
+  });
+
+  /*
+    Özet gün boyu açık duruyor. Ciro, tahsilat ve kalan alacak orada
+    sürekli okunur hâlde beklerse ekranın yanından geçen herkes salonun
+    cirosunu görüyor; tutarlar perdeli geliyor.
+  */
+  it('tutarlar varsayılan olarak perdeli geliyor', async () => {
+    renderPanel('/panel');
+    await screen.findByRole('heading', { name: /Hoş geldiniz/ });
+
+    const perdeli = screen.getAllByRole('button', { name: /^Gizli tutar:/ });
+    expect(perdeli.length).toBeGreaterThan(0);
+    // Rakamın kendisi ekranda YAZMAMALI; yalnızca erişilebilir adda.
+    expect(perdeli[0].textContent).toMatch(/^•+$/);
+  });
+
+  it('imleç üstüne gelince o tutar açılıyor', async () => {
+    const user = userEvent.setup();
+    renderPanel('/panel');
+    await screen.findByRole('heading', { name: /Hoş geldiniz/ });
+
+    const perdeli = screen.getAllByRole('button', { name: /^Gizli tutar:/ })[0];
+    const tutar = perdeli.getAttribute('aria-label')!.replace('Gizli tutar: ', '');
+    await user.hover(perdeli);
+    expect(perdeli.textContent).toBe(tutar);
+  });
+
+  it('düğme tutarları sürekli açık bırakıyor ve tercih saklanıyor', async () => {
+    const user = userEvent.setup();
+    renderPanel('/panel');
+    await screen.findByRole('heading', { name: /Hoş geldiniz/ });
+
+    await user.click(screen.getByRole('button', { name: 'Tutarları göster' }));
+    expect(screen.queryAllByRole('button', { name: /^Gizli tutar:/ })).toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Tutarları gizle' })).toBeInTheDocument();
+
+    // Tercih tarayıcıda kalıyor: ertesi açılışta yeniden gizlenmemeli.
+    expect(read<boolean>(KEYS.amountsVisible, false)).toBe(true);
   });
 
   it('yaklaşan organizasyonları bu ayla sınırlı listeler', async () => {
@@ -205,7 +244,7 @@ describe('Yeni rezervasyon formu', () => {
     await user.type(screen.getByLabelText(/^Telefon/), '5321234567');
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '300');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '50000');
-    await user.type(screen.getByLabelText(/^Kapora/), '90000');
+    await user.type(screen.getByLabelText('Kapora'), '90000');
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
     expect(await screen.findByText('Kapora, toplam tutardan büyük olamaz.')).toBeInTheDocument();
   });
@@ -214,7 +253,7 @@ describe('Yeni rezervasyon formu', () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
     await user.type(await screen.findByLabelText(/Toplam Tutar/), '100000');
-    await user.type(screen.getByLabelText(/^Kapora/), '30000');
+    await user.type(screen.getByLabelText('Kapora'), '30000');
     expect(screen.getByLabelText('Kalan Alacak')).toHaveValue('70.000');
   });
 
@@ -230,7 +269,7 @@ describe('Yeni rezervasyon formu', () => {
     await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 90));
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '250');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '120000');
-    await user.type(screen.getByLabelText(/^Kapora/), '30000');
+    await user.type(screen.getByLabelText('Kapora'), '30000');
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
     await waitFor(async () => expect(await getReservations(BIZ)).toHaveLength(before + 1), { timeout: 4000 });
@@ -242,6 +281,54 @@ describe('Yeni rezervasyon formu', () => {
     const smsAfter = await getSmsLog(BIZ);
     expect(smsAfter.length).toBe(smsBefore + 1);
     expect(smsAfter[0].kind).toBe('Rezervasyon');
+  });
+
+  /*
+    Raporların istediği alanlar formda SORULMALI. Kapora ödeme tipi
+    sorulmuyordu: "Gelecek Kaporalar ve Ödemeler" raporunun ödeme tipi
+    sütunu boş kalıyor, kasa dağılımında da sözleşmenin en büyük ilk
+    tahsilatı "Belirtilmemiş" satırında birikiyordu.
+  */
+  it('kapora ödeme tipi sorulur ve kayda geçer', async () => {
+    seedIfEmpty();
+    const user = userEvent.setup();
+    renderPanel('/panel/rezervasyonlar/yeni');
+
+    await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Ödeme Tipi Testi');
+    await user.type(screen.getByLabelText(/^Telefon/), '5321119988');
+    await user.clear(screen.getByLabelText(/^Tarih/));
+    await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 400));
+    await user.type(screen.getByLabelText(/Davetli Sayısı/), '250');
+    await user.type(screen.getByLabelText(/Toplam Tutar/), '200000');
+    await user.type(screen.getByLabelText('Kapora'), '50000');
+    await user.selectOptions(screen.getByLabelText('Kapora ödeme tipi'), 'Havale/EFT');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    await waitFor(async () => {
+      const kayit = (await getReservations(BIZ)).find((r) => r.customerName === 'Ödeme Tipi Testi');
+      expect(kayit?.depositMethod).toBe('Havale/EFT');
+    });
+  });
+
+  it('kapora yoksa ödeme tipi yazılmaz', async () => {
+    seedIfEmpty();
+    const user = userEvent.setup();
+    renderPanel('/panel/rezervasyonlar/yeni');
+
+    await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Kaporasız Kayıt');
+    await user.type(screen.getByLabelText(/^Telefon/), '5321119977');
+    await user.clear(screen.getByLabelText(/^Tarih/));
+    await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 401));
+    await user.type(screen.getByLabelText(/Davetli Sayısı/), '100');
+    await user.type(screen.getByLabelText(/Toplam Tutar/), '80000');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    // Alınmamış parayı kasada "Nakit" göstermemeli.
+    await waitFor(async () => {
+      const kayit = (await getReservations(BIZ)).find((r) => r.customerName === 'Kaporasız Kayıt');
+      expect(kayit).toBeTruthy();
+      expect(kayit?.depositMethod).toBeUndefined();
+    });
   });
 
   it('aynı tarih ve seansta çakışma uyarısı verir', async () => {
@@ -553,6 +640,41 @@ describe('Gelir gider kayıtları', () => {
 });
 
 describe('Raporlar', () => {
+  /*
+    Birden çok salon işleten sahibin "toplam ne kadar iş yaptım" sorusu.
+    Rapor eskiden yalnızca etkin işletmeye bakıyordu ve cevap için iki
+    raporu elle toplamak gerekiyordu.
+  */
+  it('birden çok işletmede kapsam seçimi çıkıyor', async () => {
+    renderPanel('/panel/raporlar');
+    const kapsam = await screen.findByRole('group', { name: 'Rapor kapsamı' });
+    expect(within(kapsam).getByText('Grand Sahra Düğün ve Davet Salonu')).toBeInTheDocument();
+    expect(within(kapsam).getByText('Yıldız Kır Bahçesi')).toBeInTheDocument();
+    // Seçim yapılmadan önce yalnızca etkin işletme raporlanıyor.
+    expect(within(kapsam).getByText('Tek işletme raporlanıyor.')).toBeInTheDocument();
+  });
+
+  it('tümünü seç bütün işletmeleri kapsama alıyor', async () => {
+    const user = userEvent.setup();
+    renderPanel('/panel/raporlar');
+    const kapsam = await screen.findByRole('group', { name: 'Rapor kapsamı' });
+
+    /*
+      Kapsam değişince veri yeniden yükleniyor ve bölüm yeniden
+      çiziliyor; düğüm her adımda yeniden sorgulanıyor. Bir kez yakalanan
+      düğüm tutulsaydı test, ekranda olmayan eski metni okurdu.
+    */
+    await user.click(within(kapsam).getByRole('button', { name: 'Tümünü seç' }));
+    await waitFor(() => {
+      expect(screen.getByText('2 işletmenin kayıtları birlikte raporlanıyor.')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Yalnızca etkin işletme' }));
+    await waitFor(() => {
+      expect(screen.getByText('Tek işletme raporlanıyor.')).toBeInTheDocument();
+    });
+  });
+
   it('program raporu sekmesi varsayılan açıktır', async () => {
     renderPanel('/panel/raporlar');
     expect(await screen.findByRole('tab', { name: 'Program raporu' })).toHaveAttribute('aria-selected', 'true');
@@ -748,7 +870,7 @@ describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     await screen.findByRole('heading', { name: 'Yeni Müşteri Adayı' });
 
     await user.type(screen.getByLabelText(/Ad Soyad/), 'Nazlı Demir');
-    await user.type(screen.getByLabelText('Telefon'), '0533 111 22 33');
+    await user.type(screen.getByLabelText(/^Telefon/), '0533 111 22 33');
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
     // Kayıt sonrası doğrudan detay ekranına geçer.
@@ -764,7 +886,7 @@ describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     await screen.findByRole('heading', { name: 'Yeni Müşteri Adayı' });
 
     await user.type(screen.getByLabelText(/Ad Soyad/), 'Hatalı Kayıt');
-    await user.type(screen.getByLabelText('Telefon'), '123');
+    await user.type(screen.getByLabelText(/^Telefon/), '123');
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
     expect(await screen.findByText(/Geçerli bir cep telefonu giriniz/)).toBeInTheDocument();

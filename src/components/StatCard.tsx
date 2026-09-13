@@ -1,9 +1,10 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 
 interface Props {
   label: string;
-  value: string;
-  hint?: string;
+  /* Metin ya da bileşen: perdelenmiş tutar da buradan geçiyor. */
+  value: ReactNode;
+  hint?: ReactNode;
   icon?: ComponentType<{ size?: number; className?: string }>;
   tone?: 'brand' | 'accent' | 'success' | 'danger';
 }

@@ -106,10 +106,19 @@ export const KEYS = {
   weather: 'hava-tahmini',
   /** Tanıtım kipindeki saatlik tahmin. */
   weatherHours: 'hava-saatlik',
+  /** Tanıtım kipindeki döviz kuru (TCMB). */
+  exchangeRates: 'doviz-kuru',
   /** Takvimdeki özel günler (resmî tatil, kandil, okul...) */
   specialDays: 'ozel-gunler',
   /** Program raporuna elle eklenen serbest notlar */
   programNotes: 'program-notlari',
+  /**
+   * Özet ekranındaki tutarlar sürekli açık mı dursun.
+   *
+   * Kullanıcının kendi ekranına ait bir tercih, hesabın ayarı değil:
+   * aynı hesapla salonun tabletinden girildiğinde oradaki seçim geçerli.
+   */
+  amountsVisible: 'tutarlar-gorunur',
   /** Demo modu uyarı bandı kullanıcı tarafından kapatıldı mı */
   demoNotice: 'demo-notice',
 } as const;

@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import StatCard from '../../components/StatCard';
+import GizliTutar from '../../components/GizliTutar';
+import { useTutarGorunur } from '../../lib/tutarGizleme';
 import KasaDagilimKarti from '../../components/KasaDagilimKarti';
 import StokDurumu from '../../components/StokDurumu';
 import KurSeridi from '../../components/KurSeridi';
@@ -18,7 +20,7 @@ import type { CustomerLead, LeadStatusDef } from '../../types';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, formatNumber, todayIso } from '../../lib/format';
 import { programReport, reservationIncome, summarize } from '../../lib/reports';
-import { IconCalendar, IconPlus, IconWallet } from '../../components/Icons';
+import { IconCalendar, IconEye, IconEyeOff, IconPlus, IconWallet } from '../../components/Icons';
 import { MONTH_NAMES } from '../../data/constants';
 
 /**
@@ -31,6 +33,7 @@ import { MONTH_NAMES } from '../../data/constants';
  */
 export default function Dashboard() {
   const { user } = useAuth();
+  const [tutarlarAcik, setTutarlarAcik] = useTutarGorunur();
   const { reservations, payments, colors, balance, isLoading, error } = useReservationsWithBalances();
   const { data: adaylar = [] } = useLeads();
   const { data: adayDurumlari = [] } = useLeadStatuses();
@@ -135,9 +138,27 @@ export default function Dashboard() {
           */}
           <SaatlikHava className="mt-3 max-w-2xl" />
         </div>
-        <Link to="/panel/rezervasyonlar/yeni" className="btn-primary text-white hover:text-white">
-          <IconPlus size={18} /> Yeni Rezervasyon
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {/*
+            Tutar perdesi düğmesi. Özet gün boyu açık duruyor ve ciro,
+            tahsilat, kalan alacak orada sürekli okunur hâlde beklerse
+            ekranın yanından geçen herkes salonun cirosunu görüyor.
+            Varsayılan perdeli; imleç bir tutarın üstüne gelince o tutar
+            açılıyor, bu düğmeyle hepsi açık bırakılabiliyor.
+          */}
+          <button
+            type="button"
+            className="btn-outline"
+            aria-pressed={tutarlarAcik}
+            onClick={() => setTutarlarAcik(!tutarlarAcik)}
+          >
+            {tutarlarAcik ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+            {tutarlarAcik ? 'Tutarları gizle' : 'Tutarları göster'}
+          </button>
+          <Link to="/panel/rezervasyonlar/yeni" className="btn-primary text-white hover:text-white">
+            <IconPlus size={18} /> Yeni Rezervasyon
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
@@ -158,14 +179,14 @@ export default function Dashboard() {
           />
           <StatCard
             label={`${ayAdi} ayı cirosu`}
-            value={formatMoney(ayToplam.total, currency)}
-            hint={`Tahsil edilen ${formatMoney(ayToplam.collected, currency)}`}
+            value={<GizliTutar deger={formatMoney(ayToplam.total, currency)} />}
+            hint={<>Tahsil edilen <GizliTutar deger={formatMoney(ayToplam.collected, currency)} /></>}
             icon={IconWallet}
             tone="brand"
           />
           <StatCard
             label="Bu ayın kalan alacağı"
-            value={formatMoney(ayToplam.remaining, currency)}
+            value={<GizliTutar deger={formatMoney(ayToplam.remaining, currency)} />}
             hint={`${ayAdi} ayı organizasyonlarından`}
             icon={IconWallet}
             tone={ayToplam.remaining > 0 ? 'danger' : 'success'}
@@ -274,7 +295,7 @@ export default function Dashboard() {
                         </td>
                         <td className="py-2.5 text-right text-brand">{formatNumber(r.guestCount)}</td>
                         <td className="py-2.5 text-right font-medium text-brand">
-                          {formatMoney(balance.remaining(r), r.currency)}
+                          <GizliTutar deger={formatMoney(balance.remaining(r), r.currency)} />
                         </td>
                       </tr>
                     );
@@ -321,7 +342,11 @@ export default function Dashboard() {
                     </div>
                     <div
                       className="h-2 rounded bg-surface"
-                      title={`${p.organizationType}: ${p.count} kayıt · ${formatMoney(p.total, currency)}`}
+                      /* Tutar yalnızca perde açıkken ipucunda: gizliyken
+                         fare üstünde durunca rakamı ele verirdi. */
+                      title={tutarlarAcik
+                        ? `${p.organizationType}: ${p.count} kayıt · ${formatMoney(p.total, currency)}`
+                        : `${p.organizationType}: ${p.count} kayıt`}
                     >
                       <div className="h-full rounded" style={{ width: `${(p.count / max) * 100}%`, background: color }} />
                     </div>

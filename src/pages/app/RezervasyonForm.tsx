@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
@@ -7,14 +7,15 @@ import { errorMessage } from '../../lib/authHelpers';
 import { kurusToLira, menuTotalKurus } from '../../lib/seating';
 import {
   useHalls, useMenus, useReservation, useReservations, useSaveReservation, useSendSms,
+  useVendors,
   useLead, useLeadStatuses, useSaveLead,
 } from '../../lib/queries';
 import { kazanimDurumu } from '../../lib/lead';
 import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, todayIso } from '../../lib/format';
-import { LEAD_CHANNELS, ORGANIZATION_TYPES, ORG_TO_COLOR_KEY } from '../../data/constants';
+import { LEAD_CHANNELS, ORGANIZATION_TYPES, ORG_TO_COLOR_KEY, PAYMENT_METHODS } from '../../data/constants';
 import type {
-  LeadChannel, OrganizationType, Reservation, ReservationStatus, SessionSlot,
+  LeadChannel, OrganizationType, PaymentMethod, Reservation, ReservationStatus, SessionSlot,
 } from '../../types';
 
 const STATUSES: ReservationStatus[] = ['Ön Rezervasyon', 'Kesin Rezervasyon', 'Tamamlandı', 'İptal'];
@@ -36,6 +37,8 @@ interface FormState {
   guestCount: string;
   totalAmount: string;
   deposit: string;
+  /** Kaporanın hangi kanaldan alındığı; kasa dağılımı buna bakıyor. */
+  depositMethod: PaymentMethod;
   status: ReservationStatus;
   note: string;
   address: string;
@@ -63,6 +66,7 @@ const EMPTY: FormState = {
   guestCount: '',
   totalAmount: '',
   deposit: '',
+  depositMethod: 'Nakit',
   status: 'Kesin Rezervasyon',
   note: '',
   address: '',
@@ -83,6 +87,17 @@ export default function RezervasyonForm() {
   const { data: allReservations = [] } = useReservations();
   const { data: halls = [] } = useHalls();
   const { data: menus = [] } = useMenus();
+  /*
+    Pakete dahil hizmetler Ürün ve Hizmet listesinden geliyor; burada ayrı
+    bir hizmet listesi tutulsaydı iki yerde iki farklı liste olurdu.
+  */
+  const { data: kalemler = [] } = useVendors();
+  // Yalnızca etkin HİZMET kalemleri: ürün (su, gazoz) stoktan düşer,
+  // sözleşmenin hizmet listesine girmez.
+  const hizmetler = useMemo(
+    () => kalemler.filter((k) => k.kind === 'hizmet' && k.isActive),
+    [kalemler],
+  );
   const saveMutation = useSaveReservation();
   const sendSmsMutation = useSendSms();
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -138,6 +153,7 @@ export default function RezervasyonForm() {
       guestCount: String(existing.guestCount),
       totalAmount: String(existing.totalAmount),
       deposit: String(existing.deposit),
+      depositMethod: existing.depositMethod ?? 'Nakit',
       status: existing.status,
       note: existing.note ?? '',
       address: existing.address ?? '',
@@ -265,6 +281,12 @@ export default function RezervasyonForm() {
       guestCount: Number(form.guestCount),
       totalAmount: Number(form.totalAmount),
       deposit: Number(form.deposit || 0),
+      /*
+        Kapora tipi yalnızca kapora VARSA yazılıyor: sıfır kaporaya
+        "Nakit" yazmak, alınmamış bir parayı kasa dağılımında nakit
+        gösterirdi.
+      */
+      depositMethod: Number(form.deposit || 0) > 0 ? form.depositMethod : undefined,
       currency: user?.currency ?? 'TL',
       status: form.status,
       colorKey: ORG_TO_COLOR_KEY[form.organizationType] ?? 'diger',
@@ -533,6 +555,25 @@ export default function RezervasyonForm() {
             <Field id="deposit" label="Kapora" error={errors.deposit}>
               <input id="deposit" inputMode="decimal" className="field-input" value={form.deposit} onChange={(e) => update('deposit', e.target.value)} aria-invalid={Boolean(errors.deposit)} />
             </Field>
+            {/*
+              KAPORA ÖDEME TİPİ. Kapora çoğu sözleşmenin en büyük ilk
+              tahsilatı ve kanalı sorulmadığında kasa dağılımında
+              "Belirtilmemiş" satırında birikiyordu: salonun kasasındaki
+              paranın nerede durduğu (nakit mi, bankada mı) okunamıyordu.
+              "Gelecek Kaporalar ve Ödemeler" raporunun ödeme tipi sütunu
+              da bu alandan doluyor.
+            */}
+            <Field id="depositMethod" label="Kapora ödeme tipi">
+              <select
+                id="depositMethod"
+                className="field-input"
+                value={form.depositMethod}
+                disabled={!(Number(form.deposit || 0) > 0)}
+                onChange={(e) => update('depositMethod', e.target.value as PaymentMethod)}
+              >
+                {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </Field>
             <Field id="balance" label="Kalan Alacak">
               <input id="balance" className="field-input bg-surface" value={balance.toLocaleString('tr-TR')} readOnly tabIndex={-1} />
             </Field>
@@ -543,6 +584,46 @@ export default function RezervasyonForm() {
             </Field>
           </div>
         </fieldset>
+
+        {/*
+          PAKETE DAHİL HİZMETLER. Alan kayıtta baştan beri vardı ve
+          sözleşme onu basıyordu, ama formda girilecek yeri yoktu:
+          sözleşmenin "Hizmetler" bölümü elle girilen her kayıtta boş
+          çıkıyordu. Seçenekler Ürün ve Hizmet listesinden geliyor --
+          burada ayrı bir liste tutulsaydı iki yerde iki farklı hizmet
+          listesi olurdu.
+        */}
+        {hizmetler.length > 0 && (
+          <fieldset className="mt-6">
+            <legend className="field-label">Pakete dahil hizmetler</legend>
+            <div className="flex flex-wrap gap-2">
+              {hizmetler.map((h) => {
+                const secili = form.services.includes(h.name);
+                return (
+                  <label
+                    key={h.id}
+                    className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm ${
+                      secili ? 'border-accent-ink bg-accent/10 text-accent-ink' : 'border-line text-brand'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={secili}
+                      onChange={() => update(
+                        'services',
+                        secili
+                          ? form.services.filter((x) => x !== h.name)
+                          : [...form.services, h.name],
+                      )}
+                    />
+                    {h.name}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
 
         <Field id="note" label="Not">
           <textarea id="note" rows={4} className="field-input" value={form.note} onChange={(e) => update('note', e.target.value)} />

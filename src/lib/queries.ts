@@ -4,7 +4,7 @@
  * Depo çağrılarını TanStack Query ile sarar: yükleniyor/hata durumları,
  * önbellek ve yazma sonrası otomatik tazeleme tek yerden yönetilir.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { repo } from './repo';
 import { sendSms } from './sms';
 import type { StaffInput } from './repo';
@@ -481,6 +481,47 @@ export function useReservationsWithBalances() {
     balance: makeBalanceLookup(payments.data ?? []),
     isLoading: reservations.isLoading || payments.isLoading || colors.isLoading,
     error: reservations.error ?? payments.error ?? colors.error ?? null,
+  };
+}
+
+/**
+ * SEÇİLEN İŞLETMELERİN rezervasyon ve tahsilatları.
+ *
+ * Raporlar eskiden yalnızca etkin işletmeye bakıyordu: iki salon işleten
+ * bir sahibin "toplam ne kadar iş yaptım" sorusunun cevabı yoktu, iki
+ * raporu elle toplamak gerekiyordu.
+ *
+ * Sorgular işletme BAŞINA ayrı çalışıyor, tek bir "hepsini getir"
+ * çağrısı yok: her işletmenin verisi zaten kendi anahtarıyla önbellekte
+ * duruyor, etkin işletmeye bakan ekranlarla paylaşılıyor ve bir
+ * rezervasyon değiştiğinde yalnızca o işletmenin sorgusu tazeleniyor.
+ */
+export function useReservationsForBusinesses(businessIds: string[]) {
+  const rezervasyonlar = useQueries({
+    queries: businessIds.map((id) => ({
+      queryKey: keys.reservations(id),
+      queryFn: () => repo.listReservations(id),
+      enabled: Boolean(id),
+    })),
+  });
+  const tahsilatlar = useQueries({
+    queries: businessIds.map((id) => ({
+      queryKey: keys.payments(id),
+      queryFn: () => repo.listPayments(id),
+      enabled: Boolean(id),
+    })),
+  });
+
+  const reservations = rezervasyonlar.flatMap((q) => q.data ?? []);
+  const payments = tahsilatlar.flatMap((q) => q.data ?? []);
+  const hepsi = [...rezervasyonlar, ...tahsilatlar];
+
+  return {
+    reservations,
+    payments,
+    balance: makeBalanceLookup(payments),
+    isLoading: hepsi.some((q) => q.isLoading),
+    error: hepsi.find((q) => q.error)?.error ?? null,
   };
 }
 

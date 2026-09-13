@@ -84,6 +84,13 @@ export const IconPhone = (p: IconProps) => (
 export const IconLock = (p: IconProps) => (
   <Base {...p}><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></Base>
 );
+/* Göz: perdelenmiş tutarı açan düğme. Çizgili hâli "gizli" demek. */
+export const IconEye = (p: IconProps) => (
+  <Base {...p}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></Base>
+);
+export const IconEyeOff = (p: IconProps) => (
+  <Base {...p}><path d="M9.9 5.2A10.9 10.9 0 0112 5c6.4 0 10 7 10 7a18.5 18.5 0 01-3.2 4.2M6.6 6.6A18.5 18.5 0 002 12s3.6 7 10 7a10.9 10.9 0 004.2-.8" /><path d="M9.9 9.9a3 3 0 004.2 4.2" /><path d="M2 2l20 20" /></Base>
+);
 export const IconLogout = (p: IconProps) => (
   <Base {...p}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></Base>
 );

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { gunleriTazele, havayiTazele } from './gunleriTazele';
+import { gunleriTazele, havayiTazele, kurlariTazele } from './gunleriTazele';
 import { localRepo } from '../repo/local';
 import { clearAll, KEYS, read } from '../storage';
-import type { SpecialDay, WeatherForecast } from '../../types';
+import type { ExchangeRate, SpecialDay, WeatherForecast } from '../../types';
 
 /*
   Uç nokta hem takvimi hem HAVA TAHMİNİNİ döndürüyor. Tahmin bir süre
@@ -100,5 +100,31 @@ describe('gunleriTazele', () => {
   it('uç nokta düşerse sessiz kalıyor', async () => {
     yanitla({}, false);
     expect(await gunleriTazele()).toBe(false);
+  });
+
+  /*
+    Döviz kuru da aynı zincirden geçiyor: uç nokta -> depo -> şerit.
+    Uydurma kur yok; TCMB'ye ulaşılamazsa şerit hiç çizilmiyor.
+  */
+  it('döviz kurunu depoya yazar ve depo katmanı okur', async () => {
+    yanitla({
+      uretim: '2026-09-13T13:00:00.000Z',
+      tarih: '13.09.2026',
+      kurlar: [
+        { code: 'USD', buy: 41.1, sell: 41.3, quotedAt: '2026-09-13' },
+        { code: 'EUR', buy: 48.2, sell: 48.5, quotedAt: '2026-09-13' },
+      ],
+    });
+    expect(await kurlariTazele()).toBe(true);
+
+    const okunan = await localRepo.listExchangeRates();
+    expect(okunan.map((k: ExchangeRate) => k.code)).toEqual(['USD', 'EUR']);
+    expect(okunan[0]).toMatchObject({ buy: 41.1, sell: 41.3 });
+  });
+
+  it('kur gelmezse uydurmuyor', async () => {
+    yanitla({ kurlar: [] });
+    expect(await kurlariTazele()).toBe(false);
+    expect(await localRepo.listExchangeRates()).toEqual([]);
   });
 });
