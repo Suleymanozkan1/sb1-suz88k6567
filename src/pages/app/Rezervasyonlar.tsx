@@ -15,6 +15,15 @@ import type { Reservation, ReservationStatus } from '../../types';
 
 const STATUSES: ReservationStatus[] = ['Ön Rezervasyon', 'Kesin Rezervasyon', 'Tamamlandı', 'İptal'];
 
+/*
+  Liste sayfalanıyor. Üç yıllık bir salonda dört yüzü aşkın kayıt birikiyor
+  ve hepsi tek seferde basıldığında arama kutusuna yazarken her harfte bütün
+  tablo yeniden çiziliyordu. Üstteki dört kutu, CSV çıktısı ve kayıt sayısı
+  sayfaya DEĞİL süzülmüş listenin tamamına bakmayı sürdürüyor; sayfalama
+  yalnızca ekrana basılan satırı sınırlıyor.
+*/
+const SAYFA_BOYUTU = 50;
+
 const STATUS_STYLES: Record<ReservationStatus, string> = {
   'Ön Rezervasyon': 'bg-[#fef6e7] text-[#92600e]',
   'Kesin Rezervasyon': 'bg-[#e7f5fb] text-[#0c5e8a]',
@@ -59,6 +68,32 @@ export default function Rezervasyonlar() {
       }
     });
   }, [reservations, query, org, status, from, to, sort, balance]);
+
+  /*
+    Süzgeç değişince ilk sayfaya dönülüyor. Karar altı ayrı kutunun
+    onChange'ine dağıtılsaydı, yeni bir süzgeç eklendiğinde biri unutulur ve
+    kullanıcı "kayıt var ama tablo boş" ekranıyla karşılaşırdı; süzgeçlerin
+    imzası tek yerde karşılaştırılıyor ve "filtreleri temizle" de buna dahil.
+  */
+  const imza = `${query}|${org}|${status}|${from}|${to}|${sort}`;
+  const [sonImza, setSonImza] = useState(imza);
+  const [sayfa, setSayfa] = useState(1);
+  if (imza !== sonImza) {
+    setSonImza(imza);
+    setSayfa(1);
+  }
+
+  /*
+    Sayfa numarası burada da kırpılıyor: kayıt silindiğinde son sayfa yok
+    olabiliyor ve elde kalan numara aralığın dışına düşüyor.
+  */
+  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / SAYFA_BOYUTU));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const ilkSira = (gecerliSayfa - 1) * SAYFA_BOYUTU;
+  const sayfalanan = useMemo(
+    () => filtered.slice(ilkSira, ilkSira + SAYFA_BOYUTU),
+    [filtered, ilkSira],
+  );
 
   const totals = useMemo(
     () =>
@@ -198,7 +233,7 @@ export default function Rezervasyonlar() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => {
+              {sayfalanan.map((r) => {
                 const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
                 return (
                   <tr key={r.id} className="border-b border-line/60 last:border-0 hover:bg-surface/60">
@@ -243,6 +278,25 @@ export default function Rezervasyonlar() {
           </table>
         )}
       </div>
+
+      {filtered.length > SAYFA_BOYUTU && (
+        <nav className="mt-3 flex flex-wrap items-center justify-between gap-3" aria-label="Kayıt sayfaları">
+          <p className="text-sm text-brand-muted">
+            {ilkSira + 1}-{ilkSira + sayfalanan.length} / {filtered.length} kayıt
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" className="btn-ghost" disabled={gecerliSayfa <= 1}
+              onClick={() => setSayfa(gecerliSayfa - 1)}>
+              Önceki
+            </button>
+            <span className="text-sm text-brand">Sayfa {gecerliSayfa} / {toplamSayfa}</span>
+            <button type="button" className="btn-ghost" disabled={gecerliSayfa >= toplamSayfa}
+              onClick={() => setSayfa(gecerliSayfa + 1)}>
+              Sonraki
+            </button>
+          </div>
+        </nav>
+      )}
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

@@ -7,7 +7,7 @@
 import { demoUret } from './demo/uret';
 import { ekKayitlar } from './demo/ekler';
 import { URETILMIS_GUNLER } from './demo/uretilmis-gunler';
-import { KEYS, read, write } from './storage';
+import { clearAll, KEYS, read, write } from './storage';
 import { addDays, toIso, todayIso } from './format';
 import { DEFAULT_COLOR_SETTINGS, ORG_TO_COLOR_KEY, OWNER_PERMISSIONS } from '../data/constants';
 import type {
@@ -38,17 +38,53 @@ const DEMO_CUSTOMERS: [string, string, string][] = [
 ];
 
 /**
+ * Tanıtım verisinin sürümü.
+ *
+ * NEDEN VAR. Tohum yalnızca "hiç veri yoksa" çalışıyordu ve tarayıcıya bir
+ * kez yazıldıktan sonra bir daha dokunmuyordu. Sonuç: siteyi daha önce
+ * açmış olan herkes, yayına yeni veri çıksa bile ESKİ ve cılız tanıtım
+ * verisini görmeye devam ediyordu; tanıtım sitesi kendini hiçbir zaman
+ * tazeleyemiyordu. Bu sayı büyüdüğünde tarayıcıdaki tanıtım verisi silinip
+ * yenisi yazılıyor.
+ *
+ * Sürümü YALNIZCA tanıtım verisi değiştiğinde artırın.
+ */
+export const TOHUM_SURUMU = 2;
+
+/**
  * İlk açılışta demo hesabı ve örnek verileri oluşturur.
- * Bayrak kaybolsa dahi mevcut kayıtların üzerine yazmaz.
+ *
+ * Tohum sürümü ilerlediyse tarayıcıdaki tanıtım verisi tazeleniyor. Bu
+ * yalnızca TANITIM KİPİNDE (veriler tarayıcıda) çalışıyor; gerçek
+ * veritabanına bağlı kurulumda bu depo katmanı hiç devreye girmiyor.
  */
 export function seedIfEmpty(): void {
-  if (read<boolean>(KEYS.seeded, false)) return;
+  const surum = read<number | boolean>(KEYS.seeded, 0);
+  // Eski kurulumlarda bayrak `true` yazılmıştı; onu 1. sürüm sayıyoruz.
+  const mevcut = surum === true ? 1 : typeof surum === 'number' ? surum : 0;
+  if (mevcut >= TOHUM_SURUMU) return;
+
   const hasData =
     read<User[]>(KEYS.users, []).length > 0 ||
     read<Business[]>(KEYS.businesses, []).length > 0 ||
     read<Reservation[]>(KEYS.reservations, []).length > 0;
-  write(KEYS.seeded, true);
-  if (hasData) return;
+
+  /*
+    Eski sürümden gelen tanıtım verisi siliniyor. Üzerine yazmak yetmezdi:
+    eski kayıtların bir kısmı yeni listede yok ve ikisi karışınca takvimde
+    aynı salonda aynı seansa iki organizasyon düşebilirdi.
+
+    Oturum korunuyor: kullanıcı tazeleme yüzünden dışarı atılmamalı.
+  */
+  if (hasData && mevcut > 0) {
+    const oturum = read<string | null>(KEYS.session, null);
+    clearAll();
+    if (oturum) write(KEYS.session, oturum);
+  }
+
+  write(KEYS.seeded, TOHUM_SURUMU);
+  // Bayrağı olmayan ama verisi olan kurulum: dokunulmuyor.
+  if (hasData && mevcut === 0) return;
 
   const now = new Date().toISOString();
   const ownerId = 'user_demo';

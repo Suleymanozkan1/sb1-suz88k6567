@@ -32,8 +32,13 @@ async function login(page: Page) {
  * doğrulanmadan "Sözleşme" bağlantısı aranırsa, yavaş bir yüklemede tıklama
  * hâlâ liste ekranındayken gerçekleşiyor ve test ara sıra düşüyordu.
  */
-async function sozlesmeAc(page: Page, musteri: RegExp) {
+async function sozlesmeAc(page: Page, musteri: RegExp, ad: string) {
   await page.goto('/panel/rezervasyonlar');
+  /*
+    Liste sayfalanıyor: aranan kayıt ilk elli satırın içinde olmayabilir.
+    Kullanıcı da aynısını yapıyor -- önce arama kutusuna adı yazıyor.
+  */
+  await page.getByLabel('İsim / telefon / kod').fill(ad);
   await page.getByRole('link', { name: musteri }).first().click();
   await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/(?!yeni$)[^/]+$/, { timeout: 15_000 });
   await page.getByRole('link', { name: /Sözleşme/ }).first().click();
@@ -140,7 +145,7 @@ test.describe('Program raporu', () => {
 test.describe('Salon kiralama sözleşmesi', () => {
   test('sözleşme örnek belgedeki düzende çıkar', async ({ page }) => {
     await login(page);
-    await sozlesmeAc(page, /Zuhal Rana/);
+    await sozlesmeAc(page, /Zuhal Rana/, 'Zuhal Rana');
 
     const belge = page.locator('article');
     await expect(belge.getByText('Sözleşme No :')).toBeVisible();
@@ -151,7 +156,7 @@ test.describe('Salon kiralama sözleşmesi', () => {
 
   test('on altı maddelik şartlar sözleşmede yer alır', async ({ page }) => {
     await login(page);
-    await sozlesmeAc(page, /Zuhal Rana/);
+    await sozlesmeAc(page, /Zuhal Rana/, 'Zuhal Rana');
 
     const sartlar = page.getByRole('heading', { name: 'Sözleşme Şartları' });
     await expect(sartlar).toBeVisible();
@@ -163,7 +168,7 @@ test.describe('Salon kiralama sözleşmesi', () => {
 
   test('menü içeriği sözleşmenin sağ sütununa basılır', async ({ page }) => {
     await login(page);
-    await sozlesmeAc(page, /Zuhal Rana/);
+    await sozlesmeAc(page, /Zuhal Rana/, 'Zuhal Rana');
 
     const metin = await page.locator('article').innerText();
     expect(metin).toContain('ANA YEMEK');

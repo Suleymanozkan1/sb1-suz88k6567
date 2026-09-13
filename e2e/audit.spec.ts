@@ -158,8 +158,10 @@ test('DENETIM: rezervasyon yaşam döngüsü, oluştur, tahsilat, bakiye, sözle
   const detayUrl = page.url();
   await expect(page.getByText('Denetim Testi').first()).toBeVisible();
 
-  // Listede de görünmeli
+  // Listede de görünmeli. Liste sayfalandığı için önce aranıyor: kayıt
+  // 2027 tarihli ve ilk elli satırın dışına düşebiliyor.
   await page.goto('/panel/rezervasyonlar');
+  await page.getByLabel('İsim / telefon / kod').fill('Denetim Testi');
   await expect(page.getByText('Denetim Testi').first()).toBeVisible();
   await page.goto(detayUrl);
   await expect(page.getByText(/250\.000/).first()).toBeVisible();
