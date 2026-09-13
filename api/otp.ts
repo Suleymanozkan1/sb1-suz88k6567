@@ -9,8 +9,8 @@
  *   OTP_SECRET  Rastgele, en az 32 karakterlik gizli anahtar
  */
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
-import { isProviderConfigured } from './sms';
-import { clientIp, enforceRateLimit, JSON_HEADERS, json, tooManyRequests } from './_guard';
+import { isProviderConfigured } from './sms.js';
+import { clientIp, enforceRateLimit, JSON_HEADERS, json, tooManyRequests } from './_guard.js';
 
 const TTL_MS = 5 * 60 * 1000; // 5 dakika
 

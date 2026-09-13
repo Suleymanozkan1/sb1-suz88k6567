@@ -5,29 +5,29 @@
  * durmasının sebebi sunucuyu başlatmadan da okunabilmesi: testler
  * listeyi HTTP dinlemeden içe aktarabiliyor.
  */
-import anket from '../api/anket';
-import anketYanit from '../api/anket-yanit';
-import backup from '../api/backup';
-import hava from '../api/hava';
-import havaSaatlik from '../api/hava-saatlik';
-import health from '../api/health';
-import gibOnizle from '../api/gib-onizle';
-import kurlar from '../api/kurlar';
-import invoice from '../api/invoice';
-import iys from '../api/iys';
-import login from '../api/login';
-import otp from '../api/otp';
-import mebTakvim from '../api/meb-takvim';
-import ozelGunler from '../api/ozel-gunler';
-import oturum from '../api/oturum';
-import reminders from '../api/reminders';
-import monthlyReport from '../api/monthly-report';
-import smsQueue from '../api/sms-queue';
-import sms from '../api/sms';
-import sifre from '../api/sifre';
-import whatsapp from '../api/whatsapp';
-import whatsappGonder from '../api/whatsapp-gonder';
-import whatsappTest from '../api/whatsapp-test';
+import anket from '../api/anket.js';
+import anketYanit from '../api/anket-yanit.js';
+import backup from '../api/backup.js';
+import hava from '../api/hava.js';
+import havaSaatlik from '../api/hava-saatlik.js';
+import health from '../api/health.js';
+import gibOnizle from '../api/gib-onizle.js';
+import kurlar from '../api/kurlar.js';
+import invoice from '../api/invoice.js';
+import iys from '../api/iys.js';
+import login from '../api/login.js';
+import otp from '../api/otp.js';
+import mebTakvim from '../api/meb-takvim.js';
+import ozelGunler from '../api/ozel-gunler.js';
+import oturum from '../api/oturum.js';
+import reminders from '../api/reminders.js';
+import monthlyReport from '../api/monthly-report.js';
+import smsQueue from '../api/sms-queue.js';
+import sms from '../api/sms.js';
+import sifre from '../api/sifre.js';
+import whatsapp from '../api/whatsapp.js';
+import whatsappGonder from '../api/whatsapp-gonder.js';
+import whatsappTest from '../api/whatsapp-test.js';
 
 type Isleyici = (request: Request) => Promise<Response>;
 

@@ -29,12 +29,12 @@
  * çöple dolar.
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { insertRow, isDbConfigured, patchRows, selectRows } from './_db';
-import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard';
-import { talebiCoz, telefonSadelestir } from '../src/lib/whatsappTalep';
-import { otomatikCevapSec } from '../src/lib/whatsappOtomatik';
-import type { OtomatikAyar, OtomatikTur } from '../src/lib/whatsappOtomatik';
-import { isSendConfigured, metinGonder } from './whatsapp-gonder';
+import { insertRow, isDbConfigured, patchRows, selectRows } from './_db.js';
+import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard.js';
+import { talebiCoz, telefonSadelestir } from '../src/lib/whatsappTalep.js';
+import { otomatikCevapSec } from '../src/lib/whatsappOtomatik.js';
+import type { OtomatikAyar, OtomatikTur } from '../src/lib/whatsappOtomatik.js';
+import { isSendConfigured, metinGonder } from './whatsapp-gonder.js';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const APP_SECRET = process.env.WHATSAPP_APP_SECRET;

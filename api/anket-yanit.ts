@@ -13,11 +13,11 @@
  * `service_role` ile mümkün ve o jeton hiçbir koşulda tarayıcıya
  * inmiyor. Anket cevabı buradan, sunucu üzerinden yazılıyor.
  */
-import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard';
-import { isDbConfigured, patchRows, selectRows } from './_db';
-import { epostaGonder } from './_eposta';
-import { puanlariSuz } from '../src/lib/anket';
-import { ANKET_SORULARI } from '../src/types';
+import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard.js';
+import { isDbConfigured, patchRows, selectRows } from './_db.js';
+import { epostaGonder } from './_eposta.js';
+import { puanlariSuz } from '../src/lib/anket.js';
+import { ANKET_SORULARI } from '../src/types/index.js';
 
 interface AnketSatiri {
   id: string;

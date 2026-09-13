@@ -20,10 +20,10 @@
  * Gerçek webhook'un imza doğrulaması bundan ETKİLENMEZ; mock mod açık
  * diye imzasız bildirim kabul edilmiyor.
  */
-import { insertRow, isDbConfigured, selectRows } from './_db';
-import { enforceRateLimit, json, tooManyRequests } from './_guard';
-import { jetonuCoz, kimlikYapilandirildiMi } from './_kimlik';
-import { isMockMode, mesajiIsle } from './whatsapp';
+import { insertRow, isDbConfigured, selectRows } from './_db.js';
+import { enforceRateLimit, json, tooManyRequests } from './_guard.js';
+import { jetonuCoz, kimlikYapilandirildiMi } from './_kimlik.js';
+import { isMockMode, mesajiIsle } from './whatsapp.js';
 
 interface Govde {
   businessId?: string;

@@ -13,9 +13,9 @@
  * jetonla açılıyor: kimliği tahmin eden herkes başka çiftin anketini
  * açabilirdi.
  */
-import { isAuthorizedCron, isDbConfigured, patchRows, selectRows, insertRow } from './_db';
-import { json } from './_guard';
-import { epostaGonder, siteKoku } from './_eposta';
+import { isAuthorizedCron, isDbConfigured, patchRows, selectRows, insertRow } from './_db.js';
+import { json } from './_guard.js';
+import { epostaGonder, siteKoku } from './_eposta.js';
 
 interface RezervasyonSatiri {
   id: string;

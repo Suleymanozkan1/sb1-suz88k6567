@@ -9,9 +9,9 @@
  * Şifre doğrulaması burada yapılıyor, veritabanında değil: şifreyi
  * sorgu olarak göndermek onu sorgu günlüklerine düşme riskine atardı.
  */
-import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard';
-import { callRpc, isDbConfigured } from './_db';
-import { kimlikYapilandirildiMi, sifreDogru, sifreyiKarmala } from './_kimlik';
+import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard.js';
+import { callRpc, isDbConfigured } from './_db.js';
+import { kimlikYapilandirildiMi, sifreDogru, sifreyiKarmala } from './_kimlik.js';
 
 /** Şifrenin en az uzunluğu. Kısa şifre deneme yanılmayla bulunur. */
 const EN_AZ = 8;

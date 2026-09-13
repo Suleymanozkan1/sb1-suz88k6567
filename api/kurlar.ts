@@ -18,8 +18,8 @@
  * görünmüyor; uydurma bir altın fiyatı yazmak, o rakama bakıp fiyat
  * belirleyen salon sahibini yanıltırdı.
  */
-import { isAuthorizedCron, isDbConfigured, upsertRows } from './_db';
-import { json } from './_guard';
+import { isAuthorizedCron, isDbConfigured, upsertRows } from './_db.js';
+import { json } from './_guard.js';
 
 /** Veritabanındaki `exchange_rates.code` kısıtıyla aynı liste. */
 export type KurKodu = 'USD' | 'EUR' | 'GRAM_ALTIN' | 'CEYREK_ALTIN';

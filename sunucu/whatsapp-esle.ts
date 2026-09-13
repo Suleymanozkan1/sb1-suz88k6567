@@ -13,7 +13,7 @@
  * Kullanım (sunucuda):
  *   node sunucu-dist/sunucu/whatsapp-esle.js
  */
-import { baglan, baglantiDurumu, whatsappWebEtkinMi } from '../api/_whatsapp_web';
+import { baglan, baglantiDurumu, whatsappWebEtkinMi } from '../api/_whatsapp_web.js';
 
 /** QR'ı terminalde kare olarak çizer. */
 function qrYaz(metin: string): void {

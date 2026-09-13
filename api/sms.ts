@@ -11,7 +11,7 @@
  *   NETGSM_HEADER  Onaylı marka başlığı (gönderici adı)
  */
 
-import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard';
+import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard.js';
 
 interface SendRequest {
   to: string;

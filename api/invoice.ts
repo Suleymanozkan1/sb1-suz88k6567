@@ -16,12 +16,12 @@
  *     fatura kesmek özel entegratör lisansı gerektiriyor. Bu ayrım
  *     kodda zorlanıyor, kullanıcı ayarına bırakılmıyor.
  */
-import { isAuthorizedCron, isDbConfigured, patchRows, selectRows } from './_db';
-import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard';
+import { isAuthorizedCron, isDbConfigured, patchRows, selectRows } from './_db.js';
+import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard.js';
 import {
   isConfigured as isEInvoiceConfigured, sendInvoice,
   type InvoiceRow, type LineRow,
-} from './_parasut';
+} from './_parasut.js';
 
 export { isEInvoiceConfigured };
 

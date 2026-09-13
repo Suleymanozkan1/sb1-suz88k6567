@@ -14,9 +14,9 @@
  * GEÇMİŞ SAATLER TEMİZLENİYOR: saatte bir yazılan satırlar
  * temizlenmeseydi tablo işletme başına yılda ~9 bin satır büyürdü.
  */
-import { callRpc, isAuthorizedCron, isDbConfigured, selectRows, upsertRows } from './_db';
-import { json } from './_guard';
-import { mgmCek, saatlikCoz } from './_mgm';
+import { callRpc, isAuthorizedCron, isDbConfigured, selectRows, upsertRows } from './_db.js';
+import { json } from './_guard.js';
+import { mgmCek, saatlikCoz } from './_mgm.js';
 
 interface IsletmeSatiri {
   id: string;
