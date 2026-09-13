@@ -104,6 +104,8 @@ export const KEYS = {
    * yazılıyor.
    */
   weather: 'hava-tahmini',
+  /** Tanıtım kipindeki saatlik tahmin. */
+  weatherHours: 'hava-saatlik',
   /** Takvimdeki özel günler (resmî tatil, kandil, okul...) */
   specialDays: 'ozel-gunler',
   /** Program raporuna elle eklenen serbest notlar */
