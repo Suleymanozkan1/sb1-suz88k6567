@@ -16,7 +16,7 @@
  * ÖNBELLEK. Üç saat. Tahmin gün içinde değişiyor; takvim gibi otuz gün
  * beklenseydi ekranda bayat bir sıcaklık dururdu.
  */
-import { gunlukCoz, merkezSec, merkezleriCoz, mgmCek, saatlikCoz } from '../api/_mgm';
+import { gunlukCoz, merkezSec, merkezleriCoz, mgmCek, saatlikCoz } from '../api/_mgm.js';
 
 /** Tanıtım işletmesinin konumu; tohumdaki salonla aynı il. */
 const DEMO_IL = 'Konya';
