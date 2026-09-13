@@ -874,7 +874,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   }
 
   sutun(0, 'Altyapı ve mağaza', [
-    ['Ana sunucu', '9-11 €'],
+    ['Ana sunucu', '10,37 €'],
     ['Fatura sunucusu', 'en küçük VDS'],
     ['Alan adı', '~25 ₺'],
     ['Apple Developer', '$99/yıl'],
@@ -905,7 +905,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: KENAR, y: 6.2, w: GENIS, h: 0.6, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17,
   });
-  s.addText('Fiyatlar Eylül 2026’da sağlayıcıların yayımlanmış listelerinden alınmıştır. Ana sunucu Almanya’da € ile faturalanır (Hetzner CX33 ya da netcup VPS 1000 G12); üzerine ayrıca IPv4 ücreti binebilir. Türkiye’deki fatura sunucusunun tutarı sağlayıcıya göre değişir.', {
+  s.addText('Fiyatlar Eylül 2026’da sağlayıcıların yayımlanmış listelerinden alınmıştır. Ana sunucu Almanya’da (netcup, Nürnberg) € ile faturalanır ve tutar %19 Alman KDV’si dahildir. Türkiye’deki fatura sunucusunun tutarı sağlayıcıya göre değişir.', {
     x: KENAR, y: 6.85, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 11, color: MUTED,
   });

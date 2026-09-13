@@ -21,8 +21,17 @@ liste ne alınacağını ve neyin doğrulanacağını takip eder.
 
 ## 1. Ana sunucu
 
-- [ ] Ubuntu 24.04 LTS VPS kiralayın (8 GB RAM / 80 GB disk / 4 çekirdek
-      önerilir — bkz. [`SUNUCU-SECIMI.md`](SUNUCU-SECIMI.md))
+- [ ] Ubuntu 24.04 LTS VPS kiralayın — **netcup VPS 1000 G12**
+      (4 vCore / 8 GB ECC / 256 GB NVMe) — bkz.
+      [`SUNUCU-SECIMI.md`](SUNUCU-SECIMI.md)
+- [ ] **Lokasyon: Nürnberg (NUE).** "No preference Europe" SEÇMEYİN:
+      sunucuyu Viyana'ya ya da Amsterdam'a koyabilir. Aydınlatma metni
+      verilerin Almanya'da tutulduğunu yazıyor; başka ülkeye düşerse o
+      metin ve KVKK bildirimi yanlış olur.
+- [ ] Ağ seçeneği **IPv4 + IPv6** olmalı; yalnızca IPv6 seçilirse IPv4
+      üzerinden gelen ziyaretçiler siteyi açamaz
+- [ ] Sipariş ekranında kurulum ücreti ve trafik sınırını kontrol edin
+- [ ] Sunucuyu teslim alınca aşağıdaki beş satırı çalıştırın
 - [ ] Alan adını sunucunun IP adresine yönlendirin
 - [ ] `KURULUM.md` bölüm 1-2: paketler ve PostgreSQL
 - [ ] Göçleri **sırayla** uygulayın (`supabase/migrations/*.sql`,
@@ -32,15 +41,49 @@ liste ne alınacağını ve neyin doğrulanacağını takip eder.
 - [ ] `KURULUM.md` bölüm 7: ilk yönetici hesabı
 
 > **Göç sırası önemli.** Göçler yeniden çalıştırılabilir; aynı dosyayı
-> ikinci kez uygulamak hata vermez. Ama sırayı atlamak verir.
+> ikinci kez uygulamak hata vermez. Ama sırayı atlamak verir. netcup'ın
+> panelinde anlık görüntü (snapshot) var; göçlerden önce bir tane
+> almak, bir aksilikte makineyi geri almanızı sağlar.
+>
+> **cPanel aramayın.** Bu sistem cPanel'in yönettiği hiçbir şeyi
+> (Apache, PHP, MySQL) kullanmıyor; kurulum baştan sona SSH ile
+> yapılıyor. Sağlayıcıda aranacak şey root/SSH erişimi ve Ubuntu 24.04
+> kurabilmedir. Ayrıntı: [`SUNUCU-SECIMI.md`](SUNUCU-SECIMI.md).
+
+### Sunucu hazır mı: 30 saniyelik doğrulama
+
+Sağlayıcı ne söylerse söylesin, kurulum belgesine geçmeden önce bunu
+çalıştırın. İki sunucuda da aynı.
+
+```bash
+whoami                                    # root yazmalı
+. /etc/os-release && echo "$PRETTY_NAME"  # Ubuntu 24.04 LTS
+apt-get update -qq && echo "PAKET KURULABILIYOR"
+free -m  | awk '/Mem:/  {print "RAM  :", $2, "MB"}'   # ana sunucu >= 7500
+df -m /  | awk 'NR==2   {print "DISK :", $4, "MB bos"}'
+curl -sS -o /dev/null -w "AG   : npm %{http_code}\n" https://registry.npmjs.org/
+```
+
+SSH ayrıca sınanmıyor: betiği çalıştırabiliyorsanız zaten çalışıyor
+demektir.
+
+Altısı da beklendiği gibiyse kurulum belgesi olduğu gibi uygulanır. Satın almadan
+önce sağlayıcıya sorulacak tek soru: **"Root/SSH erişimi veriliyor mu,
+kendi paketlerimi kurabiliyor muyum?"** Ubuntu kurulu olarak teslim
+edilen bir sunucuda cevap neredeyse her zaman evettir; yönetilen
+hosting (cPanel/Plesk) ürünlerinde hayırdır ve o ürünler bu sistem için
+zaten uygun değildir.
 
 ## 2. Fatura sunucusu (Türkiye) — isteğe bağlı
 
 Yalnızca fatura kayıtlarının Türkiye'de tutulması isteniyorsa.
 
-- [ ] Türkiye'de konumlanmış küçük bir VPS kiralayın (1 çekirdek / 2 GB
-      yeter). Sağlayıcının Türk firması olması yetmez; **veri merkezi**
-      Türkiye'de olmalı.
+- [ ] Türkiye'de konumlanmış küçük bir VPS/VDS kiralayın (1 çekirdek /
+      2 GB yeter). Sağlayıcının Türk firması olması yetmez; **veri
+      merkezi** Türkiye'de olmalı.
+- [ ] Sağlayıcıya sorun: **root erişimi ve SSH var mı, Ubuntu 24.04
+      kurulabiliyor mu?** Panel (cPanel vb.) gerekmiyor; bu sunucuda
+      yalnızca PostgreSQL ve PostgREST çalışacak.
 - [ ] PostgreSQL ve PostgREST kurun (`KURULUM.md` bölüm 2 ve 4)
 - [ ] Yalnızca fatura şemasını uygulayın:
       `supabase/fatura-sunucusu/0001_fatura_sunucusu.sql`
