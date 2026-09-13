@@ -96,6 +96,14 @@ export const KEYS = {
   resVendors: 'resVendors',
   session: 'session',
   seeded: 'seeded',
+  /**
+   * Tanıtım kipindeki hava tahmini.
+   *
+   * Gerçek kurulumda tahmin sunucudaki zamanlanmış görevden geliyor ve bu
+   * anahtar hiç kullanılmıyor; tanıtımda `/api/demo-gunler` yanıtı buraya
+   * yazılıyor.
+   */
+  weather: 'hava-tahmini',
   /** Takvimdeki özel günler (resmî tatil, kandil, okul...) */
   specialDays: 'ozel-gunler',
   /** Program raporuna elle eklenen serbest notlar */

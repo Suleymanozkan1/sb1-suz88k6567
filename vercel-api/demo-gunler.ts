@@ -111,7 +111,27 @@ async function okulGunleri(): Promise<DemoGun[]> {
   return gunler;
 }
 
-export default async function handler(): Promise<Response> {
+/**
+ * Vercel Node çalışma zamanının yanıt nesnesi.
+ *
+ * `@vercel/node` paketini bağımlılık olarak eklemek yerine yalnızca
+ * kullanılan üç yöntem yazılıyor: paket zaten dağıtım sırasında
+ * yükleniyor, burada gereken tek şey tipin şekli.
+ */
+interface VercelYanit {
+  status(kod: number): VercelYanit;
+  setHeader(ad: string, deger: string): void;
+  send(govde: string): void;
+}
+
+/*
+  İMZA NODE BİÇİMİNDE. Daha önce Web standardı `Response` döndürülüyordu;
+  `vercel.json` bu dosyayı `@vercel/node` ile kurduğu için çalışma zamanı
+  `res` üzerinden yanıt bekliyor ve fonksiyon canlıda
+  FUNCTION_INVOCATION_FAILED ile düşüyordu. Yerelde çalışıp yayında
+  düşmesinin sebebi buydu.
+*/
+export default async function handler(_req: unknown, res: VercelYanit): Promise<void> {
   const buYil = new Date().getUTCFullYear();
   const yillar = Array.from({ length: YIL_SAYISI }, (_, i) => buYil - GERI_YIL + i);
 
@@ -128,14 +148,19 @@ export default async function handler(): Promise<Response> {
 
   const tumu = [...gunler, ...okul].sort((a, b) => a.day.localeCompare(b.day));
 
-  return new Response(JSON.stringify({
+  res.setHeader('content-type', 'application/json; charset=utf-8');
+  /*
+    Takvim ayda bir değişiyor, hava tahmini her gün. Önbellek SÜRESİ
+    hava verisine göre seçiliyor: otuz gün beklenseydi ekranda üç
+    haftalık bayat tahmin durur, bu da boş kutudan kötü olurdu.
+  */
+  res.setHeader(
+    'cache-control',
+    hava.length > 0
+      ? 'public, s-maxage=10800, stale-while-revalidate=86400'
+      : 'public, s-maxage=2592000, stale-while-revalidate=86400',
+  );
+  res.status(tumu.length === 0 ? 503 : 200).send(JSON.stringify({
     uretim: new Date().toISOString(), gunler: tumu, hava,
-  }), {
-    status: tumu.length === 0 ? 503 : 200,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      // 30 gün kenarda, bayatsa 1 gün daha servis edilip arkada tazeleniyor.
-      'cache-control': 'public, s-maxage=2592000, stale-while-revalidate=86400',
-    },
-  });
+  }));
 }
