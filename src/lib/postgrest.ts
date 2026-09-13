@@ -141,6 +141,18 @@ class Sorgu<T> implements PromiseLike<Sonuc<T>> {
     return this.hamSuzgec(sutun, `in.(${liste})`);
   }
 
+  /**
+   * `in` süzgecinin olumsuzu: `table_name=not.in.(a,b)`.
+   *
+   * Denetim ekranı fatura satırlarını hariç tutmak için kullanıyor:
+   * onlar ayrı bir veritabanından geliyor ve iki liste birleştiğinde
+   * çift görünmemeliler (src/lib/repo/supabase.ts, listAuditLog).
+   */
+  notIn(sutun: string, degerler: unknown[]) {
+    const liste = degerler.map((d) => listeDegeri(d)).join(',');
+    return this.hamSuzgec(sutun, `not.in.(${liste})`);
+  }
+
   order(sutun: string, secenek: Yon = {}): this {
     const yon = secenek.ascending === false ? 'desc' : 'asc';
     this.duzen.push(`${sutun}.${yon}`);

@@ -189,6 +189,10 @@ sudo chmod 700 /var/lib/sahra/yedekler
 PORT=8787
 DIST_DIZINI=/opt/sahra/dist
 PGRST_URL=http://127.0.0.1:3000
+# Fatura verisi Türkiye'deki ayrı bir sunucuda tutulacaksa (VUK) o
+# sunucudaki PostgREST'in adresi. Boş bırakılırsa her şey tek
+# veritabanında kalır. Ayrıntı: docs/IKI-SUNUCU.md
+PGRST_FATURA_URL=
 JWT_SECRET=<JWT_SECRET>
 OTP_SECRET=<OTP_SECRET>
 CRON_SECRET=<CRON_SECRET>

@@ -8,14 +8,42 @@
  * tarayıcıya ASLA verilmez ve yalnızca burada üretilir.
  *
  * Gerekli ortam değişkenleri (SUNUCUDA KALIR):
- *   PGRST_URL   PostgREST adresi (varsayılan http://127.0.0.1:3000)
- *   JWT_SECRET  PostgREST'in PGRST_JWT_SECRET değeriyle aynı
+ *   PGRST_URL         PostgREST adresi (varsayılan http://127.0.0.1:3000)
+ *   PGRST_FATURA_URL  Fatura veritabanının PostgREST adresi (isteğe bağlı)
+ *   JWT_SECRET        PostgREST'in PGRST_JWT_SECRET değeriyle aynı
  */
 import { createHmac } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+import { hedefKok } from '../sunucu/veri-yonlendirme';
+
 const PGRST_URL = process.env.PGRST_URL ?? 'http://127.0.0.1:3000';
+/*
+  Fatura kayıtları Vergi Usul Kanunu gereği Türkiye'de duruyor. Tarayıcıdan
+  gelen istekler sunucu/index.ts içinde ayrılıyor; buradaki service_role
+  çağrıları da AYNI tabloya bakarak ayrılmalı, yoksa fatura uç noktası
+  yurt dışındaki veritabanında olmayan bir tabloyu arar.
+
+  İki sunucuda JWT_SECRET aynı olmalı: jeton ikisinde de geçerli olmasa
+  fatura tarafına yapılan her service_role çağrısı 401 döner.
+*/
+const PGRST_FATURA_URL = process.env.PGRST_FATURA_URL?.trim() || undefined;
+
+/** Verilen PostgREST yolunun hangi sunucuya gideceğini söyler. */
+function taban(yol: string): string {
+  return hedefKok(yol, PGRST_URL, PGRST_FATURA_URL);
+}
+
+/** Fatura verisi ayrı bir sunucuda mı? (docs/IKI-SUNUCU.md) */
+export function faturaBolmesiVar(): boolean {
+  return PGRST_FATURA_URL !== undefined;
+}
+
+/** Fatura sunucusunun adresi; bölme yoksa ana sunucununki. */
+export function faturaAdresi(): string {
+  return PGRST_FATURA_URL ?? PGRST_URL;
+}
 
 export function isDbConfigured(): boolean {
   const sir = process.env.JWT_SECRET;
@@ -53,7 +81,7 @@ function sunucuBasliklari(ek: Record<string, string> = {}): Record<string, strin
 export async function callRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   if (!isDbConfigured()) throw new Error('Veritabanı yapılandırması eksik.');
 
-  const response = await fetch(`${PGRST_URL}/rpc/${fn}`, {
+  const response = await fetch(`${taban(`rpc/${fn}`)}/rpc/${fn}`, {
     method: 'POST',
     headers: sunucuBasliklari({ 'content-type': 'application/json' }),
     body: JSON.stringify(args),
@@ -70,7 +98,7 @@ export async function callRpc<T>(fn: string, args: Record<string, unknown>): Pro
 export async function selectRows<T>(path: string): Promise<T[]> {
   if (!isDbConfigured()) throw new Error('Veritabanı yapılandırması eksik.');
 
-  const response = await fetch(`${PGRST_URL}/${path}`, {
+  const response = await fetch(`${taban(path)}/${path}`, {
     headers: sunucuBasliklari(),
     signal: AbortSignal.timeout(15_000),
   });
@@ -82,7 +110,7 @@ export async function selectRows<T>(path: string): Promise<T[]> {
 export async function patchRows(path: string, body: unknown): Promise<void> {
   if (!isDbConfigured()) throw new Error('Veritabanı yapılandırması eksik.');
 
-  const response = await fetch(`${PGRST_URL}/${path}`, {
+  const response = await fetch(`${taban(path)}/${path}`, {
     method: 'PATCH',
     headers: sunucuBasliklari({ 'content-type': 'application/json', prefer: 'return=minimal' }),
     body: JSON.stringify(body),
@@ -95,7 +123,7 @@ export async function patchRows(path: string, body: unknown): Promise<void> {
 export async function insertRow<T>(table: string, body: unknown): Promise<T> {
   if (!isDbConfigured()) throw new Error('Veritabanı yapılandırması eksik.');
 
-  const response = await fetch(`${PGRST_URL}/${table}`, {
+  const response = await fetch(`${taban(table)}/${table}`, {
     method: 'POST',
     headers: sunucuBasliklari({ 'content-type': 'application/json', prefer: 'return=representation' }),
     body: JSON.stringify(body),
@@ -121,7 +149,7 @@ export async function upsertRows(
   if (rows.length === 0) return;
 
   const response = await fetch(
-    `${PGRST_URL}/${table}?on_conflict=${encodeURIComponent(onConflict)}`,
+    `${taban(table)}/${table}?on_conflict=${encodeURIComponent(onConflict)}`,
     {
       method: 'POST',
       headers: sunucuBasliklari({

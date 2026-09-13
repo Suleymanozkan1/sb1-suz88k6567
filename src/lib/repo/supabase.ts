@@ -1446,10 +1446,35 @@ export const supabaseRepo: Repository = {
   },
 
   async listAuditLog(limit) {
-    const { data, error } = await db().from('audit_log')
-      .select('*').order('created_at', { ascending: false }).limit(limit);
-    if (error) fail('Denetim kayıtları alınamadı.', error);
-    return (data ?? []).map((row: Row): AuditEntry => ({
+    /*
+      İKİ KAYNAK. Fatura kayıtları Türkiye'deki ayrı bir veritabanında
+      durabiliyor (docs/IKI-SUNUCU.md); oradaki denetim satırları bu
+      veritabanının `audit_log` tablosunda yok. Bu yüzden iki sorgu
+      yapılıyor ve sunucu ikincisini doğru veritabanına yönlendiriyor
+      (sunucu/veri-yonlendirme.ts).
+
+      Sorgular BİRBİRİNİ DIŞLIYOR: burada fatura satırları hariç
+      tutuluyor, fonksiyon ise yalnızca onları döndürüyor. Bölme
+      yapılmamış kurulumda ikisi aynı veritabanına düşse bile kayıt çift
+      görünmüyor.
+    */
+    const FATURA_TABLOLARI = ['invoices', 'invoice_lines'];
+    const [genel, fatura] = await Promise.all([
+      db().from('audit_log')
+        .select('*').notIn('table_name', FATURA_TABLOLARI)
+        .order('created_at', { ascending: false }).limit(limit),
+      db().rpc<Row[]>('fatura_denetim_kaydi', { p_limit: limit }),
+    ]);
+
+    if (genel.error) fail('Denetim kayıtları alınamadı.', genel.error);
+    /*
+      Fatura tarafı düşerse ekran boş kalmamalı: geri kalan kayıtlar
+      gösterilip devam ediliyor. Fatura veritabanının ulaşılamaz olduğu
+      ayrıca sağlık kontrolünde raporlanıyor (api/health.ts).
+    */
+    const faturaSatirlari = fatura.error ? [] : (fatura.data ?? []);
+
+    const cevir = (row: Row): AuditEntry => ({
       id: Number(row.id),
       actorEmail: (row.actor_email as string) ?? '-',
       action: (row.action as AuditEntry['action']) ?? 'UPDATE',
@@ -1458,7 +1483,14 @@ export const supabaseRepo: Repository = {
       summary: (row.summary as string) ?? undefined,
       changed: (row.changed as AuditEntry['changed']) ?? undefined,
       createdAt: (row.created_at as string) ?? '',
-    }));
+    });
+
+    return [...(genel.data ?? []), ...faturaSatirlari]
+      .map(cevir)
+      // İki kaynak birleştiği için sıralama yeniden kuruluyor; `limit`
+      // her sorguya ayrı uygulandığından toplam iki katına çıkabilir.
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
   },
 
   async listInvoices(businessId) {

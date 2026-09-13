@@ -23,12 +23,19 @@ import { join, normalize, extname } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
 import { ROTALAR, CRON_GOREVLERI, gorevIstegi } from './rotalar';
+import { hedefKok } from './veri-yonlendirme';
 import { basliklariUygula } from './basliklar';
 import { zamanlayiciBaslat } from './zamanlayici';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const DIST = process.env.DIST_DIZINI ?? join(process.cwd(), 'dist');
 const PGRST = process.env.PGRST_URL ?? 'http://127.0.0.1:3000';
+/*
+  Fatura kayıtları Vergi Usul Kanunu gereği Türkiye'de duruyor. Bu değişken
+  tanımlıysa fatura tabloları oradaki PostgREST'e gidiyor; tanımsızsa hiçbir
+  ayrım yapılmıyor ve tek veritabanlı kurulum aynen çalışmayı sürdürüyor.
+*/
+const PGRST_FATURA = process.env.PGRST_FATURA_URL?.trim() || undefined;
 /** Ters vekil arkasındaysak dış bağlantı HTTPS demektir. */
 const HTTPS = process.env.SITE_HTTPS !== '0';
 
@@ -128,7 +135,8 @@ async function statikSun(
 /** PostgREST'e iletir. Jetonu istemci `Authorization` başlığında taşır. */
 async function veriyeIlet(istek: Request, yol: string): Promise<Response> {
   const hedef = new URL(istek.url);
-  const adres = `${PGRST}${yol.replace(/^\/veri/, '')}${hedef.search}`;
+  const kok = hedefKok(yol, PGRST, PGRST_FATURA);
+  const adres = `${kok}${yol.replace(/^\/veri/, '')}${hedef.search}`;
 
   const basliklar = new Headers(istek.headers);
   // Konak başlığı hedefe ait olmalı; aksi hâlde PostgREST kendi adresini

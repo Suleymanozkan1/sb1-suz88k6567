@@ -48,7 +48,7 @@ function kurucu(tablo: string) {
   const cagri: Cagri = { tablo, islemler: [] };
   durum.cagrilar.push(cagri);
 
-  const zincir = ['select', 'eq', 'neq', 'in', 'gte', 'lte', 'order', 'limit',
+  const zincir = ['select', 'eq', 'neq', 'in', 'notIn', 'gte', 'lte', 'order', 'limit',
     'upsert', 'insert', 'update', 'delete', 'is', 'isNot', 'or'];
 
   const nesne: Record<string, unknown> = {
@@ -785,6 +785,49 @@ describe('denetim kaydı', () => {
     yanitla('audit_log', { data: [{ id: 1 }] });
     const [kayit] = await repo.listAuditLog(10);
     expect(kayit).toMatchObject({ actorEmail: '-', action: 'UPDATE', tableName: '' });
+  });
+
+  /*
+    Fatura kayıtları Türkiye'deki ayrı bir veritabanında durabiliyor
+    (docs/IKI-SUNUCU.md). Denetim ekranı iki kaynağı birleştiriyor;
+    aşağıdaki üç test o birleştirmenin kurallarını tutuyor.
+  */
+  it('fatura kayıtlarını ayrı kaynaktan alıp tarihe göre birleştirir', async () => {
+    yanitla('audit_log', {
+      data: [
+        { id: 1, table_name: 'reservations', created_at: '2026-03-01T10:00:00Z' },
+        { id: 2, table_name: 'payments', created_at: '2026-03-03T10:00:00Z' },
+      ],
+    });
+    durum.rpcYanitlari.fatura_denetim_kaydi = {
+      data: [{ id: 9, table_name: 'invoices', created_at: '2026-03-02T10:00:00Z' }],
+    };
+
+    const kayitlar = await repo.listAuditLog(10);
+
+    // İki liste tek sıraya iniyor: en yeni en üstte.
+    expect(kayitlar.map((k) => k.id)).toEqual([2, 9, 1]);
+  });
+
+  it('genel sorguda fatura tablolarını HARİÇ tutar', async () => {
+    yanitla('audit_log', { data: [] });
+    await repo.listAuditLog(10);
+
+    // Hariç tutulmazsa bölme yapılmamış kurulumda kayıt çift görünür.
+    expect(islem(cagri('audit_log'), 'notIn')?.arg)
+      .toEqual(['table_name', ['invoices', 'invoice_lines']]);
+  });
+
+  it('fatura tarafı düşerse geri kalanı yine gösterir', async () => {
+    yanitla('audit_log', {
+      data: [{ id: 1, table_name: 'reservations', created_at: '2026-03-01T10:00:00Z' }],
+    });
+    durum.rpcYanitlari.fatura_denetim_kaydi = { data: null, error: HATA };
+
+    // Fatura veritabanına ulaşılamaması ekranı boşaltmamalı; arıza
+    // ayrıca sağlık kontrolünde raporlanıyor (api/health.ts).
+    const kayitlar = await repo.listAuditLog(10);
+    expect(kayitlar.map((k) => k.id)).toEqual([1]);
   });
 });
 

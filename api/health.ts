@@ -8,7 +8,9 @@
  * Kişisel veri döndürmez; yalnızca sayısal özet verir. Ayrıntılı durum
  * (kuyruk, yedek yaşı) yalnızca CRON_SECRET ile çağrıldığında eklenir.
  */
-import { callRpc, isAuthorizedCron, isDbConfigured, selectRows } from './_db';
+import {
+  callRpc, faturaAdresi, faturaBolmesiVar, isAuthorizedCron, isDbConfigured, selectRows,
+} from './_db';
 import { json } from './_guard';
 import { isProviderConfigured } from './sms';
 
@@ -82,6 +84,28 @@ export default async function handler(request: Request): Promise<Response> {
     sorunlar.push('SMS sağlayıcısı yapılandırılmamış.');
   }
 
+  /*
+    Fatura veritabanı ayrı bir sunucudaysa (docs/IKI-SUNUCU.md) ana
+    veritabanı ayakta olsa bile fatura ekranı çalışmıyor olabilir:
+    ağ kopması ya da orada duran PostgREST yeter. İzleme bunu ana
+    veritabanıyla aynı anda görmeli, yoksa arıza ancak fatura kesilmeye
+    çalışıldığında ortaya çıkar.
+  */
+  if (faturaBolmesiVar()) {
+    try {
+      // PostgREST kökü şema özetini döndürüyor; jeton gerekmiyor,
+      // yalnızca ulaşılabilirlik sınanıyor.
+      const yanit = await fetch(`${faturaAdresi()}/`, {
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (!yanit.ok) {
+        sorunlar.push(`Fatura veritabanı yanıt vermiyor (HTTP ${yanit.status}).`);
+      }
+    } catch {
+      sorunlar.push('Fatura veritabanına ulaşılamıyor.');
+    }
+  }
+
   const healthy = sorunlar.length === 0;
   // Sorun metinleri hangi alt sistemin bozuk olduğunu (yedek yok, SMS
   // gönderilemiyor, kuyruk tıkalı) açık eder; yetkisiz çağrıya yalnızca
@@ -89,7 +113,7 @@ export default async function handler(request: Request): Promise<Response> {
   return json(
     {
       status: healthy ? 'saglikli' : 'uyari',
-      ...(detailed ? { sorunlar, ozet: toplam } : {}),
+      ...(detailed ? { sorunlar, ozet: toplam, fatura_ayri: faturaBolmesiVar() } : {}),
       zaman: new Date().toISOString(),
     },
     healthy ? 200 : 503,
