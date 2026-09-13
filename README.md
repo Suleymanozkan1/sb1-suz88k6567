@@ -649,17 +649,32 @@ ayar değil, kullanıcının değiştiremeyeceği bir kural.
 mühür** (TÜBİTAK KamuSM). İkisi tamamlanmadan modül yapılandırılmamış
 sayılır ve devreye girmez.
 
-| Katman | Dosya | Test edilebilir mi |
+| Katman | Dosya | Nasıl doğrulandı |
 |---|---|---|
-| UBL-TR 1.2 belge üretimi | `_gib_ubl.ts` | **Evet**, tamamen |
-| Fatura kurma, senaryo, durum kodları | `_gib.ts` | **Evet** |
-| XAdES-BES imzalama | `_gib_imza.ts` | Yapısı evet, **geçerliliği hayır** — mali mühür gerekir |
-| SOAP gönderim | — | **Hayır** — GİB onayı ve test ortamı erişimi gerekir |
+| UBL-TR 1.2 belge üretimi | `_gib_ubl.ts` | Birim testi (19) |
+| Fatura kurma, senaryo, durum kodları | `_gib.ts` | Birim testi (17) |
+| XAdES-BES imzalama | `_gib_imza.ts`, `_gib_imzala.ts` | **Gerçek anahtarla imzala → doğrula** (11) |
+| Zarf, zip, SOAP gövdesi | `_gib_zarf.ts` | **Ürettiği zip sistem `unzip`'iyle açılıyor** (16) |
+| GİB'in kabul etmesi | — | **Doğrulanmadı** — onay + mali mühür gerekir |
 
-İmzanın GİB tarafından kabul edilip edilmediği ancak gerçek mali mühür
-ve GİB test ortamıyla görülebilir; birim testleri imzanın **yapısını**
-sınıyor, geçerliliğini değil. Bu sınır bilinçli olarak belgeleniyor:
-"yazıldı, çalışıyor" demek yanlış olurdu.
+İmza "yazıldı, umarım doğrudur" bırakılmadı. Testte yerel bir sertifika
+üretiliyor, belge onunla imzalanıyor ve **imza bağımsız olarak
+doğrulanıyor**; ayrıca belge sonradan kurcalandığında doğrulamanın
+**düştüğü** de sınanıyor. Bu, özet → kanonikleştirme → imza zincirinin
+kendi içinde tutarlı olduğunu gösteriyor. Zip de aynı şekilde: elle
+kuruluyor ve sistemin kendi `unzip`'iyle açılabildiği sınanıyor (yapı
+yanlış olsaydı GİB "paket bütünlüğü bozuk" dönerdi).
+
+Doğrulanmayan tek şey **GİB'in bu imzayı kabul edip etmediği**; onu
+ancak gerçek mali mühür ve GİB test ortamı gösterir. Bu sınır bilinçli
+olarak belgeleniyor.
+
+**Tek sunucu bağımlılığı.** Projede sunucu tarafında başka çalışma
+zamanı bağımlılığı yok; `xml-crypto` bilinçli bir istisna. Exclusive
+C14N'i elle yazmak (ad alanı yayılımı, öznitelik sırası, boşluk işleme)
+buradaki en riskli kod olurdu: yanlış kanonikleştirme, imzanın
+matematiksel olarak doğru ama GİB tarafından reddedilir olması demek.
+Kütüphane istemci paketine girmiyor (derleme çıktısında sıfır eşleşme).
 
 Bir not daha: düğün müşterileri şahıs olduğu için kesilecek belge
 e-Fatura değil **e-Arşiv Fatura**'dır ve e-Arşiv'in gelen kutusu yoktur.
