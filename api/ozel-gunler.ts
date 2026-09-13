@@ -31,8 +31,8 @@
  * Sağlayıcılar ücretsiz ve anahtar istemiyor; adresleri ortam
  * değişkeniyle değiştirilebiliyor.
  */
-import { callRpc, isAuthorizedCron, isDbConfigured } from './_db';
-import { json } from './_guard';
+import { callRpc, isAuthorizedCron, isDbConfigured } from './_db.js';
+import { json } from './_guard.js';
 
 /** Kaç yıl ileri kurulacak: bu yıl + 3. Rezervasyonlar bu kadar ileriye alınıyor. */
 const YIL_SAYISI = 4;

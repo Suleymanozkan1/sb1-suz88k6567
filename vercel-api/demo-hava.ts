@@ -48,33 +48,7 @@ interface VercelYanit {
   send(govde: string): void;
 }
 
-/*
-  Teşhis kapısı. `?ham=1` ile MGM'nin HAM yanıtı dönüyor.
-
-  NEDEN GEREKLİ. Saatlik tahmin ve anlık gözlem çağrıları başarılı
-  dönüyor ama ayrıştırma boş sonuç veriyor; hata da yok. Bu ortamın çıkış
-  vekili mgm.gov.tr adresini engellediği için ham yanıta yerelden
-  bakılamıyor. Alan adları görülmeden yapılacak her düzeltme tahmin olur.
-
-  Sır içermiyor: MGM herkese açık, kimlik doğrulamasız bir servis.
-*/
-async function hamYanit(merkez: { saatlikNo: string; sonDurumNo: string }) {
-  const dene = async (yol: string) => {
-    try {
-      return await mgmCek(yol);
-    } catch (e) {
-      return { hata: String(e instanceof Error ? e.message : e) };
-    }
-  };
-  return {
-    saatlik: await dene(`/tahminler/saatlik?istno=${merkez.saatlikNo}`),
-    anlik: await dene(`/sondurumlar?istNo=${merkez.sonDurumNo}`),
-  };
-}
-
-export default async function handler(req: unknown, res: VercelYanit): Promise<void> {
-  const url = String((req as { url?: string } | null)?.url ?? '');
-  const hamIstendi = url.includes('ham=1');
+export default async function handler(_req: unknown, res: VercelYanit): Promise<void> {
   let gunluk: DemoHava[] = [];
   let saatlik: DemoHavaSaati[] = [];
   let simdi: number | null = null;
@@ -104,13 +78,6 @@ export default async function handler(req: unknown, res: VercelYanit): Promise<v
     istasyon = {
       gunluk: merkez.gunlukNo, saatlik: merkez.saatlikNo, anlik: merkez.sonDurumNo,
     };
-
-    if (hamIstendi) {
-      res.setHeader('content-type', 'application/json; charset=utf-8');
-      res.setHeader('cache-control', 'no-store');
-      res.status(200).send(JSON.stringify({ istasyon, ham: await hamYanit(merkez) }));
-      return;
-    }
 
     gunluk = (await gunlukCoz(await mgmCek(`/tahminler/gunluk?istno=${merkez.gunlukNo}`)))
       .map((t) => ({ gun: t.gun, enDusuk: t.minC, enYuksek: t.maxC, hadise: t.hadise }));

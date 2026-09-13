@@ -5,7 +5,7 @@
  * yayınlamaz; yalnızca diğer fonksiyonlar tarafından içe aktarılır.
  */
 
-import { callRpc, isDbConfigured } from './_db';
+import { callRpc, isDbConfigured } from './_db.js';
 
 export const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 

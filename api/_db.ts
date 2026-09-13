@@ -16,7 +16,7 @@ import { createHmac } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { hedefKok } from '../sunucu/veri-yonlendirme';
+import { hedefKok } from '../sunucu/veri-yonlendirme.js';
 
 const PGRST_URL = process.env.PGRST_URL ?? 'http://127.0.0.1:3000';
 /*
