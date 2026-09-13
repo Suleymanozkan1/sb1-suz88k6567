@@ -20,6 +20,29 @@ function makeReservation(over: Partial<Reservation> = {}): Reservation {
   };
 }
 
+/**
+ * Demo verisinde BOŞ olan ilk günü bulur.
+ *
+ * Aşağıdaki tedarikçi testleri demo işletmesinin salonunu kullanıyor ve
+ * demo verisi bugünün çevresindeki iki yılı dolduruyor. Sabit bir tarih
+ * yazılsaydı, üretilen veri o güne denk geldiğinde test tedarikçi kuralı
+ * yüzünden değil "bu salonda zaten rezervasyon var" diye düşerdi.
+ */
+async function bosGun(hallId: string, slot: string): Promise<string> {
+  const dolu = new Set(
+    (await localRepo.listReservations('biz_demo'))
+      .filter((r) => r.hallId === hallId && r.slot === slot)
+      .map((r) => r.date),
+  );
+  const g = new Date('2029-01-01T00:00:00Z');
+  for (let i = 0; i < 4000; i += 1) {
+    const iso = g.toISOString().slice(0, 10);
+    if (!dolu.has(iso)) return iso;
+    g.setUTCDate(g.getUTCDate() + 1);
+  }
+  throw new Error('Boş gün bulunamadı');
+}
+
 /** Sentetik test işletmesinin salonu; rezervasyon kapsam kuralı bunu arar. */
 function testHall() {
   write(KEYS.halls, [{
@@ -595,7 +618,8 @@ describe('tedarikçiler', () => {
   it('başka işletmenin tedarikçisi atanamaz', async () => {
     seedIfEmpty();
     const r = await localRepo.saveReservation(makeReservation({
-      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V1', date: '2027-10-12',
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V1',
+      date: await bosGun('hall_demo1', 'Gece'),
     }));
     await expect(localRepo.saveReservationVendors(r.id, [
       { vendorId: 'vendor_demo4', cost: 1000, note: '' },
@@ -605,7 +629,8 @@ describe('tedarikçiler', () => {
   it('aynı tedarikçi iki kez atanamaz', async () => {
     seedIfEmpty();
     const r = await localRepo.saveReservation(makeReservation({
-      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V2', date: '2027-10-13',
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V2',
+      date: await bosGun('hall_demo1', 'Gece'),
     }));
     await expect(localRepo.saveReservationVendors(r.id, [
       { vendorId: 'vendor_demo1', cost: 1000, note: '' },
@@ -616,7 +641,8 @@ describe('tedarikçiler', () => {
   it('atanmış tedarikçi silinemez', async () => {
     seedIfEmpty();
     const r = await localRepo.saveReservation(makeReservation({
-      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V3', date: '2027-10-14',
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V3',
+      date: await bosGun('hall_demo1', 'Gece'),
     }));
     await localRepo.saveReservationVendors(r.id, [{ vendorId: 'vendor_demo2', cost: 5000, note: '' }]);
     await expect(localRepo.deleteVendor('vendor_demo2')).rejects.toThrow(/pasife alın/);
@@ -625,7 +651,8 @@ describe('tedarikçiler', () => {
   it('atama kaydedilir ve maliyeti korunur', async () => {
     seedIfEmpty();
     const r = await localRepo.saveReservation(makeReservation({
-      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V4', date: '2027-10-15',
+      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'V4',
+      date: await bosGun('hall_demo1', 'Gece'),
     }));
     await localRepo.saveReservationVendors(r.id, [
       { vendorId: 'vendor_demo1', arriveAt: '18:30', cost: 15000, note: 'Ses dahil' },

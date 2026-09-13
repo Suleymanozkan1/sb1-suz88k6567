@@ -307,7 +307,7 @@ export default function UrunHizmet() {
                     <td className="px-4 py-2.5 text-brand">
                       {v.name}
                       {!v.isActive && (
-                        <span className="ml-2 rounded-full bg-[#f2ece4] px-2 py-0.5 text-xs text-brand-muted">
+                        <span className="ml-2 rounded-full bg-[#f2ece4] px-2 py-0.5 text-xs text-brand">
                           Pasif
                         </span>
                       )}
@@ -348,7 +348,7 @@ export default function UrunHizmet() {
               <div className="mb-1 flex items-start justify-between gap-2">
                 <h2 className="font-heading font-bold text-brand">{v.name}</h2>
                 {!v.isActive && (
-                  <span className="rounded-full bg-[#f2ece4] px-2 py-0.5 text-xs text-brand-muted">Pasif</span>
+                  <span className="rounded-full bg-[#f2ece4] px-2 py-0.5 text-xs text-brand">Pasif</span>
                 )}
               </div>
               <p className="mb-2 text-sm text-brand-muted">{v.category}</p>

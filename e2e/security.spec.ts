@@ -88,7 +88,14 @@ test.describe('İstemci tarafı güvenlik', () => {
     await page.getByLabel('Durum').selectOption('RET');
     await page.getByRole('button', { name: /Kaydet/ }).click();
     await expect(page.getByText('İzin kaydı kaydedildi.')).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'RET' })).toBeVisible();
+    /*
+      Listede başka RET kayıtları da var; aranan, AZ ÖNCE GİRİLEN numaranın
+      satırı. Yalnızca "RET" hücresine bakılsaydı test, kendi eklediği kayıt
+      hiç yazılmamışken de geçerdi.
+    */
+    const satir = page.getByRole('row').filter({ hasText: '0532 999 88 77' })
+      .or(page.getByRole('row').filter({ hasText: '5329998877' }));
+    await expect(satir.first().getByRole('cell', { name: 'RET' })).toBeVisible();
   });
 
   test('SMS kuyruğu görünümü açılır', async ({ page }) => {

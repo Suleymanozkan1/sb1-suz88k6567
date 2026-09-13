@@ -72,7 +72,12 @@ export default function SistemDurumu() {
             <li key={issue.message}>
               <Alert kind={issue.level}>
                 <strong>{issue.message}</strong>
-                {issue.hint && <span className="mt-1 block text-xs opacity-90">{issue.hint}</span>}
+                {/*
+                  İpucu SOLDURULMUYOR. `opacity-90` metni zeminine
+                  yaklaştırıyor ve uyarı kutusunda kontrast 4,13'e
+                  düşüyordu; ayırt edici olan zaten küçük punto.
+                */}
+                {issue.hint && <span className="mt-1 block text-xs">{issue.hint}</span>}
               </Alert>
             </li>
           ))}

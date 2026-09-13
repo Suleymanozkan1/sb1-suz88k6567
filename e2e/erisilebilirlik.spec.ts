@@ -57,6 +57,14 @@ test.describe('Erişilebilirlik, herkese açık sayfalar', () => {
 });
 
 test.describe('Erişilebilirlik, üye paneli', () => {
+  /*
+    Panel ekranları tanıtım verisiyle dolu: rezervasyon listesi dört yüzü
+    aşkın satır çiziyor ve axe bütün ağacı gezdiği için tarama otuz saniyeyi
+    aşabiliyor. Süre buradan uzatılıyor; taramayı daraltmak, asıl kalabalık
+    ekranı denetim dışı bırakırdı.
+  */
+  test.setTimeout(120_000);
+
   test.beforeEach(async ({ page }) => {
     await disKaynaklariEngelle(page);
     await page.goto('/');

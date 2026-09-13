@@ -4,12 +4,15 @@
  * Yalnızca tarayıcı belleği kullanıldığında (Supabase yapılandırılmamışsa)
  * devreye girer. Gerçek veritabanına hiçbir zaman yazmaz.
  */
-import { KEYS, read, write } from './storage';
+import { demoUret } from './demo/uret';
+import { ekKayitlar } from './demo/ekler';
+import { URETILMIS_GUNLER } from './demo/uretilmis-gunler';
+import { clearAll, KEYS, read, write } from './storage';
 import { addDays, toIso, todayIso } from './format';
 import { DEFAULT_COLOR_SETTINGS, ORG_TO_COLOR_KEY, OWNER_PERMISSIONS } from '../data/constants';
 import type {
-  Business, CashFlowEntry, Hall, LeadChannel, Menu, Payment, Reservation,
-  CustomerLead, User, Vendor,
+  Business, CashFlowEntry, Hall, Invoice, LeadChannel, Menu, Payment, Reservation,
+  CustomerLead, SpecialDay, User, Vendor,
 } from '../types';
 
 export { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS };
@@ -35,17 +38,53 @@ const DEMO_CUSTOMERS: [string, string, string][] = [
 ];
 
 /**
+ * Tanıtım verisinin sürümü.
+ *
+ * NEDEN VAR. Tohum yalnızca "hiç veri yoksa" çalışıyordu ve tarayıcıya bir
+ * kez yazıldıktan sonra bir daha dokunmuyordu. Sonuç: siteyi daha önce
+ * açmış olan herkes, yayına yeni veri çıksa bile ESKİ ve cılız tanıtım
+ * verisini görmeye devam ediyordu; tanıtım sitesi kendini hiçbir zaman
+ * tazeleyemiyordu. Bu sayı büyüdüğünde tarayıcıdaki tanıtım verisi silinip
+ * yenisi yazılıyor.
+ *
+ * Sürümü YALNIZCA tanıtım verisi değiştiğinde artırın.
+ */
+export const TOHUM_SURUMU = 2;
+
+/**
  * İlk açılışta demo hesabı ve örnek verileri oluşturur.
- * Bayrak kaybolsa dahi mevcut kayıtların üzerine yazmaz.
+ *
+ * Tohum sürümü ilerlediyse tarayıcıdaki tanıtım verisi tazeleniyor. Bu
+ * yalnızca TANITIM KİPİNDE (veriler tarayıcıda) çalışıyor; gerçek
+ * veritabanına bağlı kurulumda bu depo katmanı hiç devreye girmiyor.
  */
 export function seedIfEmpty(): void {
-  if (read<boolean>(KEYS.seeded, false)) return;
+  const surum = read<number | boolean>(KEYS.seeded, 0);
+  // Eski kurulumlarda bayrak `true` yazılmıştı; onu 1. sürüm sayıyoruz.
+  const mevcut = surum === true ? 1 : typeof surum === 'number' ? surum : 0;
+  if (mevcut >= TOHUM_SURUMU) return;
+
   const hasData =
     read<User[]>(KEYS.users, []).length > 0 ||
     read<Business[]>(KEYS.businesses, []).length > 0 ||
     read<Reservation[]>(KEYS.reservations, []).length > 0;
-  write(KEYS.seeded, true);
-  if (hasData) return;
+
+  /*
+    Eski sürümden gelen tanıtım verisi siliniyor. Üzerine yazmak yetmezdi:
+    eski kayıtların bir kısmı yeni listede yok ve ikisi karışınca takvimde
+    aynı salonda aynı seansa iki organizasyon düşebilirdi.
+
+    Oturum korunuyor: kullanıcı tazeleme yüzünden dışarı atılmamalı.
+  */
+  if (hasData && mevcut > 0) {
+    const oturum = read<string | null>(KEYS.session, null);
+    clearAll();
+    if (oturum) write(KEYS.session, oturum);
+  }
+
+  write(KEYS.seeded, TOHUM_SURUMU);
+  // Bayrağı olmayan ama verisi olan kurulum: dokunulmuyor.
+  if (hasData && mevcut === 0) return;
 
   const now = new Date().toISOString();
   const ownerId = 'user_demo';
@@ -140,6 +179,44 @@ export function seedIfEmpty(): void {
       description: ['ANA YEMEK', '- Barbekü Izgara Çeşitleri', '- Mevsim Salata',
         'TATLI', '- Meyve Tabağı', 'İÇECEKLER', '- Limitsiz Soft İçecek'].join('\n'),
       isActive: true, createdAt: now },
+
+    /*
+      Bir salonun menü listesi üç kalemden ibaret olmuyor: fiyat
+      kademeleri, özel gün paketleri ve artık satılmayan eski paketler
+      bir arada duruyor. Pasif bir menü de bilerek var -- listede
+      "pasif" filtresi boş bir sonuç döndürmemeli.
+    */
+    { id: 'menu_demo5', businessId, name: 'Ekonomik Düğün Menüsü', pricing: 'kisi_basi',
+      priceKurus: 32_000,
+      description: ['ANA YEMEK', '- Tavuk Sote', '- Pirinç Pilavı', '- Mevsim Salata',
+        'TATLI', '- Kemalpaşa', 'İÇECEKLER', '- Soft İçecek ve Su'].join('\n'),
+      isActive: true, createdAt: now },
+    { id: 'menu_demo6', businessId, name: 'Lüks Ziyafet Menüsü', pricing: 'kisi_basi',
+      priceKurus: 68_000,
+      description: ['BAŞLANGIÇ', '- Mercimek Çorbası', '- Zeytinyağlı Çeşitleri',
+        'ANA YEMEK', '- Kuzu Tandır', '- Fırın Sebze', '- Bulgur Pilavı',
+        'TATLI', '- Baklava ve Dondurma', 'İÇECEKLER', '- Limitsiz Soft İçecek ve Su',
+        'EKSTRA', '- Karşılama kokteyli'].join('\n'),
+      isActive: true, createdAt: now },
+    { id: 'menu_demo7', businessId, name: 'Kına Gecesi İkramı', pricing: 'kisi_basi',
+      priceKurus: 18_000,
+      description: ['SERPMELER', '- Kuruyemiş Tabağı', '- Çerez Çeşitleri',
+        'TATLI', '- Şerbetli Tatlı', 'İÇECEKLER', '- Şerbet, Çay ve Su'].join('\n'),
+      isActive: true, createdAt: now },
+    { id: 'menu_demo8', businessId, name: 'Sünnet Düğünü Paketi', pricing: 'kisi_basi',
+      priceKurus: 27_000,
+      description: ['ANA YEMEK', '- Pide Çeşitleri', '- Ayran',
+        'TATLI', '- Dondurma', 'EKSTRA', '- Palyaço ve balon süsleme'].join('\n'),
+      isActive: true, createdAt: now },
+    { id: 'menu_demo9', businessId, name: 'Toplantı / Konferans İkramı', pricing: 'kisi_basi',
+      priceKurus: 9_000,
+      description: ['SERPMELER', '- Kurabiye ve Poğaça',
+        'İÇECEKLER', '- Çay, Filtre Kahve ve Su'].join('\n'),
+      isActive: true, createdAt: now },
+    { id: 'menu_demo10', businessId, name: '2024 Düğün Paketi (kaldırıldı)',
+      pricing: 'kisi_basi', priceKurus: 24_000,
+      description: 'Geçmiş sezon fiyatı. Yeni sözleşmelerde kullanılmıyor.',
+      isActive: false, createdAt: now },
   ];
   write(KEYS.menus, [
     ...read<Menu[]>(KEYS.menus, []).filter((m) => !demoMenus.some((d) => d.id === m.id)),
@@ -185,6 +262,49 @@ export function seedIfEmpty(): void {
     urun('urun_demo3', businessId, 'Fanta (330 ml)', 'İçecek', 4, 24, 12, 60, 12),
     urun('urun_demo4', businessId, 'Tuvalet Kâğıdı', 'Temizlik', 1, 32, 4, 40, 9),
     urun('urun_demo5', businessId, 'Peçete', 'Sarf Malzeme', 0, 0, 18, 30, 25),
+
+    /*
+      Gerçek bir salonun tedarikçi ve stok listesi uzun. Aşağıdakiler
+      ekranın filtrelerini de anlamlı kılıyor: kategori süzgeci tek
+      seçenekle, "kritik seviye" uyarısı tek kalemle test edilemez.
+    */
+    hizmet('vendor_demo7', businessId, 'Beyaz Gelinlik Evi', 'Gelinlik',
+      '5321230007', 'Prova randevusu gerekiyor.', 0),
+    hizmet('vendor_demo8', businessId, 'Sihirli Balon', 'Süsleme / Balon',
+      '5321230008', '', 3500),
+    hizmet('vendor_demo9', businessId, 'Nur Pastanesi', 'Pasta',
+      '5321230009', 'Kat sayısına göre fiyat.', 4500),
+    hizmet('vendor_demo10', businessId, 'Aydın Işık Sistemleri', 'Ses ve Işık',
+      '5321230010', 'Lazer gösterisi ayrı.', 9000),
+    hizmet('vendor_demo11', businessId, 'Kervan Ulaşım', 'Servis / Ulaşım',
+      '5321230011', 'Misafir servisi, 27 kişilik.', 7500),
+    hizmet('vendor_demo12', businessId, 'Zarif Davetiye', 'Davetiye / Matbaa',
+      '5321230012', '', 2200),
+    hizmet('vendor_demo13', businessId, 'Ece Kuaför', 'Kuaför / Makyaj',
+      '5321230013', 'Gelin başı ve makyaj.', 6000),
+    hizmet('vendor_demo14', businessId, 'Komi', 'Personel', '', 'Kişi başı gecelik.', 1600),
+    hizmet('vendor_demo15', businessId, 'Güvenlik Görevlisi', 'Personel',
+      '', 'Kalabalık organizasyonlarda.', 2400),
+    hizmet('vendor_demo16', businessId, 'Temizlik Ekibi', 'Personel',
+      '', 'Organizasyon sonrası.', 3000),
+    hizmet('vendor_demo17', businessId, 'Buz Gösterisi', 'Şov / Animasyon',
+      '5321230017', 'Mevsime göre uygunluk.', 15000),
+    hizmet('vendor_demo18', businessId, 'Eski Tedarikçi A.Ş.', 'Çiçek / Süsleme',
+      '5321230018', 'Çalışılmıyor.', 0),
+
+    urun('urun_demo6', businessId, 'Ayran (200 ml)', 'İçecek', 8, 24, 3, 80, 8),
+    urun('urun_demo7', businessId, 'Meyve Suyu (200 ml)', 'İçecek', 5, 27, 0, 60, 10),
+    urun('urun_demo8', businessId, 'Soda (200 ml)', 'İçecek', 3, 24, 8, 50, 9),
+    urun('urun_demo9', businessId, 'Çay (kg)', 'İçecek', 2, 10, 4, 15, 320),
+    urun('urun_demo10', businessId, 'Şeker (kg)', 'Gıda', 4, 20, 0, 40, 45),
+    urun('urun_demo11', businessId, 'Kâğıt Bardak', 'Sarf Malzeme', 7, 50, 20, 120, 3),
+    urun('urun_demo12', businessId, 'Plastik Çatal-Bıçak', 'Sarf Malzeme', 2, 100, 40, 150, 2),
+    urun('urun_demo13', businessId, 'Masa Örtüsü (tek kullanım)', 'Sarf Malzeme', 3, 25, 5, 40, 18),
+    urun('urun_demo14', businessId, 'Islak Mendil', 'Temizlik', 1, 48, 12, 60, 5),
+    urun('urun_demo15', businessId, 'Çöp Poşeti', 'Temizlik', 2, 30, 0, 35, 6),
+    urun('urun_demo16', businessId, 'Mum (dekoratif)', 'Süsleme', 0, 0, 9, 25, 30),
+    urun('urun_demo17', businessId, 'Balon (100 lü)', 'Süsleme', 5, 10, 2, 20, 85),
+    urun('urun_demo18', businessId, 'Konfeti', 'Süsleme', 1, 12, 0, 10, 40),
   ];
   write(KEYS.vendors, [
     ...read<Vendor[]>(KEYS.vendors, []).filter((v) => !demoVendors.some((d) => d.id === v.id)),
@@ -355,10 +475,64 @@ export function seedIfEmpty(): void {
     });
   });
 
+  /*
+    HACİM.
+
+    Yukarıdaki kayıtlar elle yazılmış ve rakamları sabit: uçtan uca
+    testlerin çoğu onlara dayanıyor, bu yüzden hiçbiri değiştirilmiyor.
+    Ama on beş kayıtlık bir panel tanıtımda boş görünüyor -- takvimin
+    çoğu günü boş, raporlar üç satır, "geçen yılla karşılaştır" sorusunun
+    cevabı yok.
+
+    Bu blok üstüne hacim ekliyor: bugünün etrafında ±18 aya yayılmış
+    yüzlerce organizasyon, tahsilatları, düğün içi giderleri ve müşteri
+    adaylarıyla. Üretim tekrarlanabilir (sabit tohum), yani demo her
+    açılışta aynı veriyi gösteriyor.
+
+    ÇAKIŞMA ÖNLENİYOR. Aynı salonda aynı gün aynı seans ikinci kez
+    kullanılamaz; elle yazılan kayıtların yerleri üreticiye "dolu" olarak
+    veriliyor.
+  */
+  const dolular = list.map((r) => `${r.hallId}|${r.date}|${r.slot}`);
+  const hacim = demoUret({
+    tohum: 20260913,
+    businessId,
+    hallIds: ['hall_demo1', 'hall_demo2'],
+    adet: 420,
+    pencere: { baslangicGun: -550, bitisGun: 550 },
+    dolular,
+  });
+
+  /*
+    Üretilen kayıtlar tohumun kendi biçimine uyduruluyor: sözleşme
+    numarası panelin beklediği "yıl-sıra" kalıbında, saatler seanstan
+    türetiliyor, renk anahtarı organizasyon türünden geliyor. Bunlar
+    olmadan kayıtlar listede görünür ama sözleşme ve takvim yanlış çizer.
+  */
+  hacim.reservations.forEach((r) => {
+    const yil = Number(r.date.slice(0, 4));
+    list.push({
+      ...r,
+      code: `${yil}-${siraAl(yil)}`,
+      menuId: 'menu_demo1',
+      startTime: SEANS_SAATI[r.slot].start,
+      endTime: SEANS_SAATI[r.slot].end,
+      colorKey: ORG_TO_COLOR_KEY[r.organizationType] ?? 'diger',
+      /*
+        createdAt ÜRETİCİDEN geliyor, "şimdi" yazılmıyor: sözleşme düğünden
+        önce imzalanır ve kapora o gün kasaya girer. Hepsine bugünün tarihi
+        yazılsaydı üç yıllık demo verisinin tüm kaporası bugün alınmış
+        görünür, kasa ve gelir raporu günlük kırılımda saçmalardı.
+      */
+    });
+  });
+  paid.push(...hacim.payments);
+
   write(KEYS.reservations, list);
   write(KEYS.payments, paid);
+  write(KEYS.reservationExpenses, hacim.expenses);
 
-  const flow: CashFlowEntry[] = [];
+  const flow: CashFlowEntry[] = [...hacim.cashFlow];
   for (let i = 0; i < 14; i += 1) {
     const d = new Date(base);
     d.setMonth(base.getMonth() - (i % 6));
@@ -374,6 +548,69 @@ export function seedIfEmpty(): void {
     });
   }
   write(KEYS.cashflow, flow);
+
+  /*
+    ÖZEL GÜNLER.
+
+    Canlıda bu tablo zamanlanmış görevlerle doluyor (api/ozel-gunler.ts,
+    api/meb-takvim.ts). Demo modunda cron yok, o yüzden pakete gömülü
+    üretilmiş veri yazılıyor -- tarihler elle YAZILMADI, `npm run
+    demo:veri` ile kaynaklardan çekildi.
+
+    Uygulama açıldıktan sonra `gunleriTazele()` bunun üzerine canlı
+    veriyi yazıyor (src/lib/demo/gunleriTazele.ts). Gömülü veri, ağ
+    gelene kadar takvimin boş görünmemesi için.
+  */
+  write(KEYS.specialDays, URETILMIS_GUNLER.map((g, i): SpecialDay => ({
+    id: `ozelgun_demo_${i}`,
+    day: g.day,
+    label: g.label,
+    kind: g.kind,
+    source: 'saglayici',
+    tentative: g.tentative,
+    createdAt: now,
+  })));
+
+  /*
+    FATURALAR.
+
+    Tamamlanmış organizasyonlardan bir kısmına fatura kesilmiş gibi
+    gösteriliyor; hepsine değil, çünkü gerçek bir salonda da fatura
+    kesilmemiş kayıtlar oluyor ve "faturasız" filtresi boş bir liste
+    döndürmemeli. Tutarlar kuruş cinsinden tamsayı: ondalık tip fatura
+    toplamlarında kuruş sapmasına yol açıyor.
+  */
+  const faturalik = list.filter((r) => r.status === 'Tamamlandı' && r.totalAmount > 0);
+  const faturalar: Invoice[] = faturalik.slice(0, 90).map((r, i) => {
+    const brutKurus = r.totalAmount * 100;
+    // KDV dahil tutardan matrah ve vergi ayrıştırılıyor (%20).
+    const matrah = Math.round(brutKurus / 1.2);
+    const kdv = brutKurus - matrah;
+    const durum = i % 9 === 0 ? 'taslak' : i % 11 === 0 ? 'reddedildi' : 'onaylandi';
+    return {
+      id: `fatura_demo_${i}`,
+      businessId: r.businessId,
+      reservationId: r.id,
+      invoiceNumber: `DGT${r.date.slice(0, 4)}${String(i + 1).padStart(9, '0')}`,
+      kind: 'e-Arsiv',
+      status: durum as Invoice['status'],
+      issueDate: r.date,
+      serviceDate: r.date,
+      buyerKind: 'bireysel',
+      buyerName: r.customerName,
+      buyerPhone: r.customerPhone,
+      grossKurus: matrah,
+      discountKurus: 0,
+      baseKurus: matrah,
+      vatKurus: kdv,
+      totalKurus: brutKurus,
+      providerError: durum === 'reddedildi' ? 'Alıcı VKN/TCKN doğrulanamadı.' : undefined,
+      sentAt: durum === 'onaylandi' ? `${r.date}T12:00:00.000Z` : undefined,
+      createdAt: now,
+      updatedAt: now,
+    } as Invoice;
+  });
+  write(KEYS.invoices, faturalar);
 
 
   /*
@@ -412,7 +649,13 @@ export function seedIfEmpty(): void {
       createdAt: now, updatedAt: now,
     },
   ];
-  write(KEYS.leads, adaylar);
+  /*
+    Elle yazılan üç aday, iletişim geçmişi ve durum değişiklikleriyle
+    birlikte duruyor; üzerine üretilen adaylar ekleniyor. Dönüşüm raporu
+    üç kayıtla bir şey anlatmıyor -- kazanılan/kaybedilen oranı ancak
+    yüzlerce kayıtta anlamlı.
+  */
+  write(KEYS.leads, [...adaylar, ...hacim.leads]);
 
   write(KEYS.leadMessages, adaylar.flatMap((a) => ([
     {
@@ -435,9 +678,38 @@ export function seedIfEmpty(): void {
     toStatus: a.status, actorEmail: '', createdAt: now,
   })));
 
-  write(KEYS.sms, [{
-    id: 'sms_seed_0', businessId, to: '5321234567',
-    body: 'Sayin Ahmet & Elif Yilmaz, rezervasyonunuz kayit edilmistir. Kod: 2026-1',
-    kind: 'Rezervasyon' as const, sentAt: addDays(todayIso(), -30) + 'T10:00:00.000Z',
-  }]);
+  /*
+    YAN DEFTERLER. Rezervasyon ve para dolu olduğu hâlde SMS kaydı,
+    İYS izinleri, kuyruk, masa düzeni, iş emri, tedarikçi atamaları ve
+    tahsilat değişiklik geçmişi boş kalıyordu; o ekranlar demo açıldığında
+    "hiç kullanılmamış" görünüyordu. Hepsi tek yerden, üretilen kayıtlara
+    bağlı olarak dolduruluyor.
+  */
+  const ek = ekKayitlar({
+    businessId,
+    reservations: list,
+    payments: paid,
+    vendors: demoVendors,
+    bugun: todayIso(),
+    actorEmail: DEMO_CREDENTIALS.email,
+  });
+
+  write(KEYS.sms, [
+    {
+      id: 'sms_seed_0', businessId, to: '5321234567',
+      body: 'Sayin Ahmet & Elif Yilmaz, rezervasyonunuz kayit edilmistir. Kod: 2026-1',
+      kind: 'Rezervasyon' as const, sentAt: addDays(todayIso(), -30) + 'T10:00:00.000Z',
+    },
+    ...ek.sms,
+  ]);
+  write(KEYS.consents, ek.consents);
+  write(KEYS.queue, ek.queue);
+  write(KEYS.seating, ek.seating);
+  write(KEYS.tasks, ek.tasks);
+  write(KEYS.resVendors, ek.resVendors);
+  write(KEYS.paymentEvents, ek.paymentEvents);
+  write(KEYS.paymentAlertRecipients, ek.recipients);
+  write(KEYS.quickReplies, ek.quickReplies);
+  write(KEYS.errorReports, ek.errorReports);
+  write(KEYS.whatsappAccounts, ek.whatsappAccounts);
 }

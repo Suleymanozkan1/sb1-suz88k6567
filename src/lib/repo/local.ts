@@ -7,6 +7,7 @@
  */
 import { KEYS, read, remove, write } from '../storage';
 import { DEFAULT_COLOR_SETTINGS, seedIfEmpty } from '../seed';
+import { gunleriTazele } from '../demo/gunleriTazele';
 import { nextContractCode, normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
@@ -300,11 +301,30 @@ function pushQueue(
   }]);
 }
 
+/**
+ * Canlı takvim verisi bir kez tazeleniyor.
+ *
+ * Tohum pakete gömülü veriyi yazıyor; bu çağrı üzerine Vercel
+ * fonksiyonundan gelen güncel veriyi koyuyor. Her oturum açılışında
+ * değil, uygulama ömründe BİR KEZ: ekran her açıldığında ağa çıkmak
+ * tanıtımı yavaşlatırdı.
+ *
+ * Beklenmiyor (`void`): takvim gömülü veriyle zaten dolu, tazeleme
+ * arka planda tamamlanıyor.
+ */
+let tazelendi = false;
+function takvimiTazele(): void {
+  if (tazelendi) return;
+  tazelendi = true;
+  void gunleriTazele().catch(() => undefined);
+}
+
 export const localRepo: Repository = {
   kind: 'local',
 
   async getSession() {
     seedIfEmpty();
+    takvimiTazele();
     const id = read<string | null>(KEYS.session, null);
     if (!id) return null;
     const found = users().find((u) => u.id === id);
@@ -314,6 +334,7 @@ export const localRepo: Repository = {
 
   async signIn(email, password) {
     seedIfEmpty();
+    takvimiTazele();
     const needle = normalizeEmail(email);
     const found = users().find((u) => normalizeEmail(u.email) === needle);
     if (!found) throw new RepoError('Bu e-posta adresi ile kayıtlı hesap bulunamadı.');

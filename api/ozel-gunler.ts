@@ -23,9 +23,10 @@
  *      takvimi göstermiyorsa hesaplanmış bir kandil tarihi uydurma
  *      olurdu.
  *
- * OKUL TARİHLERİ ÇEKİLMİYOR: Millî Eğitim Bakanlığı yıllık çalışma
- * takvimini bir duyuruyla yayımlıyor, makine okunur bir kaynağı yok.
- * Panelden giriliyor ve ekranda sebebi yazılı.
+ * OKUL TARİHLERİ BURADA DEĞİL, AYRI BİR GÖREVDE: Millî Eğitim
+ * Bakanlığı'nın makine okunur bir kaynağı yok, takvim bir duyuru
+ * sayfasında yayımlanıyor. `api/meb-takvim.ts` o duyuruyu ayrıştırıyor
+ * ve ayın 3'ünde çalışıyor.
  *
  * Sağlayıcılar ücretsiz ve anahtar istemiyor; adresleri ortam
  * değişkeniyle değiştirilebiliyor.
@@ -145,7 +146,7 @@ const KANDILLER: { ay: number; gun: number; ad: string }[] = [
 ];
 
 /** Hicri yıl ile miladi yıl arasındaki kaba fark. */
-const HICRI_FARKI = 579;
+export const HICRI_FARKI = 579;
 
 interface HicriYanit {
   data?: { gregorian?: { date?: string } };
@@ -207,7 +208,9 @@ async function hicridenMiladiye(gun: number, ay: number, yil: number): Promise<s
  * sağlayıcısından gelen, resmî tarih. ÇIPA YOKSA HİÇBİR ŞEY
  * HESAPLANMIYOR: çıpasız bir hesap, doğrulanmamış bir tarih demek.
  */
-async function kandilleriHesapla(hicriYil: number, bayram: string | null): Promise<OzelGun[]> {
+export async function kandilleriHesapla(
+  hicriYil: number, bayram: string | null,
+): Promise<OzelGun[]> {
   if (!bayram) return [];
 
   const sevval = await hicridenMiladiye(1, 10, hicriYil);
@@ -243,7 +246,12 @@ async function kandilleriHesapla(hicriYil: number, bayram: string | null): Promi
 
 /* ----------------------------------------------------------- işleyici */
 
-async function tatilleriCek(yil: number): Promise<OzelGun[]> {
+/*
+  Demo verisi üreticisi (scripts/demo-veri-uret.ts) de bu fonksiyonu
+  çağırıyor: demo takvimi elle yazılmış tarihlerle değil, canlıdaki
+  otomasyonun AYNI kod yoluyla doluyor.
+*/
+export async function tatilleriCek(yil: number): Promise<OzelGun[]> {
   const kok = process.env.TATIL_API_URL ?? TATIL_KOKU;
   const yanit = await fetch(`${kok}/${yil}/TR`, { signal: AbortSignal.timeout(15_000) });
   if (!yanit.ok) throw new Error(`Sağlayıcı ${yanit.status} döndü.`);
