@@ -10,12 +10,12 @@
  * "Çıkış yap" gerçekten çıkış olmalı, jetonun kendiliğinden ölmesini
  * beklemek değil -- bu yüzden yenileme jetonu veritabanından silinir.
  */
-import { json } from './_guard';
-import { callRpc, isDbConfigured } from './_db';
+import { json } from './_guard.js';
+import { callRpc, isDbConfigured } from './_db.js';
 import {
   ERISIM_OMRU_SANIYE, YENILEME_OMRU_GUN, erisimJetonuUret,
   kimlikYapilandirildiMi, yenilemeJetonuUret, yenilemeKarmasi,
-} from './_kimlik';
+} from './_kimlik.js';
 
 async function govdedenJeton(request: Request): Promise<string> {
   try {

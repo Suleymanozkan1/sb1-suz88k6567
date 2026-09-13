@@ -22,10 +22,10 @@ import { stat } from 'node:fs/promises';
 import { join, normalize, extname } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
-import { ROTALAR, CRON_GOREVLERI, gorevIstegi } from './rotalar';
-import { hedefKok } from './veri-yonlendirme';
-import { basliklariUygula } from './basliklar';
-import { zamanlayiciBaslat } from './zamanlayici';
+import { ROTALAR, CRON_GOREVLERI, gorevIstegi } from './rotalar.js';
+import { hedefKok } from './veri-yonlendirme.js';
+import { basliklariUygula } from './basliklar.js';
+import { zamanlayiciBaslat } from './zamanlayici.js';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const DIST = process.env.DIST_DIZINI ?? join(process.cwd(), 'dist');

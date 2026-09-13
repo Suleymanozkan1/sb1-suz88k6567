@@ -16,8 +16,8 @@
  * olmadan kuyruğa girmez; engellenen kayıt sessizce atılmaz, gerekçesiyle
  * birlikte 'iptal' olarak yazılır ve panelden denetlenebilir.
  */
-import { callRpc, isAuthorizedCron, isDbConfigured } from './_db';
-import { json } from './_guard';
+import { callRpc, isAuthorizedCron, isDbConfigured } from './_db.js';
+import { json } from './_guard.js';
 
 interface ReminderRow {
   business_id: string;

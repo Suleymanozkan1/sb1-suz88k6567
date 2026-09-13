@@ -12,12 +12,12 @@
  */
 import {
   clientIp, enforceRateLimit, json, loginLockStatus, recordLoginAttempt, tooManyRequests,
-} from './_guard';
-import { callRpc, isDbConfigured } from './_db';
+} from './_guard.js';
+import { callRpc, isDbConfigured } from './_db.js';
 import {
   ERISIM_OMRU_SANIYE, YENILEME_OMRU_GUN, erisimJetonuUret, kimlikYapilandirildiMi,
   sifreDogru, yenilemeJetonuUret, yenilemeKarmasi,
-} from './_kimlik';
+} from './_kimlik.js';
 
 interface KimlikSatiri { id: string; encrypted_password: string | null }
 

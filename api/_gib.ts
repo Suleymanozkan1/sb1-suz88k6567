@@ -14,8 +14,8 @@
  * İkisi tamamlanmadan bu modül yapılandırılmamış sayılır ve devreye
  * girmez.
  */
-import { ublFaturaUret, type GibFatura, type GibSatir } from './_gib_ubl';
-import { muhurAyari } from './_gib_imza';
+import { ublFaturaUret, type GibFatura, type GibSatir } from './_gib_ubl.js';
+import { muhurAyari } from './_gib_imza.js';
 
 /** GİB servis kökü; test ve üretim ortamı ayrı. */
 export const GIB_KOKU = process.env.GIB_SERVIS_URL

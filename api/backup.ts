@@ -9,8 +9,8 @@
  * Yedek `yedekler` adlı Storage kovasına yazılır. Kovanın önceden
  * oluşturulmuş ve GİZLİ (public olmayan) olması gerekir.
  */
-import { callRpc, insertRow, isAuthorizedCron, isDbConfigured, patchRows, selectRows, uploadToStorage } from './_db';
-import { json } from './_guard';
+import { callRpc, insertRow, isAuthorizedCron, isDbConfigured, patchRows, selectRows, uploadToStorage } from './_db.js';
+import { json } from './_guard.js';
 
 const BUCKET = process.env.BACKUP_BUCKET ?? 'yedekler';
 interface OwnerRow { id: string }

@@ -14,7 +14,7 @@
  */
 import { deflateRawSync } from 'node:zlib';
 import { randomUUID } from 'node:crypto';
-import { zarfDurumu } from './_gib';
+import { zarfDurumu } from './_gib.js';
 
 export class GibZarfError extends Error {}
 

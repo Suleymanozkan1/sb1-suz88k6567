@@ -22,8 +22,8 @@
  *   WHATSAPP_ACCESS_TOKEN     Kalıcı erişim jetonu
  *   WHATSAPP_PHONE_NUMBER_ID  Gönderen numaranın kimliği
  */
-import { insertRow, isDbConfigured, selectRows } from './_db';
-import { json } from './_guard';
+import { insertRow, isDbConfigured, selectRows } from './_db.js';
+import { json } from './_guard.js';
 
 const TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;

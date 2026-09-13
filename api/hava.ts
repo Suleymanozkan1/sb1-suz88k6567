@@ -18,11 +18,11 @@
  * yazılsaydı ekranda "0°" görünür, salon sahibi olmayan bir tahmine
  * bakardı. Satır olmadığında arayüz "Tahmin henüz mevcut değil" diyor.
  */
-import { isAuthorizedCron, isDbConfigured, patchRows, selectRows, upsertRows } from './_db';
-import { json } from './_guard';
+import { isAuthorizedCron, isDbConfigured, patchRows, selectRows, upsertRows } from './_db.js';
+import { json } from './_guard.js';
 import {
   gunlukCoz, merkezSec, merkezleriCoz, mgmCek, sonDurumCoz, type Merkez,
-} from './_mgm';
+} from './_mgm.js';
 
 interface IsletmeSatiri {
   id: string;

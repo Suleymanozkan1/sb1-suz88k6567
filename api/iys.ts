@@ -19,8 +19,8 @@
  * (ör. Netgsm) üzerinden bağlanır; o durumda bu dosya devre dışı bırakılıp
  * onay aktarımı sağlayıcı panelinden yapılır.
  */
-import { isAuthorizedCron, isDbConfigured, patchRows, selectRows } from './_db';
-import { json } from './_guard';
+import { isAuthorizedCron, isDbConfigured, patchRows, selectRows } from './_db.js';
+import { json } from './_guard.js';
 
 const BASE = process.env.IYS_BASE_URL ?? 'https://api.iys.org.tr';
 const USERNAME = process.env.IYS_USERNAME;

@@ -10,9 +10,9 @@
  */
 import {
   callRpc, faturaAdresi, faturaBolmesiVar, isAuthorizedCron, isDbConfigured, selectRows,
-} from './_db';
-import { json } from './_guard';
-import { isProviderConfigured } from './sms';
+} from './_db.js';
+import { json } from './_guard.js';
+import { isProviderConfigured } from './sms.js';
 
 /** Sağlıksız kabul edilme eşikleri */
 const THRESHOLDS = {

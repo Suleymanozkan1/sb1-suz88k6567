@@ -8,12 +8,12 @@
  * Zamanlama `wrangler.jsonc` içindeki triggers.crons bölümünde tanımlı,
  * gönderim `worker/index.ts` içindeki scheduled() işleyicisinden yapılır.
  */
-import { callRpc, isAuthorizedCron, isDbConfigured } from './_db';
-import { json } from './_guard';
-import { isProviderConfigured, sendOne } from './sms';
+import { callRpc, isAuthorizedCron, isDbConfigured } from './_db.js';
+import { json } from './_guard.js';
+import { isProviderConfigured, sendOne } from './sms.js';
 import {
   baglan, baglantiDurumu, gonder as whatsappGonder, whatsappWebEtkinMi,
-} from './_whatsapp_web';
+} from './_whatsapp_web.js';
 
 interface QueueRow {
   id: string;

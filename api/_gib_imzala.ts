@@ -29,7 +29,7 @@
 import { createHash, createPrivateKey, createSign, createVerify } from 'node:crypto';
 import { DOMParser } from '@xmldom/xmldom';
 import { ExclusiveCanonicalization } from 'xml-crypto';
-import { imzaliOzellikler, suresiDolmus, type MuhurMalzemesi } from './_gib_imza';
+import { imzaliOzellikler, suresiDolmus, type MuhurMalzemesi } from './_gib_imza.js';
 
 export class GibImzaError extends Error {}
 

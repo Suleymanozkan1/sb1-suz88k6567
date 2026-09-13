@@ -14,13 +14,13 @@
  * kaydı "beklemede" kalıyor; panelden okunabiliyor. Sessizce atlansaydı
  * ay sonu verisi hiç oluşmazdı.
  */
-import { callRpc, isAuthorizedCron, isDbConfigured, insertRow, selectRows } from './_db';
-import { json } from './_guard';
+import { callRpc, isAuthorizedCron, isDbConfigured, insertRow, selectRows } from './_db.js';
+import { json } from './_guard.js';
 /*
   Gönderim ortak modülde: anket e-postası (madde 31) da aynı kapıdan
   çıkıyor. İki kopya olsaydı biri düzeltilip diğeri unutulurdu.
 */
-import { epostaGonder } from './_eposta';
+import { epostaGonder } from './_eposta.js';
 
 interface IsletmeSatiri {
   id: string;

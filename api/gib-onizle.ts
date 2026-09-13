@@ -12,9 +12,9 @@
  *
  * İMZA YOK. Buradan dönen belge gönderilemez; yalnızca incelenir.
  */
-import { isAuthorizedCron, isDbConfigured, selectRows } from './_db';
-import { json } from './_guard';
-import { saticiAyari, ublOnizle, type InvoiceRow, type LineRow } from './_gib';
+import { isAuthorizedCron, isDbConfigured, selectRows } from './_db.js';
+import { json } from './_guard.js';
+import { saticiAyari, ublOnizle, type InvoiceRow, type LineRow } from './_gib.js';
 
 export default async function handler(request: Request): Promise<Response> {
   // Fatura müşteri adı ve adresi taşıyor; uç nokta herkese açık olamaz.

@@ -1,4 +1,4 @@
 /** Sunucu giriş noktası. Üretimde `npm run baslat` bunu çalıştırır. */
-import { sunucuyuBaslat } from './index';
+import { sunucuyuBaslat } from './index.js';
 
 sunucuyuBaslat();
