@@ -23,16 +23,44 @@ export type SessionSlot = 'Gündüz' | 'Gece';
  * Sabit bir liste: serbest metin "Instagram", "instagram", "İnstagram" diye
  * üç ayrı kanal üretip yıl sonu raporunu anlamsız kılardı.
  */
-export type LeadChannel = 'Instagram' | 'Düğün.com' | 'Google' | 'Referans' | 'Diğer';
+export type LeadChannel =
+  | 'Instagram' | 'Facebook' | 'WhatsApp' | 'Web Sitesi'
+  | 'Google' | 'Tavsiye' | 'Telefon' | 'Diğer'
+  /*
+    Artık listede olmayan eski değerler. Tipten atılsalardı, o kanalla
+    kaydedilmiş geçmiş rezervasyonlar okunamaz olur ve yıl sonu kanal
+    raporunda sessizce kaybolurlardı. Yeni kayıtta seçilemiyorlar.
+  */
+  | 'Düğün.com' | 'Referans';
 
 export type ReservationStatus = 'Ön Rezervasyon' | 'Kesin Rezervasyon' | 'Tamamlandı' | 'İptal';
+
+/**
+ * Paranın hangi kanaldan geçtiği.
+ *
+ * Hem rezervasyon tahsilatlarında hem gelir/gider satırlarında AYNI tip
+ * kullanılıyor: kasa dağılımı ikisini toplayarak çıkıyor ve iki ayrı
+ * liste, aynı paranın iki yerde farklı sınıflanmasına yol açardı.
+ *
+ * Veritabanındaki `payment_method` enum'uyla birebir aynı sırada.
+ */
+export type PaymentMethod = 'Nakit' | 'Kredi Kartı' | 'Havale/EFT' | 'Çek' | 'Senet';
+
+/**
+ * Kasa dağılımında gösterilen kanallar.
+ *
+ * Çek ve senet burada YOK: ikisi de henüz tahsil edilmemiş bir vaattir,
+ * kasadaki parayla toplanırsa kasa olduğundan büyük görünür. Tutarları
+ * varsa ayrıca "Tahsil edilmemiş" olarak gösteriliyor.
+ */
+export const KASA_KANALLARI: PaymentMethod[] = ['Nakit', 'Kredi Kartı', 'Havale/EFT'];
 
 export interface Payment {
   id: string;
   reservationId: string;
   date: string; // ISO yyyy-mm-dd
   amount: number;
-  method: 'Nakit' | 'Kredi Kartı' | 'Havale/EFT' | 'Çek' | 'Senet';
+  method: PaymentMethod;
   note?: string;
   createdAt: string;
 }
@@ -65,6 +93,8 @@ export interface Reservation {
   guestCount: number;
   totalAmount: number;
   deposit: number; // Kapora
+  /** Kaporanın hangi kanaldan alındığı. Eski kayıtlarda boş. */
+  depositMethod?: PaymentMethod;
   currency: Currency;
   status: ReservationStatus;
   colorKey: string; // Rezervasyon Renk Ayarları ile eşleşen anahtar
@@ -75,6 +105,30 @@ export interface Reservation {
   sourceChannel?: LeadChannel;
   /** Referansta tavsiye edenin adı, "Diğer"de açıklama. */
   sourceDetail?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Düğün içi gider: bir organizasyonun kendi içinde harcanan para.
+ *
+ * Garson, DJ, vale, fotoğrafçı. Rezervasyona bağlı olduğu için "bu düğün
+ * bize kaça mal oldu" sorusunun tek bir cevabı oluyor.
+ *
+ * Toplam ALAN DEĞİL, hesaplanıyor (unitCount * unitPrice). Ayrı bir alan
+ * olsaydı üç sayı birbirini tutmadığında hangisinin doğru olduğu
+ * bilinemezdi.
+ */
+export interface ReservationExpense {
+  id: string;
+  businessId: string;
+  reservationId: string;
+  /** Garson, DJ, Vale... Serbest metin; her salonun kalemleri farklı. */
+  kind: string;
+  /** Kaç adet / kaç kişi. Ondalık olabilir (yarım gün gibi). */
+  unitCount: number;
+  unitPrice: number;
+  note: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -129,13 +183,32 @@ export interface EventTask {
   done: boolean;
 }
 
+/**
+ * Ürün mü hizmet mi?
+ *
+ * Aynı tabloda duruyorlar: garson ve su iki ayrı tabloda tanımlansaydı
+ * aynı kalem iki yerden girilebilir, hangisinin doğru olduğu belirsiz
+ * kalırdı. Stok yalnızca üründe anlamlı -- DJ'in kolisi olmaz.
+ */
+export type VendorKind = 'hizmet' | 'urun';
+
 export interface Vendor {
   id: string;
   businessId: string;
   name: string;
   category: string;
+  kind: VendorKind;
   phone: string;
   note: string;
+  /** Düğün içi gider satırı buradan doldurulabilir. */
+  unitPrice: number;
+  /** Stok: yalnızca üründe dolu. */
+  boxCount: number;
+  unitsPerBox: number;
+  /** Koliden bozulmuş, tek tek duran adet. */
+  looseCount: number;
+  /** Kritik seviye. Sıfır = takip edilmiyor. */
+  minCount: number;
   isActive: boolean;
   createdAt: string;
 }
@@ -155,6 +228,23 @@ export const VENDOR_CATEGORIES = [
   'Gelin Arabası', 'Ses ve Işık', 'İkram / Catering', 'Diğer',
 ] as const;
 
+/**
+ * Hizmet kalemlerinin kategorileri.
+ *
+ * Tedarikçi kategorileri dış firmaları anlatıyordu; salonun kendi
+ * personeli (garson, vale) o listeye girmiyordu. İkisi ayrı listeler,
+ * tek listede toplanınca hiçbiri işe yaramıyordu.
+ */
+export const HIZMET_KATEGORILERI = [
+  'Personel', 'Orkestra / Müzik', 'Fotoğraf / Video', 'Çiçek / Süsleme',
+  'Pasta', 'Gelin Arabası', 'Ses ve Işık', 'İkram / Catering', 'Diğer',
+] as const;
+
+/** Fiziksel ürün kategorileri. */
+export const URUN_KATEGORILERI = [
+  'İçecek', 'Gıda', 'Temizlik', 'Sarf Malzeme', 'Diğer',
+] as const;
+
 export type CashFlowKind = 'Gelir' | 'Gider';
 
 export interface CashFlowEntry {
@@ -164,33 +254,16 @@ export interface CashFlowEntry {
   date: string;
   category: string;
   amount: number;
+  /**
+   * Paranın hangi kanaldan girdiği/çıktığı.
+   *
+   * Boş olabilir: ödeme tipi alanı sonradan eklendi ve eski satırların
+   * tipi bilinmiyor. Hepsine "Nakit" varsaymak uydurma bir veri üretir,
+   * kasa dağılımını yanlış gösterirdi.
+   */
+  method?: PaymentMethod;
   description?: string;
   reservationId?: string;
-  createdAt: string;
-}
-
-/** Çelik kasa hareketinin yönü */
-export type SafeDirection = 'Giriş' | 'Çıkış';
-
-/**
- * Çelik kasa (fiziksel kasa) hareketi.
- *
- * Kasa bakiyesi (gelir - gider) muhasebe hesabıdır; çelik kasa ise
- * kasadaki gerçek paradır. Havaleyle gelen tahsilat kasaya girmez,
- * kasadan alınıp bankaya yatırılan para kasadan çıkar ama gelir kaydı
- * yerinde durur. Bu yüzden iki bakiye ayrı tutulur.
- */
-export interface SafeMovement {
-  id: string;
-  businessId: string;
-  date: string;
-  direction: SafeDirection;
-  amount: number;
-  description: string;
-  /** Hareketi doğuran gelir/gider satırının türü */
-  sourceKind: 'cash_flow' | 'reservation';
-  /** cash_flow kimliği ya da "kapora:<id>" / "tahsilat:<id>" */
-  sourceId: string;
   createdAt: string;
 }
 
@@ -239,6 +312,12 @@ export interface LeadStatusDef {
   label: string;
   sortOrder: number;
   tone: LeadStatusTone;
+  /**
+   * Bu duruma geçince kaç gün sonra takip hatırlatması kurulacağı.
+   * 0 = kurulmaz. Teklif durumlarında varsayılan 7 (madde 18); gün
+   * sayısı koda gömülmedi, salonun takip ritmi değişebilsin.
+   */
+  followupDays: number;
   /** Yeni aday bu durumla açılır. İşletmede tek tanedir. */
   isInitial: boolean;
   /** İş beklemiyor: takip ve gecikme listelerinden düşer. */
@@ -256,18 +335,18 @@ export interface LeadStatusDef {
  * duruyor. İkisinin ayrışmadığını bir test koruyor.
  */
 export const VARSAYILAN_LEAD_DURUMLARI: Omit<LeadStatusDef, 'id' | 'businessId'>[] = [
-  { code: 'yeni', label: 'Yeni', sortOrder: 10, tone: 'bekleyen', isInitial: true, isClosed: false, isWon: false, active: true },
-  { code: 'aranacak', label: 'Aranacak', sortOrder: 20, tone: 'bekleyen', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'arandi', label: 'Arandı', sortOrder: 30, tone: 'ilerleyen', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'ulasilamadi', label: 'Ulaşılamadı', sortOrder: 40, tone: 'dikkat', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'tekrar_aranacak', label: 'Tekrar Aranacak', sortOrder: 50, tone: 'bekleyen', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'tekrar_arandi', label: 'Tekrar Arandı', sortOrder: 60, tone: 'ilerleyen', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'iletisim_kuruldu', label: 'İletişim Kuruldu', sortOrder: 70, tone: 'olumlu', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'teklif_verildi', label: 'Teklif Verildi', sortOrder: 80, tone: 'teklif', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'rezervasyon_bekliyor', label: 'Rezervasyon Bekliyor', sortOrder: 90, tone: 'teklif', isInitial: false, isClosed: false, isWon: false, active: true },
-  { code: 'rezervasyona_dondu', label: 'Rezervasyona Döndü', sortOrder: 100, tone: 'olumlu', isInitial: false, isClosed: true, isWon: true, active: true },
-  { code: 'olumsuz', label: 'Olumsuz', sortOrder: 110, tone: 'kapali', isInitial: false, isClosed: true, isWon: false, active: true },
-  { code: 'iptal', label: 'İptal', sortOrder: 120, tone: 'kapali', isInitial: false, isClosed: true, isWon: false, active: true },
+  { code: 'yeni', label: 'Yeni', sortOrder: 10, tone: 'bekleyen', followupDays: 0, isInitial: true, isClosed: false, isWon: false, active: true },
+  { code: 'aranacak', label: 'Aranacak', sortOrder: 20, tone: 'bekleyen', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'arandi', label: 'Arandı', sortOrder: 30, tone: 'ilerleyen', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'ulasilamadi', label: 'Ulaşılamadı', sortOrder: 40, tone: 'dikkat', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'tekrar_aranacak', label: 'Tekrar Aranacak', sortOrder: 50, tone: 'bekleyen', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'tekrar_arandi', label: 'Tekrar Arandı', sortOrder: 60, tone: 'ilerleyen', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'iletisim_kuruldu', label: 'İletişim Kuruldu', sortOrder: 70, tone: 'olumlu', followupDays: 0, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'teklif_verildi', label: 'Teklif Verildi', sortOrder: 80, tone: 'teklif', followupDays: 7, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'rezervasyon_bekliyor', label: 'Rezervasyon Bekliyor', sortOrder: 90, tone: 'teklif', followupDays: 7, isInitial: false, isClosed: false, isWon: false, active: true },
+  { code: 'rezervasyona_dondu', label: 'Rezervasyona Döndü', sortOrder: 100, tone: 'olumlu', followupDays: 0, isInitial: false, isClosed: true, isWon: true, active: true },
+  { code: 'olumsuz', label: 'Olumsuz', sortOrder: 110, tone: 'kapali', followupDays: 0, isInitial: false, isClosed: true, isWon: false, active: true },
+  { code: 'iptal', label: 'İptal', sortOrder: 120, tone: 'kapali', followupDays: 0, isInitial: false, isClosed: true, isWon: false, active: true },
 ];
 
 /** Varsayılan akıştaki başlangıç durumu. Veritabanı yokken kullanılır. */
@@ -300,6 +379,15 @@ export interface CustomerLead {
   nextFollowupAt: string;
   lastContactAt: string;
   reservationId?: string;
+  /** Düşünülen salon. İlk görüşmede boş olabilir; uydurma bir salon seçmekten iyidir. */
+  hallId?: string;
+  /** Verilen teklif tutarı. Rakam yoksa teklif verilmemiş sayılır. */
+  offerAmount?: number;
+  offerValidUntil?: string;
+  /** Salonun müşteri için tutulduğu son gün. Geçince başkasına satılabilir. */
+  optionDate?: string;
+  /** Görüşmenin YAPILDIĞI gün; kaydın açıldığı günden farklı olabilir. */
+  meetingDate?: string;
   /** Müşterinin ne sorduğu: "yemekli/yemeksiz fiyat" gibi. Nottan ayrı durur. */
   requestText: string;
   note: string;
@@ -373,6 +461,22 @@ export interface Business {
   facebook?: string;
   instagram?: string;
   about?: string;
+  /** Ay sonu raporunun gönderileceği adres (madde 24). Boşsa gönderilmez. */
+  reportEmail?: string;
+  /**
+   * Hava durumu sağlayıcısındaki konum anahtarı (madde 29).
+   * Boşsa tahmin hiç çekilmez -- yanlış bir şehrin havasını göstermek,
+   * hiç göstermemekten kötüdür.
+   */
+  weatherLocation?: string;
+  /** Anket sonuçlarının bildirileceği yönetici adresi (madde 31). */
+  surveyEmail?: string;
+  /**
+   * İşlem yapılmadığında ekranın kilitleneceği saniye (madde 27).
+   * 0 = kapalı. İşletme başına: aynı salonun bütün ekranları aynı
+   * sürede kilitlenmeli.
+   */
+  lockSeconds?: number;
   createdAt: string;
 }
 
@@ -397,6 +501,14 @@ export interface User {
   instagram?: string;
   createdAt: string;
   activeBusinessId: string;
+  /**
+   * Ay sonu raporu bu kullanıcı için üretilsin mi (madde 24).
+   *
+   * Raporun GİDECEĞİ adres ayrı bir ayar (işletmenin rapor e-postası):
+   * tek alanda birleştirilselerdi raporu kapatmak adresi de silmek
+   * olurdu ve sahibi bir ay kapattığında adresi yeniden yazardı.
+   */
+  monthlyReport?: boolean;
 }
 
 export type Permission =
@@ -572,4 +684,256 @@ export interface DirectoryMember {
   address?: string;
   phone?: string;
   about: string;
+}
+
+/* ------------------------------------------------- ödeme değişiklikleri */
+
+/**
+ * Tahsilatta izlenen olaylar.
+ *
+ * Veritabanındaki `payment_event_kind` enum'unun birebir karşılığı.
+ * Satırları tetikleyici yazıyor; uygulama yalnızca okuyor.
+ */
+export type PaymentEventKind =
+  | 'tahsilat_eklendi'
+  | 'tutar_degisti'
+  | 'tip_degisti'
+  | 'tarih_degisti'
+  | 'tahsilat_silindi'
+  /** Çek/senet: para henüz kasaya girmedi. */
+  | 'kasaya_girmedi';
+
+export const ODEME_OLAY_ADI: Record<PaymentEventKind, string> = {
+  tahsilat_eklendi: 'Yeni tahsilat',
+  tutar_degisti: 'Tutar değişti',
+  tip_degisti: 'Ödeme tipi değişti',
+  tarih_degisti: 'Tarih değişti',
+  tahsilat_silindi: 'Tahsilat silindi',
+  kasaya_girmedi: 'Kasaya girmedi',
+};
+
+/** Ekrandaki sıra; olay listesi her açılışta aynı sırayla gelsin. */
+export const ODEME_OLAYLARI: PaymentEventKind[] = [
+  'tahsilat_eklendi', 'tutar_degisti', 'tip_degisti',
+  'tarih_degisti', 'tahsilat_silindi', 'kasaya_girmedi',
+];
+
+export interface PaymentEvent {
+  id: string;
+  businessId: string;
+  reservationId: string;
+  /** Silinen tahsilatta da dolu kalır: kayıt sildiği satırı hatırlar. */
+  paymentId?: string;
+  event: PaymentEventKind;
+  amount?: number;
+  oldAmount?: number;
+  method?: PaymentMethod;
+  oldMethod?: PaymentMethod;
+  /** İşlemi yapan kullanıcı. Oturum çözülemediyse boş. */
+  actorEmail: string;
+  createdAt: string;
+}
+
+/** Bir olayda yöneticiye gidecek mesaj. Metin hard-code değil. */
+export interface PaymentAlert {
+  id: string;
+  businessId: string;
+  event: PaymentEventKind;
+  enabled: boolean;
+  body: string;
+}
+
+/** Bildirimi alacak numara. Kullanıcı hesabına bağlı değil. */
+export interface PaymentAlertRecipient {
+  id: string;
+  businessId: string;
+  name: string;
+  phone: string;
+  enabled: boolean;
+}
+
+/** Mesaj metinlerinde kullanılabilen yer tutucular ve anlamları. */
+export const ODEME_YER_TUTUCULARI: [string, string][] = [
+  ['{isletme}', 'İşletme adı'],
+  ['{kod}', 'Sözleşme numarası'],
+  ['{tutar}', 'Tahsilat tutarı'],
+  ['{eski_tutar}', 'Değişiklikten önceki tutar'],
+  ['{tip}', 'Ödeme tipi'],
+  ['{eski_tip}', 'Değişiklikten önceki ödeme tipi'],
+  ['{kalan}', 'İşlem sonrası kalan alacak'],
+  ['{kullanici}', 'İşlemi yapan kullanıcı'],
+];
+
+/**
+ * Personelin yazarken kullandığı kısa hazır metin.
+ *
+ * Şablondan (message_templates) farkı: olaya bağlı değil, sayısı
+ * sınırsız ve yer tutucu gerektirmiyor. Şablon tablosu tür başına tek
+ * satır tuttuğu için "üç ayrı fiyat cümlesi" oraya sığmıyordu.
+ */
+export interface QuickReply {
+  id: string;
+  businessId: string;
+  /** Listede hangi metin olduğunu anlamak için; metnin ilk kelimeleri yetmiyordu. */
+  title: string;
+  body: string;
+  sortOrder: number;
+}
+
+/**
+ * Kullanıcının bildirdiği hata (madde 32).
+ *
+ * Kullanıcı, sayfa ve zaman kendiliğinden yazılıyor: elle sorulsaydı
+ * çoğu bildirim "çalışmıyor" diye gelir ve hiçbiri incelenemezdi.
+ */
+export interface ErrorReport {
+  id: string;
+  businessId?: string;
+  actorEmail: string;
+  /** Kullanıcının bulunduğu sayfa: "/panel/kasa". */
+  path: string;
+  message: string;
+  userAgent: string;
+  createdAt: string;
+}
+
+/** Ekran kilidi için seçilebilen süreler (madde 27). */
+export const KILIT_SURELERI: { saniye: number; etiket: string }[] = [
+  { saniye: 0, etiket: 'Kapalı' },
+  { saniye: 30, etiket: '30 saniye' },
+  { saniye: 60, etiket: '60 saniye' },
+  { saniye: 120, etiket: '120 saniye' },
+  { saniye: 300, etiket: '300 saniye (5 dakika)' },
+  { saniye: 600, etiket: '600 saniye (10 dakika)' },
+];
+
+/* ------------------------------------------------ döviz / altın (28) */
+
+/**
+ * Ekranda gösterilen kur kalemleri.
+ *
+ * Veritabanındaki `exchange_rates.code` kısıtının birebir karşılığı.
+ * Liste kapalı: sağlayıcı ne döndürürse dönsün, tanımadığımız bir kod
+ * ekrana çıkmıyor.
+ */
+export type ExchangeCode = 'USD' | 'EUR' | 'GRAM_ALTIN' | 'CEYREK_ALTIN';
+
+export const KUR_KODLARI: ExchangeCode[] = ['USD', 'EUR', 'GRAM_ALTIN', 'CEYREK_ALTIN'];
+
+export const KUR_ADI: Record<ExchangeCode, string> = {
+  USD: 'Dolar',
+  EUR: 'Euro',
+  GRAM_ALTIN: 'Gram Altın',
+  CEYREK_ALTIN: 'Çeyrek Altın',
+};
+
+/**
+ * Bir kur satırı.
+ *
+ * `quotedAt` sağlayıcının verdiği an, `fetchedAt` bizim çektiğimiz an.
+ * İkisi ayrı duruyor: sağlayıcı eski bir değeri tekrar verdiğinde
+ * ekranda "az önce güncellendi" yazmasın.
+ */
+export interface ExchangeRate {
+  code: ExchangeCode;
+  buy: number;
+  sell: number;
+  quotedAt: string;
+  fetchedAt: string;
+}
+
+/* --------------------------------------------------- hava durumu (29) */
+
+/**
+ * Bir günün hava tahmini.
+ *
+ * KAYIT YOKSA TAHMİN DE YOK. Sağlayıcının ulaşamadığı uzak tarihler için
+ * satır hiç yazılmıyor; ekran "Tahmin henüz mevcut değil" diyor. Boş bir
+ * satır yazılsaydı 0 derece gibi uydurma bir rakam görünürdü.
+ */
+export interface WeatherForecast {
+  businessId: string;
+  /** yyyy-mm-dd */
+  day: string;
+  minC?: number;
+  maxC?: number;
+  /** Yalnızca bugünün satırında dolu: o anki sıcaklık. */
+  currentC?: number;
+  summary: string;
+  icon: string;
+  fetchedAt: string;
+}
+
+/* --------------------------------------------------- özel günler (30) */
+
+export type SpecialDayKind =
+  | 'resmi_tatil' | 'dini_bayram' | 'arife' | 'kandil' | 'okul' | 'ozel';
+
+export const OZEL_GUN_ADI: Record<SpecialDayKind, string> = {
+  resmi_tatil: 'Resmî tatil',
+  dini_bayram: 'Dini bayram',
+  arife: 'Arife',
+  kandil: 'Kandil',
+  okul: 'Okul',
+  ozel: 'Özel gün',
+};
+
+/**
+ * Takvimdeki renkler.
+ *
+ * Rezervasyon renklerinden AYRI bir palet: özel gün işareti rezervasyon
+ * etiketiyle aynı renkte olsaydı ikisi birbirine karışırdı.
+ */
+export const OZEL_GUN_RENGI: Record<SpecialDayKind, string> = {
+  resmi_tatil: '#b91c1c',
+  dini_bayram: '#15803d',
+  arife: '#a16207',
+  kandil: '#5b21b6',
+  okul: '#1d4ed8',
+  ozel: '#475569',
+};
+
+export interface SpecialDay {
+  id: string;
+  /** Boş: bütün işletmelerde görünen ortak gün (resmî tatiller). */
+  businessId?: string;
+  /** yyyy-mm-dd */
+  day: string;
+  label: string;
+  kind: SpecialDayKind;
+  createdAt: string;
+}
+
+/* ------------------------------------------------ deneyim anketi (31) */
+
+/**
+ * Ankette sorulan başlıklar.
+ *
+ * Sabit: soru metni değişirse eski cevapların ne anlama geldiği
+ * bilinemez. Yeni soru eklemek yeni bir anahtar eklemek demek, var olan
+ * anahtarın metnini değiştirmek değil.
+ */
+export const ANKET_SORULARI: { key: string; label: string }[] = [
+  { key: 'salon', label: 'Salon ve düzen' },
+  { key: 'ikram', label: 'Yemek ve ikram' },
+  { key: 'personel', label: 'Personel ilgisi' },
+  { key: 'temizlik', label: 'Temizlik' },
+  { key: 'genel', label: 'Genel memnuniyet' },
+];
+
+export const ANKET_EN_DUSUK = 1;
+export const ANKET_EN_YUKSEK = 5;
+
+export interface Survey {
+  id: string;
+  businessId: string;
+  reservationId: string;
+  /** Bağlantıdaki gizli anahtar; panelde gösterilmez. */
+  token?: string;
+  sentAt?: string;
+  answeredAt?: string;
+  /** Soru anahtarı -> 1-5 arası puan. Cevaplanmadıysa boş. */
+  scores?: Record<string, number>;
+  comment: string;
+  createdAt: string;
 }

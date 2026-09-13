@@ -450,6 +450,24 @@ const ORNEK_KASA: KasaSatiri[] = [
   { id: 'k6', tarih: gunEkle(-11), tur: 'Gelir', baslik: 'Salon kiralama', kategori: 'Diğer', tutar: 1_500_000 },
 ];
 
+/**
+ * Kasa özeti.
+ *
+ * Hesap, panelin `src/lib/kasa.ts` modülüyle AYNI tanımı kullanıyor:
+ *
+ *   gelir = gelir/gider satırları + kapora + tahsilatlar
+ *   gider = gelir/gider satırları + düğün içi giderler
+ *
+ * Eskiden yalnızca `cash_flow` okunuyordu; kapora ve tahsilatlar o
+ * tabloya yazılmadığı için telefondaki kasa, paneldeki kasadan farklı
+ * bir rakam gösteriyordu. Şartnamenin 34. maddesi bunu açıkça
+ * yasaklıyor: "Aynı ödeme farklı modüllerde farklı rakam
+ * göstermemeli."
+ *
+ * Rezervasyon geliri `cash_flow`'a YAZILMIYOR, buradan türetiliyor.
+ * Yazılsaydı bir tahsilat düzeltildiğinde iki kayıt birbirinden kopar
+ * ve hangisinin doğru olduğu bilinemezdi.
+ */
 export function kasaOzeti(): Promise<KasaOzet> {
   const alacak = ORNEK.reduce((t, r) => t + Math.max(0, r.toplam - r.tahsilat), 0);
   return sorgu({ gelir: 46_750_000, gider: 8_700_000, bakiye: 38_050_000, alacak }, async () => {
@@ -460,13 +478,39 @@ export function kasaOzeti(): Promise<KasaOzet> {
       const k = s as unknown as { kind: string; amount: number };
       if (k.kind === 'Gelir') gelir += k.amount; else gider += k.amount;
     }
-    const { data: rez } = await db().from('reservations').select('id, total_amount');
-    const kimlikler = (rez ?? []).map((r) => (r as unknown as { id: string }).id);
+
+    // İptal edilen organizasyon kasaya para getirmez; kaporası da sayılmaz.
+    const { data: rez } = await db().from('reservations')
+      .select('id, total_amount, deposit, status').neq('status', 'İptal');
+    const kayitlar = (rez ?? []) as unknown as
+      { id: string; total_amount: number; deposit: number }[];
+
+    const kimlikler = kayitlar.map((r) => r.id);
     const t = await tahsilatToplamlari(kimlikler);
-    const kalan = (rez ?? []).reduce((toplam, r) => {
-      const x = r as unknown as { id: string; total_amount: number };
-      return toplam + Math.max(0, x.total_amount - (t[x.id] ?? 0));
-    }, 0);
+
+    for (const r of kayitlar) {
+      gelir += r.deposit ?? 0;
+      gelir += t[r.id] ?? 0;
+    }
+
+    /*
+      Düğün içi giderler (madde 12) kasadan ÇIKAN para. `total` sütunu
+      YOK; tutar birim x birim fiyat olarak hesaplanıyor -- üç sayı
+      birbirini tutmadığında hangisinin doğru olduğu bilinemezdi.
+    */
+    const { data: giderler } = await db().from('reservation_expenses')
+      .select('unit_count, unit_price');
+    for (const g of (giderler ?? []) as unknown as
+      { unit_count: number; unit_price: number }[]) {
+      gider += (g.unit_count ?? 0) * (g.unit_price ?? 0);
+    }
+
+    // Kalan alacak: kapora da ödenmiş paradır, düşülmesi gerekiyor.
+    const kalan = kayitlar.reduce(
+      (toplam, r) => toplam + Math.max(0, r.total_amount - (r.deposit ?? 0) - (t[r.id] ?? 0)),
+      0,
+    );
+
     return { gelir, gider, bakiye: gelir - gider, alacak: kalan };
   });
 }
@@ -500,129 +544,6 @@ export async function kasaEkle(
     business_id: await aktifIsletmeId(),
     kind: tur, description: baslik, category: kategori, amount: tutar, date: bugunIso(),
   });
-  if (error) throw new Error(error.message);
-}
-
-/* ═══ Çelik kasa ══════════════════════════════════════════════════ */
-
-/**
- * Çelik kasa (fiziksel kasa).
- *
- * İşletmenin kasasındaki gerçek para, gelir/gider kayıtlarından çıkan
- * muhasebe bakiyesiyle aynı değildir: havaleyle gelen tahsilat kasaya
- * girmez, kasadan alınıp bankaya yatırılan para kasadan çıkar ama gelir
- * kaydı yerinde durur. Bu yüzden ayrı bir hareket defteridir ve iki bakiye
- * hiçbir yerde toplanmaz.
- */
-export type KasaYonu = 'Giriş' | 'Çıkış';
-
-export interface KasaHareketi {
-  id: string; tarih: string; yon: KasaYonu; tutar: number;
-  aciklama: string; kaynakTuru: 'cash_flow' | 'reservation'; kaynakId: string;
-}
-
-const ORNEK_CELIK: KasaHareketi[] = [
-  { id: 'ck1', tarih: gunEkle(-1), yon: 'Giriş', tutar: 4_000_000,
-    aciklama: 'Gelir · Rezervasyon · Kapora tahsilatı', kaynakTuru: 'cash_flow', kaynakId: 'k1' },
-  { id: 'ck2', tarih: gunEkle(-2), yon: 'Çıkış', tutar: 1_850_000,
-    aciklama: 'Gider · Tedarikçi · Mutfak tedariki', kaynakTuru: 'cash_flow', kaynakId: 'k2' },
-  { id: 'ck3', tarih: gunEkle(-9), yon: 'Çıkış', tutar: 640_000,
-    aciklama: 'Gider · Sabit gider · Elektrik ve su', kaynakTuru: 'cash_flow', kaynakId: 'k5' },
-];
-
-/** Kasadaki para: girişler eksi çıkışlar. */
-export function celikKasaBakiyesi(hareketler: KasaHareketi[]): number {
-  return hareketler.reduce((t, h) => t + (h.yon === 'Giriş' ? h.tutar : -h.tutar), 0);
-}
-
-/** Bir gelir/gider satırının kasaya net etkisi. */
-export function kaynakNeti(hareketler: KasaHareketi[], kaynakId: string): number {
-  return celikKasaBakiyesi(hareketler.filter((h) => h.kaynakId === kaynakId));
-}
-
-/**
- * Satırın kasadaki doğal yönü.
- *
- * Gelir kasaya girer, gider kasadan çıkar. Yönü kullanıcının seçimine
- * bırakmak, nakit ödenen bir maaşı kasaya para giriyormuş gibi işlemeye
- * izin verirdi.
- */
-export function dogalYon(tur: 'Gelir' | 'Gider'): KasaYonu {
-  return tur === 'Gider' ? 'Çıkış' : 'Giriş';
-}
-
-/**
- * Bu satır kasaya bu yönde işlenebilir mi?
- *
- * Doğal yön ancak net sıfırken; karşı yön ancak satırın kasada bir etkisi
- * varken yazılır. Böylece girip çıkan satır yeniden işlenebilir ama aynı
- * hareket arka arkaya iki kez yazılamaz. Panelde de, veritabanı
- * tetikleyicisinde de aynı kural duruyor.
- */
-export function kasayaIslenebilir(
-  hareketler: KasaHareketi[], kaynakId: string, yon: KasaYonu, tur: 'Gelir' | 'Gider',
-): boolean {
-  const net = kaynakNeti(hareketler, kaynakId);
-  const dogal = dogalYon(tur);
-  if (yon === dogal) return net === 0;
-  return dogal === 'Giriş' ? net > 0 : net < 0;
-}
-
-export function celikKasaHareketleri(limit = 100): Promise<KasaHareketi[]> {
-  return sorgu(ORNEK_CELIK, async () => {
-    const { data, error } = await db().from('safe_movements')
-      .select('id, date, direction, amount, description, source_kind, source_id')
-      .order('date', { ascending: false }).limit(limit);
-    return denetle(data, error, 'Çelik kasa hareketleri okunamadı.').map((s) => {
-      const h = s as unknown as {
-        id: string; date: string; direction: KasaYonu; amount: number;
-        description: string | null; source_kind: 'cash_flow' | 'reservation'; source_id: string;
-      };
-      return {
-        id: h.id, tarih: h.date, yon: h.direction, tutar: h.amount,
-        aciklama: h.description ?? '', kaynakTuru: h.source_kind, kaynakId: h.source_id,
-      };
-    });
-  });
-}
-
-/**
- * Bir gelir/gider satırını çelik kasaya işler.
- *
- * Tutar satırın kendi tutarıdır: kısmi giriş, satırın anlamını bulanıklaştırır
- * ve kasadaki parayı gelir/gider kaydından koparırdı. Kuralı sunucu da
- * uyguluyor; buradaki kontrol kullanıcıya anlaşılır bir mesaj vermek için.
- */
-export async function celikKasayaIsle(
-  satir: KasaSatiri, yon: KasaYonu, mevcut: KasaHareketi[],
-): Promise<void> {
-  if (!kasayaIslenebilir(mevcut, satir.id, yon, satir.tur)) {
-    throw new Error(satir.tur === 'Gider'
-      ? (yon === 'Çıkış'
-        ? 'Bu gider çelik kasadan zaten düşülmüş; önce geri alın.'
-        : 'Bu gider çelik kasadan düşülmemiş; geri alınacak bir şey yok.')
-      : (yon === 'Giriş'
-        ? 'Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.'
-        : 'Bu kayıt çelik kasada değil; önce kasaya ekleyin.'));
-  }
-  if (tanitim) return;
-
-  const { error } = await db().from('safe_movements').insert({
-    business_id: await aktifIsletmeId(),
-    date: satir.tarih,
-    direction: yon,
-    amount: satir.tutar,
-    description: `${satir.tur} · ${satir.kategori || satir.baslik}`,
-    source_kind: 'cash_flow',
-    source_id: satir.id,
-  });
-  if (error) throw new Error(error.message);
-}
-
-/** Yanlış işlenen hareketi defterden siler; gelir/gider kaydına dokunmaz. */
-export async function celikKasaHareketiSil(id: string): Promise<void> {
-  if (tanitim) return;
-  const { error } = await db().from('safe_movements').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
 

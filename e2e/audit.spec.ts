@@ -19,6 +19,27 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/panel$/);
 }
 
+/**
+ * Panelin bütün ekranları.
+ *
+ * Kenar çubuğundaki her bağlantı ve kayıt açmadan görülebilen her alt
+ * ekran burada. Ayrı kayıt gerektiren detay ekranları (rezervasyon
+ * detayı, sözleşme, makbuz, fatura detayı, aday kartı) yaşam döngüsü
+ * testlerinde açılıyor.
+ */
+const PANEL_YOLLARI = [
+  '/panel', '/panel/takvim', '/panel/ozel-gunler',
+  '/panel/rezervasyonlar', '/panel/rezervasyonlar/yeni',
+  '/panel/musteriler', '/panel/kasa', '/panel/faturalar', '/panel/raporlar',
+  '/panel/salonlar', '/panel/menuler', '/panel/urun-hizmet',
+  '/panel/renk-ayarlari', '/panel/isletmeler', '/panel/kullanicilar',
+  '/panel/hatirlatmalar', '/panel/odeme-bildirimleri',
+  '/panel/musteri-adaylari', '/panel/musteri-adaylari/yeni',
+  '/panel/musteri-adaylari/durumlar', '/panel/whatsapp-ayarlari',
+  '/panel/sms', '/panel/izinler', '/panel/denetim', '/panel/sistem',
+  '/panel/ayarlar',
+];
+
 /** Engellenen dış kaynak hataları uygulama hatası değildir; ayıklanır. */
 function isAppError(text: string): boolean {
   return !/Failed to load resource|net::ERR_FAILED|ERR_BLOCKED/.test(text);
@@ -32,14 +53,12 @@ test('DENETIM: panel ekranlarında uygulama hatası ve kırık değer yok', asyn
     if (m.type() === 'error' && isAppError(m.text())) problems.push(`console: ${m.text()}`);
   });
 
-  const routes = [
-    '/panel', '/panel/takvim', '/panel/rezervasyonlar', '/panel/rezervasyonlar/yeni',
-    '/panel/musteriler', '/panel/kasa', '/panel/raporlar', '/panel/renk-ayarlari',
-    '/panel/isletmeler', '/panel/kullanicilar', '/panel/sms', '/panel/izinler',
-    '/panel/denetim', '/panel/sistem', '/panel/faturalar', '/panel/ayarlar',
-  ];
-
-  for (const route of routes) {
+  /*
+    Kenar çubuğundaki HER ekran burada. Liste eksik kalırsa yeni bir
+    ekranın konsol hatası ya da "NaN" gösteren bir alanı, kimse o sayfayı
+    açana kadar fark edilmez.
+  */
+  for (const route of PANEL_YOLLARI) {
     await page.goto(route);
     await expect(page.locator('h1').first()).toBeVisible();
     const body = await page.locator('main').innerText();
@@ -48,6 +67,77 @@ test('DENETIM: panel ekranlarında uygulama hatası ve kırık değer yok', asyn
     }
   }
   expect(problems, problems.join('\n')).toEqual([]);
+});
+
+/*
+  Şartnamenin 36. maddesi "Responsive görünüm bozuldu mu?" diye soruyor.
+  Herkese açık sayfalar için bu denetim site.spec.ts'te vardı; PANEL
+  ekranları denetimsizdi. Oysa salon sahibi paneli telefondan açıyor ve
+  yatay kaydırma gerektiren bir tablo, o ekranda kullanılamaz demek.
+*/
+test('DENETIM: panel ekranları telefon genişliğinde yatay taşma yapmıyor', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  const sorunlar: string[] = [];
+
+  for (const route of PANEL_YOLLARI) {
+    await page.goto(route);
+    await expect(page.locator('h1').first()).toBeVisible();
+
+    /*
+      `scrollWidth` BURADA YANILTICI: kapalı kenar çubuğu ekranın
+      solunda (x = -256) duruyor ve Chromium bunu scrollWidth'e
+      ekliyor. Oysa soldaki taşma LTR bir sayfada kaydırılamıyor --
+      ölçüldüğünde panelin tamamı 308px taşıyor gibi görünüyor, kullanıcı
+      hiçbir yere kaydıramıyor.
+
+      Doğru soru iki tane: (1) bir öğe ekranın SAĞINI aşıyor mu, (2)
+      sayfa gerçekten yana kaydırılabiliyor mu. Yatay kaydırma
+      çubuğunu doğuran budur.
+    */
+    const olcum = await page.evaluate(() => {
+      const de = document.documentElement;
+      const genislik = de.clientWidth;
+
+      /*
+        Kendi kutusunda kaydırılan tablolar (`overflow-x: auto`) taşma
+        SAYILMIYOR: geniş bir tabloyu telefonda yana kaydırmak bilinçli
+        bir tasarım ve sayfanın tamamını kaydırmıyor. Bu ayıklama
+        olmasaydı denetim, doğru çalışan her tabloyu hata sayardı.
+      */
+      const kendiKutusundaKayar = (el: Element): boolean => {
+        let ata = el.parentElement;
+        while (ata && ata !== document.body) {
+          const tasmaX = getComputedStyle(ata).overflowX;
+          if (tasmaX === 'auto' || tasmaX === 'scroll' || tasmaX === 'hidden') return true;
+          ata = ata.parentElement;
+        }
+        return false;
+      };
+
+      const tasanlar: string[] = [];
+      for (const el of document.querySelectorAll('body *')) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.right > genislik + 1 && !kendiKutusundaKayar(el)) {
+          tasanlar.push(`${el.tagName}.${String((el as HTMLElement).className).slice(0, 50)}`);
+        }
+      }
+
+      // Kaydırma denemesi: gerçekten kayıyorsa değer sıfırdan farklı kalır.
+      de.scrollLeft = 9999;
+      const kaydi = de.scrollLeft;
+      de.scrollLeft = 0;
+
+      return { tasanlar: tasanlar.slice(0, 5), kaydi };
+    });
+
+    if (olcum.tasanlar.length > 0) sorunlar.push(`${route}: ${olcum.tasanlar.join(', ')}`);
+    if (olcum.kaydi !== 0) sorunlar.push(`${route}: sayfa yana kaydırılabiliyor`);
+  }
+
+  // Bütün ekranlar birlikte raporlanıyor: ilk hatada durulsaydı sorunlar
+  // teker teker, her koşuda bir tane çıkardı.
+  expect(sorunlar, sorunlar.join('\n')).toEqual([]);
 });
 
 test('DENETIM: rezervasyon yaşam döngüsü, oluştur, tahsilat, bakiye, sözleşme', async ({ page }) => {

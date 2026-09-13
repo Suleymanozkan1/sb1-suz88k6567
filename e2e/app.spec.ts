@@ -94,7 +94,7 @@ test.describe('Üye paneli', () => {
 
     // Tahsilat ekle: 50.000 ödendiğinde kalan 150.000 -> 100.000 olmalı
     await page.getByLabel('Tutar').fill('50000');
-    await page.getByRole('button', { name: /Ekle/ }).click();
+    await page.getByRole('button', { name: 'Ekle', exact: true }).click();
     await expect(remaining).toHaveText('100.000,00 ₺');
     await expect(collected).toHaveText('100.000,00 ₺');
 
@@ -142,7 +142,7 @@ test.describe('Üye paneli', () => {
     await page.goto('/panel/raporlar');
     await page.getByRole('tab', { name: 'Ay bazlı rapor' }).click();
     await expect(page.getByRole('tab', { name: 'Ay bazlı rapor' })).toHaveAttribute('aria-selected', 'true');
-    await page.getByRole('tab', { name: 'Alacak bakiyesi' }).click();
+    await page.getByRole('tab', { name: 'Gelecek Kaporalar ve Ödemeler' }).click();
     await expect(page.getByText('Toplam kalan alacak')).toBeVisible();
   });
 

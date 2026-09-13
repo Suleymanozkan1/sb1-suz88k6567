@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
-import { useAddLeadMessage, useLeadStatuses, useSaveLead, useStaff } from '../../lib/queries';
+import { useAddLeadMessage, useHalls, useLeadStatuses, useSaveLead, useStaff } from '../../lib/queries';
 import { baslangicDurumu, secilebilirDurumlar } from '../../lib/lead';
 import { errorMessage } from '../../lib/authHelpers';
 import { uid } from '../../lib/ids';
@@ -27,6 +27,7 @@ export default function MusteriAdayiYeni() {
   const mesajEkle = useAddLeadMessage();
   const { data: personel = [] } = useStaff();
   const { data: durumlar = [] } = useLeadStatuses();
+  const { data: salonlar = [] } = useHalls();
 
   const [hata, setHata] = useState('');
   const [form, setForm] = useState({
@@ -35,6 +36,9 @@ export default function MusteriAdayiYeni() {
     source: 'Telefon' as LeadSource, sourceDetail: '',
     status: '' as LeadStatus, nextFollowupAt: '', assignedTo: '', note: '',
     requestText: '',
+    // Görüşme alanları (madde 16)
+    hallId: '', offerAmount: '', offerValidUntil: '', optionDate: '',
+    meetingDate: todayIso(),
   });
   // Başlangıç durumu işletmeye göre değişiyor ve durumlar sonradan
   // yükleniyor; form boş açılırsa ilk render'da seçili durum olmaz.
@@ -57,6 +61,12 @@ export default function MusteriAdayiYeni() {
     if (kisi !== null && (!Number.isFinite(kisi) || kisi <= 0)) {
       setHata('Geçerli bir kişi sayısı giriniz.'); return;
     }
+    if (form.offerAmount.trim()) {
+      const teklif = Number(form.offerAmount);
+      if (!Number.isFinite(teklif) || teklif <= 0) {
+        setHata('Geçerli bir teklif fiyatı giriniz.'); return;
+      }
+    }
 
     const simdi = new Date().toISOString();
     const aday: CustomerLead = {
@@ -75,6 +85,15 @@ export default function MusteriAdayiYeni() {
       assignedTo: form.assignedTo || undefined,
       nextFollowupAt: form.nextFollowupAt,
       lastContactAt: simdi,
+      hallId: form.hallId || undefined,
+      /*
+        Boş tutar undefined kalıyor, sıfır olmuyor: sıfır "bedava teklif
+        verildi" demektir ve dönüşüm raporunda teklif sayılırdı.
+      */
+      offerAmount: form.offerAmount.trim() ? Number(form.offerAmount) : undefined,
+      offerValidUntil: form.offerValidUntil || undefined,
+      optionDate: form.optionDate || undefined,
+      meetingDate: form.meetingDate || undefined,
       requestText: form.requestText.trim(),
       note: form.note.trim(),
       createdAt: simdi,
@@ -165,6 +184,49 @@ export default function MusteriAdayiYeni() {
               <input id="ml-date-text" className="field-input" value={form.eventDateText}
                 onChange={(e) => yaz('eventDateText', e.target.value)} />
             </Alan>
+            {/*
+              Düşünülen salon; kesinleşmiş bir rezervasyon değil. Zorunlu
+              olmaması bilinçli: ilk görüşmede henüz belli olmuyor ve
+              uydurma bir salon seçmek, o salonu dolu sanmaya yol açardı.
+            */}
+            <Alan id="ml-hall" etiket="Düşünülen salon">
+              <select id="ml-hall" className="field-input" value={form.hallId}
+                onChange={(e) => yaz('hallId', e.target.value)}>
+                <option value="">Belirlenmedi</option>
+                {salonlar.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+              </select>
+            </Alan>
+          </div>
+        </fieldset>
+
+        <fieldset className="mb-6">
+          <legend className="mb-3 font-heading font-bold text-brand">Görüşme ve teklif</legend>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/*
+              Görüşmenin YAPILDIĞI gün, kaydın açıldığı gün değil: hafta
+              sonu gelen müşteri pazartesi sisteme girilir ve ikisi tek
+              sayılırsa aylık görüşme raporu kayar.
+            */}
+            <Alan id="ml-meeting" etiket="Görüşme tarihi">
+              <input id="ml-meeting" type="date" className="field-input" value={form.meetingDate}
+                onChange={(e) => yaz('meetingDate', e.target.value)} />
+            </Alan>
+            <Alan id="ml-offer" etiket="Teklif fiyatı">
+              <input id="ml-offer" inputMode="decimal" className="field-input" value={form.offerAmount}
+                onChange={(e) => yaz('offerAmount', e.target.value)} />
+            </Alan>
+            <Alan id="ml-offer-until" etiket="Teklif geçerlilik tarihi">
+              <input id="ml-offer-until" type="date" className="field-input" value={form.offerValidUntil}
+                onChange={(e) => yaz('offerValidUntil', e.target.value)} />
+            </Alan>
+            {/*
+              Opsiyon: salonun müşteri için tutulduğu son gün. Geçtiğinde
+              salon başkasına satılabilir; ekrandaki uyarı buna bakıyor.
+            */}
+            <Alan id="ml-option" etiket="Opsiyon tarihi">
+              <input id="ml-option" type="date" className="field-input" value={form.optionDate}
+                onChange={(e) => yaz('optionDate', e.target.value)} />
+            </Alan>
           </div>
         </fieldset>
 
@@ -183,7 +245,7 @@ export default function MusteriAdayiYeni() {
               <input id="ml-followup" type="date" className="field-input" min={todayIso()}
                 value={form.nextFollowupAt} onChange={(e) => yaz('nextFollowupAt', e.target.value)} />
             </Alan>
-            <Alan id="ml-assignee" etiket="Sorumlu personel">
+            <Alan id="ml-assignee" etiket="Görüşmeyi yapan personel">
               <select id="ml-assignee" className="field-input" value={form.assignedTo}
                 onChange={(e) => yaz('assignedTo', e.target.value)}>
                 <option value="">Atanmadı</option>

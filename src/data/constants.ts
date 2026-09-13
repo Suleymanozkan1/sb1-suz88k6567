@@ -101,9 +101,20 @@ export const ORGANIZATION_TYPES: OrganizationType[] = [
  * Ulaşım kanalları. Sıra ekranda göründüğü sıradır; en sık kullanılan
  * başta duruyor ki liste her seferinde baştan taranmasın.
  */
+/** Yeni kayıtta seçilebilen kanallar (madde 8). */
 export const LEAD_CHANNELS: LeadChannel[] = [
-  'Instagram', 'Düğün.com', 'Google', 'Referans', 'Diğer',
+  'Instagram', 'Facebook', 'WhatsApp', 'Web Sitesi',
+  'Google', 'Tavsiye', 'Telefon', 'Diğer',
 ];
+
+/**
+ * Listeden çıkarılmış ama eski kayıtlarda duran kanallar.
+ *
+ * Bir kaydın kanalı bu listedeyse açılır menüye O KAYIT İÇİN ekleniyor:
+ * eklenmeseydi kaydı açan kullanıcı, hiç dokunmadığı bir alanın
+ * kendiliğinden boşaldığını görürdü.
+ */
+export const ESKI_LEAD_CHANNELS: LeadChannel[] = ['Düğün.com', 'Referans'];
 
 export const CURRENCIES: { value: string; label: string; symbol: string }[] = [
   { value: 'TL', label: 'TL', symbol: '₺' },

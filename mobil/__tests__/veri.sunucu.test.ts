@@ -35,7 +35,7 @@ function kurucu(tablo: string) {
   const cagri: Cagri = { tablo, islemler: [] };
   durum.cagrilar.push(cagri);
 
-  const zincir = ['select', 'eq', 'gte', 'lte', 'in', 'order', 'limit', 'insert', 'update', 'delete'];
+  const zincir = ['select', 'eq', 'neq', 'gte', 'lte', 'in', 'order', 'limit', 'insert', 'update', 'delete'];
   const nesne: Record<string, unknown> = {
     then(coz: (y: { data: unknown; error: unknown }) => unknown) {
       return Promise.resolve({
@@ -323,29 +323,70 @@ describe('masa düzeni', () => {
 });
 
 describe('kasa', () => {
-  it('gelir ve gideri ayrı toplar, bakiyeyi farktan çıkarır', async () => {
+  /*
+    Telefondaki kasa ile paneldeki kasa AYNI tanımı kullanmak zorunda
+    (madde 34). Eskiden burada yalnızca `cash_flow` sayılıyordu; kapora
+    ve tahsilatlar o tabloya yazılmadığı için iki ekran aynı salon için
+    farklı rakam gösteriyordu.
+  */
+  it('gelir/gider satırlarını, kaporayı ve tahsilatları birlikte sayar', async () => {
     durum.satirlar.cash_flow = [
       { kind: 'Gelir', amount: 10_000 },
       { kind: 'Gelir', amount: 5_000 },
       { kind: 'Gider', amount: 3_000 },
     ];
-    durum.satirlar.reservations = [{ id: 'r1', total_amount: 100_000 }];
+    durum.satirlar.reservations = [
+      { id: 'r1', total_amount: 100_000, deposit: 20_000, status: 'Kesin Rezervasyon' },
+    ];
     durum.satirlar.payments = [{ reservation_id: 'r1', amount: 40_000 }];
+    durum.satirlar.reservation_expenses = [];
 
     const ozet = await veri.kasaOzeti();
 
-    expect(ozet.gelir).toBe(15_000);
+    // 15.000 serbest gelir + 20.000 kapora + 40.000 tahsilat
+    expect(ozet.gelir).toBe(75_000);
     expect(ozet.gider).toBe(3_000);
-    expect(ozet.bakiye).toBe(12_000);
-    expect(ozet.alacak).toBe(60_000);
+    expect(ozet.bakiye).toBe(72_000);
+    // 100.000 - 20.000 kapora - 40.000 tahsilat
+    expect(ozet.alacak).toBe(40_000);
+  });
+
+  it('düğün içi gideri kasadan düşer', async () => {
+    durum.satirlar.cash_flow = [];
+    durum.satirlar.reservations = [
+      { id: 'r1', total_amount: 50_000, deposit: 50_000, status: 'Tamamlandı' },
+    ];
+    durum.satirlar.payments = [];
+    durum.satirlar.reservation_expenses = [
+      { unit_count: 10, unit_price: 2_000 },
+      { unit_count: 1, unit_price: 5_000 },
+    ];
+
+    const ozet = await veri.kasaOzeti();
+    expect(ozet.gider).toBe(25_000);
+    expect(ozet.bakiye).toBe(25_000);
   });
 
   it('fazla tahsil edilmiş kayıt alacağı eksiye düşürmez', async () => {
     durum.satirlar.cash_flow = [];
-    durum.satirlar.reservations = [{ id: 'r1', total_amount: 10_000 }];
+    durum.satirlar.reservations = [
+      { id: 'r1', total_amount: 10_000, deposit: 0, status: 'Kesin Rezervasyon' },
+    ];
     durum.satirlar.payments = [{ reservation_id: 'r1', amount: 15_000 }];
+    durum.satirlar.reservation_expenses = [];
 
     await expect(veri.kasaOzeti()).resolves.toMatchObject({ alacak: 0 });
+  });
+
+  it('iptal edilen kaydı sorgudan dışarıda bırakır', async () => {
+    durum.satirlar.cash_flow = [];
+    durum.satirlar.reservations = [];
+    durum.satirlar.payments = [];
+    durum.satirlar.reservation_expenses = [];
+
+    await veri.kasaOzeti();
+    const cagri = durum.cagrilar.find((c) => c.tablo === 'reservations');
+    expect(cagri?.islemler.some((i) => i.ad === 'neq' && i.arg[1] === 'İptal')).toBe(true);
   });
 
   it('hareket satırını çevirir', async () => {
@@ -380,84 +421,6 @@ describe('kasa', () => {
     });
     // business_id zorunlu bir sütun; gönderilmezse kayıt hiç açılmaz.
     expect(govde.business_id).toBe('biz_1');
-  });
-});
-
-describe('çelik kasa', () => {
-  const satir = (over: Partial<veri.KasaSatiri> = {}): veri.KasaSatiri => ({
-    id: 'cf1', tarih: '2026-01-01', tur: 'Gelir',
-    baslik: 'Kapora', kategori: 'Rezervasyon', tutar: 5_000, ...over,
-  });
-  const hareket = (over: Partial<veri.KasaHareketi> = {}): veri.KasaHareketi => ({
-    id: 'h1', tarih: '2026-01-01', yon: 'Giriş', tutar: 5_000,
-    aciklama: '', kaynakTuru: 'cash_flow', kaynakId: 'cf1', ...over,
-  });
-
-  it('hareket satırını çevirir', async () => {
-    durum.satirlar.safe_movements = [{
-      id: 'h1', date: '2026-01-01', direction: 'Çıkış', amount: 7_500,
-      description: 'Gider · Personel Maaş', source_kind: 'cash_flow', source_id: 'cf9',
-    }];
-
-    const [h] = await veri.celikKasaHareketleri();
-
-    expect(h).toEqual({
-      id: 'h1', tarih: '2026-01-01', yon: 'Çıkış', tutar: 7_500,
-      aciklama: 'Gider · Personel Maaş', kaynakTuru: 'cash_flow', kaynakId: 'cf9',
-    });
-  });
-
-  it('bakiye girişlerden çıkışları düşer', () => {
-    expect(veri.celikKasaBakiyesi([
-      hareket({ id: 'a', yon: 'Giriş', tutar: 10_000 }),
-      hareket({ id: 'b', yon: 'Çıkış', tutar: 4_000 }),
-    ])).toBe(6_000);
-  });
-
-  it('gelir kasaya girer, gider kasadan çıkar', () => {
-    expect(veri.dogalYon('Gelir')).toBe('Giriş');
-    expect(veri.dogalYon('Gider')).toBe('Çıkış');
-  });
-
-  it('gideri kasaya giriş olarak yazmaz, kasadan ödetir', async () => {
-    // Panelde bulunan hata: nakit ödenen maaş kasayı ARTIRIYORDU.
-    const gider = satir({ id: 'gd1', tur: 'Gider', tutar: 7_500, kategori: 'Personel Maaş' });
-
-    await expect(veri.celikKasayaIsle(gider, 'Giriş', [])).rejects.toThrow(/düşülmemiş/);
-
-    await veri.celikKasayaIsle(gider, 'Çıkış', []);
-    const govde = islem(cagri('safe_movements'), 'insert')?.arg[0] as Record<string, unknown>;
-    expect(govde).toMatchObject({
-      business_id: 'biz_1', direction: 'Çıkış', amount: 7_500,
-      source_kind: 'cash_flow', source_id: 'gd1', date: '2026-01-01',
-    });
-  });
-
-  it('kasada duran kaydı ikinci kez yazmaz', async () => {
-    const mevcut = [hareket()];
-    await expect(veri.celikKasayaIsle(satir(), 'Giriş', mevcut)).rejects.toThrow(/zaten çelik kasada/);
-  });
-
-  it('girip çıkan kayıt yeniden işlenebilir', () => {
-    const tur = [
-      hareket({ id: 'a', yon: 'Giriş' }),
-      hareket({ id: 'b', yon: 'Çıkış' }),
-    ];
-    expect(veri.kaynakNeti(tur, 'cf1')).toBe(0);
-    expect(veri.kasayaIslenebilir(tur, 'cf1', 'Giriş', 'Gelir')).toBe(true);
-    expect(veri.kasayaIslenebilir(tur, 'cf1', 'Çıkış', 'Gelir')).toBe(false);
-  });
-
-  it('ödenen gider geri alınabilir, net sıfırlanır', () => {
-    const odenmis = [hareket({ yon: 'Çıkış', tutar: 7_500, kaynakId: 'gd1' })];
-    expect(veri.kaynakNeti(odenmis, 'gd1')).toBe(-7_500);
-    expect(veri.kasayaIslenebilir(odenmis, 'gd1', 'Çıkış', 'Gider')).toBe(false);
-    expect(veri.kasayaIslenebilir(odenmis, 'gd1', 'Giriş', 'Gider')).toBe(true);
-  });
-
-  it('hareketi kimliğine göre siler', async () => {
-    await veri.celikKasaHareketiSil('h1');
-    expect(islem(cagri('safe_movements'), 'eq')?.arg).toEqual(['id', 'h1']);
   });
 });
 

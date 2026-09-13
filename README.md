@@ -57,6 +57,7 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 |-----|----------|
 | `/` | Giriş + zorunlu SMS doğrulama |
 | `/kod-dogrulama` | Rezervasyon kodu sorgulama (müşteriye SMS ile giden kod) |
+| `/anket` | Deneyim anketi; bağlantı e-postayla gider, yetki adresteki jetondur |
 | `/gizlilik-politikasi`, `/kvkk-aydinlatma-metni` | Yasal metinler |
 
 ### Panel (`/panel`, oturum gerekir)
@@ -64,7 +65,8 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | Yol | Açıklama |
 |-----|----------|
 | `/panel` | Özet, istatistik kartları, yaklaşan organizasyonlar, program ve ay dağılımı, tahsilat oranı |
-| `/panel/takvim` | Rezervasyon takvimi, gündüz/gece seansları, organizasyon türüne göre renklendirme |
+| `/panel/takvim` | Rezervasyon takvimi, gündüz/gece seansları, organizasyon türüne göre renklendirme, özel gün işaretleri |
+| `/panel/ozel-gunler` | Resmî tatiller (hazır gelir) ve işletmenin kendi özel günleri |
 | `/panel/rezervasyonlar` | Liste, isim/telefon/kod araması, tür, durum, tarih aralığı, sıralama, CSV dışa aktarım |
 | `/panel/rezervasyonlar/yeni`, `/:id`, `/:id/duzenle` | Detaylı rezervasyon kaydı, tahsilat yönetimi |
 | `/panel/rezervasyonlar/:id/sozlesme` | Yazdırılabilir salon kiralama sözleşmesi: bilgi sütunu, menü içeriği ve 16 maddelik şartlar |
@@ -75,10 +77,11 @@ ibarettir; tanıtım sayfaları ve siteden üye olma akışı kaldırılmıştı
 | `/panel/whatsapp-ayarlari` | Bağlı numara, çalışma saatleri, karşılama ve mesai dışı mesajları |
 | `/panel/kasa` | Gelir gider kayıtları, kasa bakiyesi, çelik kasa; rezervasyon tahsilatları sözleşme numarası ve taraflarla birlikte |
 | `/panel/faturalar` | e-Arşiv / e-Fatura düzenleme, gönderim ve iptal |
-| `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, alacak bakiyesi ve gündüz/gece raporları |
+| `/panel/raporlar` | Program raporu (salon × gün çizelgesi, Word çıktısı), organizasyon bazlı, ay bazlı, ciro/gider/kâr, alacak bakiyesi, gündüz/gece, salon bazlı, görüşme/dönüşüm ve deneyim anketi raporları |
 | `/panel/salonlar` | Salon tanımları, bir işletmede birden çok salon |
 | `/panel/menuler` | Menü ve paket tanımları, kişi başı veya sabit fiyat |
-| `/panel/tedarikciler` | Tedarikçi defteri, orkestra, fotoğrafçı, çiçekçi |
+| `/panel/urun-hizmet` | Ürün ve hizmet defteri: personel, orkestra, fotoğrafçı, fiziksel ürün ve stok |
+| `/panel/odeme-bildirimleri` | Tahsilat olaylarında yöneticiye gidecek mesajlar ve alıcı numaraları |
 | `/panel/rezervasyonlar/:id/makbuz` | Yazdırılabilir tahsilat makbuzu |
 | `/panel/renk-ayarlari` | Organizasyon türü başına takvim rengi |
 | `/panel/isletmeler` | Firmalarım / Adminler, çok işletmeli kullanım |
@@ -243,21 +246,51 @@ done
 | `08_is_emri_tedarikci_test.sql` | 9 | İş emri ve tedarikçi kuralları |
 | `09_hatirlatma_test.sql` | 14 | Otomatik hatırlatma, mükerrer gönderim engeli, kapora dahil tutar |
 | `10_dusurulen_tablolar_test.sql` | 9 | `0013` göçü: düşenler düştü, kullanılanlara dokunulmadı |
-| `11_sozlesme_alanlari_ve_seri_test.sql` | 9 | `0014` göçü: saat/TC alanları, sıralı sözleşme numarası, sayaç yazmaya kapalı |
-| `12_celik_kasa_test.sql` | 9 | `0015` göçü: çift kayıt engeli, ters yönün yazılabilmesi, geçersiz tutarın reddi, güncellemeye kapalı olması, iki bakiyenin ayrı kalması |
+| `11_sozlesme_alanlari_ve_seri_test.sql` | 12 | `0014` göçü: saat/TC alanları, sıralı sözleşme numarası |
+| `13_kanal_ve_whatsapp_test.sql` | 14 | Ulaşım kanalı, müşteri adayı ve WhatsApp eşlemesi |
+| `14_otomatik_cevap_test.sql` | 7 | Karşılama ve mesai dışı otomatik cevabı |
+| `15_kendi_sunucusu_test.sql` | 8 | Kendi kimlik katmanı, oturum fonksiyonları, tablo izinleri |
+| `16_aday_durumlari_test.sql` | 14 | Düzenlenebilir aday durumları ve durum geçmişi |
+| `17_dugun_ici_giderler_test.sql` | 11 | Düğün içi gider satırları, hesaplanan toplam |
+| `18_odeme_bildirimleri_test.sql` | 13 | Tahsilat olay kaydı, yönetici SMS kuyruğu |
+| `19_urun_hizmet_stok_test.sql` | 9 | Ürün/hizmet ayrımı, koliden stok hesabı |
+| `20_gorusme_takip_test.sql` | 10 | Görüşme alanları, otomatik takip tarihi, dönüşüm raporu |
+| `21_sozlesme_no_ve_hizli_yanit_test.sql` | 10 | Düğün yılına bağlı sözleşme numarası, hızlı yanıtlar |
+| `22_aylik_rapor_test.sql` | 8 | Aylık özet ve gönderim kaydı |
+| `23_finansal_yetki_test.sql` | 10 | Finansal yetkilerin SUNUCUDA uygulanması |
+| `24_hata_bildirimi_test.sql` | 9 | Hata bildirimi, kullanıcı/kapsam varsayılanları, ekran kilidi |
+| `25_kur_hava_ozel_gun_anket_test.sql` | 15 | Kur/hava yazma kapalı, özel günler, anket jetonu ve yetkisi |
 
-Toplam **130 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
+Toplam **262 senaryo**. Beklenen ret senaryoları `BEKLENEN: …` bildirimi basar;
 `BASARISIZ:` ile başlayan bir hata görürseniz test gerçekten düşmüştür.
 
 `04_backup_restore_test.sql` yedeği temiz bir şemaya gerçekten geri yükler ve
 satır sayıları, parasal değerler, Türkçe karakterler ile ilişkisel bütünlüğün
 korunduğunu kanıtlar.
 
-> Göçler, `public` şemadaki tablo izinleri için Supabase'in varsayılan
-> yetkilendirmesine dayanır (`anon` / `authenticated` rollerine otomatik verilen
-> izinler). Düz bir Postgres'te bu izinler bulunmadığı için test paketleri
-> gereken `grant` ifadelerini kendileri verir; şemayı Supabase dışında bir
-> sunucuya kuracaksanız bu izinleri açıkça tanımlamanız gerekir.
+### Yükseltme testi: kurulu bir sistemde göçler güvenli mi?
+
+Yukarıdaki paketler temiz bir şemada çalışır ve yalnızca "yeni kurulum doğru
+mu" sorusunu cevaplar. Asıl risk bu değil: **çalışan bir salonun** veritabanına
+göç uygulandığında eski rezervasyonların, tahsilatların ve kasa hesabının
+bozulması.
+
+```bash
+supabase/tests/yukseltme/calistir.sh
+```
+
+Betik sırayla şunu yapar:
+
+1. Temiz bir veritabanına `0000`–`0023` göçlerini uygular (güncelleme öncesi şema)
+2. Gerçek bir salonun verisini yazar: iki yıla ait rezervasyonlar, tahsilatlar,
+   gelir/gider satırları, çelik kasa hareketleri, fatura ve müşteri adayı
+3. `0024` ve sonrasını uygular
+4. Göçleri **ikinci kez** uygular (kurulum belgesi göçleri bir döngüyle
+   uyguluyor; operatörün döngüyü yeniden çalıştırması olağan)
+5. Verinin bozulmadığını sınar: sözleşme numaraları değişmedi mi, tahsilat
+   toplamı aynı mı, kasa hesabı doğru mu, tipi bilinmeyen eski kayıtlara tip
+   **uydurulmuş** mu, çelik kasa defteri düşerken rezervasyonu da götürmüş mü,
+   yeni tablolar göçten önce açılmış işletmelere de gelmiş mi
 
 ## Güvenlik
 
@@ -375,6 +408,21 @@ npm run build     # site + sunucu derlenir
 npm run baslat    # sunucuyu çalıştırır (üretimde systemd yapar)
 ```
 
+### GitHub'dan otomatik dağıtım
+
+`.github/workflows/dagit.yml`, `main` dalına her itmede derleyip test
+ediyor, sunucuya `rsync` ile gönderiyor ve servisi yeniden başlatıyor.
+Ek bir servise ya da aboneliğe gerek yok; GitHub Actions bu kullanım için
+ücretsiz. Testler düşerse dağıtım yapılmaz.
+
+**Veritabanı göçleri bu akışta çalışmaz.** Göçler geri alınamaz olabiliyor
+(`0024` çelik kasa defterini düşürür) ve doğru sıra önce yedek, sonra
+göç. Yeni bir göç geldiğinde iş akışı özetinde uyarıyor ve çalıştırılacak
+komutları yazıyor.
+
+Sunucudaki dağıtım kullanıcısı, SSH anahtarı ve depo sırları:
+[`docs/KURULUM.md` § 10](docs/KURULUM.md).
+
 Ortam değişkenleri iki yere girilir:
 
 | Tür | Nasıl |
@@ -433,6 +481,10 @@ Cron ifadeleri `sunucu/rotalar.ts` içinde, saatler **UTC**:
 | `30 2 * * *` | Günlük yedek |
 | `0 3 * * *` | İYS eşitleme |
 | `0 7 * * *` | Hatırlatma taraması |
+| `0 6 1 * *` | Aylık rapor (biten ayın özeti) |
+| `0 * * * *` | Döviz ve altın kurları |
+| `15 6,15 * * *` | Hava durumu tahmini |
+| `0 9 * * *` | Deneyim anketi gönderimi |
 
 Zamanlayıcı sürecin içinde çalışıyor; ayrıca bir cron kurulumu
 gerekmiyor. Aynı dakikada iki kez tetiklenmemesi için son çalıştığı
@@ -526,39 +578,131 @@ tetikleyici), istemci değil; panel ile mobil uygulama aynı numarayı iki kayda
 veremez. Yıl değişince sıra 1'den başlar, numaranın kendisi yılı taşıdığı için
 çakışma olmaz. Bir kayıt bir kez numara alır, sonradan değişmez.
 
-## Çelik kasa
+## Kasa durumu ve ödeme tipi
 
-İşletmenin bir de fiziksel kasası var ve içindeki para, gelir/gider
-kayıtlarından çıkan muhasebe bakiyesiyle aynı değil: havaleyle gelen
-tahsilat kasaya girmez, kasadan alınıp bankaya yatırılan para kasadan çıkar
-ama gelir kaydı yerinde durur.
+İşletmenin kasasında duran paranın ne kadarının **nerede** olduğu,
+paranın zaten taşıdığı ödeme tipinden çıkar. Her gelir/gider satırı ve her
+rezervasyon tahsilatı bir tip taşıyor: Nakit, Kredi Kartı, Havale/EFT, Çek,
+Senet.
 
-Bu yüzden çelik kasa **ayrı bir hareket defteridir**. Kasa bakiyesi
-(gelir − gider) hesabına hiçbir yerde karışmaz; iki bakiye Gelir/Gider
-ekranında yan yana durur ve çelik kasa kartı kendi simgesi ve kesikli
-çerçevesiyle ayrılır.
+Önceki sürümde bu bilgi **çelik kasa** adlı ayrı bir defterde elle
+işaretleniyordu. Uygulamada ikinci bir muhasebe demekti: her satır iki kez
+elleniyor, unutulan her işaret kasayı olduğundan farklı gösteriyordu.
+Kaldırıldı; yerine geçen dağılım elle bakım istemiyor.
 
-**Düğmeler.** Gelir/gider tablosundaki her satırda "Ekle" ve "Çıkar"
-düğmeleri var; rezervasyondan türeyen tahsilat satırlarında da. Düğme,
-satırın kendi tutarını kasaya yazar. Kısmi tutar alınmaz: satırın anlamını
-bulanıklaştırır ve kasadaki parayı gelir/gider kaydından koparırdı.
+**Kasa Durumu kartı** Özet sayfasının sağ üstünde. Toplam açıkta, dağılım
+şifreyle açılıyor: salonun kasasında ne kadar nakit olduğu, ekranın yanından
+geçen herkesin göreceği bir bilgi olmamalı. Şifre kullanıcının **kendi hesap
+parolasıdır** ve sunucuda doğrulanır — sistemde ikinci bir sır saklanmıyor.
 
-**Çift sayım engeli.** Bir satır kasaya en çok bir kez girer ve en çok bir
-kez çıkar; aynı yönde ikinci kayıt hem arayüzde hem veritabanında
-reddedilir. İki kez tıklamaktan doğan çift sayım, akşam sayımda tutmayan
-bir fark bırakırdı.
+Kart bir güvenlik duvarı değil, bir perde. Gerçek koruma yetki sisteminde:
+`kasa.goruntule` yetkisi olmayan kullanıcıya kart hiç gönderilmiyor.
 
-Bir satır hem girip hem çıkabilir: nakit alınan para kasaya girer, ertesi
-gün bankaya yatırılınca kasadan çıkar. O satırın kasaya net etkisi sıfır
-olur ve tabloda `0,00 ₺` görünür.
+**Çek ve senet kasa toplamına girmez.** İkisi de henüz tahsil edilmemiş bir
+vaattir; kasadaki parayla toplanırsa kasa olduğundan büyük görünür ve
+gerçekte olmayan bir paraya göre karar alınır. Tutarları varsa ayrıca
+"henüz tahsil edilmedi" notuyla gösterilir.
 
-**Düzeltme.** Yanlış işlenen hareket, tablonun altındaki **Çelik Kasa
-Hareketleri** defterinden silinir; gelir/gider kaydına dokunulmaz.
-Hareketler güncellenemez (veritabanında `update` yetkisi verilmemiştir):
-düzeltmenin kendisi de defterde iz bırakmalıdır.
+**Tipi bilinmeyen kayıtlar** ayrı bir satırda toplanır. Ödeme tipi alanı
+sonradan eklendi ve eski satırların tipi gerçekten bilinmiyor; hepsine
+"Nakit" varsaymak uydurma bir veri üretir, dağılımı sessizce yanlış
+gösterirdi. Toplamdan düşülmez — para gerçekten kasada.
 
-Bir gelir/gider kaydı silinirse ona bağlı kasa hareketi de düşer; kalsaydı
-kasada kaynağı görünmeyen bir tutar dururdu.
+## Döviz, hava durumu, özel günler ve deneyim anketi
+
+Dördünün ortak kuralı: **dış servisten gelen hiçbir veri uydurulmaz.**
+Sağlayıcı tanımlı değilse ya da cevap vermiyorsa ekranda veri yok
+görünür; tahmini bir kur ya da hava durumu gösterilmez. Salon sahibi o
+rakama bakarak fiyat belirliyor.
+
+**Döviz / altın.** Kur SUNUCUDA çekilip `exchange_rates` tablosuna
+yazılır, panel oradan okur. Tarayıcıdan çekilseydi sağlayıcının API
+anahtarı istemciye inerdi ve her açılan sekme sağlayıcıya ayrı istek
+atardı. İki sağlayıcı destekleniyor:
+
+| `KUR_SAGLAYICI` | Kaynak | Anahtar | Kapsam |
+|---|---|---|---|
+| `tcmb` *(varsayılan)* | Merkez Bankası günlük kur dosyası | gerekmez | USD, EUR |
+| `collectapi` | Ticari servis | `KUR_API_KEY` | USD, EUR, gram ve çeyrek altın |
+
+Varsayılan `tcmb`: kurulum hiçbir hesap açmadan çalışır. TCMB altın
+vermediği için o satırlar oluşmaz ve şeritte görünmez; uydurma bir altın
+fiyatı yazılmaz. Sağlayıcı hiç cevap vermezse **eski kur durur** ve
+tablo temizlenmez: bir dakikalık kesinti ekrandaki kuru silmemeli,
+satırın kendi tarihi zaten ne kadar eski olduğunu söyler.
+
+**Hava durumu.** Sağlayıcı AccuWeather (`ACCUWEATHER_API_KEY`). Her
+işletmenin konum anahtarı panelden girilir (Firmalarım → işletme →
+"Hava durumu konum anahtarı"); boş bırakılan işletme için tahmin
+çekilmez. Ücretsiz katman yalnızca birkaç günlük tahmin verdiği için
+**uzak tarihlerde satır hiç yazılmaz** ve ekran "Tahmin henüz mevcut
+değil" der. Boş satır yazılsaydı düğün gününde "0°" görünür, olmayan bir
+tahmin doğruymuş gibi sunulurdu. Bugünün satırında ayrıca o anki
+sıcaklık tutulur; gözlem alınamazsa yalnızca o alan boş kalır, tahmin
+yine gösterilir.
+
+**Özel günler.** Takvimde bayram, arife, kandil, resmî tatil ve okul
+tarihleri renkli nokta ve etiketle işaretlenir. İki kaynak var:
+
+- **Ortak günler** — sabit tarihli resmî tatiller (1 Ocak, 23 Nisan,
+  1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 28-29 Ekim). Göç sırasında
+  içinde bulunulan yıl ve sonraki üç yıl için tohumlanır, panelde
+  "Sistem" kaynaklı görünür ve değiştirilemez.
+- **İşletmenin günleri** — panelden eklenir ve silinir.
+
+**Dini günler ve okul tarihleri tohumlanmaz.** İlki Diyanet'in yıllık
+takvimine, ikincisi Millî Eğitim Bakanlığı'nın kararına bağlıdır;
+hesaplanmış bir hicri tarih gerçeğinden bir gün sapabilir ve o günü
+tatil sanıp salonu kapatmak ya da açmak salona zarar verir. Ekranda bu
+sebep yazılı duruyor ki kullanıcı eksik sanıp beklemesin.
+
+**Deneyim anketi.** Organizasyondan bir hafta sonra, müşterinin e-posta
+adresi kayıtlıysa çifte anket bağlantısı gider. Bağlantı **rezervasyon
+kimliğiyle değil**, anket kaydına ait rastgele bir jetonla açılır:
+kimliği tahmin eden herkes başka çiftin anketini açabilirdi. Sayfa beş
+başlığı 1-5 arasında puanlatır; puan doğrulaması arayüz ve sunucuda
+**aynı modülden** (`src/lib/anket.ts`) geçer, böylece tarayıcıyı atlayan
+bir istek aralık dışı puan yazamaz.
+
+Anket satırına yazma yetkisi yalnızca `service_role`'dadır ve o jeton
+tarayıcıya hiç inmez; cevap `/api/anket-yanit` üzerinden, sunucudan
+yazılır. Bir anket **ikinci kez cevaplanamaz** (bağlantı e-postada durur
+ve tekrar tıklanabilir). Sonuçlar Raporlar → Deneyim anketi sekmesinde
+özetlenir; cevaplanmamış anketler ortalamaya girmez ama cevap oranında
+sayılır. Yöneticiye bildirim gitmesi için Firmalarım'da "Anket sonucu
+e-postası" doldurulur.
+
+Gönderilemeyen anket silinmez: satır durur, `sent_at` boş kalır ve bir
+sonraki koşuda yeniden denenir.
+
+## Ciro, gider ve kâr
+
+Raporlar ekranındaki **Ciro, gider ve kâr** sekmesi yıllık ve aylık
+kırılım veriyor. Kâr ayrı bir alan **değil**, hesaplanıyor:
+
+```
+kâr = ciro + diğer gelir − gider
+```
+
+- **Ciro**, sözleşme tutarlarının toplamı ve **düğünün yapıldığı döneme**
+  yazılıyor, sözleşmenin açıldığı güne değil: bir salonun eylül cirosu,
+  eylülde yapılan düğünlerdir.
+- **Tahsil edilen** ayrı bir sütun. Sözleşme tutarı henüz gelmiş para
+  değil; tek sütunda gösterilseydi kâr, gelmemiş parayla hesaplanmış
+  olurdu.
+- **Gider**, Gelir/Gider ekranındaki gider satırları ile **düğün içi
+  giderlerin** toplamı. Düğün içi giderler kâra girmeseydi salon kendini
+  olduğundan kârlı görürdü.
+- İptal edilen organizasyonlar hiçbir toplama girmiyor.
+- Salon süzgeci açıkken salona bağlı olmayan serbest gelir/gider
+  satırları sayılmıyor: o satırların salonu yok ve hepsini her salona
+  saymak kârı olduğundan farklı gösterirdi.
+
+Kasa bakiyesi, Özet ve Gelir/Gider ekranları da aynı üç kaynaktan
+besleniyor (`src/lib/kasa.ts`): gelir/gider satırları, rezervasyon
+tahsilatları (kapora dahil) ve düğün içi giderler. Mobil uygulama da
+aynı tanımı kullanıyor; farklı hesaplasaydı telefondaki kasa ile
+paneldeki kasa aynı salon için farklı rakam gösterirdi.
 
 ## Ulaşım kanalı ve kanal raporu
 
@@ -950,3 +1094,15 @@ Aynı kontroller panelde **Sistem Durumu** ekranında Türkçe açıklamalarla v
 - Üyelik, abonelik, plan ve ücretlendirme **yoktur**. Siteden kendi kendine kayıt açılmaz; panel hesapları Supabase → Authentication → Users bölümünden ya da panelin Kullanıcılar ekranından tanımlanır.
 - e-Fatura bağlantısı Paraşüt için yazılmıştır (`api/_parasut.ts`); gövde üretimi ve hata çözümlemesi birim testleriyle doğrulanmış, ancak **gerçek bir Paraşüt hesabıyla test edilmemiştir**. İlk gönderimde alan adı uyuşmazlığı çıkabilir; hata metni Faturalar ekranında görünür.
 - Referans listesindeki işletmeler örnek veridir.
+- Döviz ve hava durumu sağlayıcılarına **gerçek bir hesapla bağlanılarak
+  denenmemiştir**: yanıt çözümleyicileri birim testleriyle, belgelenen
+  yanıt biçimleri üzerinden doğrulandı. İlk çalıştırmada alan adı
+  uyuşmazlığı çıkarsa görev günlüğünde sağlayıcının döndürdüğü durum
+  kodu görünür ve tablo eski değeriyle kalır.
+- Dini bayram, arife, kandil ve okul tarihleri **hazır gelmez**; her yıl
+  Diyanet ve Millî Eğitim Bakanlığı'nın açıkladığı takvime göre panelden
+  girilir. Hesaplanmış bir hicri tarih gerçeğinden bir gün sapabileceği
+  için tohumlanmadı.
+- Anket ve aylık rapor e-postaları `MAIL_API_URL/KEY/FROM` tanımlı
+  değilse **gönderilmez**; kayıtlar oluşur ve panelden okunur. Anket
+  bağlantısı için ayrıca `SITE_URL` gerekir.

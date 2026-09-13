@@ -49,7 +49,7 @@ function kurucu(tablo: string) {
   durum.cagrilar.push(cagri);
 
   const zincir = ['select', 'eq', 'neq', 'in', 'gte', 'lte', 'order', 'limit',
-    'upsert', 'insert', 'update', 'delete', 'is', 'or'];
+    'upsert', 'insert', 'update', 'delete', 'is', 'isNot', 'or'];
 
   const nesne: Record<string, unknown> = {
     then(coz: (y: Yanit) => unknown) {
@@ -359,7 +359,7 @@ describe('kimlik üretimi', () => {
     });
     await repo.saveVendor({
       id: 'vendor_abc', businessId: 'biz-1', name: 'Orkestra',
-      category: 'Orkestra', phone: '', note: '', isActive: true, createdAt: '',
+      category: 'Orkestra', phone: '', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
     });
     await repo.addCashFlow({
       id: 'kasa_abc', businessId: 'biz-1', kind: 'Gelir', date: '2026-01-01',
@@ -631,11 +631,13 @@ describe('tahsilat ve kasa', () => {
   it('kasa kaydını sütun adlarına çevirir', async () => {
     await repo.addCashFlow({
       id: 'c1', businessId: 'b1', kind: 'Gider', date: '2026-01-01',
-      category: 'Kira', amount: 1000, description: '', reservationId: '', createdAt: '',
+      category: 'Kira', amount: 1000, method: 'Havale/EFT',
+      description: '', reservationId: '', createdAt: '',
     });
     expect(islem(cagri('cash_flow'), 'insert')?.arg[0]).toEqual({
       business_id: 'b1', kind: 'Gider', date: '2026-01-01',
-      category: 'Kira', amount: 1000, description: null, reservation_id: null,
+      category: 'Kira', amount: 1000, method: 'Havale/EFT',
+      description: null, reservation_id: null,
     });
   });
 
@@ -649,100 +651,6 @@ describe('tahsilat ve kasa', () => {
 
 /* ------------------------------------------------------------ çelik kasa */
 
-describe('çelik kasa', () => {
-  it('hareketleri işletmeye göre ve tarihe göre ister', async () => {
-    await repo.listSafeMovements('b1');
-    const c = cagri('safe_movements');
-    expect(islem(c, 'eq')?.arg).toEqual(['business_id', 'b1']);
-    expect(islem(c, 'order')?.arg).toEqual(['date', { ascending: false }]);
-  });
-
-  it('satırı ekranın beklediği alanlara çevirir', async () => {
-    yanitla('safe_movements', {
-      data: [{
-        id: 'k1', business_id: 'b1', date: '2026-01-01', direction: 'Çıkış',
-        amount: 1500.5, description: 'Bankaya yatırıldı', source_kind: 'cash_flow',
-        source_id: 'c1', created_at: '2026-01-01T08:00:00Z',
-      }],
-    });
-
-    const [m] = await repo.listSafeMovements('b1');
-
-    expect(m).toEqual({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Çıkış',
-      amount: 1500.5, description: 'Bankaya yatırıldı', sourceKind: 'cash_flow',
-      sourceId: 'c1', createdAt: '2026-01-01T08:00:00Z',
-    });
-  });
-
-  it('eksik alanları varsayılana çeker', async () => {
-    yanitla('safe_movements', { data: [{ id: 'k1', business_id: 'b1' }] });
-    const [m] = await repo.listSafeMovements('b1');
-    expect(m).toMatchObject({ direction: 'Giriş', amount: 0, sourceKind: 'cash_flow' });
-  });
-
-  it('hareketi sütun adlarına çevirir', async () => {
-    await repo.addSafeMovement({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: 'Gelir · Tahsilat', sourceKind: 'reservation',
-      sourceId: 'kapora:r1', createdAt: '',
-    });
-    expect(islem(cagri('safe_movements'), 'insert')?.arg[0]).toEqual({
-      business_id: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: 'Gelir · Tahsilat', source_kind: 'reservation',
-      source_id: 'kapora:r1',
-    });
-  });
-
-  it('net kuralını çiğneyen hareketi veritabanının metniyle reddeder', async () => {
-    // DT001: tetikleyici. Para kasadayken tekrar "ekle" çift sayım olurdu;
-    // mesaj kullanıcıya ne yapması gerektiğini söylüyor, sarmalamıyoruz.
-    yanitla('safe_movements', {
-      error: { code: 'DT001', message: 'Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.' },
-    });
-    await expect(repo.addSafeMovement({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: '', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
-    })).rejects.toThrow('Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.');
-  });
-
-  it('aynı anda gelen ikinci isteği düşürür', async () => {
-    // 23505: (yön, sıra) benzersizliği. Tetikleyici tek başına eşzamanlı iki
-    // isteği ayıramaz; ikisi de neti sıfır görür.
-    yanitla('safe_movements', { error: { code: '23505', message: 'duplicate key' } });
-    await expect(repo.addSafeMovement({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: '', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
-    })).rejects.toThrow('Bu kayıt çelik kasaya az önce işlendi; sayfayı yenileyip bakın.');
-  });
-
-  it('diğer yazma hatalarını kendi metniyle çevirir', async () => {
-    yanitla('safe_movements', { error: HATA });
-    await expect(repo.addSafeMovement({
-      id: 'k1', businessId: 'b1', date: '2026-01-01', direction: 'Giriş',
-      amount: 500, description: '', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
-    })).rejects.toThrow('Çelik kasa hareketi eklenemedi.');
-
-    await expect(repo.listSafeMovements('b1')).rejects.toThrow('Çelik kasa hareketleri alınamadı.');
-    await expect(repo.deleteSafeMovement('k1')).rejects.toThrow('Çelik kasa hareketi silinemedi.');
-  });
-
-  it('hareketi kimliğine göre siler', async () => {
-    await repo.deleteSafeMovement('k1');
-    expect(islem(cagri('safe_movements'), 'eq')?.arg).toEqual(['id', 'k1']);
-  });
-
-  it('gelir/gider kaydı silinince ona bağlı hareket de düşer', async () => {
-    // Kalsaydı kasada kaynağı görünmeyen bir tutar dururdu.
-    await repo.deleteCashFlow('c1');
-    const c = cagri('safe_movements');
-    expect(c).toBeDefined();
-    expect(c!.islemler.filter((i) => i.ad === 'eq').map((i) => i.arg)).toEqual([
-      ['source_kind', 'cash_flow'],
-      ['source_id', 'c1'],
-    ]);
-  });
-});
 
 /* --------------------------------------------------------- renk ayarları */
 
@@ -1172,10 +1080,10 @@ describe('tedarikçiler', () => {
     expect(tedarikci).toMatchObject({ id: 'v1', businessId: 'b1', name: 'Orkestra', isActive: true });
   });
 
-  it('organizasyona bağlı tedarikçi için pasife almayı önerir', async () => {
+  it('organizasyona bağlı kalem için pasife almayı önerir', async () => {
     yanitla('vendors', { error: { code: '23503', message: 'foreign key violation' } });
     await expect(repo.deleteVendor('v1'))
-      .rejects.toThrow('Bu tedarikçi organizasyonlara bağlı; silmek yerine pasife alın.');
+      .rejects.toThrow('Bu kayıt organizasyonlara bağlı; silmek yerine pasife alın.');
   });
 
   it('atamaları önce siler sonra yazar ve boş saati null yapar', async () => {
@@ -1356,7 +1264,7 @@ describe('listeleme eşlemeleri', () => {
 
     const tedarikci = await repo.saveVendor({
       id: 'v1', businessId: 'b1', name: 'Orkestra', category: 'Orkestra / Müzik',
-      phone: '5321112233', note: '', isActive: true, createdAt: '',
+      phone: '5321112233', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
     });
 
     expect(tedarikci).toMatchObject({ id: 'v1', name: 'Orkestra', isActive: true });
@@ -1495,5 +1403,156 @@ describe('rezervasyon ulaşım kanalı', () => {
     expect(govde.source_channel).toBeNull();
     // Yalnızca boşluktan ibaret açıklama da boş sayılır.
     expect(govde.source_detail).toBeNull();
+  });
+});
+
+/**
+ * Döviz, hava durumu, özel günler ve anket (maddeler 28-31).
+ *
+ * Dördünün ortak yanı: satırları SUNUCU yazıyor, istemci okuyor.
+ * Eşleme hatası burada "veri yok" gibi görünür ve sessizce geçer --
+ * bu yüzden sütun adları ve tipleri tek tek doğrulanıyor.
+ */
+describe('kur önbelleği', () => {
+  it('metin gelen sayıları çevirir', async () => {
+    yanitla('exchange_rates', { data: [{
+      code: 'USD', buy: '41.2345', sell: '41.3087',
+      quoted_at: '2026-09-12T00:00:00Z', fetched_at: '2026-09-12T08:00:00Z',
+    }] });
+    const [kur] = await repo.listExchangeRates();
+    expect(kur).toEqual({
+      code: 'USD', buy: 41.2345, sell: 41.3087,
+      quotedAt: '2026-09-12T00:00:00Z', fetchedAt: '2026-09-12T08:00:00Z',
+    });
+  });
+
+  it('kur tablosunu işletmeye göre süzmez', async () => {
+    await repo.listExchangeRates();
+    const c = cagri('exchange_rates');
+    expect(islem(c!, 'eq')).toBeUndefined();
+  });
+});
+
+describe('hava durumu', () => {
+  it('satırı arayüz tipine çevirir', async () => {
+    yanitla('weather_forecasts', { data: [{
+      business_id: 'b1', day: '2026-09-12', min_c: '17.4', max_c: '28.6',
+      current_c: '24.2', summary: 'Parçalı bulutlu', icon: '4',
+      fetched_at: '2026-09-12T06:15:00Z',
+    }] });
+    const [t] = await repo.listWeather('b1');
+    expect(t).toEqual({
+      businessId: 'b1', day: '2026-09-12', minC: 17.4, maxC: 28.6, currentC: 24.2,
+      summary: 'Parçalı bulutlu', icon: '4', fetchedAt: '2026-09-12T06:15:00Z',
+    });
+  });
+
+  /*
+    Boş sıcaklık 0 olarak çevrilirse ekranda "0°" görünür ve olmayan bir
+    tahmin doğruymuş gibi sunulur.
+  */
+  it('boş sıcaklığı sıfıra çevirmez', async () => {
+    yanitla('weather_forecasts', { data: [{
+      business_id: 'b1', day: '2027-06-01', min_c: null, max_c: null, current_c: null,
+    }] });
+    const [t] = await repo.listWeather('b1');
+    expect(t.minC).toBeUndefined();
+    expect(t.maxC).toBeUndefined();
+    expect(t.currentC).toBeUndefined();
+  });
+
+  it('sıfır dereceyi korur', async () => {
+    yanitla('weather_forecasts', { data: [{ business_id: 'b1', day: '2027-01-10', min_c: '0' }] });
+    expect((await repo.listWeather('b1'))[0]?.minC).toBe(0);
+  });
+
+  it('işletmeye göre süzer', async () => {
+    await repo.listWeather('b1');
+    expect(islem(cagri('weather_forecasts')!, 'eq')?.arg).toEqual(['business_id', 'b1']);
+  });
+});
+
+describe('özel günler', () => {
+  it('ortak ve işletmeye ait günleri birleştirir', async () => {
+    durum.tabloYanitlari.special_days = [
+      { data: [{ id: 'o1', business_id: null, day: '2026-10-29', label: 'Cumhuriyet Bayramı', kind: 'resmi_tatil' }] },
+      { data: [{ id: 'i1', business_id: 'b1', day: '2026-03-20', label: 'Ramazan Bayramı', kind: 'dini_bayram' }] },
+    ];
+    const gunler = await repo.listSpecialDays('b1');
+    expect(gunler.map((g) => g.id)).toEqual(['i1', 'o1']);
+  });
+
+  it('ortak günü işletmesiz olarak çevirir', async () => {
+    yanitla('special_days', { data: [{ id: 'o1', business_id: null, day: '2026-10-29', label: 'Bayram', kind: 'resmi_tatil' }] });
+    expect((await repo.listSpecialDays('b1'))[0]?.businessId).toBeUndefined();
+  });
+
+  it('kaydederken sütun adlarını kullanır', async () => {
+    yanitla('special_days', { data: { id: 'g1', business_id: 'b1', day: '2026-03-20', label: 'Arife', kind: 'arife' } });
+    await repo.saveSpecialDay({
+      id: 'g1', businessId: 'b1', day: '2026-03-20', label: '  Arife  ',
+      kind: 'arife', createdAt: '',
+    });
+    const govde = islem(cagri('special_days')!, 'upsert')?.arg[0] as Record<string, unknown>;
+    expect(govde).toMatchObject({ business_id: 'b1', day: '2026-03-20', label: 'Arife', kind: 'arife' });
+  });
+
+  it('aynı gün ve isimdeki çakışmayı Türkçe hataya çevirir', async () => {
+    yanitla('special_days', { error: { code: '23505', message: 'duplicate key' } });
+    await expect(repo.saveSpecialDay({
+      id: 'g1', businessId: 'b1', day: '2026-03-20', label: 'Arife', kind: 'arife', createdAt: '',
+    })).rejects.toThrow(/zaten var/);
+  });
+
+  it('işletmesiz kayıt yazmaz', async () => {
+    await expect(repo.saveSpecialDay({
+      id: 'g1', day: '2026-03-20', label: 'Arife', kind: 'arife', createdAt: '',
+    })).rejects.toThrow(/Ortak günler/);
+    expect(cagri('special_days')).toBeUndefined();
+  });
+
+  /*
+    Ortak günü silen bir istek RLS'e takılır ve SİLİNEN SATIR OLMADAN
+    başarılı döner; satır arayüzde kaybolup yenilemede geri gelirdi.
+    Süzgeç bunu en baştan engelliyor.
+  */
+  it('silerken ortak günleri süzgeçle dışarıda bırakır', async () => {
+    await repo.deleteSpecialDay('g1');
+    const c = cagri('special_days');
+    expect(islem(c!, 'isNot')?.arg).toEqual(['business_id', null]);
+  });
+});
+
+describe('anket sonuçları', () => {
+  it('satırı arayüz tipine çevirir', async () => {
+    yanitla('surveys', { data: [{
+      id: 'a1', business_id: 'b1', reservation_id: 'r1',
+      sent_at: '2026-09-19T06:00:00Z', answered_at: '2026-09-20T10:00:00Z',
+      scores: { salon: 5 }, comment: 'Teşekkürler', created_at: '2026-09-19T06:00:00Z',
+    }] });
+    const [anket] = await repo.listSurveys('b1');
+    expect(anket).toEqual({
+      id: 'a1', businessId: 'b1', reservationId: 'r1',
+      sentAt: '2026-09-19T06:00:00Z', answeredAt: '2026-09-20T10:00:00Z',
+      scores: { salon: 5 }, comment: 'Teşekkürler', createdAt: '2026-09-19T06:00:00Z',
+    });
+  });
+
+  /*
+    Jeton PANELE ÇEKİLMİYOR: anket bağlantısının tamamı, o bağlantıyı
+    açan herkese anketi cevaplama yetkisi veriyor ve ekranda durmasına
+    gerek yok.
+  */
+  it('jetonu hiç istemez', async () => {
+    await repo.listSurveys('b1');
+    const sutunlar = String(islem(cagri('surveys')!, 'select')?.arg[0]);
+    expect(sutunlar).not.toContain('token');
+  });
+
+  it('cevapsız anketi boş alanlarla çevirir', async () => {
+    yanitla('surveys', { data: [{ id: 'a1', business_id: 'b1', reservation_id: 'r1' }] });
+    const [anket] = await repo.listSurveys('b1');
+    expect(anket.answeredAt).toBeUndefined();
+    expect(anket.scores).toBeUndefined();
   });
 });

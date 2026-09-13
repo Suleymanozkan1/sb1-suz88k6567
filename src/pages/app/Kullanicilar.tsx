@@ -8,10 +8,14 @@ import { useDeleteStaff, useSaveStaff, useStaff } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import { ALL_PERMISSIONS } from '../../types';
 import { formatPhone } from '../../lib/format';
-import { IconEdit, IconPlus, IconTrash, IconUser } from '../../components/Icons';
+import { IconEdit, IconPlus, IconReport, IconTrash, IconUser } from '../../components/Icons';
 import type { Permission, User } from '../../types';
 
-const EMPTY = { fullName: '', email: '', mobile: '', password: '', permissions: ['rezervasyon.goruntule'] as Permission[] };
+const EMPTY = {
+  fullName: '', email: '', mobile: '', password: '',
+  permissions: ['rezervasyon.goruntule'] as Permission[],
+  monthlyReport: false,
+};
 
 export default function Kullanicilar() {
   const { user, can, isDemoMode } = useAuth();
@@ -34,7 +38,10 @@ export default function Kullanicilar() {
 
   function openEdit(u: User) {
     setEditing(u);
-    setForm({ fullName: u.fullName, email: u.email, mobile: u.mobile, password: '', permissions: u.permissions });
+    setForm({
+      fullName: u.fullName, email: u.email, mobile: u.mobile, password: '',
+      permissions: u.permissions, monthlyReport: Boolean(u.monthlyReport),
+    });
     setError('');
     setShowForm(true);
   }
@@ -54,6 +61,7 @@ export default function Kullanicilar() {
         email: form.email.trim(),
         password: form.password || undefined,
         mobile: form.mobile.replace(/\D/g, ''),
+        monthlyReport: form.monthlyReport,
         permissions: form.permissions,
       });
       setShowForm(false);
@@ -135,6 +143,20 @@ export default function Kullanicilar() {
             </div>
           </div>
 
+          {/*
+            Aylık rapor (madde 24). Raporun GİDECEĞİ adres burada değil,
+            Ayarlar'da: iki ayar ayrı durmasaydı raporu kapatmak adresi de
+            silmek olurdu.
+          */}
+          <label className="mt-4 flex items-center gap-2 text-sm text-brand">
+            <input
+              type="checkbox"
+              checked={form.monthlyReport}
+              onChange={(e) => setForm((f) => ({ ...f, monthlyReport: e.target.checked }))}
+            />
+            Aylık rapor gönderilsin (ayın ilk günü, biten ayın özeti)
+          </label>
+
           <fieldset className="mt-5">
             <legend className="field-label">Yetkiler</legend>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -170,6 +192,7 @@ export default function Kullanicilar() {
                 <th className="px-4 py-3 font-medium">E-Posta</th>
                 <th className="px-4 py-3 font-medium">Telefon</th>
                 <th className="px-4 py-3 font-medium">Yetkiler</th>
+                <th className="px-4 py-3 font-medium">Aylık Rapor</th>
                 <th className="px-4 py-3 text-right font-medium">İşlem</th>
               </tr>
             </thead>
@@ -184,6 +207,11 @@ export default function Kullanicilar() {
                   <td className="px-4 py-3 text-brand-muted">{u.email}</td>
                   <td className="px-4 py-3 text-brand-muted">{u.mobile ? formatPhone(u.mobile) : '-'}</td>
                   <td className="px-4 py-3 text-xs text-brand-muted">{u.permissions.length} yetki</td>
+                  <td className="px-4 py-3 text-xs">
+                    {u.monthlyReport
+                      ? <span className="flex items-center gap-1 text-[#15803d]"><IconReport size={14} /> Açık</span>
+                      : <span className="text-brand-muted">Kapalı</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
                       <button type="button" onClick={() => openEdit(u)} aria-label={`${u.fullName} düzenle`} className="rounded p-1.5 text-brand-muted hover:text-accent-ink">

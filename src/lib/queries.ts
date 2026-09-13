@@ -12,8 +12,8 @@ import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
   Business, CashFlowEntry, ColorSetting, ConsentStatus, MessageCategory,
-  Payment, Reservation, SafeMovement, SmsLogEntry, CustomerLead, LeadMessage,
-  LeadStatusDef, WhatsappAccount,
+  Payment, PaymentAlert, PaymentAlertRecipient, Reservation, SmsLogEntry, CustomerLead, LeadMessage,
+  LeadStatusDef, QuickReply, ReservationExpense, WhatsappAccount, SpecialDay,
 } from '../types';
 
 export const keys = {
@@ -23,12 +23,17 @@ export const keys = {
   reservation: (id: string) => ['reservation', id] as const,
   payments: (businessId: string) => ['payments', businessId] as const,
   cashFlow: (businessId: string) => ['cashFlow', businessId] as const,
-  safeMovements: (businessId: string) => ['safeMovements', businessId] as const,
   leads: (businessId: string) => ['leads', businessId] as const,
   lead: (id: string) => ['lead', id] as const,
   leadMessages: (leadId: string) => ['leadMessages', leadId] as const,
   leadStatusHistory: (leadId: string) => ['leadStatusHistory', leadId] as const,
   leadStatuses: (businessId: string) => ['leadStatuses', businessId] as const,
+  reservationExpenses: (businessId: string) => ['reservationExpenses', businessId] as const,
+  paymentEvents: (businessId: string) => ['paymentEvents', businessId] as const,
+  paymentAlerts: (businessId: string) => ['paymentAlerts', businessId] as const,
+  paymentAlertRecipients: (businessId: string) => ['paymentAlertRecipients', businessId] as const,
+  quickReplies: (businessId: string) => ['quickReplies', businessId] as const,
+  errorReports: (ownerId: string) => ['errorReports', ownerId] as const,
   whatsappAccount: (businessId: string) => ['whatsappAccount', businessId] as const,
   colors: (businessId: string) => ['colors', businessId] as const,
   sms: (businessId: string) => ['sms', businessId] as const,
@@ -44,6 +49,15 @@ export const keys = {
   templates: (businessId: string) => ['templates', businessId] as const,
   reminderRules: (businessId: string) => ['reminder-rules', businessId] as const,
   tasks: (reservationId: string) => ['tasks', reservationId] as const,
+  /*
+    Kur ÖNBELLEK ANAHTARI işletmeye bağlı DEĞİL: kurlar herkes için aynı
+    ve tek bir satır kümesi. İşletmeye bağlansaydı aynı veri her işletme
+    için ayrı çekilirdi.
+  */
+  exchangeRates: () => ['exchangeRates'] as const,
+  weather: (businessId: string) => ['weather', businessId] as const,
+  specialDays: (businessId: string) => ['specialDays', businessId] as const,
+  surveys: (businessId: string) => ['surveys', businessId] as const,
   vendors: (businessId: string) => ['vendors', businessId] as const,
   resVendors: (reservationId: string) => ['resVendors', reservationId] as const,
 };
@@ -106,15 +120,6 @@ export function useCashFlow() {
   });
 }
 
-/** Çelik kasa hareketleri. Kasa bakiyesinden ayrı bir defterdir. */
-export function useSafeMovements() {
-  const businessId = useActiveBusinessId();
-  return useQuery({
-    queryKey: keys.safeMovements(businessId),
-    queryFn: () => repo.listSafeMovements(businessId),
-    enabled: Boolean(businessId),
-  });
-}
 
 /** Müşteri adayları. */
 export function useLeads() {
@@ -149,6 +154,32 @@ export function useLeadMessages(leadId: string | undefined) {
  * değişiyor; uzun bir staleTime ile her ekran değişiminde yeniden
  * çekilmesi önleniyor.
  */
+/** Düğün içi giderler. İşletme genelinde okunur, ekranda rezervasyona süzülür. */
+export function useReservationExpenses() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.reservationExpenses(businessId),
+    queryFn: () => repo.listReservationExpenses(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveReservationExpense() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (expense: ReservationExpense) => repo.saveReservationExpense(expense),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteReservationExpense() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteReservationExpense(id),
+    onSuccess: invalidate,
+  });
+}
+
 export function useLeadStatuses() {
   const businessId = useActiveBusinessId();
   return useQuery({
@@ -463,12 +494,19 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: keys.reservations(businessId) });
     qc.invalidateQueries({ queryKey: keys.payments(businessId) });
     qc.invalidateQueries({ queryKey: keys.cashFlow(businessId) });
-    qc.invalidateQueries({ queryKey: keys.safeMovements(businessId) });
     qc.invalidateQueries({ queryKey: keys.leads(businessId) });
     qc.invalidateQueries({ queryKey: ['lead'] });
     qc.invalidateQueries({ queryKey: ['leadMessages'] });
     qc.invalidateQueries({ queryKey: ['leadStatusHistory'] });
     qc.invalidateQueries({ queryKey: keys.leadStatuses(businessId) });
+    qc.invalidateQueries({ queryKey: keys.reservationExpenses(businessId) });
+    qc.invalidateQueries({ queryKey: keys.paymentEvents(businessId) });
+    qc.invalidateQueries({ queryKey: keys.paymentAlerts(businessId) });
+    qc.invalidateQueries({ queryKey: keys.paymentAlertRecipients(businessId) });
+    qc.invalidateQueries({ queryKey: keys.quickReplies(businessId) });
+    qc.invalidateQueries({ queryKey: keys.specialDays(businessId) });
+    qc.invalidateQueries({ queryKey: keys.surveys(businessId) });
+    qc.invalidateQueries({ queryKey: keys.errorReports(ownerId) });
     qc.invalidateQueries({ queryKey: keys.whatsappAccount(businessId) });
     qc.invalidateQueries({ queryKey: keys.sms(businessId) });
     qc.invalidateQueries({ queryKey: keys.colors(businessId) });
@@ -507,10 +545,194 @@ export function useAddPayment() {
   });
 }
 
+export function useUpdatePayment() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (payment: Payment) => repo.updatePayment(payment),
+    onSuccess: invalidate,
+  });
+}
+
 export function useDeletePayment() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => repo.deletePayment(id),
+    onSuccess: invalidate,
+  });
+}
+
+/* -------------------------------------------- ödeme değişiklik geçmişi */
+
+export function usePaymentEvents() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.paymentEvents(businessId),
+    queryFn: () => repo.listPaymentEvents(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function usePaymentAlerts() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.paymentAlerts(businessId),
+    queryFn: () => repo.listPaymentAlerts(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSavePaymentAlert() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    // İşletme çağıran ekrandan değil oturumdan geliyor: ekranın boş bir
+    // kimlikle kaydettiği satır hiçbir listede görünmezdi.
+    mutationFn: (alert: PaymentAlert) => repo.savePaymentAlert({ ...alert, businessId }),
+    onSuccess: invalidate,
+  });
+}
+
+export function usePaymentAlertRecipients() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.paymentAlertRecipients(businessId),
+    queryFn: () => repo.listPaymentAlertRecipients(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSavePaymentAlertRecipient() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (alici: PaymentAlertRecipient) =>
+      repo.savePaymentAlertRecipient({ ...alici, businessId }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeletePaymentAlertRecipient() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deletePaymentAlertRecipient(id),
+    onSuccess: invalidate,
+  });
+}
+
+/* ------------------------------------------------------ hata bildirimi */
+
+export function useErrorReports(limit = 100) {
+  const { ownerId } = useAuth();
+  return useQuery({
+    queryKey: keys.errorReports(ownerId),
+    queryFn: () => repo.listErrorReports(limit),
+    enabled: Boolean(ownerId),
+  });
+}
+
+export function useAddErrorReport() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (input: { path: string; message: string; userAgent: string }) =>
+      repo.addErrorReport({ ...input, businessId: businessId || undefined }),
+    onSuccess: invalidate,
+  });
+}
+
+/* ----------------------------------------- döviz, hava, özel gün, anket */
+
+/**
+ * Kur önbelleği (madde 28).
+ *
+ * Sağlayıcıya istek ATMIYOR: satırları sunucudaki zamanlanmış görev
+ * dolduruyor, buradan yalnızca okunuyor. Tarayıcıdan çekilseydi API
+ * anahtarı istemciye inerdi.
+ *
+ * Beş dakikada bir tazeleniyor; görev de o sıklıkta çalışıyor, daha
+ * sıkı sormak aynı satırı tekrar tekrar okumak olurdu.
+ */
+export function useExchangeRates() {
+  return useQuery({
+    queryKey: keys.exchangeRates(),
+    queryFn: () => repo.listExchangeRates(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** İşletmenin hava tahminleri (madde 29). Satır yoksa tahmin de yok. */
+export function useWeather() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.weather(businessId),
+    queryFn: () => repo.listWeather(businessId),
+    enabled: Boolean(businessId),
+    staleTime: 15 * 60_000,
+  });
+}
+
+export function useSpecialDays() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.specialDays(businessId),
+    queryFn: () => repo.listSpecialDays(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveSpecialDay() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    // İşletme kimliği BURADA basılıyor: ekrandan boş gelirse kayıt
+    // ortak gün gibi görünür ve kimsenin silemeyeceği bir satır olurdu.
+    mutationFn: (gun: SpecialDay) => repo.saveSpecialDay({ ...gun, businessId }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteSpecialDay() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteSpecialDay(id),
+    onSuccess: invalidate,
+  });
+}
+
+/** Deneyim anketi sonuçları (madde 31). */
+export function useSurveys() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.surveys(businessId),
+    queryFn: () => repo.listSurveys(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+/* ------------------------------------------------------- hızlı yanıtlar */
+
+export function useQuickReplies() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.quickReplies(businessId),
+    queryFn: () => repo.listQuickReplies(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
+export function useSaveQuickReply() {
+  const invalidate = useInvalidate();
+  const businessId = useActiveBusinessId();
+  return useMutation({
+    mutationFn: (yanit: QuickReply) => repo.saveQuickReply({ ...yanit, businessId }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteQuickReply() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteQuickReply(id),
     onSuccess: invalidate,
   });
 }
@@ -531,21 +753,7 @@ export function useDeleteCashFlow() {
   });
 }
 
-export function useAddSafeMovement() {
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: (movement: SafeMovement) => repo.addSafeMovement(movement),
-    onSuccess: invalidate,
-  });
-}
 
-export function useDeleteSafeMovement() {
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: (id: string) => repo.deleteSafeMovement(id),
-    onSuccess: invalidate,
-  });
-}
 
 export function useWhatsappAccount() {
   const businessId = useActiveBusinessId();

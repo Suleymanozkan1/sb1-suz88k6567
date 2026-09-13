@@ -9,7 +9,7 @@ import { addDays, toIso, todayIso } from './format';
 import { DEFAULT_COLOR_SETTINGS, ORG_TO_COLOR_KEY, OWNER_PERMISSIONS } from '../data/constants';
 import type {
   Business, CashFlowEntry, Hall, LeadChannel, Menu, Payment, Reservation,
-  CustomerLead, SafeMovement, User, Vendor,
+  CustomerLead, User, Vendor,
 } from '../types';
 
 export { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS };
@@ -146,15 +146,45 @@ export function seedIfEmpty(): void {
     ...demoMenus,
   ]);
 
+  /** Hizmet: telefonu ve birim fiyatı var, stoğu yok. */
+  const hizmet = (
+    id: string, biz: string, name: string, category: string,
+    phone: string, note: string, unitPrice = 0,
+  ): Vendor => ({
+    id, businessId: biz, name, category, kind: 'hizmet', phone, note, unitPrice,
+    boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0,
+    isActive: true, createdAt: now,
+  });
+
+  /** Ürün: koli ve adetle sayılır, telefonu olmaz. */
+  const urun = (
+    id: string, biz: string, name: string, category: string,
+    boxCount: number, unitsPerBox: number, looseCount: number,
+    minCount: number, unitPrice = 0,
+  ): Vendor => ({
+    id, businessId: biz, name, category, kind: 'urun', phone: '', note: '', unitPrice,
+    boxCount, unitsPerBox, looseCount, minCount,
+    isActive: true, createdAt: now,
+  });
+
   const demoVendors: Vendor[] = [
-    { id: 'vendor_demo1', businessId, name: 'Yıldız Orkestra', category: 'Orkestra / Müzik',
-      phone: '5321230001', note: 'Ses sistemi dahil.', isActive: true, createdAt: now },
-    { id: 'vendor_demo2', businessId, name: 'Kare Fotoğraf', category: 'Fotoğraf / Video',
-      phone: '5321230002', note: 'Drone çekimi ayrı ücretli.', isActive: true, createdAt: now },
-    { id: 'vendor_demo3', businessId, name: 'Lale Çiçekçilik', category: 'Çiçek / Süsleme',
-      phone: '5321230003', note: '', isActive: true, createdAt: now },
-    { id: 'vendor_demo4', businessId: 'biz_demo2', name: 'Bahçe Işık', category: 'Ses ve Işık',
-      phone: '5321230004', note: '', isActive: true, createdAt: now },
+    hizmet('vendor_demo1', businessId, 'Yıldız Orkestra', 'Orkestra / Müzik',
+      '5321230001', 'Ses sistemi dahil.', 18000),
+    hizmet('vendor_demo2', businessId, 'Kare Fotoğraf', 'Fotoğraf / Video',
+      '5321230002', 'Drone çekimi ayrı ücretli.', 12000),
+    hizmet('vendor_demo3', businessId, 'Lale Çiçekçilik', 'Çiçek / Süsleme',
+      '5321230003', '', 6500),
+    hizmet('vendor_demo5', businessId, 'Garson', 'Personel', '', 'Kişi başı gecelik.', 2000),
+    hizmet('vendor_demo6', businessId, 'Vale', 'Personel', '', '', 1500),
+    hizmet('vendor_demo4', 'biz_demo2', 'Bahçe Işık', 'Ses ve Işık', '5321230004', ''),
+
+    // Stok örnekleri: kritik seviyenin altına düşen bir kalem de var ki
+    // özet sayfasındaki uyarı boş bir kutu olarak durmasın.
+    urun('urun_demo1', businessId, 'Su (0,5 lt)', 'İçecek', 10, 24, 6, 100, 4),
+    urun('urun_demo2', businessId, 'Kola (330 ml)', 'İçecek', 6, 24, 0, 60, 12),
+    urun('urun_demo3', businessId, 'Fanta (330 ml)', 'İçecek', 4, 24, 12, 60, 12),
+    urun('urun_demo4', businessId, 'Tuvalet Kâğıdı', 'Temizlik', 1, 32, 4, 40, 9),
+    urun('urun_demo5', businessId, 'Peçete', 'Sarf Malzeme', 0, 0, 18, 30, 25),
   ];
   write(KEYS.vendors, [
     ...read<Vendor[]>(KEYS.vendors, []).filter((v) => !demoVendors.some((d) => d.id === v.id)),
@@ -344,41 +374,6 @@ export function seedIfEmpty(): void {
   }
   write(KEYS.cashflow, flow);
 
-  /*
-    Çelik kasa tanıtım hareketleri.
-
-    Kasadaki para ile muhasebe bakiyesinin neden ayrı olduğunu bir bakışta
-    göstermek için üç örnek: nakit alınıp kasada duran bir gelir, kasaya
-    girip sonra bankaya yatırılan bir gelir (net etkisi sıfır) ve kasadan
-    ödenen bir gider.
-  */
-  const kasaHareketleri: SafeMovement[] = [];
-  const nakitGelir = flow.filter((f) => f.kind === 'Gelir').slice(0, 2);
-  const nakitGider = flow.find((f) => f.kind === 'Gider');
-
-  nakitGelir.forEach((f, i) => {
-    kasaHareketleri.push({
-      id: `kasa_seed_${i}_giris`, businessId, date: f.date, direction: 'Giriş',
-      amount: f.amount, description: `${f.category} · ${f.description ?? ''}`.trim(),
-      sourceKind: 'cash_flow', sourceId: f.id, createdAt: now,
-    });
-  });
-  // İlk gelir bankaya yatırıldı: kasaya girdi, sonra kasadan çıktı.
-  if (nakitGelir[0]) {
-    kasaHareketleri.push({
-      id: 'kasa_seed_0_cikis', businessId, date: nakitGelir[0].date, direction: 'Çıkış',
-      amount: nakitGelir[0].amount, description: 'Bankaya yatırıldı',
-      sourceKind: 'cash_flow', sourceId: nakitGelir[0].id, createdAt: now,
-    });
-  }
-  if (nakitGider) {
-    kasaHareketleri.push({
-      id: 'kasa_seed_gider', businessId, date: nakitGider.date, direction: 'Çıkış',
-      amount: nakitGider.amount, description: `${nakitGider.category} · kasadan ödendi`,
-      sourceKind: 'cash_flow', sourceId: nakitGider.id, createdAt: now,
-    });
-  }
-  write(KEYS.safeMovements, kasaHareketleri);
 
   /*
     Tanıtım müşteri adayları.

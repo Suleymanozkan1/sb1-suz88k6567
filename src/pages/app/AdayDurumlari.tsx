@@ -85,6 +85,9 @@ export default function AdayDurumlari() {
       id: uid('durum'),
       businessId: user?.activeBusinessId ?? '',
       code: kod, label: ad, sortOrder: enSon + 10, tone: yeniTon,
+      // Teklif tonundaki yeni durum da 7 gün sonra takip kuruyor
+      // (madde 18); tonun anlamı ile davranışı ayrışmasın.
+      followupDays: yeniTon === 'teklif' ? 7 : 0,
       isInitial: false, isClosed: false, isWon: false, active: true,
     });
     setYeniAd('');
@@ -139,6 +142,7 @@ export default function AdayDurumlari() {
               <th scope="col" className="px-4 py-3 font-medium">Başlangıç</th>
               <th scope="col" className="px-4 py-3 font-medium">Kapanış</th>
               <th scope="col" className="px-4 py-3 font-medium">Rezervasyon</th>
+              <th scope="col" className="px-4 py-3 font-medium">Takip (gün)</th>
               <th scope="col" className="px-4 py-3 font-medium">Kullanım</th>
               <th scope="col" className="px-4 py-3 font-medium">Durum</th>
               <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">İşlem</span></th>
@@ -208,6 +212,29 @@ export default function AdayDurumlari() {
                     aria-label={`${d.label} rezervasyona dönüş sayılsın`}
                     disabled={!duzenlenebilir}
                     onChange={() => { void yaz({ ...d, isWon: true, isClosed: true }); }} />
+                </td>
+                {/*
+                  Otomatik takip (madde 18). "Teklif verildikten 7 gün
+                  sonra ara" kuralı koda gömülü değil: gün sayısı burada
+                  durumun kendi ayarı, salonun takip ritmi değişebilsin.
+                  Sıfır = bu duruma geçince hatırlatma kurulmaz.
+                */}
+                <td className="px-4 py-3">
+                  <input
+                    type="number" min={0} max={365}
+                    className="field-input w-20"
+                    aria-label={`${d.label} takip günü`}
+                    defaultValue={d.followupDays}
+                    disabled={!duzenlenebilir}
+                    onBlur={(e) => {
+                      const gun = Number(e.target.value);
+                      if (!Number.isFinite(gun) || gun < 0 || gun > 365) {
+                        e.target.value = String(d.followupDays);
+                        return;
+                      }
+                      if (gun !== d.followupDays) void yaz({ ...d, followupDays: gun });
+                    }}
+                  />
                 </td>
                 <td className="px-4 py-3 text-brand-muted">{kullanim(d.code)}</td>
                 <td className="px-4 py-3">

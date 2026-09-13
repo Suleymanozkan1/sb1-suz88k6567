@@ -7,11 +7,13 @@
  */
 import type { HatirlatmaKurali, Sablon } from '../sablon';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus,   EnqueueResult, MessageCategory, Payment, Permission, Reservation, SmsConsent,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ErrorReport,  EnqueueResult, MessageCategory, Payment, PaymentAlert, PaymentAlertRecipient,
+  PaymentEvent, Permission, QuickReply, Reservation, ReservationExpense, SmsConsent,
   Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
   EventTask, Vendor, ReservationVendor,
-  SafeMovement, SmsLogEntry, SmsQueueEntry, SystemHealth, User,
+  SmsLogEntry, SmsQueueEntry, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
+  ExchangeRate, WeatherForecast, SpecialDay, Survey,
 } from '../../types';
 import type { InvoiceLineInput } from '../invoice';
 
@@ -22,6 +24,8 @@ export interface StaffInput {
   password?: string;
   mobile: string;
   permissions: Permission[];
+  /** Ay sonu raporu bu kullanıcı için üretilsin mi (madde 24). */
+  monthlyReport?: boolean;
 }
 
 /** Kod doğrulama sayfasının herkese açık olarak görebildiği alanlar */
@@ -112,24 +116,28 @@ export interface Repository {
   /* -- tahsilatlar --------------------------------------------------- */
   listPayments(businessId: string): Promise<Payment[]>;
   addPayment(payment: Payment): Promise<void>;
+  /** Tutar, tip, tarih ve açıklama düzeltilebilir; kayıt kimliği değişmez. */
+  updatePayment(payment: Payment): Promise<void>;
   deletePayment(id: string): Promise<void>;
+
+  /* -- ödeme değişiklikleri -------------------------------------------- */
+  /** Geçmiş yalnızca okunur; satırları veritabanı tetikleyicisi yazar. */
+  listPaymentEvents(businessId: string): Promise<PaymentEvent[]>;
+  listPaymentAlerts(businessId: string): Promise<PaymentAlert[]>;
+  savePaymentAlert(alert: PaymentAlert): Promise<PaymentAlert>;
+  listPaymentAlertRecipients(businessId: string): Promise<PaymentAlertRecipient[]>;
+  savePaymentAlertRecipient(alici: PaymentAlertRecipient): Promise<PaymentAlertRecipient>;
+  deletePaymentAlertRecipient(id: string): Promise<void>;
+
+  /* -- düğün içi giderler ---------------------------------------------- */
+  listReservationExpenses(businessId: string): Promise<ReservationExpense[]>;
+  saveReservationExpense(expense: ReservationExpense): Promise<void>;
+  deleteReservationExpense(id: string): Promise<void>;
 
   /* -- kasa ---------------------------------------------------------- */
   listCashFlow(businessId: string): Promise<CashFlowEntry[]>;
   addCashFlow(entry: CashFlowEntry): Promise<void>;
   deleteCashFlow(id: string): Promise<void>;
-
-  /* -- çelik kasa ------------------------------------------------------ */
-  listSafeMovements(businessId: string): Promise<SafeMovement[]>;
-  /**
-   * Kasaya giriş ya da çıkış yazar.
-   *
-   * Bir gelir/gider satırı aynı yönde ikinci kez yazılamaz; veritabanındaki
-   * benzersizlik kısıtının karşılığıdır. İki kez tıklamaktan doğan çift
-   * sayım, kasadaki parayı olduğundan farklı gösterirdi.
-   */
-  addSafeMovement(movement: SafeMovement): Promise<void>;
-  deleteSafeMovement(id: string): Promise<void>;
 
   /* -- müşteri adayları ------------------------------------------------ */
   listLeads(businessId: string): Promise<CustomerLead[]>;
@@ -149,6 +157,42 @@ export interface Repository {
   listLeadStatusHistory(leadId: string): Promise<LeadStatusChange[]>;
 
   /** İşletmenin düzenleyebildiği aday durumları. */
+  /* -- hata bildirimi --------------------------------------------------- */
+  /** Kayıt düzeltilemez; yalnızca eklenir ve okunur. */
+  listErrorReports(limit: number): Promise<ErrorReport[]>;
+  addErrorReport(input: {
+    businessId?: string; path: string; message: string; userAgent: string;
+  }): Promise<void>;
+
+  /* -- döviz / altın (madde 28) ----------------------------------------- */
+  /**
+   * Kur önbelleği.
+   *
+   * YALNIZCA OKUMA var: satırları sunucudaki zamanlanmış görev yazıyor.
+   * İstemciye yazma verilseydi sağlayıcı anahtarının tarayıcıya inmesi
+   * gerekirdi ve ekrandaki kur kullanıcıdan kullanıcıya değişirdi.
+   */
+  listExchangeRates(): Promise<ExchangeRate[]>;
+
+  /* -- hava durumu (madde 29) ------------------------------------------- */
+  /** İşletmenin konumu için çekilmiş günlük tahminler. Yoksa boş liste. */
+  listWeather(businessId: string): Promise<WeatherForecast[]>;
+
+  /* -- özel günler (madde 30) ------------------------------------------- */
+  /** Ortak resmî tatiller + işletmenin kendi eklediği günler. */
+  listSpecialDays(businessId: string): Promise<SpecialDay[]>;
+  saveSpecialDay(gun: SpecialDay): Promise<SpecialDay>;
+  deleteSpecialDay(id: string): Promise<void>;
+
+  /* -- deneyim anketi (madde 31) ---------------------------------------- */
+  /** Anketleri de sunucu üretiyor; panel sonuçları okur. */
+  listSurveys(businessId: string): Promise<Survey[]>;
+
+  /* -- hızlı yanıtlar --------------------------------------------------- */
+  listQuickReplies(businessId: string): Promise<QuickReply[]>;
+  saveQuickReply(yanit: QuickReply): Promise<QuickReply>;
+  deleteQuickReply(id: string): Promise<void>;
+
   listLeadStatuses(businessId: string): Promise<LeadStatusDef[]>;
   saveLeadStatus(durum: LeadStatusDef): Promise<LeadStatusDef>;
   deleteLeadStatus(id: string): Promise<void>;

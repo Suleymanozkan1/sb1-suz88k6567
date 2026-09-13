@@ -88,26 +88,6 @@ export const IconLogout = (p: IconProps) => (
   <Base {...p}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></Base>
 );
 export const IconPlus = (p: IconProps) => (<Base {...p}><path d="M12 5v14M5 12h14" /></Base>);
-/**
- * Çelik kasa: gövde, kadran ve kol. Muhasebe kasasının cüzdan simgesinden
- * ayrılsın diye ayrı çizildi; iki bakiye ekranda yan yana duruyor.
- */
-export const IconSafe = (p: IconProps) => (
-  <Base {...p}>
-    <rect x="3" y="4" width="18" height="16" rx="2" />
-    <circle cx="10" cy="12" r="3.2" />
-    <path d="M10 8.8v1M10 15.2v1M6.8 12h1M12.2 12h1" />
-    <path d="M16.5 10v4" />
-  </Base>
-);
-/** Kasaya para girişi */
-export const IconSafeIn = (p: IconProps) => (
-  <Base {...p}><path d="M12 4v10m0 0 4-4m-4 4-4-4" /><path d="M4 18h16" /></Base>
-);
-/** Kasadan para çıkışı */
-export const IconSafeOut = (p: IconProps) => (
-  <Base {...p}><path d="M12 14V4m0 0 4 4m-4-4-4 4" /><path d="M4 18h16" /></Base>
-);
 export const IconEdit = (p: IconProps) => (
   <Base {...p}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z" /></Base>
 );

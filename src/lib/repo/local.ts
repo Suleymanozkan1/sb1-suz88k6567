@@ -11,13 +11,17 @@ import { nextContractCode, normalizeEmail, uid } from '../ids';
 import { RepoError, type PublicReservation, type Repository, type StaffInput } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
-  Business, CashFlowEntry, CashFlowKind, ColorSetting, EnqueueResult, Invoice,
-  EventTask, Hall, Menu, Payment, Reservation, ReservationVendor,
-  SafeDirection, SafeMovement, SeatingTable, SmsConsent, SmsLogEntry, Vendor,
+  Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
+  EventTask, Hall, Menu, Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent,
+  ErrorReport, PaymentEventKind, QuickReply, Reservation, ReservationExpense, ReservationVendor,
+  SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
-  SmsQueueEntry, User,
+  SmsQueueEntry, User, ExchangeRate, WeatherForecast, SpecialDay, Survey,
 } from '../../types';
-import { VARSAYILAN_LEAD_DURUMLARI } from '../../types';
+import { ODEME_OLAYLARI, VARSAYILAN_LEAD_DURUMLARI } from '../../types';
+import { odemeOlaylari } from '../odemeOlayi';
+import { takipTarihi } from '../lead';
+import { resmiTatiller } from '../ozelGun';
 import { computeInvoice, formatInvoiceNumber } from '../invoice';
 
 const wait = <T,>(value: T): Promise<T> => Promise.resolve(value);
@@ -33,10 +37,117 @@ function leadMessages(): LeadMessage[] { return read<LeadMessage[]>(KEYS.leadMes
 function statusHistory(): LeadStatusChange[] {
   return read<LeadStatusChange[]>(KEYS.leadStatusHistory, []);
 }
+function dugunGiderleri(): ReservationExpense[] {
+  return read<ReservationExpense[]>(KEYS.reservationExpenses, []);
+}
 function leadStatuses(): LeadStatusDef[] {
   return read<LeadStatusDef[]>(KEYS.leadStatuses, []);
 }
-function safeMoves(): SafeMovement[] { return read<SafeMovement[]>(KEYS.safeMovements, []); }
+/**
+ * İşletmenin durum listesi.
+ *
+ * Kaydedilmiş satır yoksa varsayılan akış dönüyor ve bu liste DEPOYA
+ * YAZILMIYOR: durumlar sunucuda tetikleyiciyle tohumlanıyor, tanıtım
+ * kipinde de aynı davranış korunuyor. Ayrı ayrı hesaplanmaması önemli --
+ * otomatik takip bu listedeki gün sayısına bakıyor ve boş bir liste,
+ * takibin sessizce hiç kurulmamasına yol açardı.
+ */
+function isletmeDurumlari(businessId: string): LeadStatusDef[] {
+  const kayitli = leadStatuses().filter((d) => d.businessId === businessId);
+  if (kayitli.length > 0) return [...kayitli].sort((a, b) => a.sortOrder - b.sortOrder);
+  return VARSAYILAN_LEAD_DURUMLARI.map((d) => ({
+    ...d, id: `durum_${businessId}_${d.code}`, businessId,
+  }));
+}
+
+function hataBildirimleri(): ErrorReport[] {
+  return read<ErrorReport[]>(KEYS.errorReports, []);
+}
+
+function hizliYanitlar(): QuickReply[] {
+  return read<QuickReply[]>(KEYS.quickReplies, []);
+}
+
+/**
+ * Takvimdeki özel günler.
+ *
+ * Gerçek kurulumda ortak resmî tatilleri göçte veritabanı tohumluyor.
+ * Tanıtım kipinde veritabanı yok; aynı SABİT TARİHLİ liste burada, ilk
+ * okumada bir kez yazılıyor. Uydurma veri değil: bu günler kanunla
+ * belirli ve her yıl aynı. Dini günler ve okul tarihleri burada da YOK,
+ * onlar panelden giriliyor.
+ */
+function ozelGunler(): SpecialDay[] {
+  const kayitli = read<SpecialDay[] | null>(KEYS.specialDays, null);
+  if (kayitli) return kayitli;
+
+  const yil = new Date().getFullYear();
+  const tohum: SpecialDay[] = [];
+  for (let i = 0; i <= 3; i += 1) {
+    for (const t of resmiTatiller(yil + i)) {
+      tohum.push({ ...t, id: uid('ozel-gun'), createdAt: new Date().toISOString() });
+    }
+  }
+  write(KEYS.specialDays, tohum);
+  return tohum;
+}
+
+function odemeOlaylariKaydi(): PaymentEvent[] {
+  return read<PaymentEvent[]>(KEYS.paymentEvents, []);
+}
+function odemeKurallari(): PaymentAlert[] {
+  return read<PaymentAlert[]>(KEYS.paymentAlerts, []);
+}
+function odemeAlicilari(): PaymentAlertRecipient[] {
+  return read<PaymentAlertRecipient[]>(KEYS.paymentAlertRecipients, []);
+}
+
+/**
+ * Sunucudaki `payment_alerts_tohumla` ile aynı metinler.
+ *
+ * Hepsi KAPALI: yeni kurulan bir salonda yönetici metni okumadan SMS
+ * gitmeye başlamamalı, SMS ücretli.
+ */
+const VARSAYILAN_ODEME_METNI: Record<PaymentEventKind, string> = {
+  tahsilat_eklendi: '{isletme}: {kod} sozlesmesine {tutar} tahsilat girildi ({tip}). Kalan: {kalan}. Islem: {kullanici}',
+  tutar_degisti: '{isletme}: {kod} sozlesmesinde tahsilat {eski_tutar} -> {tutar} olarak degistirildi. Kalan: {kalan}. Islem: {kullanici}',
+  tip_degisti: '{isletme}: {kod} sozlesmesinde {tutar} tahsilatin odeme tipi {eski_tip} -> {tip} oldu. Islem: {kullanici}',
+  tarih_degisti: '{isletme}: {kod} sozlesmesinde {tutar} tahsilatin tarihi degistirildi. Islem: {kullanici}',
+  tahsilat_silindi: '{isletme}: {kod} sozlesmesinden {tutar} tahsilat SILINDI. Kalan: {kalan}. Islem: {kullanici}',
+  kasaya_girmedi: '{isletme}: {kod} sozlesmesinde {tutar} tahsilat {tip} olarak alindi, kasaya girmedi. Islem: {kullanici}',
+};
+
+/**
+ * Tanıtım kipinde olay kaydını yazar.
+ *
+ * Gerçek kurulumda bunu veritabanı tetikleyicisi yapıyor; kural ortak bir
+ * modülde (`odemeOlaylari`) duruyor ki iki taraf aynı olayı üretsin.
+ * Burada SMS kuyruğa ALINMIYOR: tanıtım kipinde gönderecek bir sağlayıcı
+ * yok ve olmayan bir gönderimi kuyrukta göstermek yanıltıcı olurdu.
+ */
+function olayYaz(oncesi: Payment | null, sonrasi: Payment | null): void {
+  const kayit = sonrasi ?? oncesi;
+  if (!kayit) return;
+  const rezervasyon = reservations().find((r) => r.id === kayit.reservationId);
+  if (!rezervasyon) return;
+
+  const simdi = new Date().toISOString();
+  const satirlar: PaymentEvent[] = odemeOlaylari(oncesi, sonrasi).map((event) => ({
+    id: uid('odeme-olay'),
+    businessId: rezervasyon.businessId,
+    reservationId: rezervasyon.id,
+    paymentId: kayit.id,
+    event,
+    amount: kayit.amount,
+    oldAmount: oncesi && sonrasi ? oncesi.amount : undefined,
+    method: kayit.method,
+    oldMethod: oncesi && sonrasi ? oncesi.method : undefined,
+    actorEmail: '',
+    createdAt: simdi,
+  }));
+
+  if (satirlar.length > 0) write(KEYS.paymentEvents, [...odemeOlaylariKaydi(), ...satirlar]);
+}
 
 /**
  * Hareketi doğuran satır gelir mi gider mi?
@@ -46,11 +157,6 @@ function safeMoves(): SafeMovement[] { return read<SafeMovement[]>(KEYS.safeMove
  * gelir varsayılır: kasaya işlenemeyecek bir kayıttır ve diğer kurallar
  * zaten devreye girer.
  */
-function kaynakTuru(movement: SafeMovement): CashFlowKind {
-  if (movement.sourceKind === 'reservation') return 'Gelir';
-  const kayit = cash().find((c) => c.id === movement.sourceId);
-  return kayit?.kind ?? 'Gelir';
-}
 function consents(): SmsConsent[] { return read<SmsConsent[]>(KEYS.consents, []); }
 function queue(): SmsQueueEntry[] { return read<SmsQueueEntry[]>(KEYS.queue, []); }
 function invoices(): Invoice[] { return read<Invoice[]>(KEYS.invoices, []); }
@@ -95,6 +201,24 @@ const VARSAYILAN_SABLON: Record<
   etkinlik_gunu: {
     title: 'Etkinlik günü', kind: 'Hatırlatma', category: 'islem',
     body: 'Sayin {musteri}, bugun {seans} seansinda {salon} sizi bekliyor',
+  },
+  /*
+    Madde 14'teki yeni türler. Üçü de OLAYA bağlı, takvime değil: prova
+    randevusu alındığında, albüm hazır olduğunda gönderilir. Otomatik
+    kurala bağlanmamalarının sebebi bu -- tarihe bağlı bir gönderim,
+    hazır olmayan bir albümü "hazır" diye duyururdu.
+  */
+  prova: {
+    title: 'Prova', kind: 'Hatırlatma', category: 'islem',
+    body: 'Sayin {musteri}, {tarih} organizasyonunuz icin prova randevunuzu belirleyelim. Bizi arayabilirsiniz.',
+  },
+  foto_secim: {
+    title: 'Fotoğraf / video seçimi', kind: 'Bilgilendirme', category: 'islem',
+    body: 'Sayin {musteri}, dugun fotograf ve video seciminiz icin bizi bekliyoruz. Uygun gununuzu bildiriniz.',
+  },
+  foto_hazir: {
+    title: 'Fotoğraflar hazır', kind: 'Bilgilendirme', category: 'islem',
+    body: 'Sayin {musteri}, {tarih} organizasyonunuzun fotograf ve videolari hazir. Teslim icin bizi ariniz.',
   },
   tesekkur: {
     title: 'Teşekkür', kind: 'Bilgilendirme', category: 'ticari',
@@ -229,6 +353,7 @@ export const localRepo: Repository = {
       permissions: input.permissions,
       city: owner.city, district: owner.district, category: owner.category,
       capacity: owner.capacity, currency: owner.currency,
+      monthlyReport: input.monthlyReport ?? existing?.monthlyReport ?? false,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
       activeBusinessId: owner.activeBusinessId,
     };
@@ -259,7 +384,6 @@ export const localRepo: Repository = {
     write(KEYS.reservations, reservations().filter((r) => r.businessId !== id));
     write(KEYS.payments, payments().filter((p) => !removed.includes(p.reservationId)));
     write(KEYS.cashflow, cash().filter((c) => c.businessId !== id));
-    write(KEYS.safeMovements, safeMoves().filter((m) => m.businessId !== id));
   },
 
   async listReservations(businessId) {
@@ -279,7 +403,13 @@ export const localRepo: Repository = {
       const kodlar = reservations()
         .filter((r) => r.businessId === reservation.businessId)
         .map((r) => r.code);
-      reservation = { ...reservation, code: nextContractCode(kodlar) };
+      /*
+        Yıl ORGANİZASYON GÜNÜNDEN geliyor, bugünden değil (madde 13):
+        2026'da satılan bir 2027 düğünü "2026-41" olarak numaralanıyordu
+        ve salon o dosyayı 2027 klasöründe arayıp bulamıyordu.
+      */
+      const yil = Number(reservation.date.slice(0, 4)) || new Date().getFullYear();
+      reservation = { ...reservation, code: nextContractCode(kodlar, yil) };
     }
     // Veritabanındaki benzersizlik kısıtının karşılığı: çakışma SALON bazındadır
     const conflict = reservations().find(
@@ -338,9 +468,69 @@ export const localRepo: Repository = {
     return wait(payments().filter((p) => ids.has(p.reservationId)));
   },
 
-  async addPayment(payment) { write(KEYS.payments, [...payments(), payment]); },
+  async addPayment(payment) {
+    write(KEYS.payments, [...payments(), payment]);
+    olayYaz(null, payment);
+  },
 
-  async deletePayment(id) { write(KEYS.payments, payments().filter((p) => p.id !== id)); },
+  async updatePayment(payment) {
+    const onceki = payments().find((p) => p.id === payment.id) ?? null;
+    write(KEYS.payments, payments().map((p) => (p.id === payment.id ? payment : p)));
+    olayYaz(onceki, payment);
+  },
+
+  async deletePayment(id) {
+    const onceki = payments().find((p) => p.id === id) ?? null;
+    write(KEYS.payments, payments().filter((p) => p.id !== id));
+    olayYaz(onceki, null);
+  },
+
+  async listPaymentEvents(businessId) {
+    return wait(odemeOlaylariKaydi()
+      .filter((o) => o.businessId === businessId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  },
+
+  async listPaymentAlerts(businessId) {
+    const kayitli = odemeKurallari().filter((k) => k.businessId === businessId);
+    // Tohumlama sunucuda tetikleyiciyle yapılıyor; yerel kipte ilk
+    // okumada üretiliyor ki ekran boş bir listeyle açılmasın.
+    if (kayitli.length > 0) return wait(kayitli);
+    const varsayilan = ODEME_OLAYLARI.map((event) => ({
+      id: uid('odeme-kural'), businessId, event, enabled: false,
+      body: VARSAYILAN_ODEME_METNI[event],
+    }));
+    write(KEYS.paymentAlerts, [...odemeKurallari(), ...varsayilan]);
+    return wait(varsayilan);
+  },
+
+  async savePaymentAlert(alert) {
+    const hepsi = odemeKurallari();
+    const yeni = hepsi.some((k) => k.id === alert.id)
+      ? hepsi.map((k) => (k.id === alert.id ? alert : k))
+      : [...hepsi, alert];
+    write(KEYS.paymentAlerts, yeni);
+    return wait(alert);
+  },
+
+  async listPaymentAlertRecipients(businessId) {
+    return wait(odemeAlicilari()
+      .filter((a) => a.businessId === businessId)
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr')));
+  },
+
+  async savePaymentAlertRecipient(alici) {
+    const hepsi = odemeAlicilari();
+    const yeni = hepsi.some((a) => a.id === alici.id)
+      ? hepsi.map((a) => (a.id === alici.id ? alici : a))
+      : [...hepsi, alici];
+    write(KEYS.paymentAlertRecipients, yeni);
+    return wait(alici);
+  },
+
+  async deletePaymentAlertRecipient(id) {
+    write(KEYS.paymentAlertRecipients, odemeAlicilari().filter((a) => a.id !== id));
+  },
 
   async listCashFlow(businessId) {
     return wait(cash()
@@ -348,61 +538,38 @@ export const localRepo: Repository = {
       .sort((a, b) => b.date.localeCompare(a.date)));
   },
 
+  async listReservationExpenses(businessId) {
+    return wait(dugunGiderleri()
+      .filter((g) => g.businessId === businessId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  },
+
+  async saveReservationExpense(expense) {
+    const hepsi = dugunGiderleri();
+    const simdi = new Date().toISOString();
+    const eski = hepsi.find((g) => g.id === expense.id);
+    const kayit = {
+      ...expense,
+      createdAt: eski?.createdAt || expense.createdAt || simdi,
+      updatedAt: simdi,
+    };
+    write(KEYS.reservationExpenses, eski
+      ? hepsi.map((g) => (g.id === expense.id ? kayit : g))
+      : [...hepsi, kayit]);
+    return wait(undefined);
+  },
+
+  async deleteReservationExpense(id) {
+    write(KEYS.reservationExpenses, dugunGiderleri().filter((g) => g.id !== id));
+    return wait(undefined);
+  },
+
   async addCashFlow(entry) { write(KEYS.cashflow, [...cash(), entry]); },
 
   async deleteCashFlow(id) {
     write(KEYS.cashflow, cash().filter((c) => c.id !== id));
-    // Satır silinince ona bağlı çelik kasa hareketi de düşer; kalsaydı
-    // kasada kaynağı görünmeyen bir tutar dururdu.
-    write(KEYS.safeMovements, safeMoves().filter(
-      (m) => !(m.sourceKind === 'cash_flow' && m.sourceId === id),
-    ));
   },
 
-  async listSafeMovements(businessId) {
-    return wait(safeMoves()
-      .filter((m) => m.businessId === businessId)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)));
-  },
-
-  async addSafeMovement(movement) {
-    if (movement.amount <= 0) throw new RepoError('Çelik kasa tutarı sıfırdan büyük olmalıdır.');
-
-    // Veritabanındaki tetikleyicinin karşılığı: karar satırın türüne ve
-    // şu anki netine bakar. Gelir kasaya girer, gider kasadan çıkar; ters
-    // yön ancak satırın kasada bir etkisi varken bir düzeltme/karşı hareket
-    // olarak yazılabilir. Böylece girip çıkan satır yeniden işlenebilir ama
-    // aynı hareket arka arkaya iki kez yazılamaz.
-    const dogal: SafeDirection = kaynakTuru(movement) === 'Gider' ? 'Çıkış' : 'Giriş';
-    const net = safeMoves()
-      .filter((m) => m.businessId === movement.businessId
-                     && m.sourceKind === movement.sourceKind
-                     && m.sourceId === movement.sourceId)
-      .reduce((t, m) => t + (m.direction === 'Giriş' ? m.amount : -m.amount), 0);
-
-    if (movement.direction === dogal) {
-      if (net !== 0) {
-        throw new RepoError(dogal === 'Çıkış'
-          ? 'Bu gider çelik kasadan zaten düşülmüş; önce geri alın.'
-          : 'Bu kayıt zaten çelik kasada duruyor; önce kasadan çıkarın.');
-      }
-    } else {
-      if (dogal === 'Giriş' ? net <= 0 : net >= 0) {
-        throw new RepoError(dogal === 'Çıkış'
-          ? 'Bu gider çelik kasadan düşülmemiş; geri alınacak bir şey yok.'
-          : 'Bu kayıt çelik kasada değil; önce kasaya ekleyin.');
-      }
-      if (movement.amount > Math.abs(net)) {
-        throw new RepoError('Çelik kasada o kayıt için duran tutardan fazlası işlenemez.');
-      }
-    }
-
-    write(KEYS.safeMovements, [...safeMoves(), movement]);
-  },
-
-  async deleteSafeMovement(id) {
-    write(KEYS.safeMovements, safeMoves().filter((m) => m.id !== id));
-  },
 
   async listLeads(businessId) {
     return wait(leads()
@@ -429,6 +596,10 @@ export const localRepo: Repository = {
     const eski = hepsi.find((l) => l.id === lead.id);
     const kayit: CustomerLead = {
       ...lead,
+      // Otomatik takip: sunucuda tetikleyici yapıyor, tanıtım kipinde
+      // burada. Kural ortak modülde (`takipTarihi`) duruyor ki iki taraf
+      // aynı günü kursun.
+      nextFollowupAt: takipTarihi(lead, eski ?? null, isletmeDurumlari(lead.businessId)),
       createdAt: eski?.createdAt || lead.createdAt || now,
       updatedAt: now,
     };
@@ -469,14 +640,107 @@ export const localRepo: Repository = {
    * Demo modunda tablo boş olabilir; o zaman varsayılan akış üretiliyor.
    * Boş liste dönseydi aday ekranı hiç durum gösteremezdi.
    */
+  async listErrorReports(limit) {
+    return wait(hataBildirimleri()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit));
+  },
+
+  async addErrorReport(input) {
+    const kayit: ErrorReport = {
+      id: uid('hata'),
+      businessId: input.businessId,
+      // Tanıtım kipinde oturum sahibi tek kullanıcı; gerçek kurulumda bu
+      // alanı veritabanı kolon varsayılanı dolduruyor.
+      actorEmail: users().find((u) => u.id === read<string | null>(KEYS.session, null))?.email ?? '',
+      path: input.path,
+      message: input.message,
+      userAgent: input.userAgent,
+      createdAt: new Date().toISOString(),
+    };
+    write(KEYS.errorReports, [...hataBildirimleri(), kayit]);
+  },
+
+  /*
+    Kur ve hava durumu SUNUCUDAN geliyor; tanıtım kipinde sağlayıcı da
+    zamanlanmış görev de yok. Boş liste dönüyor ve ekran "veri yok"
+    diyor -- örnek bir kur yazılsaydı gerçek sanılırdı ve salon sahibi
+    ona bakarak fiyat verirdi.
+  */
+  async listExchangeRates() {
+    return wait<ExchangeRate[]>([]);
+  },
+
+  async listWeather() {
+    return wait<WeatherForecast[]>([]);
+  },
+
+  async listSpecialDays(businessId) {
+    return wait(ozelGunler()
+      .filter((g) => !g.businessId || g.businessId === businessId)
+      .sort((a, b) => a.day.localeCompare(b.day) || a.label.localeCompare(b.label, 'tr')));
+  },
+
+  async saveSpecialDay(gun) {
+    // Ortak günler düzenlenemez: herkesin takviminde duruyorlar.
+    if (!gun.businessId) throw new RepoError('Ortak günler değiştirilemez.');
+
+    const hepsi = ozelGunler();
+    const ayni = hepsi.find((g) => g.id !== gun.id
+      && g.businessId === gun.businessId && g.day === gun.day
+      && g.label.trim().toLocaleLowerCase('tr') === gun.label.trim().toLocaleLowerCase('tr'));
+    if (ayni) throw new RepoError('Bu gün için aynı isimde bir kayıt zaten var.');
+
+    const yeni = hepsi.some((g) => g.id === gun.id)
+      ? hepsi.map((g) => (g.id === gun.id ? gun : g))
+      : [...hepsi, gun];
+    write(KEYS.specialDays, yeni);
+    return wait(gun);
+  },
+
+  async deleteSpecialDay(id) {
+    const hepsi = ozelGunler();
+    const hedef = hepsi.find((g) => g.id === id);
+    if (hedef && !hedef.businessId) throw new RepoError('Ortak günler silinemez.');
+    write(KEYS.specialDays, hepsi.filter((g) => g.id !== id));
+  },
+
+  /*
+    Anketleri organizasyondan bir hafta sonra zamanlanmış görev açıyor.
+    Tanıtım kipinde o görev çalışmadığı için liste boş; örnek bir anket
+    sonucu yazmak "müşteriler 4,6 puan verdi" gibi uydurma bir rakam
+    üretirdi.
+  */
+  async listSurveys() {
+    return wait<Survey[]>([]);
+  },
+
+  async listQuickReplies(businessId) {
+    return wait(hizliYanitlar()
+      .filter((y) => y.businessId === businessId)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'tr')));
+  },
+
+  async saveQuickReply(yanit) {
+    const hepsi = hizliYanitlar();
+    const ayniBaslik = hepsi.find((y) => y.id !== yanit.id
+      && y.businessId === yanit.businessId
+      && y.title.trim().toLocaleLowerCase('tr') === yanit.title.trim().toLocaleLowerCase('tr'));
+    if (ayniBaslik) throw new RepoError('Bu başlıkla bir hızlı yanıt zaten var.');
+
+    const yeni = hepsi.some((y) => y.id === yanit.id)
+      ? hepsi.map((y) => (y.id === yanit.id ? yanit : y))
+      : [...hepsi, yanit];
+    write(KEYS.quickReplies, yeni);
+    return wait(yanit);
+  },
+
+  async deleteQuickReply(id) {
+    write(KEYS.quickReplies, hizliYanitlar().filter((y) => y.id !== id));
+  },
+
   async listLeadStatuses(businessId) {
-    const kayitli = leadStatuses().filter((d) => d.businessId === businessId);
-    if (kayitli.length > 0) {
-      return wait([...kayitli].sort((a, b) => a.sortOrder - b.sortOrder));
-    }
-    return wait(VARSAYILAN_LEAD_DURUMLARI.map((d) => ({
-      ...d, id: `durum_${businessId}_${d.code}`, businessId,
-    })));
+    return wait(isletmeDurumlari(businessId));
   },
 
   async saveLeadStatus(durum) {
@@ -909,7 +1173,7 @@ export const localRepo: Repository = {
       (v) => v.businessId === vendor.businessId && v.id !== vendor.id &&
              v.name.trim().toLocaleLowerCase('tr') === vendor.name.trim().toLocaleLowerCase('tr'),
     );
-    if (duplicate) throw new RepoError('Bu isimde bir tedarikçi zaten var.');
+    if (duplicate) throw new RepoError('Bu isimde bir kayıt zaten var.');
 
     const next: Vendor = { ...vendor, createdAt: vendor.createdAt ?? new Date().toISOString() };
     const idx = list.findIndex((v) => v.id === next.id);

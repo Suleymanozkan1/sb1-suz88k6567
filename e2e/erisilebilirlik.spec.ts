@@ -16,14 +16,14 @@ import { expect, test, type Page } from '@playwright/test';
 // Tanıtım sayfaları ve üyelik akışı kaldırıldı; herkese açık yüzey giriş,
 // müşterinin rezervasyon sorgusu ve yasal metinlerden ibaret.
 const HERKESE_ACIK = [
-  '/', '/kod-dogrulama',
+  '/', '/kod-dogrulama', '/anket',
   '/gizlilik-politikasi', '/kvkk-aydinlatma-metni',
 ];
 
 const PANEL = [
-  '/panel', '/panel/takvim', '/panel/rezervasyonlar', '/panel/kasa',
+  '/panel', '/panel/takvim', '/panel/ozel-gunler', '/panel/rezervasyonlar', '/panel/kasa',
   '/panel/faturalar', '/panel/raporlar', '/panel/salonlar', '/panel/menuler',
-  '/panel/hatirlatmalar', '/panel/izinler', '/panel/sms', '/panel/kullanicilar', '/panel/musteriler', '/panel/tedarikciler',
+  '/panel/hatirlatmalar', '/panel/odeme-bildirimleri', '/panel/izinler', '/panel/sms', '/panel/kullanicilar', '/panel/musteriler', '/panel/urun-hizmet',
   '/panel/isletmeler', '/panel/renk-ayarlari', '/panel/denetim',
   '/panel/ayarlar', '/panel/sistem',
   '/panel/musteri-adaylari', '/panel/musteri-adaylari/yeni', '/panel/whatsapp-ayarlari',

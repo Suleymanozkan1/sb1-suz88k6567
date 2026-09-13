@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   balanceReport, channelReport, downloadCsv, KANAL_BELIRTILMEMIS, lastMonthsReport,
-  monthReport, programReport, slotReport, summarize, toCsv, withinRange,
+  karRaporu, monthReport, programReport, slotReport, summarize, toCsv, withinRange,
 } from './reports';
 import { uid } from './ids';
 import { makeBalanceLookup } from './money';
 import { clearAll } from './storage';
-import type { Payment } from '../types';
+import type { CashFlowEntry, Payment } from '../types';
 import type { Reservation } from '../types';
 
 function make(over: Partial<Reservation> = {}): Reservation {
@@ -119,20 +119,110 @@ describe('monthReport', () => {
   });
 });
 
-describe('balanceReport', () => {
-  it('yalnızca borcu kalanları en yüksek bakiyeden başlayarak listeler', () => {
+describe('balanceReport — gelecek kaporalar ve ödemeler', () => {
+  const BUGUN = '2026-03-01';
+
+  it('yalnızca borcu kalan kayıtları listeler', () => {
     const paid = keep(make({ totalAmount: 50000, deposit: 50000 }));
-    const small = keep(make({ totalAmount: 80000, deposit: 70000 }));
-    const big = keep(make({ totalAmount: 200000, deposit: 20000 }));
-    const rows = balanceReport([paid, small, big], NO_PAYMENTS);
+    const open1 = keep(make({ totalAmount: 80000, deposit: 70000 }));
+    const open2 = keep(make({ totalAmount: 200000, deposit: 20000 }));
+    const rows = balanceReport([paid, open1, open2], NO_PAYMENTS, BUGUN);
     expect(rows).toHaveLength(2);
-    expect(rows[0].reservation.id).toBe(big.id);
-    expect(rows[0].remaining).toBe(180000);
+    expect(rows.map((r) => r.remaining).sort((a, b) => a - b)).toEqual([10000, 180000]);
+  });
+
+  /*
+    Sıralama tutara göre değil tarihe göre: bu ekranın sorusu "hangi para
+    ne zaman gelecek". En büyük alacak altı ay sonraki bir düğüne aitken
+    bu haftaki tahsilat listenin dibinde kalıyordu.
+  */
+  it('yakın tarihli kaydı büyük tutarlı uzak kayıttan önce verir', () => {
+    const yakin = keep(make({ date: '2026-03-05', totalAmount: 80000, deposit: 70000 }));
+    const uzak = keep(make({ date: '2026-11-20', totalAmount: 400000, deposit: 20000 }));
+    const rows = balanceReport([uzak, yakin], NO_PAYMENTS, BUGUN);
+    expect(rows.map((r) => r.reservation.id)).toEqual([yakin.id, uzak.id]);
+  });
+
+  it('günü geçmiş ama bakiyesi kapanmamış kaydı en başa alır ve gecikmiş sayar', () => {
+    const gecmis = keep(make({ date: '2026-02-10', totalAmount: 90000, deposit: 10000 }));
+    const gelecek = keep(make({ date: '2026-03-05', totalAmount: 90000, deposit: 10000 }));
+    const rows = balanceReport([gelecek, gecmis], NO_PAYMENTS, BUGUN);
+    expect(rows[0].reservation.id).toBe(gecmis.id);
+    expect(rows[0].overdue).toBe(true);
+    expect(rows[0].daysLeft).toBe(-19);
+    expect(rows[1].overdue).toBe(false);
+    expect(rows[1].daysLeft).toBe(4);
+  });
+
+  it('aynı güne düşen iki kayıtta büyük alacağı üstte tutar', () => {
+    const kucuk = keep(make({ date: '2026-03-05', totalAmount: 80000, deposit: 70000 }));
+    const buyuk = keep(make({ date: '2026-03-05', totalAmount: 200000, deposit: 20000 }));
+    const rows = balanceReport([kucuk, buyuk], NO_PAYMENTS, BUGUN);
+    expect(rows.map((r) => r.reservation.id)).toEqual([buyuk.id, kucuk.id]);
+  });
+
+  it('en son alınan tahsilatı taşır', () => {
+    const r = keep(make({
+      totalAmount: 200000, deposit: 20000, createdAt: '2026-01-08T10:00:00.000Z',
+    }));
+    const rows = balanceReport([r], lookup([
+      { id: 'p1', reservationId: r.id, date: '2026-01-10', amount: 30000, method: 'Nakit', createdAt: '' },
+      { id: 'p2', reservationId: r.id, date: '2026-02-14', amount: 50000, method: 'Kredi Kartı', createdAt: '' },
+    ]), BUGUN);
+    expect(rows[0].lastPayment).toEqual({
+      date: '2026-02-14', amount: 50000, method: 'Kredi Kartı', source: 'Tahsilat',
+    });
+  });
+
+  /*
+    Aynı güne birden çok tahsilat girilebiliyor; tarih eşitliğinde kayıt
+    sırası belirleyici, yoksa "son tahsilat" rastgele seçilirdi.
+  */
+  it('aynı tarihli iki tahsilatta sonra girileni son sayar', () => {
+    const r = keep(make({
+      totalAmount: 200000, deposit: 20000, createdAt: '2026-01-08T10:00:00.000Z',
+    }));
+    const rows = balanceReport([r], lookup([
+      { id: 'once', reservationId: r.id, date: '2026-02-14', amount: 10000, method: 'Nakit', createdAt: '2026-02-14T08:00:00.000Z' },
+      { id: 'sonra', reservationId: r.id, date: '2026-02-14', amount: 20000, method: 'Nakit', createdAt: '2026-02-14T17:00:00.000Z' },
+    ]), BUGUN);
+    expect(rows[0].lastPayment?.amount).toBe(20000);
+  });
+
+  /*
+    Kapora ödemeler listesinde değil rezervasyon satırında durur; hesaba
+    katılmazsa yalnızca kapora almış bir müşteri "hiç tahsilat yok" gibi
+    görünürdü.
+  */
+  it('yalnızca kapora alınmışsa kaporayı son tahsilat sayar', () => {
+    const r = keep(make({
+      totalAmount: 200000, deposit: 20000, depositMethod: 'Nakit',
+      createdAt: '2026-01-08T10:00:00.000Z',
+    }));
+    expect(balanceReport([r], NO_PAYMENTS, BUGUN)[0].lastPayment).toEqual({
+      date: '2026-01-08', amount: 20000, method: 'Nakit', source: 'Kapora',
+    });
+  });
+
+  it('kaporadan sonra tahsilat yapılmışsa tahsilatı son sayar', () => {
+    const r = keep(make({
+      totalAmount: 200000, deposit: 20000, createdAt: '2026-01-08T10:00:00.000Z',
+    }));
+    const rows = balanceReport([r], lookup([
+      { id: 'p1', reservationId: r.id, date: '2026-02-01', amount: 30000, method: 'Havale/EFT', createdAt: '' },
+    ]), BUGUN);
+    expect(rows[0].lastPayment?.source).toBe('Tahsilat');
+    expect(rows[0].lastPayment?.date).toBe('2026-02-01');
+  });
+
+  it('hiç tahsilat yoksa son tahsilatı null verir', () => {
+    const r = keep(make({ totalAmount: 200000, deposit: 0 }));
+    expect(balanceReport([r], NO_PAYMENTS, BUGUN)[0].lastPayment).toBeNull();
   });
 
   it('iptal edilmiş kayıtları dışlar', () => {
     const cancelled = keep(make({ status: 'İptal', totalAmount: 90000, deposit: 0 }));
-    expect(balanceReport([cancelled], NO_PAYMENTS)).toHaveLength(0);
+    expect(balanceReport([cancelled], NO_PAYMENTS, BUGUN)).toHaveLength(0);
   });
 });
 
@@ -337,5 +427,126 @@ describe('channelReport', () => {
       k({ id: '2', sourceChannel: 'Instagram', totalAmount: 30000, guestCount: 200 }),
     ], bakiye);
     expect(rapor[0]).toMatchObject({ total: 80000, guests: 500, count: 2 });
+  });
+});
+
+/**
+ * Ciro, gider ve kâr raporu (maddeler 20 ve 23).
+ *
+ * Kâr ayrı bir alan DEĞİL, hesaplanıyor. Bu raporun kritik yanı,
+ * kârın hangi paradan çıktığı: sözleşme tutarı henüz tahsil edilmemiş
+ * olabilir ve tahsilat ayrı sütunda duruyor. İkisi karıştırılsaydı
+ * salon sahibi, gelmemiş parayla hesaplanmış bir kâra bakardı.
+ */
+describe('karRaporu', () => {
+  function gider(over: Partial<CashFlowEntry> = {}): CashFlowEntry {
+    return {
+      id: uid('cf'), businessId: 'biz_test', kind: 'Gider',
+      date: '2026-03-15', category: 'Personel', amount: 10000,
+      createdAt: '', ...over,
+    };
+  }
+
+  it('ciro, gider ve kârı dönem başına toplar', () => {
+    const rows = karRaporu(
+      [make({ date: '2026-03-10', totalAmount: 100000 })],
+      NO_PAYMENTS,
+      [gider({ amount: 30000 })],
+      [],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      donem: '2026', count: 1, ciro: 100000, expense: 30000, kar: 70000,
+    });
+  });
+
+  it('serbest geliri kâra ekler', () => {
+    const rows = karRaporu(
+      [make({ date: '2026-03-10', totalAmount: 100000 })],
+      NO_PAYMENTS,
+      [gider({ kind: 'Gelir', category: 'Kira geliri', amount: 5000 })],
+      [],
+    );
+    expect(rows[0]?.otherIncome).toBe(5000);
+    expect(rows[0]?.kar).toBe(105000);
+  });
+
+  // Düğün içi giderler kâra girmezse salon kendini olduğundan kârlı görür.
+  it('düğün içi gideri kârdan düşer', () => {
+    const rows = karRaporu(
+      [make({ date: '2026-03-10', totalAmount: 100000 })],
+      NO_PAYMENTS,
+      [],
+      [{ date: '2026-03-10', amount: 20000 }],
+    );
+    expect(rows[0]?.expense).toBe(20000);
+    expect(rows[0]?.kar).toBe(80000);
+  });
+
+  it('tahsil edileni ciroyla karıştırmaz', () => {
+    const rez = make({ id: 'r1', date: '2026-03-10', totalAmount: 100000, deposit: 25000 });
+    const rows = karRaporu([rez], lookup([
+      {
+        id: 'p1', reservationId: 'r1', date: '2026-02-01', amount: 15000,
+        method: 'Nakit', createdAt: '2026-02-01T10:00:00Z',
+      },
+    ]), [], []);
+    expect(rows[0]?.ciro).toBe(100000);
+    // Kapora 25.000 + tahsilat 15.000
+    expect(rows[0]?.collected).toBe(40000);
+    // Kâr tahsilattan değil ciroden hesaplanıyor.
+    expect(rows[0]?.kar).toBe(100000);
+  });
+
+  it('iptal edilen organizasyonu hiçbir toplama katmaz', () => {
+    const rows = karRaporu(
+      [
+        make({ date: '2026-03-10', totalAmount: 100000 }),
+        make({ date: '2026-03-11', totalAmount: 500000, status: 'İptal' }),
+      ],
+      NO_PAYMENTS, [], [],
+    );
+    expect(rows[0]?.count).toBe(1);
+    expect(rows[0]?.ciro).toBe(100000);
+  });
+
+  it('aylık kırılımda dönem anahtarı ay olur', () => {
+    const rows = karRaporu(
+      [
+        make({ date: '2026-03-10', totalAmount: 100000 }),
+        make({ date: '2026-04-10', totalAmount: 60000 }),
+      ],
+      NO_PAYMENTS, [], [], false,
+    );
+    expect(rows.map((r) => r.donem)).toEqual(['2026-04', '2026-03']);
+  });
+
+  it('kâr negatif olabilir', () => {
+    const rows = karRaporu([], NO_PAYMENTS, [gider({ amount: 40000 })], []);
+    expect(rows[0]?.kar).toBe(-40000);
+  });
+
+  /*
+    Ciro DÜĞÜN GÜNÜNE yazılıyor, sözleşmenin açıldığı güne değil: bir
+    salonun eylül cirosu, eylülde yapılan düğünlerdir.
+  */
+  it('ciroyu düğün yılına yazar, sözleşmenin açıldığı yıla değil', () => {
+    const rows = karRaporu(
+      [make({ date: '2027-06-12', totalAmount: 100000, createdAt: '2026-01-05T00:00:00Z' })],
+      NO_PAYMENTS, [], [],
+    );
+    expect(rows[0]?.donem).toBe('2027');
+  });
+
+  it('dönemleri yeniden eskiye sıralar', () => {
+    const rows = karRaporu(
+      [make({ date: '2025-03-10' }), make({ date: '2027-03-10' }), make({ date: '2026-03-10' })],
+      NO_PAYMENTS, [], [],
+    );
+    expect(rows.map((r) => r.donem)).toEqual(['2027', '2026', '2025']);
+  });
+
+  it('hiç kayıt yoksa boş liste döner', () => {
+    expect(karRaporu([], NO_PAYMENTS, [], [])).toEqual([]);
   });
 });

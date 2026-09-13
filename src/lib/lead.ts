@@ -12,7 +12,7 @@
  * bakıyor: isClosed, isWon.
  */
 import type { CustomerLead, LeadStatusDef, LeadStatusTone } from '../types';
-import { todayIso } from './format';
+import { addDays, todayIso } from './format';
 
 /**
  * Durum tonunun ekran karşılığı.
@@ -181,4 +181,122 @@ export function whatsappWebLinki(phone: string, metin = ''): string {
  */
 export function etkinlikTarihi(lead: CustomerLead): string {
   return lead.eventDate || lead.eventDateText || '';
+}
+
+/**
+ * Durum değişince kurulacak takip tarihi (madde 18).
+ *
+ * "Teklif verildikten 7 gün sonra ara" kuralı koda gömülü DEĞİL: gün
+ * sayısı durumun kendi ayarı (`followupDays`). Salonun takip ritmi
+ * değiştiğinde yeni sürüm gerekmesin.
+ *
+ * Var olan tarihin ÜZERİNE YAZILMIYOR: personel elle bir gün
+ * belirlediyse onu silmek, üzerinde anlaşılmış bir randevuyu iptal
+ * etmek olurdu. Yalnızca boşsa ya da geçmişte kalmışsa doldurulur.
+ *
+ * Aynı kural veritabanında `lead_takip_kur` tetikleyicisinde de var.
+ */
+export function takipTarihi(
+  yeni: CustomerLead,
+  eski: CustomerLead | null,
+  durumlar: LeadStatusDef[],
+  bugun = todayIso(),
+): string {
+  if (eski && eski.status === yeni.status) return yeni.nextFollowupAt;
+
+  const gun = durumlar.find((d) => d.code === yeni.status)?.followupDays ?? 0;
+  if (gun <= 0) return yeni.nextFollowupAt;
+
+  if (yeni.nextFollowupAt && yeni.nextFollowupAt >= bugun) return yeni.nextFollowupAt;
+  return addDays(bugun, gun);
+}
+
+/**
+ * Opsiyon tarihi yaklaşan adaylar (madde 18).
+ *
+ * Opsiyon, salonun müşteri için tutulduğu son gündür: geçtiğinde salon
+ * başkasına satılabilir. Uyarı KAPANMIŞ adayları içermiyor -- kaybedilmiş
+ * bir müşterinin opsiyonu kimseyi ilgilendirmiyor.
+ */
+export function opsiyonuYaklasanlar(
+  leads: CustomerLead[],
+  durumlar: LeadStatusDef[],
+  gunEsigi = 7,
+  bugun = todayIso(),
+): CustomerLead[] {
+  const harita = durumHaritasi(durumlar);
+  const sinir = addDays(bugun, gunEsigi);
+
+  return leads
+    .filter((l) => Boolean(l.optionDate))
+    .filter((l) => !kapandiMi(harita, l))
+    // Günü geçmişler de listede: "tarih geçti, hâlâ cevap yok" en acil
+    // durumdur ve gizlenirse kimse fark etmez.
+    .filter((l) => (l.optionDate as string) <= sinir)
+    .sort((a, b) => (a.optionDate as string).localeCompare(b.optionDate as string));
+}
+
+export interface DonusumSatiri {
+  /** "2026-09" biçiminde ay kodu. */
+  ay: string;
+  /** Bu ay açılan kayıt sayısı. */
+  kayit: number;
+  /** Salona gelip yüz yüze görüşülen kişi sayısı. */
+  gelen: number;
+  /** Rakam konuşulmuş, yani gerçekten teklif verilmiş kayıt sayısı. */
+  teklif: number;
+  rezervasyon: number;
+  olumsuz: number;
+  /** Rezervasyona dönen / görüşme oranı, yüzde. */
+  donusumOrani: number;
+}
+
+/**
+ * Görüşme ve dönüşüm raporu (madde 19).
+ *
+ * "Görüşme" ile "salona gelen kişi" AYRI sayılıyor: her kayıt bir
+ * görüşmedir, ama gelen kişi yüz yüze görüşülendir (görüşme tarihi
+ * dolu). İkisi tek sayıda toplanınca "100 kişi geldi → 12 rezervasyon"
+ * analizi anlamsız çıkıyordu.
+ *
+ * TEKLİF SAYILMANIN ÖLÇÜSÜ RAKAM: durumu ilerlemiş ama fiyat
+ * konuşulmamış bir müşteri teklif sayılsaydı dönüşüm oranı şişerdi.
+ *
+ * Dönüşüm oranının paydası GÖRÜŞME sayısı: kayıt sayısı alınsaydı hiç
+ * görüşülmemiş, kendiliğinden düşen WhatsApp talepleri de oranı
+ * düşürürdü.
+ */
+export function donusumRaporu(
+  leads: CustomerLead[],
+  durumlar: LeadStatusDef[],
+): DonusumSatiri[] {
+  const kapaliKodlar = new Set(
+    durumlar.filter((d) => d.isClosed && !d.isWon).map((d) => d.code),
+  );
+
+  const gruplar = new Map<string, CustomerLead[]>();
+  for (const l of leads) {
+    const gun = l.meetingDate || l.createdAt.slice(0, 10);
+    if (!gun) continue;
+    const ay = gun.slice(0, 7);
+    const liste = gruplar.get(ay) ?? [];
+    liste.push(l);
+    gruplar.set(ay, liste);
+  }
+
+  return [...gruplar.entries()]
+    .map(([ay, liste]) => {
+      const gelen = liste.filter((l) => Boolean(l.meetingDate)).length;
+      const rezervasyon = liste.filter((l) => Boolean(l.reservationId)).length;
+      return {
+        ay,
+        kayit: liste.length,
+        gelen,
+        teklif: liste.filter((l) => (l.offerAmount ?? 0) > 0).length,
+        rezervasyon,
+        olumsuz: liste.filter((l) => kapaliKodlar.has(l.status)).length,
+        donusumOrani: gelen > 0 ? (rezervasyon / gelen) * 100 : 0,
+      };
+    })
+    .sort((a, b) => a.ay.localeCompare(b.ay));
 }

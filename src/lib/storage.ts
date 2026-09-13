@@ -59,8 +59,6 @@ export const KEYS = {
   reservations: 'reservations',
   payments: 'payments',
   cashflow: 'cashflow',
-  /** Çelik kasa (fiziksel kasa) hareket defteri */
-  safeMovements: 'celik-kasa',
   /** Müşteri adayları */
   leads: 'musteri-adaylari',
   /** Adayların iletişim geçmişi */
@@ -69,6 +67,18 @@ export const KEYS = {
   leadStatusHistory: 'aday-durum-gecmisi',
   /** İşletmenin düzenlediği aday durumları */
   leadStatuses: 'aday-durumlari',
+  /** Organizasyon içi giderler (garson, DJ, vale...) */
+  reservationExpenses: 'dugun-ici-giderler',
+  /** Tahsilatlarda rakam içeren değişikliklerin geçmişi */
+  paymentEvents: 'odeme-olaylari',
+  /** Hangi ödeme olayında yöneticiye mesaj gider */
+  paymentAlerts: 'odeme-bildirim-kurallari',
+  /** Bildirimi alacak numaralar */
+  paymentAlertRecipients: 'odeme-bildirim-alicilari',
+  /** Personelin yazarken kullandığı kısa hazır metinler */
+  quickReplies: 'hizli-yanitlar',
+  /** Kullanıcının bildirdiği hatalar */
+  errorReports: 'hata-bildirimleri',
   /** WhatsApp numarası eşlemesi ve otomatik cevap ayarları */
   whatsappAccounts: 'whatsapp-hesaplari',
   colors: 'colors',
@@ -86,6 +96,8 @@ export const KEYS = {
   resVendors: 'resVendors',
   session: 'session',
   seeded: 'seeded',
+  /** Takvimdeki özel günler (resmî tatil, kandil, okul...) */
+  specialDays: 'ozel-gunler',
   /** Program raporuna elle eklenen serbest notlar */
   programNotes: 'program-notlari',
   /** Demo modu uyarı bandı kullanıcı tarafından kapatıldı mı */

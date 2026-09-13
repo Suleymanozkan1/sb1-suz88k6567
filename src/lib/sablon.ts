@@ -24,6 +24,9 @@ export type SablonAnahtari =
   | 'odeme_hatirlatma'
   | 'tahsilat_bildirimi'
   | 'etkinlik_gunu'
+  | 'prova'
+  | 'foto_secim'
+  | 'foto_hazir'
   | 'tesekkur'
   | 'kampanya';
 
@@ -57,6 +60,9 @@ export const SABLON_SIRASI: SablonAnahtari[] = [
   'odeme_hatirlatma',
   'tahsilat_bildirimi',
   'etkinlik_gunu',
+  'prova',
+  'foto_secim',
+  'foto_hazir',
   'tesekkur',
   'kampanya',
 ];
@@ -67,6 +73,9 @@ export const SABLON_ADI: Record<SablonAnahtari, string> = {
   odeme_hatirlatma: 'Ödeme hatırlatması',
   tahsilat_bildirimi: 'Tahsilat bildirimi',
   etkinlik_gunu: 'Etkinlik günü',
+  prova: 'Prova',
+  foto_secim: 'Fotoğraf / video seçimi',
+  foto_hazir: 'Fotoğraflar hazır',
   tesekkur: 'Teşekkür',
   kampanya: 'Kampanya duyurusu',
 };

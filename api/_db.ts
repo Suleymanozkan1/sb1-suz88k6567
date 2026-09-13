@@ -107,6 +107,37 @@ export async function insertRow<T>(table: string, body: unknown): Promise<T> {
 }
 
 /**
+ * Toplu ekleme/güncelleme (service_role).
+ *
+ * `resolution=merge-duplicates` ve `on_conflict` birlikte veriliyor:
+ * ikisinden biri eksik olursa PostgREST çakışan satırı EKLEMEYE çalışır
+ * ve 23505 döner. Zamanlanmış görevler aynı satırı her çalıştırmada
+ * yeniden yazdığı için bu yol tek yol.
+ */
+export async function upsertRows(
+  table: string, rows: unknown[], onConflict: string,
+): Promise<void> {
+  if (!isDbConfigured()) throw new Error('Veritabanı yapılandırması eksik.');
+  if (rows.length === 0) return;
+
+  const response = await fetch(
+    `${PGRST_URL}/${table}?on_conflict=${encodeURIComponent(onConflict)}`,
+    {
+      method: 'POST',
+      headers: sunucuBasliklari({
+        'content-type': 'application/json',
+        prefer: 'resolution=merge-duplicates,return=minimal',
+      }),
+      body: JSON.stringify(rows),
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Toplu kayıt başarısız (${response.status}): ${await response.text()}`);
+  }
+}
+
+/**
  * Yedeği sunucu diskine yazar.
  *
  * Eskiden Supabase Storage'a gidiyordu. Yedek müşteri adı ve telefonu

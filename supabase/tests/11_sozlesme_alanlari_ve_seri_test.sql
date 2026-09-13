@@ -83,7 +83,9 @@ end $$;
 do $$
 declare
   v_kod text;
-  v_yil text := extract(year from current_date)::text;
+  -- Numara DUGUN YILINA gore veriliyor (madde 13, goc 0029); asagidaki
+  -- kayitlarin tarihi 2030 oldugu icin beklenen seri de 2030.
+  v_yil text := '2030';
 begin
   insert into public.reservations
     (business_id, hall_id, code, customer_name, customer_phone, date, slot,
@@ -114,13 +116,14 @@ end $$;
 \echo '=== 4) Sira SAYISAL ilerlemeli: 9 sonrasi 10 ==='
 do $$
 declare
-  v_yil text := extract(year from current_date)::text;
+  -- Numara DUGUN YILINA gore veriliyor (madde 13, göç 0029); asagidaki
+  -- kayitlarin tarihi 2030 oldugu icin beklenen seri de 2030.
+  v_yil text := '2030';
   v_kod text;
 begin
   -- Sayaci dokuza çek.
   update public.contract_series set last_number = 9
-  where business_id = current_setting('test.biz')::uuid
-    and year = extract(year from current_date)::int;
+  where business_id = current_setting('test.biz')::uuid and year = 2030;
 
   insert into public.reservations
     (business_id, hall_id, code, customer_name, customer_phone, date, slot,
@@ -160,7 +163,9 @@ end $$;
 \echo '=== 6) Eski bicimli kod diziyi GERIYE CEKMEMELI ==='
 do $$
 declare
-  v_yil text := extract(year from current_date)::text;
+  -- Numara DUGUN YILINA gore veriliyor (madde 13, göç 0029); asagidaki
+  -- kayitlarin tarihi 2030 oldugu icin beklenen seri de 2030.
+  v_yil text := '2030';
   v_kod text;
 begin
   insert into public.reservations
@@ -186,7 +191,9 @@ end $$;
 \echo '=== 6b) TIRESIZ eski numara diziye DAHIL olmali ==='
 do $$
 declare
-  v_yil text := extract(year from current_date)::text;
+  -- Numara DUGUN YILINA gore veriliyor (madde 13, göç 0029); asagidaki
+  -- kayitlarin tarihi 2030 oldugu icin beklenen seri de 2030.
+  v_yil text := '2030';
   v_kod text;
 begin
   -- 0014 numarayi tiresiz uretiyordu. Sayilmasaydi ayni yil icinde hem

@@ -3,6 +3,8 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBusinesses } from '../lib/queries';
 import DemoNotice from '../components/DemoNotice';
+import HataBildir from '../components/HataBildir';
+import EkranKilidi from '../components/EkranKilidi';
 import {
   IconAlert, IconBell, IconBuilding, IconCalendar, IconChart, IconCheck, IconClose, IconGrid, IconList, IconLogout, IconMenu, IconMessage, IconPalette, IconPlus, IconReport, IconSettings, IconShield, IconUser, IconUsers, IconWallet,
 } from '../components/Icons';
@@ -10,6 +12,7 @@ import {
 const NAV = [
   { to: '/panel', label: 'Özet', icon: IconGrid, end: true },
   { to: '/panel/takvim', label: 'Rezervasyon Takvimi', icon: IconCalendar },
+  { to: '/panel/ozel-gunler', label: 'Özel Günler', icon: IconCalendar },
   { to: '/panel/rezervasyonlar', label: 'Rezervasyonlar', icon: IconList },
   { to: '/panel/musteriler', label: 'Müşteriler', icon: IconUsers },
   { to: '/panel/kasa', label: 'Gelir / Gider', icon: IconWallet },
@@ -17,11 +20,12 @@ const NAV = [
   { to: '/panel/raporlar', label: 'Raporlar', icon: IconChart },
   { to: '/panel/salonlar', label: 'Salonlar', icon: IconBuilding },
   { to: '/panel/menuler', label: 'Menüler', icon: IconList },
-  { to: '/panel/tedarikciler', label: 'Tedarikçiler', icon: IconUsers },
+  { to: '/panel/urun-hizmet', label: 'Ürün ve Hizmet', icon: IconUsers },
   { to: '/panel/renk-ayarlari', label: 'Renk Ayarları', icon: IconPalette },
   { to: '/panel/isletmeler', label: 'Firmalarım', icon: IconBuilding },
   { to: '/panel/kullanicilar', label: 'Kullanıcılar', icon: IconUser, ownerOnly: true },
   { to: '/panel/hatirlatmalar', label: 'Hatırlatmalar', icon: IconBell },
+  { to: '/panel/odeme-bildirimleri', label: 'Ödeme Bildirimleri', icon: IconBell },
   { to: '/panel/musteri-adaylari', label: 'Müşteri Adayları', icon: IconMessage },
   { to: '/panel/sms', label: 'SMS Kayıtları', icon: IconMessage },
   { to: '/panel/izinler', label: 'İYS İzinleri', icon: IconCheck },
@@ -154,6 +158,13 @@ export default function AppLayout() {
           <DemoNotice className="mb-5" />
           <Outlet />
         </main>
+
+        {/*
+          Hata bildirimi ve ekran kilidi panelin tamamında: tek bir ekrana
+          konsaydı hatanın çıktığı sayfadan çıkmak gerekirdi.
+        */}
+        <HataBildir />
+        <EkranKilidi />
       </div>
     </div>
   );

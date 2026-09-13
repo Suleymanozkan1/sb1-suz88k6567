@@ -3,20 +3,26 @@ import { Link, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
-import { useBusinesses, useHalls, useMenus, useReservationsWithBalances } from '../../lib/queries';
+import {
+  useBusinesses, useHalls, useCashFlow, useLeadStatuses, useReservationExpenses, useSurveys, useLeads, useMenus, useReservationsWithBalances,
+} from '../../lib/queries';
+import { donusumRaporu } from '../../lib/lead';
+import { anketOzeti } from '../../lib/anket';
+import { giderKasaSatirlari } from '../../lib/dugunGideri';
 import { QueryBoundary } from '../../components/QueryState';
 import {
   balanceReport, channelReport, downloadCsv, monthReport, programReport,
-  slotReport, summarize, toCsv, withinRange,
+  slotReport, summarize, toCsv, withinRange, type BalanceRow, karRaporu,
 } from '../../lib/reports';
 import { addDays, formatDate, formatMoney, formatNumber, formatPhone, todayIso } from '../../lib/format';
 import { buildProgram, programIsEmpty } from '../../lib/program';
 import { downloadProgramDocx } from '../../lib/programDocx';
 import ProgramCizelgesi from '../../components/ProgramCizelgesi';
 import { KEYS, read, write } from '../../lib/storage';
+import { MONTH_NAMES } from '../../data/constants';
 import { IconDownload, IconPrint } from '../../components/Icons';
 
-type Tab = 'cizelge' | 'program' | 'ay' | 'bakiye' | 'seans' | 'kanal';
+type Tab = 'cizelge' | 'program' | 'ay' | 'kar' | 'bakiye' | 'seans' | 'kanal' | 'salon' | 'donusum' | 'anket';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'cizelge', label: 'Program raporu' },
@@ -24,9 +30,16 @@ const TABS: { key: Tab; label: string }[] = [
   // ayrı raporu anlatır olmuştu.
   { key: 'program', label: 'Organizasyon bazlı rapor' },
   { key: 'ay', label: 'Ay bazlı rapor' },
-  { key: 'bakiye', label: 'Alacak bakiyesi' },
+  // Şartnamenin 20. ve 23. maddeleri: ciro, gider ve kâr Raporlama'da.
+  { key: 'kar', label: 'Ciro, gider ve kâr' },
+  // Şartnamedeki adı: sözleşme yapıldıktan sonra hangi paranın ne zaman
+  // geleceğini gösteren ekran.
+  { key: 'bakiye', label: 'Gelecek Kaporalar ve Ödemeler' },
   { key: 'seans', label: 'Gündüz / Gece' },
   { key: 'kanal', label: 'Ulaşım kanalı' },
+  { key: 'salon', label: 'Salon bazlı rapor' },
+  { key: 'donusum', label: 'Görüşme ve dönüşüm' },
+  { key: 'anket', label: 'Deneyim anketi' },
 ];
 
 const TAB_KEYS = TABS.map((t) => t.key);
@@ -37,6 +50,11 @@ export default function Raporlar() {
   const { data: halls = [] } = useHalls();
   const { data: businesses = [] } = useBusinesses();
   const { data: menus = [] } = useMenus();
+  const { data: adaylar = [] } = useLeads();
+  const { data: adayDurumlari = [] } = useLeadStatuses();
+  const { data: anketler = [] } = useSurveys();
+  const { data: kasaKayitlari = [] } = useCashFlow();
+  const { data: dugunGiderleri = [] } = useReservationExpenses();
   const [params] = useSearchParams();
   const istenenTab = params.get('tab');
   const [tab, setTab] = useState<Tab>(
@@ -48,15 +66,44 @@ export default function Raporlar() {
   const [from, setFrom] = useState(() => params.get('from') ?? '');
   const [to, setTo] = useState(() => params.get('to') ?? '');
   const [notlar, setNotlar] = useState(() => read<string>(KEYS.programNotes, ''));
+  /*
+    Anket özeti TARİH SÜZGECİNDEN GEÇMİYOR: anket organizasyondan bir
+    hafta sonra gidiyor ve rezervasyon tarihine göre süzülürse, geçen
+    ayın düğünü için bu ay gelen cevap hiçbir aralıkta görünmezdi.
+  */
+  const anket = useMemo(() => anketOzeti(anketler), [anketler]);
   const currency = user?.currency ?? 'TL';
 
   // Notlar bu tarayıcıda saklanır: rapor her açılışta yeniden yazılmasın.
   useEffect(() => { write(KEYS.programNotes, notlar); }, [notlar]);
 
+  /*
+    Salon süzgeci (madde 23). Boş küme "hepsi" demek: kullanıcı bütün
+    kutucukları kaldırdığında rapor boşalmıyor, tümüne dönüyor -- boş bir
+    rapor ekranı kullanıcıya hiçbir şey anlatmıyordu.
+  */
+  const [seciliSalonlar, setSeciliSalonlar] = useState<string[]>([]);
+
   const scoped = useMemo(
-    () => reservations.filter((r) => r.status !== 'İptal' && withinRange(r.date, { from, to })),
-    [reservations, from, to],
+    () => reservations.filter((r) => r.status !== 'İptal'
+      && withinRange(r.date, { from, to })
+      && (seciliSalonlar.length === 0 || seciliSalonlar.includes(r.hallId))),
+    [reservations, from, to, seciliSalonlar],
   );
+
+  /**
+   * Salon bazlı kırılım (madde 23): seçilen salonlar AYRI AYRI, altında
+   * toplam. Yalnızca toplam gösterilseydi "hangi salon kazandırıyor"
+   * sorusu cevapsız kalırdı.
+   */
+  const salonKirilimi = useMemo(() => {
+    const kapsam = seciliSalonlar.length > 0
+      ? halls.filter((h) => seciliSalonlar.includes(h.id))
+      : halls;
+    return kapsam
+      .map((h) => ({ hall: h, ...summarize(scoped.filter((r) => r.hallId === h.id), balance) }))
+      .filter((s) => s.count > 0);
+  }, [halls, seciliSalonlar, scoped, balance]);
 
   const totals = useMemo(() => summarize(scoped, balance), [scoped, balance]);
   const programs = useMemo(() => programReport(scoped, balance), [scoped, balance]);
@@ -64,6 +111,60 @@ export default function Raporlar() {
   const balances = useMemo(() => balanceReport(scoped, balance), [scoped, balance]);
   const slots = useMemo(() => slotReport(scoped, balance), [scoped, balance]);
   const channels = useMemo(() => channelReport(scoped, balance), [scoped, balance]);
+
+  /*
+    Ciro, gider ve kâr (maddeler 20 ve 23). Yıl/ay seçimi kullanıcıda:
+    "bu yıl ne kazandık" ile "hangi ay zarar ettik" ayrı sorular ve
+    ikisini tek bir tabloda göstermek ikisini de okunmaz yapardı.
+  */
+  const [karYillik, setKarYillik] = useState(true);
+
+  const giderSatirlari = useMemo(
+    () => giderKasaSatirlari(dugunGiderleri, reservations, (r) => r.customerName),
+    [dugunGiderleri, reservations],
+  );
+
+  /*
+    Gelir/gider satırları da tarih aralığına ve SALON SEÇİMİNE göre
+    süzülüyor. Salon seçiliyken serbest gelir/gider satırları dışarıda
+    kalıyor: o satırların salonu yok, hepsini her salona saymak kârı
+    olduğundan farklı gösterirdi.
+  */
+  const salonSecili = seciliSalonlar.length > 0;
+  const karSatirlari = useMemo(() => karRaporu(
+    scoped,
+    balance,
+    salonSecili ? [] : kasaKayitlari.filter((e) => withinRange(e.date, { from, to })),
+    giderSatirlari.filter((g) => withinRange(g.date, { from, to })
+      && (!salonSecili || scoped.some((r) => r.id === g.reservationId))),
+    karYillik,
+  ), [scoped, balance, kasaKayitlari, giderSatirlari, from, to, salonSecili, karYillik]);
+
+  const karToplam = useMemo(() => karSatirlari.reduce((acc, s) => ({
+    ciro: acc.ciro + s.ciro,
+    otherIncome: acc.otherIncome + s.otherIncome,
+    expense: acc.expense + s.expense,
+    kar: acc.kar + s.kar,
+  }), { ciro: 0, otherIncome: 0, expense: 0, kar: 0 }), [karSatirlari]);
+
+  /*
+    Dönüşüm raporu rezervasyonlardan değil ADAYLARDAN çıkıyor: "kaç kişi
+    geldi, kaçı rezervasyona döndü" sorusunun paydası satılmış düğünler
+    değil, görüşülen müşterilerdir.
+  */
+  const donusum = useMemo(
+    () => donusumRaporu(
+      adaylar.filter((l) => withinRange(l.meetingDate || l.createdAt.slice(0, 10), { from, to })),
+      adayDurumlari,
+    ),
+    [adaylar, adayDurumlari, from, to],
+  );
+
+  // Günü geçmiş alacaklar ayrıca sayılıyor: listenin başında durmaları
+  // yetmez, kaç tane ve ne kadar olduğu tek bakışta görünmeli.
+  const geciken = useMemo(() => balances.filter((b) => b.overdue), [balances]);
+  const gecikenSayisi = geciken.length;
+  const gecikenTutar = geciken.reduce((t, b) => t + b.remaining, 0);
 
   const aktifIsletmeAdi =
     businesses.find((b) => b.id === user?.activeBusinessId)?.name ?? businesses[0]?.name ?? 'Program';
@@ -97,10 +198,31 @@ export default function Raporlar() {
       );
     } else if (tab === 'bakiye') {
       csv = toCsv(
-        ['Kod', 'Tarih', 'Müşteri', 'Telefon', 'Toplam', 'Ödenen', 'Kalan'],
+        ['Kod', 'Tarih', 'Durum', 'Müşteri', 'Telefon', 'Toplam', 'Ödenen',
+          'Son tahsilat tarihi', 'Son tahsilat tutarı', 'Son tahsilat tipi', 'Kalan'],
         balances.map((b) => [
-          b.reservation.code, formatDate(b.reservation.date), b.reservation.customerName,
-          formatPhone(b.reservation.customerPhone), b.reservation.totalAmount, b.paid, b.remaining,
+          b.reservation.code, formatDate(b.reservation.date), vadeMetni(b),
+          b.reservation.customerName, formatPhone(b.reservation.customerPhone),
+          b.reservation.totalAmount, b.paid,
+          b.lastPayment ? formatDate(b.lastPayment.date) : '',
+          b.lastPayment ? b.lastPayment.amount : '',
+          b.lastPayment?.method ?? '',
+          b.remaining,
+        ]),
+      );
+    } else if (tab === 'salon') {
+      csv = toCsv(
+        ['Salon', 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan'],
+        salonKirilimi.map((s) => [
+          s.hall.name, s.count, s.guests, s.total, s.collected, s.remaining,
+        ]),
+      );
+    } else if (tab === 'donusum') {
+      csv = toCsv(
+        ['Ay', 'Kayıt', 'Salona gelen', 'Teklif', 'Rezervasyon', 'Olumsuz', 'Dönüşüm (%)'],
+        donusum.map((d) => [
+          d.ay, d.kayit, d.gelen, d.teklif, d.rezervasyon, d.olumsuz,
+          d.donusumOrani.toFixed(1),
         ]),
       );
     } else if (tab === 'kanal') {
@@ -185,6 +307,44 @@ export default function Raporlar() {
         </div>
       </form>
 
+      {/*
+        Salon seçimi (madde 23). Bütün raporları birden süzüyor: tek bir
+        sekmeye bağlansaydı kullanıcı ay raporunda salon 1'i, ciro
+        raporunda hepsini görür ve iki rakamı yan yana koyduğunda
+        birbirini tutmadığını sanırdı.
+      */}
+      {halls.length > 1 && (
+        <fieldset className="no-print mb-4">
+          <legend className="field-label">Salonlar</legend>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {halls.map((h) => (
+              <label key={h.id} className="flex items-center gap-2 text-sm text-brand">
+                <input
+                  type="checkbox"
+                  checked={seciliSalonlar.length === 0 || seciliSalonlar.includes(h.id)}
+                  onChange={(e) => setSeciliSalonlar((onceki) => {
+                    // Boş küme "hepsi" demek; ilk kaldırmada diğerleri
+                    // seçili kalsın diye tam listeden düşülüyor.
+                    const temel = onceki.length === 0 ? halls.map((x) => x.id) : onceki;
+                    const yeni = e.target.checked
+                      ? [...new Set([...temel, h.id])]
+                      : temel.filter((id) => id !== h.id);
+                    return yeni.length === halls.length ? [] : yeni;
+                  })}
+                />
+                {h.name}
+              </label>
+            ))}
+            {seciliSalonlar.length > 0 && (
+              <button type="button" className="text-xs text-brand-muted underline hover:text-brand"
+                onClick={() => setSeciliSalonlar([])}>
+                Tüm salonlar
+              </button>
+            )}
+          </div>
+        </fieldset>
+      )}
+
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Mini label="Rezervasyon" value={formatNumber(totals.count)} />
         <Mini label="Davetli" value={formatNumber(totals.guests)} />
@@ -242,6 +402,147 @@ export default function Raporlar() {
               </div>
             )}
           </>
+        ) : tab === 'kar' ? (
+          karSatirlari.length === 0 ? (
+            <p className="py-10 text-center text-sm text-brand-muted">
+              Seçilen tarih aralığında kayıt bulunmuyor.
+            </p>
+          ) : (
+            <>
+              <div className="no-print mb-4 flex flex-wrap items-center gap-2">
+                <span className="text-sm text-brand-muted">Dönem:</span>
+                {[{ deger: true, etiket: 'Yıllık' }, { deger: false, etiket: 'Aylık' }].map((s) => (
+                  <button
+                    key={s.etiket}
+                    type="button"
+                    aria-pressed={karYillik === s.deger}
+                    onClick={() => setKarYillik(s.deger)}
+                    className={`btn-sm rounded-full px-4 py-1.5 text-sm transition ${
+                      karYillik === s.deger
+                        ? 'bg-accent-ink text-white'
+                        : 'border border-line bg-white text-brand hover:border-accent-ink'
+                    }`}
+                  >
+                    {s.etiket}
+                  </button>
+                ))}
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <caption className="sr-only">Dönem başına ciro, gider ve kâr</caption>
+                  <thead>
+                    <tr className="border-b border-line bg-surface text-left text-xs uppercase text-brand-muted">
+                      <th className="px-3 py-2.5 font-medium">Dönem</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Organizasyon</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Ciro</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Tahsil edilen</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Diğer gelir</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Gider</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Kâr</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {karSatirlari.map((k) => (
+                      <tr key={k.donem} className="border-b border-line/60 last:border-0">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-brand">{donemAdi(k.donem)}</td>
+                        <td className="px-3 py-2.5 text-right text-brand">{formatNumber(k.count)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand">{formatMoney(k.ciro, currency)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#15803d]">{formatMoney(k.collected, currency)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand-muted">{formatMoney(k.otherIncome, currency)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#b91c1c]">{formatMoney(k.expense, currency)}</td>
+                        {/*
+                          Kâr negatif olabilir ve rengi bunu söylüyor:
+                          rakamı okumadan "bu dönem zarar" görünmeli.
+                        */}
+                        <td className={`whitespace-nowrap px-3 py-2.5 text-right font-medium ${
+                          k.kar >= 0 ? 'text-brand' : 'text-[#b91c1c]'
+                        }`}>
+                          {formatMoney(k.kar, currency)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-line font-semibold">
+                      <td className="px-3 py-2.5 text-brand" colSpan={2}>Toplam</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand">{formatMoney(karToplam.ciro, currency)}</td>
+                      <td />
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand-muted">{formatMoney(karToplam.otherIncome, currency)}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#b91c1c]">{formatMoney(karToplam.expense, currency)}</td>
+                      <td className={`whitespace-nowrap px-3 py-2.5 text-right ${
+                        karToplam.kar >= 0 ? 'text-brand' : 'text-[#b91c1c]'
+                      }`}>
+                        {formatMoney(karToplam.kar, currency)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/*
+                Ciro ile tahsilat AYRI sütunlar: sözleşme tutarı
+                kazanılmış para değil, tahsil edilene kadar alacaktır.
+                Tek sütunda gösterilseydi kâr, henüz gelmemiş parayla
+                hesaplanmış olurdu.
+              */}
+              <p className="mt-3 text-xs text-brand-muted">
+                Ciro, organizasyonun yapıldığı döneme yazılır; sözleşmenin açıldığı güne değil.
+                Kâr = ciro + diğer gelir − gider. Düğün içi giderler bu hesaba dahildir.
+                {salonSecili && ' Salon seçiliyken salona bağlı olmayan gelir/gider satırları sayılmaz.'}
+              </p>
+            </>
+          )
+        ) : tab === 'anket' ? (
+          /*
+            Deneyim anketi (madde 31). Tarih aralığından ÖNCE geliyor:
+            anketin kendi takvimi var ve rezervasyon süzgecine bağlanırsa
+            cevaplar kaybolurdu.
+          */
+          anket.gonderilen === 0 ? (
+            <p className="py-10 text-center text-sm text-brand-muted">
+              Henüz gönderilmiş anket bulunmuyor. Anketler organizasyondan bir hafta
+              sonra, müşterinin e-posta adresi kayıtlıysa otomatik gönderilir.
+            </p>
+          ) : (
+            <>
+              <dl className="mb-6 grid gap-3 rounded-lg bg-surface p-4 sm:grid-cols-3">
+                <Ozet etiket="Gönderilen anket" deger={formatNumber(anket.gonderilen)} />
+                <Ozet
+                  etiket="Cevaplanan"
+                  deger={`${formatNumber(anket.cevaplanan)} (%${anket.cevapOrani.toFixed(1)})`}
+                />
+                <Ozet
+                  etiket="Genel ortalama"
+                  deger={anket.ortalama === null ? 'Cevap yok' : `${anket.ortalama.toFixed(2)} / 5`}
+                />
+              </dl>
+
+              {anket.sorular.length === 0 ? (
+                <p className="py-6 text-center text-sm text-brand-muted">
+                  Gönderilen anketler henüz cevaplanmadı.
+                </p>
+              ) : (
+                <Table
+                  headers={['Soru', 'Cevap sayısı', 'Ortalama']}
+                  rows={anket.sorular.map((soru) => [
+                    soru.label, formatNumber(soru.cevap), `${soru.ortalama.toFixed(2)} / 5`,
+                  ])}
+                />
+              )}
+
+              {/*
+                Cevaplanmayan anketler ortalamaya girmiyor ama gönderilen
+                sayısında duruyor: "kaç kişi memnun" ile "kaç kişi cevap
+                verdi" ayrı sorular ve ikisi birleştirilirse memnuniyet
+                olduğundan farklı görünür.
+              */}
+              <p className="mt-3 text-xs text-brand-muted">
+                Ortalamalar yalnızca cevaplanan anketlerden hesaplanır. Cevap oranı,
+                gönderilen anketlerin ne kadarının yanıtlandığını gösterir.
+              </p>
+            </>
+          )
         ) : scoped.length === 0 ? (
           <p className="py-10 text-center text-sm text-brand-muted">Seçilen tarih aralığında kayıt bulunmuyor.</p>
         ) : tab === 'program' ? (
@@ -293,44 +594,124 @@ export default function Raporlar() {
           balances.length === 0 ? (
             <p className="py-10 text-center text-sm text-brand-muted">Kalan alacağı olan kayıt bulunmuyor.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead>
-                  <tr className="border-b border-line bg-surface text-left text-xs uppercase text-brand-muted">
-                    <th className="px-3 py-2.5 font-medium">Kod</th>
-                    <th className="px-3 py-2.5 font-medium">Tarih</th>
-                    <th className="px-3 py-2.5 font-medium">Müşteri</th>
-                    <th className="px-3 py-2.5 font-medium">Telefon</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Toplam</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Ödenen</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Kalan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {balances.map((b) => (
-                    <tr key={b.reservation.id} className="border-b border-line/60 last:border-0">
-                      <td className="px-3 py-2.5 font-mono text-xs text-brand-muted">{b.reservation.code}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-brand">{formatDate(b.reservation.date)}</td>
-                      <td className="px-3 py-2.5">
-                        <Link to={`/panel/rezervasyonlar/${b.reservation.id}`}>{b.reservation.customerName}</Link>
-                      </td>
-                      <td className="px-3 py-2.5 text-brand-muted">{formatPhone(b.reservation.customerPhone)}</td>
-                      <td className="px-3 py-2.5 text-right text-brand">{formatMoney(b.reservation.totalAmount, currency)}</td>
-                      <td className="px-3 py-2.5 text-right text-[#15803d]">{formatMoney(b.paid, currency)}</td>
-                      <td className="px-3 py-2.5 text-right font-medium text-[#b91c1c]">{formatMoney(b.remaining, currency)}</td>
+            <>
+              {gecikenSayisi > 0 && (
+                <Alert kind="warning" className="mb-4">
+                  {gecikenSayisi} kaydın organizasyon günü geçtiği hâlde bakiyesi kapanmadı.
+                  Toplam {formatMoney(gecikenTutar, currency)} tahsil edilmedi.
+                </Alert>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] text-sm">
+                  <thead>
+                    <tr className="border-b border-line bg-surface text-left text-xs uppercase text-brand-muted">
+                      <th className="px-3 py-2.5 font-medium">Kod</th>
+                      <th className="px-3 py-2.5 font-medium">Tarih</th>
+                      <th className="px-3 py-2.5 font-medium">Durum</th>
+                      <th className="px-3 py-2.5 font-medium">Müşteri</th>
+                      <th className="px-3 py-2.5 font-medium">Telefon</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Toplam</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Ödenen</th>
+                      <th className="px-3 py-2.5 font-medium">Son tahsilat</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Kalan</th>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-line font-semibold">
-                    <td className="px-3 py-2.5 text-brand" colSpan={6}>Toplam kalan alacak</td>
-                    <td className="px-3 py-2.5 text-right text-[#b91c1c]">
-                      {formatMoney(balances.reduce((s, b) => s + b.remaining, 0), currency)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {balances.map((b) => (
+                      <tr key={b.reservation.id} className="border-b border-line/60 last:border-0">
+                        <td className="px-3 py-2.5 font-mono text-xs text-brand-muted">{b.reservation.code}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-brand">{formatDate(b.reservation.date)}</td>
+                        <td className={`px-3 py-2.5 whitespace-nowrap text-xs ${b.overdue ? 'font-medium text-[#b91c1c]' : 'text-brand-muted'}`}>
+                          {vadeMetni(b)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Link to={`/panel/rezervasyonlar/${b.reservation.id}`}>{b.reservation.customerName}</Link>
+                        </td>
+                        <td className="px-3 py-2.5 text-brand-muted">{formatPhone(b.reservation.customerPhone)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-brand">{formatMoney(b.reservation.totalAmount, currency)}</td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#15803d]">{formatMoney(b.paid, currency)}</td>
+                        {/*
+                          Hesabın tabanı: "en son ne zaman, ne kadar aldık".
+                          Tutar tek başına yeterli değil; tarihi olmadan
+                          alacağın ne kadar beklediği görünmüyordu.
+                        */}
+                        <td className="whitespace-nowrap px-3 py-2.5 text-xs text-brand-muted">
+                          {b.lastPayment ? (
+                            <>
+                              <span className="block text-brand">{formatMoney(b.lastPayment.amount, currency)}</span>
+                              {formatDate(b.lastPayment.date)} · {b.lastPayment.method ?? b.lastPayment.source}
+                            </>
+                          ) : 'Tahsilat yok'}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-medium text-[#b91c1c]">{formatMoney(b.remaining, currency)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-line font-semibold">
+                      <td className="px-3 py-2.5 text-brand" colSpan={8}>Toplam kalan alacak</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[#b91c1c]">
+                        {formatMoney(balances.reduce((s, b) => s + b.remaining, 0), currency)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>
+          )
+        ) : tab === 'salon' ? (
+          salonKirilimi.length === 0 ? (
+            <p className="py-10 text-center text-sm text-brand-muted">
+              Seçilen aralıkta kayıt bulunmuyor.
+            </p>
+          ) : (
+            <>
+              <Table
+                headers={['Salon', 'Adet', 'Davetli', 'Toplam', 'Tahsilat', 'Kalan']}
+                rows={salonKirilimi.map((s) => [
+                  s.hall.name, formatNumber(s.count), formatNumber(s.guests),
+                  formatMoney(s.total, currency), formatMoney(s.collected, currency),
+                  formatMoney(s.remaining, currency),
+                ])}
+              />
+              {/*
+                Seçilen salonların toplamı ayrı satırda: madde 23 hem
+                "ayrı ayrı" hem "toplam" istiyor ve iki sayı bir arada
+                durmadan karşılaştırma yapılamıyor.
+              */}
+              <dl className="mt-4 grid gap-3 rounded-lg bg-surface p-4 sm:grid-cols-3">
+                <Ozet etiket="Seçilen salonların toplamı" deger={formatMoney(totals.total, currency)} />
+                <Ozet etiket="Tahsil edilen" deger={formatMoney(totals.collected, currency)} />
+                <Ozet etiket="Kalan alacak" deger={formatMoney(totals.remaining, currency)} />
+              </dl>
+            </>
+          )
+        ) : tab === 'donusum' ? (
+          donusum.length === 0 ? (
+            <p className="py-10 text-center text-sm text-brand-muted">
+              Seçilen tarih aralığında görüşme kaydı bulunmuyor.
+            </p>
+          ) : (
+            <>
+              {/*
+                "Kayıt" ile "salona gelen" ayrı sütunlar: her kayıt bir
+                görüşmedir, ama gelen kişi yüz yüze görüşülendir. İkisi
+                tek sayıda toplanınca dönüşüm oranı anlamsız çıkıyordu.
+              */}
+              <Table
+                headers={['Ay', 'Kayıt', 'Salona gelen', 'Teklif', 'Rezervasyon', 'Olumsuz', 'Dönüşüm']}
+                rows={donusum.map((d) => [
+                  d.ay, formatNumber(d.kayit), formatNumber(d.gelen), formatNumber(d.teklif),
+                  formatNumber(d.rezervasyon), formatNumber(d.olumsuz),
+                  `%${d.donusumOrani.toFixed(1)}`,
+                ])}
+              />
+              <p className="mt-3 text-xs text-brand-muted">
+                Dönüşüm oranı: rezervasyona dönen müşteri / salona gelen kişi. Teklif sayısı
+                yalnızca fiyat girilmiş kayıtları sayar; rakam konuşulmamış bir görüşme teklif
+                sayılsaydı oran olduğundan iyi görünürdü.
+              </p>
+            </>
           )
         ) : tab === 'seans' ? (
           <Table
@@ -366,6 +747,18 @@ export default function Raporlar() {
   );
 }
 
+/**
+ * "2026" ya da "2026-09" -> okunur dönem adı.
+ *
+ * Ham anahtar tabloda bırakılsaydı "2026-09" satırı, ay adıyla yazılan
+ * diğer raporlardan farklı görünürdü.
+ */
+function donemAdi(anahtar: string): string {
+  if (!anahtar.includes('-')) return anahtar;
+  const [yil, ay] = anahtar.split('-');
+  return `${MONTH_NAMES[Number(ay) - 1] ?? ay} ${yil}`;
+}
+
 function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="card px-4 py-3">
@@ -396,6 +789,26 @@ function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/**
+ * Alacağın vadesi organizasyon günüdür: o güne kadar tahsil edilmesi
+ * beklenir. Gün sayısı ham olarak değil, okunacak biçimde yazılıyor.
+ */
+function vadeMetni(b: BalanceRow): string {
+  if (b.daysLeft < 0) return `${Math.abs(b.daysLeft)} gün gecikti`;
+  if (b.daysLeft === 0) return 'Bugün';
+  return `${b.daysLeft} gün kaldı`;
+}
+
+/** Salon raporunun altındaki toplam kutucukları. */
+function Ozet({ etiket, deger }: { etiket: string; deger: string }) {
+  return (
+    <div>
+      <dt className="text-xs uppercase tracking-wide text-brand-muted">{etiket}</dt>
+      <dd className="mt-0.5 font-heading text-lg font-bold text-brand">{deger}</dd>
     </div>
   );
 }

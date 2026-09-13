@@ -7,7 +7,7 @@ import * as sorgular from './queries';
 import { repo } from './repo';
 import { KEYS, clearAll, read, write } from './storage';
 import { uid } from './ids';
-import type { CashFlowEntry, Payment, Reservation, SafeMovement, SmsConsent, User } from '../types';
+import type { CashFlowEntry, Payment, Reservation, SmsConsent, User } from '../types';
 
 /**
  * Veri kancaları.
@@ -101,7 +101,7 @@ async function yaz<Girdi, Sonuc>(
 async function tedarikciEkle(id = 'v1') {
   await repo.saveVendor({
     id, businessId: BIZ, name: 'Orkestra', category: 'Orkestra / Müzik',
-    phone: '5321112233', note: '', isActive: true, createdAt: '',
+    phone: '5321112233', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
   });
 }
 
@@ -205,14 +205,6 @@ describe('okuma kancaları', () => {
     await expect(veri(() => sorgular.useCashFlow())).resolves.toHaveLength(1);
   });
 
-  it('çelik kasa hareketlerini okur', async () => {
-    write(KEYS.safeMovements, [{
-      id: 'k1', businessId: BIZ, date: '2026-01-01', direction: 'Giriş', amount: 500,
-      description: 'Gelir · Tahsilat', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
-    }] satisfies SafeMovement[]);
-    await expect(veri(() => sorgular.useSafeMovements())).resolves.toHaveLength(1);
-  });
-
   it('sms kayıtlarını okur', async () => {
     await repo.logSms({ businessId: BIZ, to: '5321112233', body: 'metin', kind: 'Rezervasyon' });
     await expect(veri(() => sorgular.useSmsLog())).resolves.toHaveLength(1);
@@ -272,7 +264,7 @@ describe('okuma kancaları', () => {
   it('tedarikçileri okur', async () => {
     await repo.saveVendor({
       id: 'v1', businessId: BIZ, name: 'Orkestra', category: 'Orkestra / Müzik',
-      phone: '5321112233', note: '', isActive: true, createdAt: '',
+      phone: '5321112233', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
     });
     await expect(veri(() => sorgular.useVendors())).resolves.toHaveLength(1);
   });
@@ -411,20 +403,6 @@ describe('yazma kancaları', () => {
     expect(read<CashFlowEntry[]>(KEYS.cashflow, [])).toHaveLength(0);
   });
 
-  it('çelik kasa hareketi ekler ve siler', async () => {
-    // Kasadaki para gelir/gider bakiyesinden ayrı bir defterde durur.
-    const hareket: SafeMovement = {
-      id: 'k1', businessId: BIZ, date: '2026-01-01', direction: 'Giriş', amount: 500,
-      description: 'Gelir · Tahsilat', sourceKind: 'cash_flow', sourceId: 'c1', createdAt: '',
-    };
-
-    await yaz(() => sorgular.useAddSafeMovement(), hareket);
-    expect(read<SafeMovement[]>(KEYS.safeMovements, [])).toHaveLength(1);
-
-    await yaz(() => sorgular.useDeleteSafeMovement(), 'k1');
-    expect(read<SafeMovement[]>(KEYS.safeMovements, [])).toHaveLength(0);
-  });
-
   it('renk ayarlarını kaydeder', async () => {
     await yaz(() => sorgular.useSaveColorSettings(), [
       { key: 'dugun', label: 'Düğün', color: '#123456' },
@@ -520,7 +498,7 @@ describe('yazma kancaları', () => {
   it('tedarikçi kaydeder ve siler', async () => {
     const { sonuc } = await yaz(() => sorgular.useSaveVendor(), {
       id: 'v1', businessId: BIZ, name: 'Orkestra', category: 'Orkestra / Müzik',
-      phone: '5321112233', note: '', isActive: true, createdAt: '',
+      phone: '5321112233', note: '', kind: 'hizmet', unitPrice: 0, boxCount: 0, unitsPerBox: 0, looseCount: 0, minCount: 0, isActive: true, createdAt: '',
     });
     expect(sonuc.name).toBe('Orkestra');
 

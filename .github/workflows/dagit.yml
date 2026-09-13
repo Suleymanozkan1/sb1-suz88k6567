@@ -1,0 +1,193 @@
+# =====================================================================
+# Kendi sunucusuna otomatik dağıtım
+#
+# `main` dalına her itmede: derle, sına, sunucuya gönder, servisi yeniden
+# başlat. GitHub Actions herkese açık depolarda ücretsiz, özel depolarda
+# aylık ücretsiz kotanın içinde; bu iş akışı birkaç dakika sürüyor.
+#
+# VERİTABANI GÖÇLERİ BU AKIŞTA ÇALIŞMIYOR. Bilinçli bir karar:
+#
+#   - Göçler geri alınamaz olabiliyor (0024 çelik kasa defterini
+#     düşürüyor). Bir itmeyle kendiliğinden çalışan göç, geri alınamaz
+#     bir kaybı fark edilmeden yapabilirdi.
+#   - Doğru sıra önce YEDEK, sonra göç. Yedek adımı otomatikleştirilse
+#     bile "yedek gerçekten alındı mı" sorusunun cevabını görmeden
+#     devam etmek istemiyoruz.
+#
+# Akış yeni bir göç dosyası geldiğinde bunu ÖZETTE bildiriyor; uygulama
+# sunucuda elle yapılıyor (docs/KURULUM.md).
+#
+# Gerekli depo sırları (Settings -> Secrets and variables -> Actions):
+#   SUNUCU_HOST      Sunucunun adresi ya da IP'si
+#   SUNUCU_KULLANICI SSH kullanıcısı (deploy için açılmış, root değil)
+#   SUNUCU_SSH_ANAHTARI  Özel anahtarın tamamı (ssh-keygen -t ed25519)
+#   SUNUCU_PORT      İsteğe bağlı; boşsa 22
+#   SUNUCU_DIZIN     İsteğe bağlı; boşsa /opt/sahra
+# =====================================================================
+name: Dağıt
+
+on:
+  push:
+    branches: [main]
+  # Elle de çalıştırılabilsin: sunucu kapalıyken yapılan bir itmeden
+  # sonra yeniden denemek gerekebiliyor.
+  workflow_dispatch:
+
+# Aynı anda tek dağıtım. İki iş akışı aynı dizine yazarsa sunucu yarım
+# bir sürümle açık kalabilir.
+concurrency:
+  group: dagitim
+  cancel-in-progress: false
+
+jobs:
+  dagit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Göç karşılaştırması için bir önceki işlem de gerekiyor.
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Bağımlılıklar
+        run: npm ci
+
+      - name: Statik kontroller
+        run: |
+          npm run typecheck
+          npm run lint
+
+      - name: Birim testleri
+        run: npm run test
+
+      # Derleme sunucuda DEĞİL burada yapılıyor: sunucuda derlemek için
+      # geliştirme bağımlılıklarının orada durması gerekirdi ve küçük bir
+      # VPS'te derleme belleği tüketip servisi düşürebilir.
+      - name: Derle
+        env:
+          # Site gerçek sunucu kipinde açılmalı; tanımlı değilse demo
+          # kipinde açılır ve veriler yalnızca tarayıcıda durur.
+          VITE_SUNUCU_MODU: '1'
+        run: npm run build
+
+      - name: SSH anahtarını kur
+        env:
+          ANAHTAR: ${{ secrets.SUNUCU_SSH_ANAHTARI }}
+          KONAK: ${{ secrets.SUNUCU_HOST }}
+          PORT: ${{ secrets.SUNUCU_PORT }}
+        run: |
+          if [ -z "$ANAHTAR" ] || [ -z "$KONAK" ]; then
+            echo "::error::SUNUCU_SSH_ANAHTARI ve SUNUCU_HOST sırları tanımlı değil."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$ANAHTAR" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Sunucunun kimliği önceden alınıyor. `StrictHostKeyChecking=no`
+          # kullanılsaydı araya giren bir sunucuya da bağlanılırdı.
+          ssh-keyscan -p "${PORT:-22}" -H "$KONAK" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Sunucuya gönder
+        env:
+          KONAK: ${{ secrets.SUNUCU_HOST }}
+          KULLANICI: ${{ secrets.SUNUCU_KULLANICI }}
+          PORT: ${{ secrets.SUNUCU_PORT }}
+          DIZIN: ${{ secrets.SUNUCU_DIZIN }}
+        run: |
+          hedef="${DIZIN:-/opt/sahra}"
+          port="${PORT:-22}"
+
+          # `--delete` ile eski sürümün artıkları temizleniyor: kalan bir
+          # JS parçası, tarayıcı önbelleğinden gelen eski bir index.html
+          # ile eşleşip karışık bir sürüm çalıştırabilir.
+          #
+          # node_modules GÖNDERİLMİYOR; sunucuda üretim bağımlılıkları
+          # ayrıca kuruluyor (aşağıdaki adım).
+          rsync -az --delete -e "ssh -p $port" \
+            dist/ "$KULLANICI@$KONAK:$hedef/dist/"
+          rsync -az --delete -e "ssh -p $port" \
+            sunucu-dist/ "$KULLANICI@$KONAK:$hedef/sunucu-dist/"
+          rsync -az -e "ssh -p $port" \
+            package.json package-lock.json "$KULLANICI@$KONAK:$hedef/"
+
+      - name: Bağımlılıkları kur ve servisi yeniden başlat
+        env:
+          KONAK: ${{ secrets.SUNUCU_HOST }}
+          KULLANICI: ${{ secrets.SUNUCU_KULLANICI }}
+          PORT: ${{ secrets.SUNUCU_PORT }}
+          DIZIN: ${{ secrets.SUNUCU_DIZIN }}
+        run: |
+          hedef="${DIZIN:-/opt/sahra}"
+          ssh -p "${PORT:-22}" "$KULLANICI@$KONAK" bash -s <<EOF
+            set -e
+            cd "$hedef"
+            # Yalnızca üretim bağımlılıkları: geliştirme paketleri
+            # sunucuda gereksiz yer ve saldırı yüzeyi.
+            npm ci --omit=dev
+            # Servisi yeniden başlatmak için sudo gerekiyor; deploy
+            # kullanıcısına YALNIZCA bu komut açılıyor (docs/KURULUM.md).
+            sudo systemctl restart sahra
+          EOF
+
+      # Ayakta mı denetimi: servis HTTP'ye cevap veriyor mu? Vermiyorsa
+      # iş akışı kırmızı olmalı, yoksa açılmayan bir sürüm sessizce
+      # yayında kalır.
+      #
+      # HTTP DURUM KODUNA BAKILMIYOR, yalnızca cevap verip vermediğine.
+      # `/api/health` alt sistemlerde bir uyarı varsa (yedek eskimiş, SMS
+      # sağlayıcısı tanımsız, kuyrukta bekleyen mesaj) 503 döndürüyor;
+      # bunlar dağıtımla ilgisi olmayan durumlar ve dağıtımı düşürmeleri
+      # yanlış olurdu. Kodun kendisi çıktıya basılıyor: 503 görürseniz
+      # Sistem Durumu ekranından sebebini okuyabilirsiniz.
+      - name: Servis ayakta mı
+        env:
+          KONAK: ${{ secrets.SUNUCU_HOST }}
+          KULLANICI: ${{ secrets.SUNUCU_KULLANICI }}
+          PORT: ${{ secrets.SUNUCU_PORT }}
+        run: |
+          ssh -p "${PORT:-22}" "$KULLANICI@$KONAK" bash -s <<'EOF'
+            for i in $(seq 1 10); do
+              # `|| echo 000` KULLANILMIYOR: curl bağlanamadığında zaten
+              # "000" basıyor ve echo'nun çıktısı ona EKLENİP "000000"
+              # olurdu -- "000" değil diye kontrol geçer, ayakta olmayan
+              # servis ayakta sayılırdı.
+              kod="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:8787/api/health 2>/dev/null)" || kod=000
+              if [ "$kod" != "000" ]; then
+                echo "Servis ayakta (HTTP $kod)."
+                [ "$kod" = "200" ] || echo "Uyarı: sağlık durumu 'uyari'; Sistem Durumu ekranına bakın."
+                exit 0
+              fi
+              sleep 3
+            done
+            echo "Servis 30 saniyede cevap vermedi."
+            systemctl status sahra --no-pager || true
+            journalctl -u sahra -n 40 --no-pager || true
+            exit 1
+          EOF
+
+      # Göçler ELLE uygulanıyor; bu adım yalnızca hatırlatıyor.
+      - name: Yeni göç var mı
+        run: |
+          yeni="$(git diff --name-only HEAD~1 HEAD -- supabase/migrations || true)"
+          if [ -n "$yeni" ]; then
+            {
+              echo "### Uygulanmamış veritabanı göçü var"
+              echo
+              echo "Bu dağıtımda yeni göç dosyaları geldi. **Otomatik uygulanmadı.**"
+              echo "Sunucuda önce yedek alın, sonra sırayla uygulayın:"
+              echo
+              echo '```bash'
+              echo 'sudo -u postgres pg_dump sahra > ~/sahra-$(date +%F).sql'
+              for f in $yeni; do
+                echo "sudo -u postgres psql -v ON_ERROR_STOP=1 -d sahra -f $f"
+              done
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Yeni göç dosyaları var; sunucuda elle uygulanmalı."
+          else
+            echo "Yeni göç yok." >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -6,6 +6,7 @@ import PublicLayout from './layouts/PublicLayout';
 import AppLayout from './layouts/AppLayout';
 import RequireAuth from './components/RequireAuth';
 
+import Anket from './pages/Anket';
 import KodDogrulama from './pages/KodDogrulama';
 import LegalPage from './pages/LegalPage';
 import UyeGirisi from './pages/UyeGirisi';
@@ -21,7 +22,8 @@ const Kasa = lazy(() => import('./pages/app/Kasa'));
 const Salonlar = lazy(() => import('./pages/app/Salonlar'));
 const Menuler = lazy(() => import('./pages/app/Menuler'));
 const Hatirlatmalar = lazy(() => import('./pages/app/Hatirlatmalar'));
-const Tedarikciler = lazy(() => import('./pages/app/Tedarikciler'));
+const OdemeBildirimleri = lazy(() => import('./pages/app/OdemeBildirimleri'));
+const UrunHizmet = lazy(() => import('./pages/app/UrunHizmet'));
 const Makbuz = lazy(() => import('./pages/app/Makbuz'));
 const Raporlar = lazy(() => import('./pages/app/Raporlar'));
 const RenkAyarlari = lazy(() => import('./pages/app/RenkAyarlari'));
@@ -39,6 +41,8 @@ const DenetimKaydi = lazy(() => import('./pages/app/DenetimKaydi'));
 const IzinYonetimi = lazy(() => import('./pages/app/IzinYonetimi'));
 const SistemDurumu = lazy(() => import('./pages/app/SistemDurumu'));
 const Faturalar = lazy(() => import('./pages/app/Faturalar'));
+const OzelGunler = lazy(() => import('./pages/app/OzelGunler'));
+const FaturaDetay = lazy(() => import('./pages/app/FaturaDetay'));
 
 function PanelLoading() {
   return (
@@ -74,6 +78,13 @@ export default function App() {
             {/* Müşteriye gönderilen SMS'teki sorgu kodu buraya geliyor. */}
             <Route path="kod-dogrulama" element={<KodDogrulama />} />
 
+            {/*
+              Deneyim anketi (madde 31). Bağlantı e-postayla gidiyor ve
+              jetonu adres satırında taşıyor; müşterinin sisteme girişi
+              yok, bu yüzden yol herkese açık bölümde.
+            */}
+            <Route path="anket" element={<Anket />} />
+
             <Route path="gizlilik-politikasi" element={<LegalPage />} />
             <Route path="kvkk-aydinlatma-metni" element={<LegalPage />} />
 
@@ -93,6 +104,7 @@ export default function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="takvim" element={<Takvim />} />
+            <Route path="ozel-gunler" element={<OzelGunler />} />
             <Route path="rezervasyonlar" element={<Rezervasyonlar />} />
             <Route path="rezervasyonlar/yeni" element={<RezervasyonForm />} />
             <Route path="rezervasyonlar/:id" element={<RezervasyonDetay />} />
@@ -101,6 +113,7 @@ export default function App() {
             <Route path="rezervasyonlar/:id/makbuz" element={<Makbuz />} />
             <Route path="kasa" element={<Kasa />} />
             <Route path="faturalar" element={<Faturalar />} />
+            <Route path="faturalar/:id" element={<FaturaDetay />} />
             <Route path="raporlar" element={<Raporlar />} />
             <Route path="renk-ayarlari" element={<RenkAyarlari />} />
             <Route path="musteriler" element={<Musteriler />} />
@@ -109,7 +122,10 @@ export default function App() {
             <Route path="salonlar" element={<Salonlar />} />
             <Route path="menuler" element={<Menuler />} />
             <Route path="hatirlatmalar" element={<Hatirlatmalar />} />
-            <Route path="tedarikciler" element={<Tedarikciler />} />
+            <Route path="odeme-bildirimleri" element={<OdemeBildirimleri />} />
+            <Route path="urun-hizmet" element={<UrunHizmet />} />
+            {/* Eski adres: kayıtlı bağlantılar ve yer imleri kırılmasın. */}
+            <Route path="tedarikciler" element={<Navigate to="/panel/urun-hizmet" replace />} />
             <Route path="sms" element={<SmsKayitlari />} />
             <Route path="musteri-adaylari" element={<MusteriAdaylari />} />
             <Route path="musteri-adaylari/yeni" element={<MusteriAdayiYeni />} />

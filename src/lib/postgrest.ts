@@ -125,6 +125,16 @@ class Sorgu<T> implements PromiseLike<Sonuc<T>> {
     return this.hamSuzgec(sutun, `is.${deger === null ? 'null' : String(deger)}`);
   }
 
+  /**
+   * `is` süzgecinin olumsuzu: `business_id=not.is.null`.
+   *
+   * `neq` ile yazılamaz: SQL'de null hiçbir şeye eşit ya da eşit değil
+   * olmadığı için `neq.null` boş sonuç döndürür ve bu sessizce olur.
+   */
+  isNot(sutun: string, deger: null | boolean) {
+    return this.hamSuzgec(sutun, `not.is.${deger === null ? 'null' : String(deger)}`);
+  }
+
   in(sutun: string, degerler: unknown[]) {
     // Parantez ve virgül sözdizimine ait; yalnızca değerler kaçırılıyor.
     const liste = degerler.map((d) => listeDegeri(d)).join(',');

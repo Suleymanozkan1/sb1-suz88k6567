@@ -7,7 +7,7 @@ import { QueryBoundary } from '../../components/QueryState';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
-  useCancelInvoice, useCreateInvoice, useInvoices, useReservation, useSendInvoice,
+  useCancelInvoice, useCreateInvoice, useInvoices, useReservation, useReservations, useSendInvoice,
 } from '../../lib/queries';
 import {
   computeInvoice, fromKurus, invoiceDeadlineStatus, isValidTckn, isValidVkn,
@@ -15,7 +15,7 @@ import {
 } from '../../lib/invoice';
 import { formatDate, formatMoney, normalizeTr, todayIso } from '../../lib/format';
 import { IconPlus, IconSearch, IconTrash } from '../../components/Icons';
-import type { BuyerKind, Invoice } from '../../types';
+import type { BuyerKind, Invoice, Reservation } from '../../types';
 
 const STATUS_LABELS: Record<Invoice['status'], string> = {
   taslak: 'Taslak', gonderiliyor: 'Gönderiliyor', gonderildi: 'Gönderildi',
@@ -51,6 +51,7 @@ export default function Faturalar() {
   const { can, isDemoMode } = useAuth();
   const { data, isLoading, error } = useInvoices();
   const reservationQuery = useReservation(reservationId);
+  const { data: tumRezervasyonlar = [] } = useReservations();
   const createMutation = useCreateInvoice();
   const sendMutation = useSendInvoice();
   const cancelMutation = useCancelInvoice();
@@ -60,6 +61,15 @@ export default function Faturalar() {
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
   const [toCancel, setToCancel] = useState<Invoice | null>(null);
+  /*
+    Kayıtlı müşteriden doldurma (madde 21). Seçilen kayıt forma
+    KOPYALANIYOR, bağlanmıyor: kullanıcı göndermeden önce tutarı ve
+    alanları değiştirebilmeli, sonradan rezervasyon düzeltildiğinde
+    kesilmiş fatura değişmemeli.
+  */
+  const [secimAcik, setSecimAcik] = useState(false);
+  const [secimArama, setSecimArama] = useState('');
+  const [seciliRezervasyon, setSeciliRezervasyon] = useState<string | undefined>(reservationId);
 
   const reservation = reservationQuery.data ?? undefined;
 
@@ -90,6 +100,42 @@ export default function Faturalar() {
     return invoices.filter((i) => normalizeTr(`${i.invoiceNumber} ${i.buyerName}`).includes(q));
   }, [invoices, query]);
 
+  /** Sözleşme numarası fatura satırında görünsün diye kod çözümü. */
+  const rezervasyonKodu = useMemo(() => {
+    const harita = new Map(tumRezervasyonlar.map((r) => [r.id, r]));
+    return (id?: string) => (id ? harita.get(id)?.code ?? '' : '');
+  }, [tumRezervasyonlar]);
+
+  const secilebilirler = useMemo(() => {
+    const q = normalizeTr(secimArama);
+    const liste = tumRezervasyonlar.filter((r) => r.status !== 'İptal');
+    if (!q) return liste.slice(0, 20);
+    return liste
+      .filter((r) => normalizeTr(`${r.customerName} ${r.customerPhone} ${r.code}`).includes(q))
+      .slice(0, 20);
+  }, [tumRezervasyonlar, secimArama]);
+
+  /** Seçilen kaydı forma kopyalar: bağ değil, kopya. */
+  function musteridenDoldur(r: Reservation) {
+    setBuyer((b) => ({
+      ...b,
+      name: r.customerName,
+      email: r.customerEmail ?? '',
+      address: r.address ?? '',
+    }));
+    setLines([{
+      ...EMPTY_LINE,
+      description: `${r.organizationType} organizasyonu · ${formatDate(r.date)} · ${r.code}`,
+      // Tutar rezervasyondan geliyor ama kilitli değil; göndermeden önce
+      // değiştirilebilir (madde 21).
+      unitPrice: r.totalAmount,
+    }]);
+    setSeciliRezervasyon(r.id);
+    setSecimAcik(false);
+    setSecimArama('');
+    setShowForm(true);
+  }
+
   const deadline = reservation ? invoiceDeadlineStatus(reservation.date, todayIso()) : null;
 
   function updateLine(index: number, patch: Partial<InvoiceLineInput>) {
@@ -115,7 +161,7 @@ export default function Faturalar() {
 
     try {
       const created = await createMutation.mutateAsync({
-        reservationId,
+        reservationId: seciliRezervasyon,
         // Alıcı e-Fatura mükellefiyse e-Fatura, değilse e-Arşiv düzenlenir
         kind: buyer.kind === 'kurumsal' ? 'e-Fatura' : 'e-Arsiv',
         serviceDate: reservation?.date,
@@ -163,9 +209,14 @@ export default function Faturalar() {
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Faturalar</h1>
         {can('kasa.duzenle') && (
-          <button type="button" onClick={() => setShowForm((v) => !v)} className="btn-primary btn-sm text-white hover:text-white">
-            <IconPlus size={16} /> Yeni Fatura
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setSecimAcik((v) => !v)} className="btn-outline btn-sm">
+              Kayıtlı Müşterilerden Seç
+            </button>
+            <button type="button" onClick={() => setShowForm((v) => !v)} className="btn-primary btn-sm text-white hover:text-white">
+              <IconPlus size={16} /> Yeni Fatura
+            </button>
+          </div>
         )}
       </div>
       <p className="mb-6 max-w-3xl text-sm leading-relaxed text-brand-muted">
@@ -186,6 +237,45 @@ export default function Faturalar() {
             ? `Hizmet tarihinden bu yana ${Math.abs(deadline.daysLeft)} gün geçti; fatura düzenleme süresi (7 gün) aşıldı.`
             : `Fatura düzenleme süresi: ${deadline.daysLeft} gün kaldı.`}
         </Alert>
+      )}
+
+      {/*
+        Kayıtlı müşteriden doldurma (madde 21). Seçilen kayıt forma
+        KOPYALANIYOR: tutar da dahil her alan göndermeden önce
+        değiştirilebilir ve sonradan rezervasyon düzeltildiğinde kesilmiş
+        fatura değişmez.
+      */}
+      {secimAcik && can('kasa.duzenle') && (
+        <section className="card mb-6 p-5" aria-labelledby="musteri-sec-baslik">
+          <h2 id="musteri-sec-baslik" className="mb-3 font-heading text-lg font-bold text-brand">
+            Kayıtlı müşteriler
+          </h2>
+          <label htmlFor="fatura-musteri-ara" className="field-label">İsim, telefon veya sözleşme no</label>
+          <input id="fatura-musteri-ara" className="field-input mb-3" value={secimArama}
+            onChange={(e) => setSecimArama(e.target.value)} />
+
+          {secilebilirler.length === 0 ? (
+            <p className="py-4 text-center text-sm text-brand-muted">Eşleşen kayıt bulunamadı.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {secilebilirler.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-brand">{r.customerName}</p>
+                    <p className="text-xs text-brand-muted">
+                      <span className="font-mono">{r.code}</span> · {formatDate(r.date)} ·{' '}
+                      {formatMoney(r.totalAmount)}
+                    </p>
+                  </div>
+                  <button type="button" className="btn-outline btn-sm shrink-0"
+                    onClick={() => musteridenDoldur(r)}>
+                    Seç
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       {showForm && can('kasa.duzenle') && (
@@ -340,6 +430,7 @@ export default function Faturalar() {
                 <th className="px-4 py-3 text-right font-medium">KDV</th>
                 <th className="px-4 py-3 text-right font-medium">Toplam</th>
                 <th className="px-4 py-3 font-medium">Durum</th>
+                <th className="px-4 py-3 font-medium">Rezervasyon</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -367,7 +458,19 @@ export default function Faturalar() {
                       <span className="mt-1 block text-xs text-[#b91c1c]">{invoice.providerError}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-xs">
+                    {invoice.reservationId ? (
+                      <Link to={`/panel/rezervasyonlar/${invoice.reservationId}`} className="font-mono">
+                        {rezervasyonKodu(invoice.reservationId) || 'Kayıt'}
+                      </Link>
+                    ) : (
+                      <span className="text-brand-muted">-</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    <Link to={`/panel/faturalar/${invoice.id}`} className="mr-2 text-xs underline">
+                      Görüntüle
+                    </Link>
                     {can('kasa.duzenle') && invoice.status !== 'iptal' && (
                       <button type="button" onClick={() => setToCancel(invoice)}
                         className="text-xs text-[#b91c1c] hover:underline">

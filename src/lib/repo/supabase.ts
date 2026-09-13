@@ -14,11 +14,13 @@ import { DEFAULT_COLOR_SETTINGS, OWNER_PERMISSIONS } from '../../data/constants'
 import { RepoError, type PublicReservation, type Repository } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
-  AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult,
+  AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult, ErrorReport,
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
-  Payment, Permission, Reservation, SafeMovement, SmsConsent, SmsLogEntry, SmsQueueEntry,
+  Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent, PaymentMethod,
+  Permission, QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
+  ExchangeCode, ExchangeRate, WeatherForecast, SpecialDay, SpecialDayKind, Survey,
 } from '../../types';
 import { VARSAYILAN_BASLANGIC_DURUMU } from '../../types';
 import { computeInvoice } from '../invoice';
@@ -94,6 +96,7 @@ function toUser(row: Row): User {
     currency: (row.currency as User['currency']) ?? 'TL',
     facebook: (row.facebook as string) ?? undefined,
     instagram: (row.instagram as string) ?? undefined,
+    monthlyReport: Boolean(row.monthly_report),
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     activeBusinessId: (row.active_business_id as string) ?? '',
   };
@@ -114,6 +117,10 @@ function toBusiness(row: Row): Business {
     facebook: (row.facebook as string) ?? undefined,
     instagram: (row.instagram as string) ?? undefined,
     about: (row.about as string) ?? undefined,
+    reportEmail: (row.report_email as string) ?? '',
+    weatherLocation: (row.weather_location as string) ?? '',
+    surveyEmail: (row.survey_email as string) ?? '',
+    lockSeconds: Number(row.lock_seconds ?? 120),
     createdAt: (row.created_at as string) ?? '',
   };
 }
@@ -148,6 +155,7 @@ function toReservation(row: Row): Reservation {
     guestCount: Number(row.guest_count ?? 0),
     totalAmount: Number(row.total_amount ?? 0),
     deposit: Number(row.deposit ?? 0),
+    depositMethod: (row.deposit_method as Reservation['depositMethod']) ?? undefined,
     currency: (row.currency as Reservation['currency']) ?? 'TL',
     status: (row.status as Reservation['status']) ?? 'Kesin Rezervasyon',
     colorKey: (row.color_key as string) ?? 'diger',
@@ -172,6 +180,7 @@ function fromReservation(r: Reservation) {
     date: r.date, start_time: r.startTime || null, end_time: r.endTime || null,
     slot: r.slot, organization_type: r.organizationType,
     guest_count: r.guestCount, total_amount: r.totalAmount, deposit: r.deposit,
+    deposit_method: r.depositMethod ?? null,
     currency: r.currency, status: r.status, color_key: r.colorKey,
     note: r.note || null, address: r.address || null, services: r.services,
     source_channel: r.sourceChannel || null, source_detail: r.sourceDetail?.trim() || null,
@@ -197,6 +206,12 @@ function toLead(row: Row): CustomerLead {
     nextFollowupAt: (row.next_followup_at as string) ?? '',
     lastContactAt: (row.last_contact_at as string) ?? '',
     reservationId: (row.reservation_id as string) ?? undefined,
+    hallId: (row.hall_id as string) ?? undefined,
+    offerAmount: row.offer_amount === null || row.offer_amount === undefined
+      ? undefined : Number(row.offer_amount),
+    offerValidUntil: (row.offer_valid_until as string) ?? undefined,
+    optionDate: (row.option_date as string) ?? undefined,
+    meetingDate: (row.meeting_date as string) ?? undefined,
     requestText: (row.request_text as string) ?? '',
     note: (row.note as string) ?? '',
     createdAt: (row.created_at as string) ?? '',
@@ -212,7 +227,94 @@ function fromLead(l: CustomerLead) {
     source: l.source, source_detail: l.sourceDetail, status: l.status,
     assigned_to: l.assignedTo ?? null, next_followup_at: l.nextFollowupAt || null,
     last_contact_at: l.lastContactAt || null, reservation_id: l.reservationId ?? null,
+    hall_id: l.hallId ?? null,
+    // Boş tutar NULL yazılıyor, sıfır değil: sıfır "bedava teklif
+    // verildi" demektir ve dönüşüm raporunda teklif sayılırdı.
+    offer_amount: l.offerAmount ?? null,
+    offer_valid_until: l.offerValidUntil || null,
+    option_date: l.optionDate || null,
+    meeting_date: l.meetingDate || null,
     request_text: l.requestText, note: l.note,
+  };
+}
+
+/**
+ * Sayısal alanlar PostgREST'ten METİN gelebiliyor (numeric tipler
+ * hassasiyet kaybetmesin diye). Doğrudan kullanılsaydı "32.15" + 1
+ * işlemi "32.151" olurdu.
+ */
+function sayi(deger: unknown): number {
+  const n = Number(deger);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Boş bırakılabilen sayısal alan: yokluk 0 ile karıştırılmamalı. */
+function sayiVeyaYok(deger: unknown): number | undefined {
+  if (deger === null || deger === undefined || deger === '') return undefined;
+  const n = Number(deger);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function toExchangeRate(row: Row): ExchangeRate {
+  return {
+    code: row.code as ExchangeCode,
+    buy: sayi(row.buy),
+    sell: sayi(row.sell),
+    quotedAt: (row.quoted_at as string) ?? '',
+    fetchedAt: (row.fetched_at as string) ?? '',
+  };
+}
+
+function toWeather(row: Row): WeatherForecast {
+  return {
+    businessId: (row.business_id as string) ?? '',
+    day: (row.day as string) ?? '',
+    minC: sayiVeyaYok(row.min_c),
+    maxC: sayiVeyaYok(row.max_c),
+    currentC: sayiVeyaYok(row.current_c),
+    summary: (row.summary as string) ?? '',
+    icon: (row.icon as string) ?? '',
+    fetchedAt: (row.fetched_at as string) ?? '',
+  };
+}
+
+function toSpecialDay(row: Row): SpecialDay {
+  return {
+    id: String(row.id),
+    // null = ortak gün; undefined'a çevriliyor ki arayüz tek şeye baksın.
+    businessId: (row.business_id as string) ?? undefined,
+    day: (row.day as string) ?? '',
+    label: (row.label as string) ?? '',
+    kind: (row.kind as SpecialDayKind) ?? 'ozel',
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toSurvey(row: Row): Survey {
+  return {
+    id: String(row.id),
+    businessId: (row.business_id as string) ?? '',
+    reservationId: (row.reservation_id as string) ?? '',
+    /*
+      Jeton PANELE ÇEKİLMİYOR. Anket bağlantısının tamamı, o bağlantıyı
+      açan herkesin başkasının anketini cevaplamasına yeter; ekranda
+      durmasına gerek yok.
+    */
+    sentAt: (row.sent_at as string) ?? undefined,
+    answeredAt: (row.answered_at as string) ?? undefined,
+    scores: (row.scores as Record<string, number>) ?? undefined,
+    comment: (row.comment as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toQuickReply(row: Row): QuickReply {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    title: (row.title as string) ?? '',
+    body: (row.body as string) ?? '',
+    sortOrder: Number(row.sort_order ?? 0),
   };
 }
 
@@ -224,6 +326,7 @@ function toLeadStatus(row: Row): LeadStatusDef {
     label: (row.label as string) ?? '',
     sortOrder: Number(row.sort_order ?? 0),
     tone: (row.tone as LeadStatusDef['tone']) ?? 'notr',
+    followupDays: Number(row.followup_days ?? 0),
     isInitial: Boolean(row.is_initial),
     isClosed: Boolean(row.is_closed),
     isWon: Boolean(row.is_won),
@@ -264,19 +367,6 @@ function hesabaCevir(row: Row): WhatsappAccount {
   };
 }
 
-function toSafeMovement(row: Row): SafeMovement {
-  return {
-    id: String(row.id),
-    businessId: String(row.business_id),
-    date: (row.date as string) ?? '',
-    direction: (row.direction as SafeMovement['direction']) ?? 'Giriş',
-    amount: Number(row.amount ?? 0),
-    description: (row.description as string) ?? '',
-    sourceKind: (row.source_kind as SafeMovement['sourceKind']) ?? 'cash_flow',
-    sourceId: (row.source_id as string) ?? '',
-    createdAt: (row.created_at as string) ?? '',
-  };
-}
 
 function toInvoice(row: Row): Invoice {
   return {
@@ -335,6 +425,62 @@ function toPayment(row: Row): Payment {
   };
 }
 
+function toReservationExpense(row: Row): ReservationExpense {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    reservationId: String(row.reservation_id),
+    kind: (row.kind as string) ?? '',
+    unitCount: Number(row.unit_count ?? 0),
+    unitPrice: Number(row.unit_price ?? 0),
+    note: (row.note as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
+    updatedAt: (row.updated_at as string) ?? '',
+  };
+}
+
+/*
+  Olay satırı geçmişten geliyor: silinmiş bir tahsilata ait olabilir ve
+  o satırın tipi/tutarı artık başka hiçbir yerde durmuyor. Alanlar bu
+  yüzden boş geçilebilir sayılıyor, uydurma varsayılan konmuyor.
+*/
+function toPaymentEvent(row: Row): PaymentEvent {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    reservationId: String(row.reservation_id),
+    paymentId: row.payment_id ? String(row.payment_id) : undefined,
+    event: row.event as PaymentEvent['event'],
+    amount: row.amount === null || row.amount === undefined ? undefined : Number(row.amount),
+    oldAmount: row.old_amount === null || row.old_amount === undefined
+      ? undefined : Number(row.old_amount),
+    method: (row.method as PaymentMethod | null) ?? undefined,
+    oldMethod: (row.old_method as PaymentMethod | null) ?? undefined,
+    actorEmail: (row.actor_email as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
+  };
+}
+
+function toPaymentAlert(row: Row): PaymentAlert {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    event: row.event as PaymentAlert['event'],
+    enabled: Boolean(row.enabled),
+    body: (row.body as string) ?? '',
+  };
+}
+
+function toPaymentAlertRecipient(row: Row): PaymentAlertRecipient {
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    name: (row.name as string) ?? '',
+    phone: (row.phone as string) ?? '',
+    enabled: Boolean(row.enabled),
+  };
+}
+
 function toCashFlow(row: Row): CashFlowEntry {
   return {
     id: String(row.id),
@@ -343,6 +489,7 @@ function toCashFlow(row: Row): CashFlowEntry {
     date: (row.date as string) ?? '',
     category: (row.category as string) ?? '',
     amount: Number(row.amount ?? 0),
+    method: (row.method as CashFlowEntry['method']) ?? undefined,
     description: (row.description as string) ?? undefined,
     reservationId: (row.reservation_id as string) ?? undefined,
     createdAt: (row.created_at as string) ?? '',
@@ -426,7 +573,13 @@ function toVendor(row: Row): Vendor {
   return {
     id: String(row.id), businessId: String(row.business_id),
     name: (row.name as string) ?? '', category: (row.category as string) ?? '',
+    kind: (row.kind as Vendor['kind']) ?? 'hizmet',
     phone: (row.phone as string) ?? '', note: (row.note as string) ?? '',
+    unitPrice: Number(row.unit_price ?? 0),
+    boxCount: Number(row.box_count ?? 0),
+    unitsPerBox: Number(row.units_per_box ?? 0),
+    looseCount: Number(row.loose_count ?? 0),
+    minCount: Number(row.min_count ?? 0),
     isActive: Boolean(row.is_active ?? true), createdAt: (row.created_at as string) ?? '',
   };
 }
@@ -657,7 +810,10 @@ export const supabaseRepo: Repository = {
       );
     }
     const { error } = await db().from('profiles')
-      .update({ full_name: input.fullName, mobile: input.mobile, permissions: input.permissions })
+      .update({
+        full_name: input.fullName, mobile: input.mobile, permissions: input.permissions,
+        ...(input.monthlyReport === undefined ? {} : { monthly_report: input.monthlyReport }),
+      })
       .eq('id', input.id);
     if (error) fail('Kullanıcı kaydedilemedi.', error);
   },
@@ -681,6 +837,10 @@ export const supabaseRepo: Repository = {
       phone: business.phone, capacity: business.capacity, currency: business.currency,
       address: business.address || null, facebook: business.facebook || null,
       instagram: business.instagram || null, about: business.about || null,
+      report_email: business.reportEmail ?? '',
+      weather_location: business.weatherLocation ?? '',
+      survey_email: business.surveyEmail ?? '',
+      lock_seconds: business.lockSeconds ?? 120,
     }).select().single();
     if (error) fail('İşletme kaydedilemedi.', error);
     return toBusiness(data);
@@ -751,9 +911,68 @@ export const supabaseRepo: Repository = {
     if (error) fail('Tahsilat kaydedilemedi.', error);
   },
 
+  async updatePayment(payment) {
+    const { error } = await db().from('payments').update({
+      date: payment.date, amount: payment.amount,
+      method: payment.method, note: payment.note || null,
+    }).eq('id', payment.id);
+    if (error) fail('Tahsilat güncellenemedi.', error);
+  },
+
   async deletePayment(id) {
     const { error } = await db().from('payments').delete().eq('id', id);
     if (error) fail('Tahsilat silinemedi.', error);
+  },
+
+  /*
+    Ödeme olayları YALNIZCA OKUNUYOR. Satırları veritabanı tetikleyicisi
+    yazıyor; uygulamaya bırakılsaydı panel, mobil ve ileride eklenecek her
+    istemci aynı kaydı ayrı yazmak zorunda kalır, birinin unutması kaydı
+    sessizce eksik bırakırdı.
+  */
+  async listPaymentEvents(businessId) {
+    const { data, error } = await db().from('payment_events')
+      .select('*').eq('business_id', businessId)
+      .order('created_at', { ascending: false }).limit(500);
+    if (error) fail('Ödeme geçmişi alınamadı.', error);
+    return (data ?? []).map(toPaymentEvent);
+  },
+
+  async listPaymentAlerts(businessId) {
+    const { data, error } = await db().from('payment_alerts')
+      .select('*').eq('business_id', businessId);
+    if (error) fail('Bildirim kuralları alınamadı.', error);
+    return (data ?? []).map(toPaymentAlert);
+  },
+
+  async savePaymentAlert(alert) {
+    const { data, error } = await db().from('payment_alerts').upsert({
+      ...kimlikAlani(alert.id), business_id: alert.businessId,
+      event: alert.event, enabled: alert.enabled, body: alert.body,
+    }, { onConflict: 'business_id,event' }).select().single();
+    if (error) fail('Bildirim kuralı kaydedilemedi.', error);
+    return toPaymentAlert(data);
+  },
+
+  async listPaymentAlertRecipients(businessId) {
+    const { data, error } = await db().from('payment_alert_recipients')
+      .select('*').eq('business_id', businessId).order('name');
+    if (error) fail('Bildirim alıcıları alınamadı.', error);
+    return (data ?? []).map(toPaymentAlertRecipient);
+  },
+
+  async savePaymentAlertRecipient(alici) {
+    const { data, error } = await db().from('payment_alert_recipients').upsert({
+      ...kimlikAlani(alici.id), business_id: alici.businessId,
+      name: alici.name, phone: alici.phone, enabled: alici.enabled,
+    }).select().single();
+    if (error) fail('Bildirim alıcısı kaydedilemedi.', error);
+    return toPaymentAlertRecipient(data);
+  },
+
+  async deletePaymentAlertRecipient(id) {
+    const { error } = await db().from('payment_alert_recipients').delete().eq('id', id);
+    if (error) fail('Bildirim alıcısı silinemedi.', error);
   },
 
   async listCashFlow(businessId) {
@@ -763,10 +982,32 @@ export const supabaseRepo: Repository = {
     return (data ?? []).map(toCashFlow);
   },
 
+  async listReservationExpenses(businessId) {
+    const { data, error } = await db().from('reservation_expenses')
+      .select('*').eq('business_id', businessId).order('created_at', { ascending: false });
+    if (error) fail('Düğün içi giderler alınamadı.', error);
+    return (data ?? []).map(toReservationExpense);
+  },
+
+  async saveReservationExpense(expense) {
+    const { error } = await db().from('reservation_expenses').upsert({
+      ...kimlikAlani(expense.id), business_id: expense.businessId,
+      reservation_id: expense.reservationId, kind: expense.kind,
+      unit_count: expense.unitCount, unit_price: expense.unitPrice, note: expense.note,
+    });
+    if (error) fail('Gider kaydedilemedi.', error);
+  },
+
+  async deleteReservationExpense(id) {
+    const { error } = await db().from('reservation_expenses').delete().eq('id', id);
+    if (error) fail('Gider silinemedi.', error);
+  },
+
   async addCashFlow(entry) {
     const { error } = await db().from('cash_flow').insert({
       ...kimlikAlani(entry.id), business_id: entry.businessId, kind: entry.kind, date: entry.date,
-      category: entry.category, amount: entry.amount, description: entry.description || null,
+      category: entry.category, amount: entry.amount, method: entry.method ?? null,
+      description: entry.description || null,
       reservation_id: entry.reservationId || null,
     });
     if (error) fail('Kayıt eklenemedi.', error);
@@ -775,43 +1016,8 @@ export const supabaseRepo: Repository = {
   async deleteCashFlow(id) {
     const { error } = await db().from('cash_flow').delete().eq('id', id);
     if (error) fail('Kayıt silinemedi.', error);
-    // Satır silinince ona bağlı çelik kasa hareketi de düşer; kalsaydı
-    // kasada kaynağı görünmeyen bir tutar dururdu.
-    const { error: kasaError } = await db().from('safe_movements')
-      .delete().eq('source_kind', 'cash_flow').eq('source_id', id);
-    if (kasaError) fail('Çelik kasa hareketi silinemedi.', kasaError);
   },
 
-  async listSafeMovements(businessId) {
-    const { data, error } = await db().from('safe_movements')
-      .select('*').eq('business_id', businessId).order('date', { ascending: false });
-    if (error) fail('Çelik kasa hareketleri alınamadı.', error);
-    return (data ?? []).map(toSafeMovement);
-  },
-
-  async addSafeMovement(movement) {
-    const { error } = await db().from('safe_movements').insert({
-      ...kimlikAlani(movement.id), business_id: movement.businessId, date: movement.date,
-      direction: movement.direction, amount: movement.amount,
-      description: movement.description, source_kind: movement.sourceKind,
-      source_id: movement.sourceId,
-    });
-    if (error) {
-      const kod = (error as { code?: string }).code;
-      // DT001: tetikleyici net kuralını çiğneyen hareketi durdurdu; mesajı
-      // zaten okunabilir. 23505: aynı anda gelen iki istekten ikincisi.
-      if (kod === 'DT001') throw new RepoError(error.message);
-      if (kod === '23505') {
-        throw new RepoError('Bu kayıt çelik kasaya az önce işlendi; sayfayı yenileyip bakın.');
-      }
-      fail('Çelik kasa hareketi eklenemedi.', error);
-    }
-  },
-
-  async deleteSafeMovement(id) {
-    const { error } = await db().from('safe_movements').delete().eq('id', id);
-    if (error) fail('Çelik kasa hareketi silinemedi.', error);
-  },
 
   async listLeads(businessId) {
     const { data, error } = await db().from('customer_leads')
@@ -862,6 +1068,103 @@ export const supabaseRepo: Repository = {
     if (error) fail('İletişim kaydı yazılamadı.', error);
   },
 
+  async listExchangeRates() {
+    const { data, error } = await db().from('exchange_rates').select('*').order('code');
+    if (error) fail('Kurlar okunamadı.', error);
+    return (data ?? []).map(toExchangeRate);
+  },
+
+  async listWeather(businessId) {
+    const { data, error } = await db().from('weather_forecasts')
+      .select('*').eq('business_id', businessId).order('day');
+    if (error) fail('Hava durumu okunamadı.', error);
+    return (data ?? []).map(toWeather);
+  },
+
+  async listSpecialDays(businessId) {
+    /*
+      İki kaynak, iki sorgu: ortak resmî tatiller (business_id null) ve
+      işletmenin kendi eklediği günler. Tek sorguda `or` süzgeci
+      gerekirdi; onun için istemciye serbest metinli bir süzgeç girişi
+      açmak, bütün sorgulara açılan bir kapı olurdu.
+
+      İkisi BİRLİKTE bekleniyor: sırayla çekilseydi takvim önce yarım
+      çizilip sonra tamamlanır, gün kutuları oynardı.
+    */
+    const [ortak, kendi] = await Promise.all([
+      db().from('special_days').select('*').is('business_id', null).order('day'),
+      db().from('special_days').select('*').eq('business_id', businessId).order('day'),
+    ]);
+    if (ortak.error) fail('Resmî tatiller okunamadı.', ortak.error);
+    if (kendi.error) fail('Özel günler okunamadı.', kendi.error);
+
+    return [...(ortak.data ?? []), ...(kendi.data ?? [])]
+      .map(toSpecialDay)
+      .sort((a, b) => a.day.localeCompare(b.day) || a.label.localeCompare(b.label, 'tr'));
+  },
+
+  async saveSpecialDay(gun) {
+    if (!gun.businessId) throw new RepoError('Ortak günler değiştirilemez.');
+
+    const { data, error } = await db().from('special_days').upsert({
+      ...kimlikAlani(gun.id), business_id: gun.businessId,
+      day: gun.day, label: gun.label.trim(), kind: gun.kind,
+    }).select().single();
+    if (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw new RepoError('Bu gün için aynı isimde bir kayıt zaten var.');
+      }
+      fail('Özel gün kaydedilemedi.', error);
+    }
+    return toSpecialDay(data);
+  },
+
+  async deleteSpecialDay(id) {
+    /*
+      Ortak günü silmeye kalkan istek RLS'e takılır ve SİLİNEN SATIR
+      OLMADAN başarılı döner. Arayüzde satır kaybolup yenilemede geri
+      gelirdi; bu yüzden ortak gün burada da engelleniyor.
+    */
+    const { error } = await db().from('special_days')
+      .delete().eq('id', id).isNot('business_id', null);
+    if (error) fail('Özel gün silinemedi.', error);
+  },
+
+  async listSurveys(businessId) {
+    const { data, error } = await db().from('surveys')
+      .select('id,business_id,reservation_id,sent_at,answered_at,scores,comment,created_at')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false });
+    if (error) fail('Anket sonuçları okunamadı.', error);
+    return (data ?? []).map(toSurvey);
+  },
+
+  async listQuickReplies(businessId) {
+    const { data, error } = await db().from('quick_replies')
+      .select('*').eq('business_id', businessId).order('sort_order').order('title');
+    if (error) fail('Hızlı yanıtlar okunamadı.', error);
+    return (data ?? []).map(toQuickReply);
+  },
+
+  async saveQuickReply(yanit) {
+    const { data, error } = await db().from('quick_replies').upsert({
+      ...kimlikAlani(yanit.id), business_id: yanit.businessId,
+      title: yanit.title, body: yanit.body, sort_order: yanit.sortOrder,
+    }).select().single();
+    if (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw new RepoError('Bu başlıkla bir hızlı yanıt zaten var.');
+      }
+      fail('Hızlı yanıt kaydedilemedi.', error);
+    }
+    return toQuickReply(data);
+  },
+
+  async deleteQuickReply(id) {
+    const { error } = await db().from('quick_replies').delete().eq('id', id);
+    if (error) fail('Hızlı yanıt silinemedi.', error);
+  },
+
   async listLeadStatuses(businessId) {
     const { data, error } = await db().from('lead_statuses')
       .select('*').eq('business_id', businessId).order('sort_order', { ascending: true });
@@ -889,6 +1192,7 @@ export const supabaseRepo: Repository = {
       .upsert({
         ...kimlikAlani(durum.id), business_id: durum.businessId, code: durum.code,
         label: durum.label, sort_order: durum.sortOrder, tone: durum.tone,
+        followup_days: durum.followupDays,
         is_initial: durum.isInitial, is_closed: durum.isClosed, is_won: durum.isWon,
         active: durum.active,
       }, { onConflict: 'business_id,code' })
@@ -1056,6 +1360,36 @@ export const supabaseRepo: Repository = {
   async deleteConsent(id) {
     const { error } = await db().from('sms_consents').delete().eq('id', id);
     if (error) fail('İzin kaydı silinemedi.', error);
+  },
+
+  async listErrorReports(limit) {
+    const { data, error } = await db().from('error_reports')
+      .select('*').order('created_at', { ascending: false }).limit(limit);
+    if (error) fail('Hata bildirimleri alınamadı.', error);
+    return (data ?? []).map((row: Row): ErrorReport => ({
+      id: String(row.id),
+      businessId: (row.business_id as string) ?? undefined,
+      actorEmail: (row.actor_email as string) ?? '',
+      path: (row.path as string) ?? '',
+      message: (row.message as string) ?? '',
+      userAgent: (row.user_agent as string) ?? '',
+      createdAt: (row.created_at as string) ?? '',
+    }));
+  },
+
+  async addErrorReport(input) {
+    /*
+      Kullanıcı ve kapsam GÖNDERİLMİYOR: veritabanı kolon varsayılanıyla
+      oturumdan dolduruyor. İstemciden gelseydi bildirim başkasının adına
+      yazılabilirdi.
+    */
+    const { error } = await db().from('error_reports').insert({
+      business_id: input.businessId ?? null,
+      path: input.path,
+      message: input.message,
+      user_agent: input.userAgent,
+    });
+    if (error) fail('Hata bildirimi kaydedilemedi.', error);
   },
 
   async listAuditLog(limit) {
@@ -1341,19 +1675,26 @@ export const supabaseRepo: Repository = {
   async saveVendor(vendor) {
     const { data, error } = await db().from('vendors').upsert({
       ...kimlikAlani(vendor.id), business_id: vendor.businessId, name: vendor.name,
-      category: vendor.category, phone: vendor.phone, note: vendor.note,
+      category: vendor.category, kind: vendor.kind, phone: vendor.phone, note: vendor.note,
+      unit_price: vendor.unitPrice,
+      // Stok alanları hizmette sıfır kalıyor; veritabanı kısıtı da bunu
+      // zorluyor, "3 koli DJ" gibi bir satır hiç oluşmasın.
+      box_count: vendor.kind === 'urun' ? vendor.boxCount : 0,
+      units_per_box: vendor.kind === 'urun' ? vendor.unitsPerBox : 0,
+      loose_count: vendor.kind === 'urun' ? vendor.looseCount : 0,
+      min_count: vendor.kind === 'urun' ? vendor.minCount : 0,
       is_active: vendor.isActive,
     }).select().single();
-    if (error) fail('Tedarikçi kaydedilemedi.', error);
+    if (error) fail('Kayıt kaydedilemedi.', error);
     return toVendor(data);
   },
 
   async deleteVendor(id) {
     const { error } = await db().from('vendors').delete().eq('id', id);
     if (error && (error as { code?: string }).code === '23503') {
-      throw new RepoError('Bu tedarikçi organizasyonlara bağlı; silmek yerine pasife alın.');
+      throw new RepoError('Bu kayıt organizasyonlara bağlı; silmek yerine pasife alın.');
     }
-    if (error) fail('Tedarikçi silinemedi.', error);
+    if (error) fail('Kayıt silinemedi.', error);
   },
 
   async listReservationVendors(reservationId) {
