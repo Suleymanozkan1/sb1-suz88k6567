@@ -216,6 +216,10 @@ PARASUT_USERNAME=<...>
 PARASUT_PASSWORD=<...>
 PARASUT_COMPANY_ID=<...>
 
+# Yönetici bildirimleri WhatsApp'tan gidecekse (bölüm 11)
+WHATSAPP_WEB_ETKIN=0
+WHATSAPP_WEB_OTURUM=/var/lib/sahra/whatsapp-oturum
+
 # WhatsApp (isteğe bağlı)
 WHATSAPP_VERIFY_TOKEN=<...>
 WHATSAPP_APP_SECRET=<...>
@@ -453,6 +457,62 @@ git push
 
 Veritabanı göçleri otomatik uygulanmadığı için geri alma yalnızca kodu
 etkiler; veri olduğu gibi kalır.
+
+## 11. Yönetici bildirimleri WhatsApp'tan (isteğe bağlı)
+
+Ödeme uyarıları SMS yerine WhatsApp'tan gidebilir; mesajlar yöneticinin
+telefonunda o sohbette kalıcı olarak birikir ve Meta'ya ücret ödenmez.
+
+**AYRI BİR NUMARA GEREKİR.** Meta'nın kuralı: bir numara Cloud API ile
+WhatsApp uygulamasında aynı anda kullanılamaz. Müşteri adaylarını
+yakalayan numara Cloud API'ye kayıtlıysa bu yol için ikinci bir hat
+alınmalıdır.
+
+**RİSK.** Otomatik gönderim WhatsApp'ın kullanım şartlarına aykırıdır ve
+numara banlanabilir. Sistem riski şöyle sınırlıyor: yalnızca yönetici
+bildirimleri bu yoldan gider (müşteriye giden hiçbir mesaj geçmez),
+gönderimler arasına bekleme konur, günlük tavan kanaldan bağımsız
+uygulanır. Ban gelirse yalnızca bu ikinci numara etkilenir; müşteri
+iletişim numarası etkilenmez ve bildirimler SMS'ten gitmeye devam eder.
+
+```bash
+# /etc/sahra.env
+WHATSAPP_WEB_ETKIN=1
+WHATSAPP_WEB_OTURUM=/var/lib/sahra/whatsapp-oturum
+```
+
+```bash
+sudo mkdir -p /var/lib/sahra/whatsapp-oturum
+sudo chown www-data:www-data /var/lib/sahra/whatsapp-oturum
+sudo chmod 700 /var/lib/sahra/whatsapp-oturum
+```
+
+Eşleştirme bir kerelik ve SSH'den yapılır:
+
+```bash
+cd /opt/sahra
+sudo -u www-data --preserve-env=WHATSAPP_WEB_ETKIN,WHATSAPP_WEB_OTURUM \
+  node sunucu-dist/sunucu/whatsapp-esle.js
+```
+
+Terminalde bir QR çıkar. İkinci telefondan **WhatsApp > Ayarlar > Bağlı
+cihazlar > Cihaz bağla** ile okutun. "BAĞLANDI" yazdığında oturum diske
+yazılmıştır; sunucu bundan sonra kendisi bağlanır.
+
+> **QR panelde neden yok?** O kare, WhatsApp hesabına cihaz bağlama
+> yetkisi verir: gören herkes hesabı kendi cihazına bağlayabilir.
+> Tarayıcıya açılan bir uç nokta olsaydı yetkilendirmede yapılacak tek
+> bir hata hesabın devredilmesi demekti.
+
+Son adım panelde: **Ödeme Bildirimleri** ekranında ilgili yöneticinin
+kanalını `WhatsApp` yapın. Kanalı `SMS` kalanlar eskisi gibi SMS alır.
+
+Oturum dizini **hesabın kendisidir**: eline geçen kişi o WhatsApp
+hesabından mesaj atabilir. Dizin 0700 olmalı, yedeğe ve Git'e girmemeli.
+
+Oturum düşerse (telefondan "bağlı cihaz" kaldırılırsa ya da uzun süre
+çevrimdışı kalırsa) bildirimler otomatik olarak SMS'e döner; eşleştirme
+komutunu yeniden çalıştırmak yeterlidir.
 
 ## Sorun giderme
 

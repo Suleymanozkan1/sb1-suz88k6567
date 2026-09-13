@@ -533,6 +533,9 @@ export const localRepo: Repository = {
   async listPaymentAlertRecipients(businessId) {
     return wait(odemeAlicilari()
       .filter((a) => a.businessId === businessId)
+      // Kanal alanı sonradan eklendi; tarayıcıda duran eski kayıtlarda
+      // yok ve `undefined` gelirse ekrandaki seçim boş görünürdü.
+      .map((a) => ({ ...a, channel: a.channel ?? 'sms' }))
       .sort((a, b) => a.name.localeCompare(b.name, 'tr')));
   },
 

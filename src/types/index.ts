@@ -899,12 +899,22 @@ export interface PaymentAlert {
 }
 
 /** Bildirimi alacak numara. Kullanıcı hesabına bağlı değil. */
+/** Bildirimin hangi yoldan deneneceği. WhatsApp düşerse SMS'e düşülür. */
+export type MessageChannel = 'sms' | 'whatsapp';
+
+export const KANAL_ADI: Record<MessageChannel, string> = {
+  sms: 'SMS',
+  whatsapp: 'WhatsApp',
+};
+
 export interface PaymentAlertRecipient {
   id: string;
   businessId: string;
   name: string;
   phone: string;
   enabled: boolean;
+  /** Denenecek kanal. Gönderilemezse SMS yedeği devreye girer. */
+  channel: MessageChannel;
 }
 
 /** Mesaj metinlerinde kullanılabilen yer tutucular ve anlamları. */

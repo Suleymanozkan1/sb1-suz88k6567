@@ -24,3 +24,8 @@ Sahra-Takip-Tanitim.pptx
 # Teslim için üretilen paketler (deponun kendi arşivi depoya girmemeli)
 *.zip
 sunucu-dist/
+
+# WhatsApp Web oturumu: dosyalar hesabın kendisidir, eline geçen kişi o
+# hesaptan mesaj atabilir. Üretimde /var/lib/sahra altında durur; betik
+# göreli bir yolla çalıştırılırsa buraya düşmesin diye kapatılıyor.
+whatsapp-oturum/

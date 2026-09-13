@@ -13,8 +13,8 @@ import {
   useSavePaymentAlert, useSavePaymentAlertRecipient,
 } from '../../lib/queries';
 import {
-  ODEME_OLAYLARI, ODEME_OLAY_ADI, ODEME_YER_TUTUCULARI,
-  type PaymentAlert, type PaymentAlertRecipient,
+  KANAL_ADI, ODEME_OLAYLARI, ODEME_OLAY_ADI, ODEME_YER_TUTUCULARI,
+  type MessageChannel, type PaymentAlert, type PaymentAlertRecipient,
 } from '../../types';
 
 /**
@@ -45,7 +45,9 @@ export default function OdemeBildirimleri() {
   const [hata, setHata] = useState('');
   const [kaydedilen, setKaydedilen] = useState('');
   const [silinecek, setSilinecek] = useState<PaymentAlertRecipient | null>(null);
-  const [yeniAlici, setYeniAlici] = useState({ name: '', phone: '' });
+  const [yeniAlici, setYeniAlici] = useState<{
+    name: string; phone: string; channel: MessageChannel;
+  }>({ name: '', phone: '', channel: 'sms' });
 
   // Sunucudan gelen metinler forma bir kez aktarılır; kullanıcı yazarken
   // her yeniden getirmede yazdığı silinmesin.
@@ -98,8 +100,9 @@ export default function OdemeBildirimleri() {
     try {
       await aliciKaydet.mutateAsync({
         id: uid('odeme-alici'), businessId: '', name: ad, phone: numara, enabled: true,
+        channel: yeniAlici.channel,
       });
-      setYeniAlici({ name: '', phone: '' });
+      setYeniAlici({ name: '', phone: '', channel: 'sms' });
     } catch (err) { setHata(errorMessage(err)); }
   }
 
@@ -107,6 +110,13 @@ export default function OdemeBildirimleri() {
     setHata('');
     try {
       await aliciKaydet.mutateAsync({ ...alici, enabled: !alici.enabled });
+    } catch (e) { setHata(errorMessage(e)); }
+  }
+
+  async function kanalDegistir(alici: PaymentAlertRecipient, channel: MessageChannel) {
+    setHata('');
+    try {
+      await aliciKaydet.mutateAsync({ ...alici, channel });
     } catch (e) { setHata(errorMessage(e)); }
   }
 
@@ -128,8 +138,9 @@ export default function OdemeBildirimleri() {
       <Seo title="Ödeme Bildirimleri - Düğün Takip Panel" noindex />
       <h1 className="mb-1 font-heading text-2xl font-bold text-brand">Ödeme Bildirimleri</h1>
       <p className="mb-6 max-w-3xl text-sm text-brand-muted">
-        Tahsilatlarda rakam içeren bir değişiklik olduğunda yöneticilere SMS gönderilir.
-        Hangi olayda mesaj gideceğini ve metnini buradan belirlersiniz.
+        Tahsilatlarda rakam içeren bir değişiklik olduğunda yöneticilere mesaj gönderilir.
+        Hangi olayda mesaj gideceğini, metnini ve kimin hangi kanaldan alacağını buradan
+        belirlersiniz.
       </p>
 
       {hata && <Alert kind="error" className="mb-4">{hata}</Alert>}
@@ -141,7 +152,9 @@ export default function OdemeBildirimleri() {
         </h2>
         <p className="mb-4 text-sm text-brand-muted">
           Numara sistemdeki bir kullanıcıya bağlı değil: salon sahibinin ikinci hattı ya da
-          dışarıdan çalışan muhasebeci de bu listeye girebilir.
+          dışarıdan çalışan muhasebeci de bu listeye girebilir. WhatsApp seçilen alıcıya
+          mesaj WhatsApp&rsquo;tan gider; gönderilemezse aynı mesaj SMS olarak yollanır,
+          bildirim kaybolmaz.
         </p>
 
         {alicilar.length === 0 ? (
@@ -157,6 +170,21 @@ export default function OdemeBildirimleri() {
                   <p className="text-xs text-brand-muted">{formatPhone(a.phone)}</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs text-brand-muted">
+                    <span className="sr-only">{a.name} için kanal</span>
+                    <select
+                      className="rounded border border-line bg-white px-2 py-1 text-xs text-brand"
+                      value={a.channel}
+                      disabled={!duzenleyebilir}
+                      onChange={(e) => {
+                        void kanalDegistir(a, e.target.value as MessageChannel);
+                      }}
+                    >
+                      {(Object.keys(KANAL_ADI) as MessageChannel[]).map((k) => (
+                        <option key={k} value={k}>{KANAL_ADI[k]}</option>
+                      ))}
+                    </select>
+                  </label>
                   <label className="flex items-center gap-2 text-xs text-brand-muted">
                     <input
                       type="checkbox"

@@ -509,6 +509,8 @@ function toPaymentAlertRecipient(row: Row): PaymentAlertRecipient {
     name: (row.name as string) ?? '',
     phone: (row.phone as string) ?? '',
     enabled: Boolean(row.enabled),
+    // Eski satırlarda kolon yok; veritabanı varsayılanıyla aynı değere düşülüyor.
+    channel: (row.channel as PaymentAlertRecipient['channel']) ?? 'sms',
   };
 }
 
@@ -998,6 +1000,7 @@ export const supabaseRepo: Repository = {
     const { data, error } = await db().from('payment_alert_recipients').upsert({
       ...kimlikAlani(alici.id), business_id: alici.businessId,
       name: alici.name, phone: alici.phone, enabled: alici.enabled,
+      channel: alici.channel,
     }).select().single();
     if (error) fail('Bildirim alıcısı kaydedilemedi.', error);
     return toPaymentAlertRecipient(data);
