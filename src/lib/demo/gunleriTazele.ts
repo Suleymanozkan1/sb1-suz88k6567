@@ -19,15 +19,20 @@
  * gömülü veri kalıyor; tanıtım ekranında hata mesajı çıkarmanın anlamı
  * yok.
  */
-import type { SpecialDay } from '../../types';
+import type { SpecialDay, WeatherForecast } from '../../types';
+import { hadiseAdi } from '../mgm';
 import { KEYS, read, write } from '../storage';
 
 interface Yanit {
   uretim?: string;
   gunler?: { day: string; label: string; kind: string; tentative?: boolean }[];
+  hava?: { gun: string; enDusuk: number | null; enYuksek: number | null; hadise?: string }[];
 }
 
 export const DEMO_GUN_ADRESI = '/api/demo-gunler';
+
+/** Tanıtım işletmesi; tahmin satırları bu kimliğe yazılıyor. */
+const DEMO_ISLETME = 'biz_demo';
 
 /**
  * Canlı veriyi çeker ve depoya yazar.
@@ -43,6 +48,25 @@ export async function gunleriTazele(zamanAsimi = 6_000): Promise<boolean> {
     if (!yanit.ok) return false;
 
     const govde = (await yanit.json()) as Yanit;
+
+    /*
+      HAVA TAHMİNİ. Uç nokta MGM'den çekilmiş gerçek tahmini de
+      döndürüyordu ama burada okunmuyordu; tanıtımda hava durumu satırı
+      bu yüzden hiç görünmedi. Uydurulmuş değer yazılmıyor: MGM
+      ulaşılamazsa liste boş kalıyor ve ekran tahmini hiç çizmiyor.
+    */
+    const hava = govde.hava ?? [];
+    write(KEYS.weather, hava.map((h): WeatherForecast => ({
+      businessId: DEMO_ISLETME,
+      day: h.gun,
+      minC: h.enDusuk ?? undefined,
+      maxC: h.enYuksek ?? undefined,
+      summary: hadiseAdi(h.hadise ?? ''),
+      icon: h.hadise ?? '',
+      hadise: h.hadise,
+      fetchedAt: govde.uretim ?? new Date().toISOString(),
+    })));
+
     const gelen = govde.gunler ?? [];
     if (gelen.length === 0) return false;
 

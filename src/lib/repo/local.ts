@@ -309,14 +309,28 @@ function pushQueue(
  * değil, uygulama ömründe BİR KEZ: ekran her açıldığında ağa çıkmak
  * tanıtımı yavaşlatırdı.
  *
- * Beklenmiyor (`void`): takvim gömülü veriyle zaten dolu, tazeleme
- * arka planda tamamlanıyor.
+ * Oturum açılışında BEKLENMİYOR: takvim gömülü veriyle zaten dolu ve
+ * giriş, ağ yavaş diye gecikmemeli. Ama söz saklanıyor -- hava tahminini
+ * okuyan çağrı onu bekliyor (aşağıya bakın).
  */
-let tazelendi = false;
+let tazelemeSozu: Promise<unknown> | null = null;
 function takvimiTazele(): void {
-  if (tazelendi) return;
-  tazelendi = true;
-  void gunleriTazele().catch(() => undefined);
+  if (tazelemeSozu) return;
+  tazelemeSozu = gunleriTazele().catch(() => undefined);
+}
+
+/**
+ * Tazeleme bitene kadar bekler.
+ *
+ * HAVA TAHMİNİ İÇİN GEREKLİ. Tahminin gömülü bir karşılığı yok; yalnızca
+ * canlı yanıttan geliyor. Beklenmeseydi ekran listeyi boş okur, sorgu
+ * katmanı da sonucu önbelleğe alırdı: tahmin yazıldıktan sonra bile
+ * sayfa yenilenene kadar görünmezdi. `gunleriTazele` kendi zaman aşımını
+ * taşıdığı için bu bekleme sınırsız değil.
+ */
+async function tazelemeyiBekle(): Promise<void> {
+  takvimiTazele();
+  await tazelemeSozu;
 }
 
 export const localRepo: Repository = {
@@ -712,8 +726,16 @@ export const localRepo: Repository = {
     return wait<ExchangeRate[]>([]);
   },
 
-  async listWeather() {
-    return wait<WeatherForecast[]>([]);
+  /*
+    Tahmin, `/api/demo-gunler` üzerinden MGM'den geliyor ve
+    `gunleriTazele()` tarafından depoya yazılıyor. Uydurulmuş değer YOK:
+    MGM'ye ulaşılamadıysa liste boş kalıyor ve ekran tahmini hiç çizmiyor.
+  */
+  async listWeather(businessId) {
+    await tazelemeyiBekle();
+    return wait(read<WeatherForecast[]>(KEYS.weather, [])
+      .filter((h) => h.businessId === businessId)
+      .sort((a, b) => a.day.localeCompare(b.day)));
   },
 
   /*
