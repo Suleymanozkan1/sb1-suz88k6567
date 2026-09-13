@@ -11,6 +11,7 @@ import backup from '../api/backup';
 import hava from '../api/hava';
 import havaSaatlik from '../api/hava-saatlik';
 import health from '../api/health';
+import gibOnizle from '../api/gib-onizle';
 import kurlar from '../api/kurlar';
 import invoice from '../api/invoice';
 import iys from '../api/iys';
@@ -42,6 +43,7 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/hava': hava,
   '/api/hava-saatlik': havaSaatlik,
   '/api/health': health,
+  '/api/gib-onizle': gibOnizle,
   '/api/kurlar': kurlar,
   '/api/invoice': invoice,
   '/api/iys': iys,
