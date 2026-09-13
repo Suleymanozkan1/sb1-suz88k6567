@@ -28,6 +28,17 @@ export function ortakGun(gun: SpecialDay): boolean {
   return !gun.businessId;
 }
 
+/**
+ * Tarihi kesinleşmemiş gün.
+ *
+ * Uzak yılların dini bayramları ve hesaplanan kandiller böyle. Ekranda
+ * ayrıca işaretleniyor: kesinleşmemiş bir tarihe göre rezervasyon
+ * kapatmak, sonradan düzeltilmesi gereken bir karar olurdu.
+ */
+export function kesinlesmedi(gun: SpecialDay): boolean {
+  return gun.tentative === true;
+}
+
 /** Belirli bir ayın günleri; takvim yalnızca görünen ayı çiziyor. */
 export function ayinGunleri(gunler: SpecialDay[], yil: number, ay: number): SpecialDay[] {
   const onek = `${yil}-${String(ay + 1).padStart(2, '0')}`;

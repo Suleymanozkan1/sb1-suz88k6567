@@ -15,6 +15,7 @@ import invoice from '../api/invoice';
 import iys from '../api/iys';
 import login from '../api/login';
 import otp from '../api/otp';
+import ozelGunler from '../api/ozel-gunler';
 import oturum from '../api/oturum';
 import reminders from '../api/reminders';
 import monthlyReport from '../api/monthly-report';
@@ -43,6 +44,7 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/iys': iys,
   '/api/login': login,
   '/api/otp': otp,
+  '/api/ozel-gunler': ozelGunler,
   '/api/oturum': oturum,
   '/api/sms': sms,
   '/api/sifre': sifre,
@@ -97,6 +99,13 @@ export const CRON_GOREVLERI: Record<string, keyof typeof ROTALAR> = {
     yığının altında kalıyor.
   */
   '0 9 * * *': '/api/anket',
+  /*
+    Özel günler ayda bir, ayın 2'sinde. Yılda bir yetmez: sağlayıcı uzak
+    yılların dini bayram tarihlerini "kesinleşmedi" olarak veriyor ve
+    resmî ilan yapıldığında güncelliyor; aylık tarama o düzeltmeyi
+    kendiliğinden alıyor. Gece 4: kimse ekranda değilken.
+  */
+  '0 4 2 * *': '/api/ozel-gunler',
 };
 
 /**

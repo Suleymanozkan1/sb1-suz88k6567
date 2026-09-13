@@ -222,10 +222,20 @@ export default function Takvim() {
           {(ozelGunHaritasi.get(selected) ?? []).length > 0 && (
             <ul className="mb-4 space-y-1">
               {(ozelGunHaritasi.get(selected) ?? []).map((g) => (
-                <li key={g.id} className="flex items-center gap-2 text-sm">
+                <li key={g.id} className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: OZEL_GUN_RENGI[g.kind] }} />
                   <span className="text-brand">{g.label}</span>
                   <span className="text-xs text-brand-muted">{OZEL_GUN_ADI[g.kind]}</span>
+                  {/*
+                    Kandiller hesaplanıyor, uzak yılların bayramları da
+                    henüz ilan edilmedi. Takvimde de belirtiliyor: bu
+                    ekran rezervasyon açarken bakılan ekran.
+                  */}
+                  {g.tentative && (
+                    <span className="rounded bg-[#fef6e7] px-1.5 py-0.5 text-[10px] text-[#92600e]">
+                      kesinleşmedi
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

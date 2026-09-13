@@ -14,6 +14,9 @@
 --   9. Anket istemciden yazılabiliyor mu? (yazılamamalı)
 --  10. Rezervasyon başına ikinci anket açılabiliyor mu? (açılamamalı)
 --  11. Tohumlanan günler yalnızca SABİT TARİHLİ mi? (dini gün olmamalı)
+--  12. Sağlayıcıdan gelen günler yazılıyor mu, ikinci tarama çoğaltıyor mu?
+--  13. Sağlayıcı boş cevap döndürürse takvim siliniyor mu? (silinmemeli)
+--  14. Tarama işletmenin kendi gününe dokunuyor mu? (dokunmamalı)
 --
 -- Sekizinci ve dokuzuncu maddeler kritik: anket bağlantısı müşteriye
 -- e-postayla gidiyor ve müşterinin sistemde hesabı yok. Jeton tahmin
@@ -374,6 +377,130 @@ begin
   select count(*) into v_sonra from public.special_days where business_id is null;
   if v_once <> v_sonra then
     raise exception 'BASARISIZ: tohumlama satirlari cogaltti (% -> %)', v_once, v_sonra;
+  end if;
+end $$;
+
+\echo '=== 14) Ozel gunler SAGLAYICIDAN yaziliyor (0035) ==='
+do $$
+declare v_sayi integer;
+begin
+  perform public.ozel_gunleri_yaz(2031, '[
+    {"day":"2031-01-01","label":"Yılbaşı","kind":"resmi_tatil","tentative":false},
+    {"day":"2031-01-22","label":"Ramazan Bayramı 1. Gün","kind":"dini_bayram","tentative":true},
+    {"day":"2031-01-21","label":"Ramazan Bayramı arifesi","kind":"arife","tentative":true},
+    {"day":"2031-01-17","label":"Kadir Gecesi","kind":"kandil","tentative":true}
+  ]'::jsonb);
+
+  select count(*) into v_sayi from public.special_days
+   where business_id is null and extract(year from day) = 2031;
+  if v_sayi <> 4 then
+    raise exception 'BASARISIZ: saglayici gunleri yazilmadi (%)', v_sayi;
+  end if;
+
+  -- Kaynak 'saglayici' olmali: sonraki tarama bunlari degistirebilmeli.
+  select count(*) into v_sayi from public.special_days
+   where business_id is null and extract(year from day) = 2031 and source <> 'saglayici';
+  if v_sayi <> 0 then
+    raise exception 'BASARISIZ: kaynak saglayici olarak isaretlenmemis';
+  end if;
+
+  -- Kesinlesmemis tarih bilgisi saklanmali.
+  if not exists (select 1 from public.special_days
+                 where day = '2031-01-22' and tentative) then
+    raise exception 'BASARISIZ: kesinlesmemis tarih isareti kayboldu';
+  end if;
+end $$;
+
+\echo '=== 15) Ikinci tarama yili DEGISTIRIYOR, cogaltmiyor ==='
+do $$
+declare v_sayi integer; v_etiket text;
+begin
+  /*
+    Saglayici listesi "o yilin tamami" demek. Satirlar tek tek eklenseydi
+    bir tatilin adi degistiginde eskisi takvimde asili kalirdi.
+  */
+  perform public.ozel_gunleri_yaz(2031, '[
+    {"day":"2031-01-01","label":"Yılbaşı","kind":"resmi_tatil","tentative":false},
+    {"day":"2031-01-23","label":"Ramazan Bayramı 1. Gün","kind":"dini_bayram","tentative":false}
+  ]'::jsonb);
+
+  select count(*) into v_sayi from public.special_days
+   where business_id is null and extract(year from day) = 2031;
+  if v_sayi <> 2 then
+    raise exception 'BASARISIZ: ikinci tarama satirlari cogaltti ya da eksik yazdi (%)', v_sayi;
+  end if;
+
+  -- Tarih duzeltilmis ve kesinlesmis olmali.
+  select label into v_etiket from public.special_days where day = '2031-01-23';
+  if v_etiket is null then
+    raise exception 'BASARISIZ: duzeltilen bayram tarihi yazilmadi';
+  end if;
+  if exists (select 1 from public.special_days where day = '2031-01-22') then
+    raise exception 'BASARISIZ: eski bayram tarihi takvimde asili kaldi';
+  end if;
+end $$;
+
+\echo '=== 16) BOS liste takvimi SILMEZ ==='
+do $$
+declare v_once integer; v_sonra integer;
+begin
+  /*
+    Saglayici kesinti ya da kota yuzunden bos cevap dondurebilir. O
+    durumda yil silinip bos kalsaydi, takvim bir aglama hatasi yuzunden
+    tamamen bosalirdi.
+  */
+  select count(*) into v_once from public.special_days
+   where business_id is null and extract(year from day) = 2031;
+
+  perform public.ozel_gunleri_yaz(2031, '[]'::jsonb);
+  perform public.ozel_gunleri_yaz(2031, null);
+
+  select count(*) into v_sonra from public.special_days
+   where business_id is null and extract(year from day) = 2031;
+  if v_once <> v_sonra then
+    raise exception 'BASARISIZ: bos liste takvimi sildi (% -> %)', v_once, v_sonra;
+  end if;
+end $$;
+
+\echo '=== 17) Isletmenin kendi gunune DOKUNULMUYOR ==='
+do $$
+declare v_sayi integer;
+begin
+  insert into public.special_days (business_id, day, label, kind, source)
+  values (current_setting('test.biz')::uuid, '2031-06-15', 'Okullar kapanıyor', 'okul', 'isletme');
+
+  perform public.ozel_gunleri_yaz(2031, '[
+    {"day":"2031-01-01","label":"Yılbaşı","kind":"resmi_tatil","tentative":false}
+  ]'::jsonb);
+
+  select count(*) into v_sayi from public.special_days
+   where day = '2031-06-15' and label = 'Okullar kapanıyor';
+  if v_sayi <> 1 then
+    raise exception 'BASARISIZ: saglayici taramasi isletmenin gununu sildi';
+  end if;
+end $$;
+
+\echo '=== 18) Yalnizca ILGILI YIL degisiyor ==='
+do $$
+declare v_sayi integer;
+begin
+  perform public.ozel_gunleri_yaz(2032, '[
+    {"day":"2032-01-01","label":"Yılbaşı","kind":"resmi_tatil","tentative":false}
+  ]'::jsonb);
+
+  -- 2031 hala duruyor olmali.
+  select count(*) into v_sayi from public.special_days
+   where business_id is null and extract(year from day) = 2031;
+  if v_sayi = 0 then
+    raise exception 'BASARISIZ: baska bir yilin taramasi 2031 i sildi';
+  end if;
+end $$;
+
+\echo '=== 19) Yazma yetkisi ISTEMCIYE KAPALI ==='
+do $$ begin
+  -- Ortak gunleri yalnizca sunucu yazar; istemci fonksiyonu cagiramaz.
+  if has_function_privilege('authenticated', 'public.ozel_gunleri_yaz(integer, jsonb)', 'EXECUTE') then
+    raise exception 'BASARISIZ: istemci ortak gunleri yazabiliyor';
   end if;
 end $$;
 
