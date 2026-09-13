@@ -5,11 +5,11 @@ import Alert from '../../components/Alert';
 import { QueryBoundary } from '../../components/QueryState';
 import { useAuth } from '../../context/AuthContext';
 import { useDeleteSpecialDay, useSaveSpecialDay, useSpecialDays } from '../../lib/queries';
-import { ortakGun } from '../../lib/ozelGun';
+import { kesinlesmedi, ortakGun } from '../../lib/ozelGun';
 import { errorMessage } from '../../lib/authHelpers';
 import { formatDate, todayIso } from '../../lib/format';
 import { uid } from '../../lib/ids';
-import { OZEL_GUN_ADI, OZEL_GUN_RENGI } from '../../types';
+import { OZEL_GUN_ADI, OZEL_GUN_KAYNAGI, OZEL_GUN_RENGI } from '../../types';
 import type { SpecialDay, SpecialDayKind } from '../../types';
 import { IconPlus, IconTrash } from '../../components/Icons';
 
@@ -18,18 +18,26 @@ import { IconPlus, IconTrash } from '../../components/Icons';
  *
  * İKİ KAYNAK var ve ekranda ayrı duruyorlar:
  *
- *  - ORTAK GÜNLER: sabit tarihli resmî tatiller. Sistem kuruluşta
- *    tohumluyor, düzenlenemiyor ve silinemiyor. Bunlar kanunla belirli
- *    ve her yıl aynı; işletme başına kopyalanmalarının anlamı yok.
+ *  - ORTAK GÜNLER: resmî tatiller, dini bayramlar, arifeler ve
+ *    kandiller. Bunları sunucudaki zamanlanmış görev SAĞLAYICIDAN
+ *    ÇEKİYOR (api/ozel-gunler.ts); panelden düzenlenemiyor ve
+ *    silinemiyor, çünkü her ay yeniden yazılıyorlar.
  *
- *  - İŞLETMENİN GÜNLERİ: bayram, arife, kandil, okul açılış/kapanış ve
- *    salonun kendi özel günleri. BUNLAR TOHUMLANMIYOR, çünkü dini günler
- *    Diyanet'in yıllık takvimine, okul tarihleri MEB'in kararına bağlı.
- *    Hesaplanmış bir hicri tarih gerçeğinden bir gün sapabilir; o günü
- *    tatil sanıp salonu kapatmak ya da açmak salona zarar verir. Bu
- *    yüzden uydurulmuyor, buradan giriliyor.
+ *  - İŞLETMENİN GÜNLERİ: okul açılış/kapanış tarihleri ve salonun kendi
+ *    özel günleri. Okul takvimini Millî Eğitim Bakanlığı bir duyuruyla
+ *    yayımlıyor, makine okunur bir kaynağı yok; buradan giriliyor.
+ *
+ * KESİNLEŞMEMİŞ TARİHLER ayrıca işaretleniyor. Uzak yılların dini
+ * bayramları ve hesaplanan kandiller için sağlayıcı kesin konuşmuyor;
+ * ekran da konuşmamalı. O güne göre rezervasyon kapatan salon sahibi,
+ * tarihin değişebileceğini görmeli.
  */
-const TURLER: SpecialDayKind[] = ['dini_bayram', 'arife', 'kandil', 'okul', 'resmi_tatil', 'ozel'];
+/*
+  Elle girilebilen türler. Bayram, arife, kandil ve resmî tatil burada
+  YOK: onları sunucu çekiyor ve elle girilen bir kopya, takvimde aynı
+  günü iki kez gösterirdi.
+*/
+const TURLER: SpecialDayKind[] = ['okul', 'ozel'];
 
 export default function OzelGunler() {
   const { user, can } = useAuth();
@@ -40,7 +48,7 @@ export default function OzelGunler() {
   const [hata, setHata] = useState('');
   const [tarih, setTarih] = useState(todayIso());
   const [ad, setAd] = useState('');
-  const [tur, setTur] = useState<SpecialDayKind>('dini_bayram');
+  const [tur, setTur] = useState<SpecialDayKind>('okul');
   const [silinecek, setSilinecek] = useState<SpecialDay | null>(null);
 
   const duzenlenebilir = can('ayarlar.duzenle');
@@ -112,14 +120,19 @@ export default function OzelGunler() {
       {hata && <Alert kind="error" className="mb-4">{hata}</Alert>}
 
       {/*
-        Dini günlerin ve okul tarihlerinin neden hazır gelmediği ekranda
-        yazıyor. Yazılmasaydı kullanıcı eksik sanıp bekler, girmezdi.
+        Neyin otomatik geldiği, neyin elle girildiği ve hangi tarihlerin
+        kesin olmadığı ekranda yazıyor. Yazılmasaydı kullanıcı ya eksik
+        sanıp elle girer (ve mükerrer kayıt olurdu) ya da kesinleşmemiş
+        bir tarihe kesin gibi güvenirdi.
       */}
       <Alert kind="info" className="mb-5">
-        Resmî tatiller (yılbaşı, 23 Nisan, 29 Ekim...) hazır gelir ve değiştirilemez.
-        Bayram, arife, kandil ve okul tarihleri her yıl Diyanet ile Millî Eğitim
-        Bakanlığı'nın açıkladığı takvime göre değiştiği için hazır gelmez;
-        aşağıdan eklenir.
+        Resmî tatiller, dini bayramlar, arifeler ve kandiller <strong>otomatik
+        olarak</strong> güncellenir; bu günler panelden değiştirilemez.
+        Kandiller hicri takvimden hesaplandığı, uzak yılların bayram tarihleri de
+        henüz resmen ilan edilmediği için <strong>kesinleşmedi</strong> olarak
+        işaretlenir — bu günleri Diyanet takviminden doğrulayın.
+        Okul açılış/kapanış tarihleri Millî Eğitim Bakanlığı'nın duyurusuyla
+        belirlendiği için aşağıdan elle eklenir.
       </Alert>
 
       {duzenlenebilir && (
@@ -133,7 +146,7 @@ export default function OzelGunler() {
             </div>
             <div className="md:col-span-2">
               <label htmlFor="og-ad" className="field-label">Gün adı</label>
-              <input id="og-ad" className="field-input" placeholder="Örn. Ramazan Bayramı 1. Gün"
+              <input id="og-ad" className="field-input" placeholder="Örn. Okullar kapanıyor"
                 value={ad} onChange={(e) => setAd(e.target.value)} />
             </div>
             <div>
@@ -193,10 +206,20 @@ export default function OzelGunler() {
                           style={{ background: OZEL_GUN_RENGI[g.kind] }} />
                         {g.label}
                       </span>
+                      {/*
+                        Kesinleşmemiş tarih, ADIN YANINDA duruyor: ayrı
+                        bir sütuna konsaydı satırı okuyan gözden kaçardı
+                        ve o güne göre rezervasyon kapatılırdı.
+                      */}
+                      {kesinlesmedi(g) && (
+                        <span className="ml-2 whitespace-nowrap rounded bg-[#fef6e7] px-1.5 py-0.5 text-[10px] text-[#92600e]">
+                          kesinleşmedi
+                        </span>
+                      )}
                     </td>
                     <td className="py-2.5 text-brand-muted">{OZEL_GUN_ADI[g.kind]}</td>
                     <td className="py-2.5 text-xs text-brand-muted">
-                      {ortakGun(g) ? 'Sistem' : 'İşletme'}
+                      {OZEL_GUN_KAYNAGI[g.source ?? (ortakGun(g) ? 'tohum' : 'isletme')]}
                     </td>
                     <td className="py-2.5 text-right">
                       {/*

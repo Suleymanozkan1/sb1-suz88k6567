@@ -85,16 +85,28 @@ test('Aynı gün ve isimde ikinci özel gün reddedilir', async ({ page }) => {
   const yil = new Date().getFullYear();
   for (let i = 0; i < 2; i += 1) {
     await page.locator('#og-tarih').fill(`${yil}-06-20`);
-    await page.locator('#og-ad').fill('Kandil');
+    await page.locator('#og-ad').fill('Salon bakımı');
     await page.getByRole('button', { name: 'Ekle' }).click();
   }
   await expect(page.getByText(/zaten var/)).toBeVisible();
 });
 
-test('Dini gün ve okul tarihi hazır gelmiyor, sebebi ekranda yazıyor', async ({ page }) => {
+/*
+  Bayram, arife ve kandil artık SAĞLAYICIDAN çekiliyor; elle girilecek
+  tek şey okul tarihleri ve salonun kendi günleri. Tür listesinde
+  otomatik gelen türler DURMAMALI: elle girilen bir kopya takvimde aynı
+  günü iki kez gösterirdi.
+*/
+test('Otomatik gelen türler elle girilemiyor, sebebi ekranda yazıyor', async ({ page }) => {
   await login(page);
   await page.goto('/panel/ozel-gunler');
-  await expect(page.getByText(/Diyanet ile Millî Eğitim/)).toBeVisible();
+
+  await expect(page.getByText(/otomatik olarak/i)).toBeVisible();
+  await expect(page.getByText(/Millî Eğitim Bakanlığı/)).toBeVisible();
+  await expect(page.getByText(/kesinleşmedi/)).toBeVisible();
+
+  const turler = await page.locator('#og-tur option').allTextContents();
+  expect(turler).toEqual(['Okul', 'Özel gün']);
 });
 
 /*
