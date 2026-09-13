@@ -127,6 +127,55 @@ test('Kur verisi yokken şerit hiç çizilmiyor', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Döviz / Altın' })).toHaveCount(0);
 });
 
+/*
+  Hava tahmini zinciri: uç nokta -> gunleriTazele -> depo -> ekran.
+
+  Zincirin ÜÇ ayrı yerinde kopukluk vardı ve üçü de sessizdi: uç nokta
+  tahmini döndürüyordu ama istemci okumuyordu, depo katmanı her durumda
+  boş liste dönüyordu, MGM'nin günlük tahmini de gün içinde yarından
+  başladığı için bugünün satırı hiç oluşmuyordu. Hiçbiri hata vermiyordu;
+  ekranda yalnızca hiçbir şey görünmüyordu. Bu test zincirin tamamını
+  uçtan uca bağlıyor.
+
+  Yanıt, canlı uç noktanın (MGM) gerçek biçimiyle aynı.
+*/
+test('Tahmin gelince hava durumu satırı çiziliyor', async ({ page }) => {
+  const bugun = new Date();
+  const gun = (ekle: number) => {
+    const g = new Date(bugun);
+    g.setDate(g.getDate() + ekle);
+    return `${g.getFullYear()}-${String(g.getMonth() + 1).padStart(2, '0')}-${String(g.getDate()).padStart(2, '0')}`;
+  };
+
+  await block(page);
+  // Uç nokta yanıtı: MGM günlük tahmini YARINDAN başlıyor, bugün yok.
+  await page.route('**/api/demo-hava', (r) => r.fulfill({
+    status: 200,
+    contentType: 'application/json; charset=utf-8',
+    body: JSON.stringify({
+      uretim: new Date().toISOString(),
+      il: 'Konya',
+      ilce: 'Selçuklu',
+      simdi: 22,
+      gunluk: [
+        { gun: gun(1), enDusuk: 17, enYuksek: 28, hadise: 'PB' },
+        { gun: gun(2), enDusuk: 16, enYuksek: 27, hadise: 'PB' },
+      ],
+      saatlik: [{ saat: `${gun(0)}T21:00`, sicaklik: 22, hadise: 'AB' }],
+    }),
+  }));
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
+  await page.getByRole('button', { name: 'Giriş Yap' }).click();
+  await expect(page).toHaveURL(/\/panel$/);
+
+  // Bugünün satırı anlık değerden kuruluyor; ekranda sıcaklık görünmeli.
+  const satir = page.getByText(/Bugünün hava durumu/);
+  await expect(satir).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('22°', { exact: false }).first()).toBeVisible();
+});
+
 test('Tahmin yokken rezervasyonda açık mesaj yazıyor', async ({ page }) => {
   await login(page);
   await page.goto('/panel/rezervasyonlar');
