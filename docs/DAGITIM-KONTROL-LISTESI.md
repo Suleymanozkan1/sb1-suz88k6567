@@ -1,146 +1,257 @@
 # Dağıtım Kontrol Listesi
 
-Seçilen kurulum: **Supabase + Cloudflare Workers + Netgsm + Paraşüt**.
-İYS yalnızca ticari ileti (kampanya, tanıtım) gönderecekseniz gerekir;
-işlem bildirimi SMS'i için 5. bölümü atlayabilirsiniz.
+Seçilen kurulum: **kendi sunucusu (VPS) + PostgreSQL + PostgREST +
+Netgsm + e-Fatura**. Cloudflare ve Supabase kullanılmıyor.
 
-Anahtarları **hiçbir zaman** depoya, sohbete veya `VITE_` önekli bir
-değişkene koymayın. Sunucu sırları Cloudflare'de `wrangler secret put` ile
-ya da Workers → Settings → Variables and Secrets ekranından girilir.
+Fatura verisi Vergi Usul Kanunu gereği Türkiye'de tutulacaksa
+**iki sunucu** gerekir; ayrıntı [`IKI-SUNUCU.md`](IKI-SUNUCU.md).
+Tek sunucuyla da çalışır, o zaman 2. bölüm atlanır.
+
+İYS yalnızca ticari ileti (kampanya, tanıtım) gönderecekseniz gerekir;
+işlem bildirimi SMS'i için 6. bölümü atlayabilirsiniz.
+
+Sırları **hiçbir zaman** depoya, sohbete veya `VITE_` önekli bir
+değişkene koymayın. Hepsi sunucudaki `/etc/sahra.env` dosyasında durur
+ve o dosya `chmod 600` olmalıdır.
+
+Adım adım kurulum komutları [`KURULUM.md`](KURULUM.md) dosyasında; bu
+liste ne alınacağını ve neyin doğrulanacağını takip eder.
 
 ---
 
-## 1. Supabase
+## 1. Ana sunucu
 
-- [ ] [supabase.com](https://supabase.com) → New project, **bölge: Frankfurt (EU Central)**
-- [ ] SQL Editor'da göçleri **sırayla** çalıştırın:
-      `0001_init` → `0002_security` → `0003_iys_queue` → `0004_backup_health`
-      → `0005_invoices` → `0006_talepler` → `0007_salon_menu_masa`
-      → `0008_odeme_plani_is_emri_tedarikci` → `0009_nikah_yazimi`
-- [ ] README'deki doğrulama sorgusunu çalıştırın (ilk altı sütun `t` olmalı)
-- [ ] Storage → New bucket → adı `yedekler`, **Public bucket KAPALI**
-- [ ] Authentication → Users → kendi hesabınızı oluşturun
-- [ ] Table Editor → `profiles` → kendi satırınızda `role` değeri `owner` olmalı
-- [ ] Project Settings → API → `URL`, `anon key`, `service_role key` değerlerini not alın
+- [ ] Ubuntu 24.04 LTS VPS kiralayın — **netcup VPS 1000 G12**
+      (4 vCore / 8 GB ECC / 256 GB NVMe) — bkz.
+      [`SUNUCU-SECIMI.md`](SUNUCU-SECIMI.md)
+- [ ] **Lokasyon: Nürnberg (NUE).** "No preference Europe" SEÇMEYİN:
+      sunucuyu Viyana'ya ya da Amsterdam'a koyabilir. Aydınlatma metni
+      verilerin Almanya'da tutulduğunu yazıyor; başka ülkeye düşerse o
+      metin ve KVKK bildirimi yanlış olur.
+- [ ] Ağ seçeneği **IPv4 + IPv6** olmalı; yalnızca IPv6 seçilirse IPv4
+      üzerinden gelen ziyaretçiler siteyi açamaz
+- [ ] Sipariş ekranında kurulum ücreti ve trafik sınırını kontrol edin
+- [ ] Sunucuyu teslim alınca aşağıdaki beş satırı çalıştırın
+- [ ] Alan adını sunucunun IP adresine yönlendirin
+- [ ] `KURULUM.md` bölüm 1-2: paketler ve PostgreSQL
+- [ ] Göçleri **sırayla** uygulayın (`supabase/migrations/*.sql`,
+      `0000`'dan başlayıp dosya adına göre sıralı)
+- [ ] `KURULUM.md` bölüm 3-4: sırlar ve PostgREST
+- [ ] `KURULUM.md` bölüm 5-6: uygulama, nginx ve Let's Encrypt sertifikası
+- [ ] `KURULUM.md` bölüm 7: ilk yönetici hesabı
 
-> `service_role` anahtarı RLS'yi tamamen atlar. Yalnızca sunucu tarafı
-> değişken olarak kullanılır; `VITE_` öneki **asla** verilmez.
+> **Göç sırası önemli.** Göçler yeniden çalıştırılabilir; aynı dosyayı
+> ikinci kez uygulamak hata vermez. Ama sırayı atlamak verir. netcup'ın
+> panelinde anlık görüntü (snapshot) var; göçlerden önce bir tane
+> almak, bir aksilikte makineyi geri almanızı sağlar.
+>
+> **cPanel aramayın.** Bu sistem cPanel'in yönettiği hiçbir şeyi
+> (Apache, PHP, MySQL) kullanmıyor; kurulum baştan sona SSH ile
+> yapılıyor. Sağlayıcıda aranacak şey root/SSH erişimi ve Ubuntu 24.04
+> kurabilmedir. Ayrıntı: [`SUNUCU-SECIMI.md`](SUNUCU-SECIMI.md).
 
-## 2. Cloudflare
+### Sunucu hazır mı: 30 saniyelik doğrulama
 
-- [ ] [dash.cloudflare.com](https://dash.cloudflare.com) hesabı açın
-- [ ] Workers & Pages → **Workers Paid** ($5/ay) planına geçin
-      (ücretsiz plan da çalışır: 100.000 istek/gün ve hesap başına 5 cron;
-      bu proje 4 cron kullanıyor. Ücretli plan CPU sınırını kaldırır.)
-- [ ] `npm i` sonrası `npx wrangler login`
-- [ ] Sunucu sırlarını girin: her biri için `npx wrangler secret put ADI`
-- [ ] `VITE_*` değişkenlerini derleme ortamına verin (bunlar tarayıcıya gider,
-      sır değildir)
-- [ ] `npm run cf:deploy`
-- [ ] Workers → Settings → Domains & Routes → kendi alan adınızı bağlayın
+Sağlayıcı ne söylerse söylesin, kurulum belgesine geçmeden önce bunu
+çalıştırın. İki sunucuda da aynı.
 
-### Ortam değişkenleri
+```bash
+whoami                                    # root yazmalı
+. /etc/os-release && echo "$PRETTY_NAME"  # Ubuntu 24.04 LTS
+apt-get update -qq && echo "PAKET KURULABILIYOR"
+free -m  | awk '/Mem:/  {print "RAM  :", $2, "MB"}'   # ana sunucu >= 7500
+df -m /  | awk 'NR==2   {print "DISK :", $4, "MB bos"}'
+curl -sS -o /dev/null -w "AG   : npm %{http_code}\n" https://registry.npmjs.org/
+```
+
+SSH ayrıca sınanmıyor: betiği çalıştırabiliyorsanız zaten çalışıyor
+demektir.
+
+Altısı da beklendiği gibiyse kurulum belgesi olduğu gibi uygulanır. Satın almadan
+önce sağlayıcıya sorulacak tek soru: **"Root/SSH erişimi veriliyor mu,
+kendi paketlerimi kurabiliyor muyum?"** Ubuntu kurulu olarak teslim
+edilen bir sunucuda cevap neredeyse her zaman evettir; yönetilen
+hosting (cPanel/Plesk) ürünlerinde hayırdır ve o ürünler bu sistem için
+zaten uygun değildir.
+
+## 2. Fatura sunucusu (Türkiye) — isteğe bağlı
+
+Yalnızca fatura kayıtlarının Türkiye'de tutulması isteniyorsa.
+
+- [ ] Türkiye'de konumlanmış küçük bir VPS/VDS kiralayın (1 çekirdek /
+      2 GB yeter). Sağlayıcının Türk firması olması yetmez; **veri
+      merkezi** Türkiye'de olmalı.
+- [ ] Sağlayıcıya sorun: **root erişimi ve SSH var mı, Ubuntu 24.04
+      kurulabiliyor mu?** Panel (cPanel vb.) gerekmiyor; bu sunucuda
+      yalnızca PostgreSQL ve PostgREST çalışacak.
+- [ ] PostgreSQL ve PostgREST kurun (`KURULUM.md` bölüm 2 ve 4)
+- [ ] Yalnızca fatura şemasını uygulayın:
+      `supabase/fatura-sunucusu/0001_fatura_sunucusu.sql`
+- [ ] Doğrulayın: `supabase/fatura-sunucusu/test_fatura_sunucusu.sql`
+- [ ] **`JWT_SECRET` iki sunucuda AYNI olmalı** — giriş ana sunucuda
+      yapılıyor, buradaki veritabanı yalnızca o jetonu doğruluyor
+- [ ] Ana sunucuda `wal_level = logical` yapıp yetki kopyalarının
+      çoğaltmasını kurun (`IKI-SUNUCU.md`)
+- [ ] Türkiye'de doğrulayın: `select count(*) from public.profiles`
+      ana sunucudaki kullanıcı sayısıyla eşleşmeli
+- [ ] Türkiye'deki PostgREST'i **internete kapatın**; yalnızca ana
+      sunucu erişebilsin (güvenlik duvarı + WireGuard ya da TLS vekil)
+- [ ] Ana sunucuda `PGRST_FATURA_URL` değişkenini ayarlayıp servisi
+      yeniden başlatın
+
+> Kopyalar boşsa fatura ekranı **herkese boş** görünür: `owns_business()`
+> hiçbir satır bulamaz. Belirti buysa önce çoğaltmaya bakın.
+
+## 3. KVKK — veri yurt dışındaysa
+
+Ana sunucu Türkiye dışındaysa müşteri adı, telefon ve TC kimlik numarası
+yurt dışına aktarılıyor demektir (KVKK m.9). Fatura verisinin Türkiye'de
+olması bu yükü **kaldırmaz**.
+
+- [ ] Kurul'un yayımladığı **standart sözleşme**yi imzalayın
+- [ ] İmza tarihinden itibaren **5 iş günü** içinde Kurul'a bildirin
+- [ ] Aydınlatma metnindeki köşeli parantezli alanları doldurun
+      (`src/data/legal.ts`: unvan, MERSİS, vergi dairesi, adres, KEP)
+- [ ] Metni hukuk danışmanınıza doğrulatın
+
+> Türkiye'nin hiçbir ülke için yeterlilik kararı yok; sunucu AB'de olsa
+> bile bu adımlar gerekiyor.
+
+## 4. Ortam değişkenleri
+
+`/etc/sahra.env`, `chmod 600`. Tam liste `KURULUM.md` bölüm 5'te.
 
 | Değişken | Nereden | Zorunlu |
 |---|---|---|
-| `VITE_SUPABASE_URL` | Supabase → API → URL | ✅ |
-| `VITE_SUPABASE_ANON_KEY` | Supabase → API → anon key | ✅ |
-| `SUPABASE_URL` | Yukarıdakiyle aynı değer | ✅ |
-| `SUPABASE_ANON_KEY` | Yukarıdakiyle aynı değer | ✅ |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API → service_role | ✅ |
+| `PORT`, `DIST_DIZINI` | sabit | ✅ |
+| `PGRST_URL` | `http://127.0.0.1:3000` | ✅ |
+| `PGRST_FATURA_URL` | Türkiye sunucusunun PostgREST adresi | fatura ayrımı için |
+| `JWT_SECRET` | `openssl rand -hex 32`, PostgREST ile aynı | ✅ |
 | `CRON_SECRET` | `openssl rand -hex 32` | ✅ |
-| `BACKUP_BUCKET` | `yedekler` | ✅ |
-| `NETGSM_USER` | Netgsm abone numarası | SMS için |
-| `NETGSM_PASS` | Netgsm API şifresi | SMS için |
-| `NETGSM_HEADER` | Onaylı başlığınız | SMS için |
+| `YEDEK_DIZINI` | `/var/lib/sahra/yedekler` | ✅ |
 | `OTP_SECRET` | `openssl rand -hex 32` | Girişte SMS doğrulaması için |
-| `PARASUT_CLIENT_ID` | Paraşüt → Ayarlar → API | e-Fatura için |
-| `PARASUT_CLIENT_SECRET` | Paraşüt → Ayarlar → API | e-Fatura için |
-| `PARASUT_USERNAME` | Paraşüt giriş e-postanız | e-Fatura için |
-| `PARASUT_PASSWORD` | Paraşüt şifreniz | e-Fatura için |
-| `PARASUT_COMPANY_ID` | Panel adresindeki firma numarası | e-Fatura için |
-| `VITE_SENTRY_DSN` | Sentry → Project → DSN | İsteğe bağlı |
+| `NETGSM_USER` / `NETGSM_PASS` / `NETGSM_HEADER` | Netgsm paneli | SMS için |
+| `IYS_*` | iys.org.tr | ticari ileti için |
+| `PARASUT_*` | Paraşüt → Ayarlar → API | e-Fatura (entegratör yolu) |
+| `GIB_*` | GİB portalı ve mali mühür | e-Fatura (doğrudan yol) |
+| `WHATSAPP_*` | Meta geliştirici paneli | WhatsApp için |
+| `KUR_SAGLAYICI` | `tcmb` (varsayılan, anahtarsız) | isteğe bağlı |
+| `VITE_SENTRY_DSN` | Sentry → Project → DSN | isteğe bağlı |
 
-`IYS_*` değişkenleri **boş bırakılır.** Rezervasyon onayı, hatırlatma ve
-doğrulama kodu işlem bildirimidir; İYS onayı gerektirmez. Ticari ileti
-göndermeye kalkışılırsa veritabanı bunu zaten `iptal` durumuyla engeller.
-Kampanya ya da tanıtım göndermeye karar verirseniz **5. bölüme** bakın.
+> `JWT_SECRET` ile `service_role` jetonu üretilebilir ve o rol RLS'i
+> tamamen atlar. Tarayıcıya **asla** gitmez, `VITE_` öneki **asla**
+> verilmez.
 
-## 3. Netgsm
+## 5. Netgsm
 
 - [ ] Kurumsal hesap açın
 - [ ] Vergi levhanızla **başlık (marka) başvurusu** yapın, birkaç iş günü sürer
 - [ ] Başlık onaylandıktan sonra SMS paketi satın alın
-- [ ] API kullanıcı adı ve şifresini panelden alıp Cloudflare'e sır olarak girin
+- [ ] API kullanıcı adı ve şifresini `/etc/sahra.env` dosyasına yazın
 
 > Başlık onaylanmadan gönderim yapılamaz. Onay beklerken sistem çalışır;
 > mesajlar kuyruğa girer ve arayüzde "gönderilemedi" olarak görünür.
 
-## 4. Paraşüt
+## 6. e-Fatura
+
+İki yol var ve sistem hangisini kullanacağına **kendisi** karar veriyor:
+
+**Özel entegratör (Paraşüt) — varsayılan.** Sahra Takip'i kullanan
+salonların faturaları buradan gider.
 
 - [ ] Mali müşavirinizle mükellefiyet durumunuzu teyit edin
 - [ ] Paraşüt hesabı açın, e-Arşiv/e-Fatura kontörü tanımlayın
 - [ ] Ayarlar → API bölümünden `client_id` ve `client_secret` alın
 - [ ] Firma numarasını panel adresinden okuyun
+
+**GİB doğrudan — yalnızca kendi firmanız.** Doğrudan entegrasyon izni,
+izni alan mükellefin **kendi** faturaları içindir; başkası adına fatura
+kesmek özel entegratör lisansı gerektirir. Bu ayrım kodda zorlanıyor:
+yalnızca `GIB_VKN` ile eşleşen işletmenin faturaları bu yoldan gider.
+
+- [ ] GİB'den doğrudan entegrasyon başvurusu yapın
+- [ ] Kamu SM'den **mali mühür** temin edin
+- [ ] Sertifika ve anahtar dosyalarını sunucuya koyun, `chmod 600`
+- [ ] `.env` dosyasına dosya **yollarını** yazın, içeriklerini değil
+- [ ] Önce test ortamında deneyin (`GIB_SERVIS_URL` test adresi)
+
+Her iki yolda da:
+
 - [ ] **İlk faturayı düşük tutarlı bir test olarak kesin** ve Faturalar
       ekranındaki `provider_error` alanını kontrol edin
 
-## 5. İYS, yalnızca ticari ileti gönderecekseniz
+## 7. İYS, yalnızca ticari ileti gönderecekseniz
 
-Rezervasyon onayı, hatırlatma, doğrulama kodu ve tahsilat bildirimi **işlem
-bildirimidir**; bu bölümü atlayabilirsiniz. Kampanya, indirim ve tanıtım
-mesajı **ticari iletidir** ve alıcının İYS onayı olmadan gönderilemez.
+Rezervasyon onayı, hatırlatma, doğrulama kodu ve tahsilat bildirimi
+**işlem bildirimidir**; bu bölümü atlayabilirsiniz. Kampanya, indirim ve
+tanıtım mesajı **ticari iletidir** ve alıcının İYS onayı olmadan
+gönderilemez.
 
 - [ ] iys.org.tr üzerinden hizmet sağlayıcı (marka) kaydınızı açın
 - [ ] Onayları nasıl yöneteceğinize karar verin:
       **elle** (İYS panelinden, Temel Hizmetler paketiyle ücretsiz) ya da
       **otomatik** (bu sistemden aktarım; adres sayınıza uygun paket gerekir)
 - [ ] Otomatik aktarım seçtiyseniz `IYS_BRAND_CODE`, `IYS_USERNAME` ve
-      `IYS_PASSWORD` değerlerini Cloudflare'e sır olarak girin
+      `IYS_PASSWORD` değerlerini `/etc/sahra.env` dosyasına yazın
 - [ ] Panelde İzin Yönetimi ekranından mevcut onaylarınızı girin
 - [ ] Ertesi sabah "İYS: aktarıldı" durumunu kontrol edin
 
-| Paket | Adres/izin | Tutar (KDV dahil) |
-|-------|-----------|-------------------|
-| Temel Hizmetler | Elle yönetim | Ücretsiz |
-| İLETİ-5 | 5.000 | 4.601 ₺ |
-| İLETİ-25 | 25.000 | 8.313 ₺ |
-| İLETİ-75 | 75.000 | 14.921 ₺ |
-| İLETİ-150 | 150.000 | 23.055 ₺ |
-| İLETİ-250 | 250.000 | 29.483 ₺ |
-
-> İzin adedinin süre sınırı yoktur; yüklendikçe paketten düşer. Fiyatlar
-> Eylül 2026 itibarıyladır. Bazı firmalar İYS'ye doğrudan değil, SMS
-> sağlayıcısı (ör. Netgsm) üzerinden bağlanır; o durumda `IYS_*` boş kalır
-> ve onay aktarımı sağlayıcı panelinden yapılır.
+> İzin adedinin süre sınırı yoktur; yüklendikçe paketten düşer. Bazı
+> firmalar İYS'ye doğrudan değil, SMS sağlayıcısı (ör. Netgsm) üzerinden
+> bağlanır; o durumda `IYS_*` boş kalır ve onay aktarımı sağlayıcı
+> panelinden yapılır. Paket fiyatlarını iys.org.tr üzerinden doğrulayın.
 >
 > Mevzuat, yeni onayın **3 iş günü** içinde İYS'ye aktarılmasını ve ret
 > talebinin **3 iş günü** içinde uygulanmasını ister. Sistem her iki yönü
 > de her gece 03:00'te senkronize eder.
 
-## 6. Dağıtım sonrası doğrulama
+## 8. Dağıtım sonrası doğrulama
 
 - [ ] `/uye-girisi` → giriş yapılıyor, "Demo modu" uyarısı **görünmüyor**
 - [ ] Yeni rezervasyon oluştur → kaydediliyor, kod üretiliyor
 - [ ] Tahsilat ekle → kalan alacak doğru hesaplanıyor
 - [ ] `/kod-dogrulama` → rezervasyon kodu doğrulanıyor, telefon maskeli
 - [ ] Siteden iletişim formu gönder → **Talepler** ekranında görünüyor
+- [ ] Fatura oluştur → kaydediliyor (ayrım varsa Türkiye sunucusuna gitti mi
+      diye oradaki `invoices` tablosuna bakın)
 - [ ] Panel → **Sistem Durumu** → uyarı yoksa altyapı ayakta
 - [ ] Ertesi gün Sistem Durumu'nda "son yedek" değeri dolu olmalı
+- [ ] Yedek dosyasını açıp fatura kayıtlarının da içinde olduğunu görün
 
-## 7. Bir şey çalışmazsa
+### Zamanlanmış görevler
 
-Cloudflare → Workers → ilgili Worker → **Logs**. Hata metnini
-kopyalarken anahtarları maskeleyin. Fatura hataları ayrıca Faturalar
+Sunucu bunları kendisi çalıştırıyor; ayrı bir cron kurulumu gerekmiyor.
+
+| Ne zaman | Ne yapar |
+|---|---|
+| 5 dakikada bir | SMS kuyruğunu işler |
+| 15 dakikada bir | Bekleyen faturaları gönderir |
+| Saat başı | Döviz kuru; saatlik hava durumu (:20) |
+| 02:30 | Yedek |
+| 03:00 | İYS senkronizasyonu |
+| 05:15 | Günlük hava durumu (MGM) |
+| 07:00 | Hatırlatmalar |
+| 09:00 | Anket gönderimi |
+| Ayın 1'i 06:00 | Aylık rapor |
+| Ayın 2'si 04:00 | Özel günler (bayram, kandil) |
+| Ayın 3'ü 04:00 | MEB okul takvimi |
+
+## 9. Bir şey çalışmazsa
+
+`journalctl -u sahra -n 200` ve `journalctl -u postgrest -n 200`. Hata
+metnini kopyalarken sırları maskeleyin. Fatura hataları ayrıca Faturalar
 ekranındaki `provider_error` alanında Türkçe olarak görünür.
 
 Sık karşılaşılanlar:
 
 | Belirti | Olası neden |
 |---|---|
-| "Demo modu" uyarısı çıkıyor | `VITE_SUPABASE_*` tanımsız ya da dağıtım yeniden alınmamış |
+| "Demo modu" uyarısı çıkıyor | PostgREST ayakta değil ya da `/veri/*` vekili çalışmıyor |
+| Her sorgu 401 dönüyor | `JWT_SECRET` ile PostgREST'in `jwt-secret` değeri farklı |
+| Fatura ekranı **herkese** boş | İki sunuculu kurulumda yetki kopyaları çoğaltılmamış |
+| Fatura ekranı yalnızca bazı kullanıcıda boş | `fatura.goruntule` yetkisi verilmemiş |
 | SMS gitmiyor, kayıt "gönderilemedi" | Netgsm başlığı henüz onaylanmamış |
-| Kuyrukta mesaj birikiyor | `CRON_SECRET` tanımsız ya da cron çalışmıyor |
-| Giriş kilidi devrede değil | `SUPABASE_SERVICE_ROLE_KEY` tanımsız |
-| Fatura taslakta kalıyor | `PARASUT_*` eksik ya da alan adı uyuşmazlığı, `provider_error`'a bakın |
-| Yedek alınmamış uyarısı | `yedekler` kovası yok ya da özel değil |
+| Kuyrukta mesaj birikiyor | `CRON_SECRET` tanımsız ya da servis durmuş |
+| Giriş kilidi devrede değil | `JWT_SECRET` tanımsız (sunucu `service_role` jetonu üretemiyor) |
+| Fatura taslakta kalıyor | `PARASUT_*` / `GIB_*` eksik, `provider_error`'a bakın |
+| Yedek alınmamış uyarısı | `YEDEK_DIZINI` yok ya da servis kullanıcısı yazamıyor |

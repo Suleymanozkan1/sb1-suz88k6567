@@ -28,7 +28,7 @@ async function handlerYukle(env: Record<string, string | undefined> = {}) {
 }
 
 interface Senaryo {
-  kuyruk?: { id: string; phone: string; body: string }[];
+  kuyruk?: { id: string; phone: string; body: string; channel?: 'sms' | 'whatsapp' }[];
   /** claim_sms_batch RPC'si hata versin */
   kuyrukHatasi?: boolean;
   /** Netgsm yanıtları, numaraya göre */
@@ -69,7 +69,33 @@ function istek(yetkili = true): Request {
   });
 }
 
-beforeEach(() => { vi.unstubAllGlobals(); });
+/*
+  WhatsApp Web modülü taklit ediliyor. Gerçeğini çağırmak Baileys'i
+  yükleyip WhatsApp sunucularına bağlanmayı denemek demekti; test ağa
+  çıkmamalı.
+*/
+const whatsappTakli = {
+  etkin: false,
+  gonderilenler: [] as { telefon: string; metin: string }[],
+  sonuc: { ok: true, reference: 'wa-1' } as { ok: boolean; reference?: string; error?: string },
+};
+
+vi.mock('./_whatsapp_web', () => ({
+  whatsappWebEtkinMi: () => whatsappTakli.etkin,
+  baglantiDurumu: () => (whatsappTakli.etkin ? 'bagli' : 'kapali'),
+  baglan: async () => (whatsappTakli.etkin ? 'bagli' : 'kapali'),
+  gonder: async (telefon: string, metin: string) => {
+    whatsappTakli.gonderilenler.push({ telefon, metin });
+    return whatsappTakli.sonuc;
+  },
+}));
+
+beforeEach(() => {
+  vi.unstubAllGlobals();
+  whatsappTakli.etkin = false;
+  whatsappTakli.gonderilenler = [];
+  whatsappTakli.sonuc = { ok: true, reference: 'wa-1' };
+});
 afterEach(() => { process.env = { ...ESKI_ENV }; vi.unstubAllGlobals(); });
 
 describe('sms kuyruğu, yetkilendirme', () => {
@@ -143,7 +169,7 @@ describe('sms kuyruğu, işleme', () => {
     const handler = await handlerYukle();
     fetchTakli({ kuyruk: [] });
     await expect((await handler(istek())).json())
-      .resolves.toEqual({ processed: 0, sent: 0, failed: 0 });
+      .resolves.toEqual({ processed: 0, sent: 0, failed: 0, whatsapp: 0 });
   });
 
   it('başarılı gönderimde sonucu ve sağlayıcı referansını yazar', async () => {
@@ -155,10 +181,10 @@ describe('sms kuyruğu, işleme', () => {
 
     const yanit = await handler(istek());
 
-    await expect(yanit.json()).resolves.toEqual({ processed: 1, sent: 1, failed: 0 });
+    await expect(yanit.json()).resolves.toEqual({ processed: 1, sent: 1, failed: 0, whatsapp: 0 });
     const tamam = cagrilar.find((c) => c.adres.endsWith('/rpc/complete_sms'));
     expect(tamam?.govde).toEqual({
-      p_id: 'k1', p_success: true, p_error: null, p_ref: '123456',
+      p_id: 'k1', p_success: true, p_error: null, p_ref: '123456', p_channel: 'sms',
     });
   });
 
@@ -170,7 +196,7 @@ describe('sms kuyruğu, işleme', () => {
     });
 
     await expect((await handler(istek())).json())
-      .resolves.toEqual({ processed: 1, sent: 0, failed: 1 });
+      .resolves.toEqual({ processed: 1, sent: 0, failed: 1, whatsapp: 0 });
 
     const tamam = cagrilar.find((c) => c.adres.endsWith('/rpc/complete_sms'));
     expect(tamam?.govde).toMatchObject({
@@ -191,7 +217,7 @@ describe('sms kuyruğu, işleme', () => {
     });
 
     await expect((await handler(istek())).json())
-      .resolves.toEqual({ processed: 3, sent: 2, failed: 1 });
+      .resolves.toEqual({ processed: 3, sent: 2, failed: 1, whatsapp: 0 });
   });
 
   it('sonucu yazılamayan satır başarısız sayılır ve akış sürer', async () => {
@@ -207,7 +233,7 @@ describe('sms kuyruğu, işleme', () => {
     });
 
     await expect((await handler(istek())).json())
-      .resolves.toEqual({ processed: 2, sent: 0, failed: 2 });
+      .resolves.toEqual({ processed: 2, sent: 0, failed: 2, whatsapp: 0 });
   });
 
   it('kuyruk okunamazsa 502 döner', async () => {
@@ -227,5 +253,73 @@ describe('sms kuyruğu, işleme', () => {
     const metin = await (await handler(istek())).text();
     expect(metin).not.toContain('gizli-sifre');
     expect(metin).not.toContain('service-anahtari');
+  });
+});
+
+/* ------------------------------------------------- WhatsApp kanalı */
+
+describe('sms kuyruğu, WhatsApp kanalı', () => {
+  const satir = (channel?: 'sms' | 'whatsapp') =>
+    [{ id: 'k1', phone: '5551112233', body: 'Tahsilat eklendi', channel }];
+
+  it('kanal whatsapp ise WhatsApp’tan gönderir, Netgsm’e hiç gitmez', async () => {
+    whatsappTakli.etkin = true;
+    const handler = await handlerYukle({ WHATSAPP_WEB_ETKIN: '1' });
+    const cagrilar = fetchTakli({ kuyruk: satir('whatsapp') });
+
+    const yanit = await handler(istek());
+    const govde = await yanit.json() as { sent: number; whatsapp: number };
+
+    expect(govde).toMatchObject({ sent: 1, whatsapp: 1 });
+    expect(whatsappTakli.gonderilenler).toEqual([
+      { telefon: '5551112233', metin: 'Tahsilat eklendi' },
+    ]);
+    expect(cagrilar.some((c) => c.adres.startsWith('https://api.netgsm.com.tr/'))).toBe(false);
+  });
+
+  it('WhatsApp düşerse AYNI satır SMS’e düşer', async () => {
+    whatsappTakli.etkin = true;
+    whatsappTakli.sonuc = { ok: false, error: 'oturum kapalı' };
+    const handler = await handlerYukle({ WHATSAPP_WEB_ETKIN: '1' });
+    const cagrilar = fetchTakli({ kuyruk: satir('whatsapp') });
+
+    const govde = await (await handler(istek())).json() as { sent: number; whatsapp: number };
+
+    // Bildirim kaybolmadı ve ikinci bir kuyruk satırı açılmadı.
+    expect(govde).toMatchObject({ sent: 1, whatsapp: 0 });
+    expect(cagrilar.some((c) => c.adres.startsWith('https://api.netgsm.com.tr/'))).toBe(true);
+
+    const tamamla = cagrilar.find((c) => c.adres.endsWith('/rpc/complete_sms'));
+    expect(tamamla?.govde).toMatchObject({ p_success: true, p_channel: 'sms' });
+  });
+
+  it('gönderilen kanalı kayda yazar', async () => {
+    whatsappTakli.etkin = true;
+    const handler = await handlerYukle({ WHATSAPP_WEB_ETKIN: '1' });
+    const cagrilar = fetchTakli({ kuyruk: satir('whatsapp') });
+    await handler(istek());
+
+    const tamamla = cagrilar.find((c) => c.adres.endsWith('/rpc/complete_sms'));
+    expect(tamamla?.govde).toMatchObject({ p_success: true, p_channel: 'whatsapp' });
+  });
+
+  it('kanal sms olan satır WhatsApp’a HİÇ uğramaz', async () => {
+    whatsappTakli.etkin = true;
+    const handler = await handlerYukle({ WHATSAPP_WEB_ETKIN: '1' });
+    fetchTakli({ kuyruk: satir('sms') });
+    await handler(istek());
+
+    expect(whatsappTakli.gonderilenler).toHaveLength(0);
+  });
+
+  it('WhatsApp yolu kapalıyken whatsapp satırı da SMS’ten gider', async () => {
+    // Kanal veritabanında whatsapp ama sunucuda yol açılmamış: mesaj
+    // beklemeye alınmamalı, SMS'ten gitmeli.
+    const handler = await handlerYukle();
+    const cagrilar = fetchTakli({ kuyruk: satir('whatsapp') });
+    await handler(istek());
+
+    expect(whatsappTakli.gonderilenler).toHaveLength(0);
+    expect(cagrilar.some((c) => c.adres.startsWith('https://api.netgsm.com.tr/'))).toBe(true);
   });
 });

@@ -33,7 +33,7 @@ export default function FaturaDetay() {
   const { data: businesses = [] } = useBusinesses();
   const { data: rezervasyonlar = [] } = useReservations();
 
-  if (!can('kasa.goruntule')) {
+  if (!can('fatura.goruntule')) {
     return <Alert kind="error">Faturaları görüntüleme yetkiniz bulunmuyor.</Alert>;
   }
 

@@ -79,7 +79,7 @@ export default function IzinYonetimi() {
     }
   }
 
-  if (!can('ayarlar.duzenle')) {
+  if (!can('mesaj.duzenle')) {
     return <Alert kind="error">İzin yönetimi için yetkiniz bulunmuyor.</Alert>;
   }
 

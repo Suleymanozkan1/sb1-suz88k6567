@@ -41,7 +41,7 @@ export default function MusteriAdayiDetay() {
 
   const [hata, setHata] = useState('');
   const [not, setNot] = useState('');
-  const duzenlenebilir = can('rezervasyon.duzenle');
+  const duzenlenebilir = can('aday.duzenle');
   const currency = user?.currency ?? 'TL';
   const salonAdi = salonlar.find((h) => h.id === lead?.hallId)?.name ?? '';
 

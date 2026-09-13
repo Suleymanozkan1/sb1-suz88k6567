@@ -65,8 +65,8 @@ test('İşletmenin kendi özel günü eklenir, takvimde görünür ve silinir', 
 
   // Takvimde de görünmeli: iki ekran aynı kayda bakıyor.
   await page.goto('/panel/takvim');
-  await page.getByRole('button', { name: 'Sonraki ay' }).click();
-  await page.getByRole('button', { name: 'Sonraki ay' }).click();
+  await page.getByLabel('Yıl').selectOption(String(hedef.getFullYear()));
+  await page.getByRole('button', { name: AY_ADLARI[hedef.getMonth()], exact: true }).click();
   await expect(page.getByRole('button', {
     name: new RegExp(`1 ${AY_ADLARI[hedef.getMonth()]} .*Okullar kapanıyor`),
   })).toBeVisible();
@@ -137,18 +137,24 @@ test('Anket raporu veri yokken nasıl çalıştığını anlatıyor', async ({ p
   await expect(page.getByText(/organizasyondan bir hafta sonra/)).toBeVisible();
 });
 
-test('Ayarlarda hava durumu ve anket adresi alanları var', async ({ page }) => {
+test('Hava durumu ayar istemiyor, anket adresi kaydediliyor', async ({ page }) => {
   await login(page);
   await page.goto('/panel/isletmeler');
   await page.getByRole('button', { name: /Düzenle/ }).first().click();
 
-  await page.locator('#bz-weather').fill('318251');
+  /*
+    Hava durumu konum anahtarı alanı KALDIRILDI (0038). MGM'ye geçilince
+    istasyon işletmenin il/ilçesinden bulunuyor; salon sahibinin
+    sağlayıcının sitesinden anahtar araması gerekmiyor.
+  */
+  await expect(page.locator('#bz-weather')).toHaveCount(0);
+  await expect(page.getByText(/Meteoroloji Genel Müdürlüğü/)).toBeVisible();
+
   await page.locator('#bz-survey-email').fill('mudur@ornek.com');
   await page.getByRole('button', { name: 'Kaydet' }).click();
 
-  // Kaydedilen değerler formu yeniden açınca geri gelmeli.
+  // Kaydedilen değer formu yeniden açınca geri gelmeli.
   await page.getByRole('button', { name: /Düzenle/ }).first().click();
-  await expect(page.locator('#bz-weather')).toHaveValue('318251');
   await expect(page.locator('#bz-survey-email')).toHaveValue('mudur@ornek.com');
 });
 

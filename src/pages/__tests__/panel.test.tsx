@@ -137,16 +137,18 @@ describe('Rezervasyon takvimi', () => {
     expect(dayButtons[0]).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('önceki/sonraki ay gezinmesi başlığı değiştirir', async () => {
+  it('ay şeridi başlığı değiştirir, Bugün geri getirir', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/takvim');
     // Veriler async yüklendiği için takvim görünene kadar bekle
     await screen.findByRole('heading', { name: 'Rezervasyon Takvimi' });
     const heading = () => screen.getAllByRole('heading', { level: 2 })[0].textContent;
     const before = heading();
-    await user.click(screen.getByRole('button', { name: 'Sonraki ay' }));
-    expect(heading()).not.toBe(before);
-    await user.click(screen.getByRole('button', { name: 'Önceki ay' }));
+    // Ok tuşları yerine on iki ayın tamamı şeritte duruyor.
+    const hedef = before?.startsWith('Ocak') ? 'Temmuz' : 'Ocak';
+    await user.click(screen.getByRole('button', { name: hedef }));
+    expect(heading()).toContain(hedef);
+    await user.click(screen.getByRole('button', { name: 'Bugün' }));
     expect(heading()).toBe(before);
   });
 });
@@ -444,7 +446,7 @@ describe('Program raporu', () => {
     const user = userEvent.setup();
     seedIfEmpty();
     renderPanel('/panel/raporlar?tab=cizelge');
-    await user.click(await screen.findByRole('tab', { name: 'Ay bazlı rapor' }));
+    await user.click(await screen.findByRole('tab', { name: 'Aylık rezervasyon raporu' }));
     expect(screen.getByRole('button', { name: /CSV indir/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Word indir/ })).not.toBeInTheDocument();
   });
@@ -538,8 +540,8 @@ describe('Raporlar', () => {
   it('ay bazlı rapora geçiş yapar', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/raporlar');
-    await user.click(await screen.findByRole('tab', { name: 'Ay bazlı rapor' }));
-    expect(screen.getByRole('tab', { name: 'Ay bazlı rapor' })).toHaveAttribute('aria-selected', 'true');
+    await user.click(await screen.findByRole('tab', { name: 'Aylık rezervasyon raporu' }));
+    expect(screen.getByRole('tab', { name: 'Aylık rezervasyon raporu' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('gelecek kaporalar sekmesi toplam satırı içerir', async () => {
@@ -553,7 +555,7 @@ describe('Raporlar', () => {
     const user = userEvent.setup();
     renderPanel('/panel/raporlar');
     // Çizelge boş günleri de çizer; "kayıt yok" iletisi diğer raporlarda.
-    await user.click(await screen.findByRole('tab', { name: 'Ay bazlı rapor' }));
+    await user.click(await screen.findByRole('tab', { name: 'Aylık rezervasyon raporu' }));
     await user.type(await screen.findByLabelText('Başlangıç tarihi'), '2099-01-01');
     expect(await screen.findByText('Seçilen tarih aralığında kayıt bulunmuyor.')).toBeInTheDocument();
   });
@@ -611,7 +613,8 @@ describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     seedIfEmpty();
     renderPanel('/panel/raporlar?tab=kanal');
 
-    expect(await screen.findByText('Ulaşım kanalı')).toBeInTheDocument();
+    // Ad hem sol listedeki sekmede hem panel başlığında geçiyor.
+    expect(await screen.findByRole('tab', { name: 'Ulaşım kanalı' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByText('Instagram')).toBeInTheDocument();
     // Kanalı boş bırakılan kayıtlar gizlenmiyor; payları bozmasın diye sayılıyor.
     expect(screen.getByText('Belirtilmemiş')).toBeInTheDocument();

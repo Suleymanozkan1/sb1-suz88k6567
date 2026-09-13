@@ -413,6 +413,31 @@ test('Takvimde ay listesi yok, gün seçilince panel açılır', async ({ page }
   await expect(page.getByRole('button', { name: 'Kapat' })).toBeVisible();
 });
 
+test('Takvimdeki organizasyona basılınca rezervasyon doğrudan açılır', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/takvim');
+
+  const izgara = page.locator('div.grid.grid-cols-7').last();
+  const etiket = izgara.locator('a[href^="/panel/rezervasyonlar/"]').first();
+  await expect(etiket).toBeVisible();
+  const hedef = await etiket.getAttribute('href');
+
+  // Yazı boyutu 60 yaşındaki bir kullanıcı için de okunur olmalı:
+  // etiket en az 14px, gün rakamı en az 18px.
+  const etiketPuntosu = await etiket.evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  expect(etiketPuntosu).toBeGreaterThanOrEqual(14);
+  const gunPuntosu = await izgara
+    .locator('span.font-bold')
+    .first()
+    .evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  expect(gunPuntosu).toBeGreaterThanOrEqual(18);
+
+  // Gün seçme düğmesi etiketin tıklamasını yutmamalı.
+  await etiket.click();
+  await expect(page).toHaveURL(new RegExp(`${hedef}$`));
+  await expect(page.getByRole('button', { name: 'Kapat' })).toHaveCount(0);
+});
+
 test('Hızlı yanıt kaydedilir ve müşteri kartında kullanılır', async ({ page }) => {
   await login(page);
   await page.goto('/panel/hatirlatmalar');
@@ -521,4 +546,133 @@ test('Ekran kilidi süresi ayarlanabilir', async ({ page }) => {
   for (const saniye of ['0', '30', '60', '300', '600']) {
     await expect(secim.locator(`option[value="${saniye}"]`)).toHaveCount(1);
   }
+});
+
+/*
+  Yetkilerin tüm alanlara genişletilmesi (0036). Demo hesabı işletme
+  SAHİBİ, yani her yetkiye sahip; ekranın kendisi burada sınanıyor.
+  Yetkinin gerçekten engellediği durum SQL paketinde (26_yetki_genisletme)
+  veritabanı düzeyinde sınanıyor -- asıl engel orada.
+*/
+test('Kullanıcı yetkileri gruplanmış ve tek tuşla verilebiliyor', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/kullanicilar');
+  await page.getByRole('button', { name: 'Yeni Kullanıcı' }).click();
+
+  // Yetkiler başlıklara ayrılmış olmalı.
+  for (const grup of ['Rezervasyon', 'Müşteri', 'Finans', 'Stok', 'Rapor',
+    'Tanımlar', 'Mesaj ve bildirim', 'Yönetim']) {
+    await expect(page.getByRole('checkbox', { name: grup, exact: true })).toBeVisible();
+  }
+
+  const hepsi = page.getByRole('checkbox', { name: /^Tüm yetkileri ver/ });
+  await expect(hepsi).not.toBeChecked();
+
+  // Tek tuşla hepsi: yirmi beş kutuyu tek tek işaretlemek gerekmiyor.
+  await hepsi.check();
+  await expect(page.getByRole('checkbox', { name: 'Rezervasyon sil' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Sistem durumu ve yedekleme' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Fatura kes / iptal et' })).toBeChecked();
+
+  // Geri alınca hepsi kalkıyor.
+  await hepsi.uncheck();
+  await expect(page.getByRole('checkbox', { name: 'Rezervasyon sil' })).not.toBeChecked();
+
+  // Başlık kutusu yalnızca kendi grubunu açıyor.
+  await page.getByRole('checkbox', { name: 'Finans', exact: true }).check();
+  await expect(page.getByRole('checkbox', { name: 'Gelir / gider görüntüle' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Fatura kes / iptal et' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Rezervasyon sil' })).not.toBeChecked();
+});
+
+test('Menüdeki her ekran sahibe açık', async ({ page }) => {
+  await login(page);
+  // Sahipte yetki listesi tam: menüden hiçbir satır düşmemeli.
+  const menu = page.getByRole('complementary', { name: 'Panel menüsü' });
+  for (const ad of ['Rezervasyon Takvimi', 'Müşteriler', 'Gelir / Gider', 'Faturalar',
+    'Raporlar', 'Salonlar', 'Ürün ve Hizmet', 'Kullanıcılar', 'Denetim Kaydı',
+    'Sistem Durumu', 'Ayarlar']) {
+    await expect(menu.getByRole('link', { name: ad, exact: true })).toBeVisible();
+  }
+});
+
+/*
+  Raporlar bölümü rakip programın listesiyle tamamlandı: 17 rapor eklendi,
+  var olanlar korundu. Bu test her raporun AÇILDIĞINI ve kırık değer
+  üretmediğini sınıyor -- hesaplamaların doğruluğu birim testlerde
+  (src/lib/reports.yeni.test.ts).
+*/
+const RAPORLAR = [
+  'Günlük rezervasyonlar', 'Program raporu', 'Haftalık rapor', 'Rezervasyon süreçleri',
+  'Salon bazlı rapor', 'Aylık rezervasyon raporu', 'Yıllık / aylık rezervasyon',
+  'Aylık davetli sayısı', 'İşletme bazlı rezervasyon', 'Organizasyon bazlı rapor',
+  'Gündüz / Gece', 'İl bazlı rezervasyon', 'Ciro, gider ve kâr', 'Aylık tahsilat (gelir)',
+  'Gelecek Kaporalar ve Ödemeler', 'Rezervasyon ek kalemleri', 'Ulaşım kanalı',
+  'Öneren / tavsiye eden', 'Görüşme ve dönüşüm', 'Deneyim anketi',
+  'Aylık rezervasyon işlemleri', 'İşlem logları', 'SMS logları', 'Yetkililer raporu',
+];
+
+test('Rapor listesi gruplu ve her rapor açılıyor', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/raporlar');
+
+  for (const grup of ['Günlük işler', 'Rezervasyon', 'Gelir ve tahsilat', 'Müşteri', 'Kayıtlar']) {
+    await expect(page.getByRole('heading', { name: grup, level: 2 })).toBeVisible();
+  }
+
+  const sorunlar: string[] = [];
+  for (const ad of RAPORLAR) {
+    await page.getByRole('tab', { name: ad, exact: true }).click();
+    const panel = page.getByRole('tabpanel');
+    await expect(panel.getByRole('heading', { name: ad, level: 2 })).toBeVisible();
+    const govde = await panel.innerText();
+    // NaN/undefined bir hesaplamanın çöktüğünü gösterir; boş panel de rapor sayılmaz.
+    if (/NaN|undefined|Infinity|\[object/.test(govde)) sorunlar.push(`${ad}: kırık değer`);
+    if (govde.trim().length < 5) sorunlar.push(`${ad}: boş panel`);
+  }
+  expect(sorunlar, sorunlar.join('\n')).toEqual([]);
+});
+
+test('İl bazlı rapor girilen ile göre gruplar', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/rezervasyonlar/yeni');
+
+  await page.locator('#customerName').fill('İl Testi');
+  await page.locator('#customerPhone').fill('5321119988');
+  await page.locator('#date').fill('2029-07-14');
+  await page.locator('#guestCount').fill('180');
+  await page.locator('#totalAmount').fill('90000');
+  await page.locator('#city').fill('Karaman');
+  await page.locator('#district').fill('Ermenek');
+  await page.getByRole('button', { name: /Kaydet/ }).click();
+  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
+
+  await page.goto('/panel/raporlar');
+  await page.getByRole('tab', { name: 'İl bazlı rezervasyon', exact: true }).click();
+  const panel = page.getByRole('tabpanel');
+  await expect(panel.getByRole('cell', { name: 'Karaman' })).toBeVisible();
+  // İli girilmemiş eski kayıtlar uydurulmuyor, ayrı satırda toplanıyor.
+  await expect(panel.getByRole('cell', { name: 'Belirtilmemiş' })).toBeVisible();
+});
+
+test('Günlük rezervasyonlar seçilen günü gösterir', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/rezervasyonlar/yeni');
+
+  await page.locator('#customerName').fill('Gunluk Testi');
+  await page.locator('#customerPhone').fill('5321117733');
+  await page.locator('#date').fill('2029-08-18');
+  await page.locator('#guestCount').fill('150');
+  await page.locator('#totalAmount').fill('70000');
+  await page.getByRole('button', { name: /Kaydet/ }).click();
+  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
+
+  await page.goto('/panel/raporlar');
+  await page.getByRole('tab', { name: 'Günlük rezervasyonlar', exact: true }).click();
+  const panel = page.getByRole('tabpanel');
+  // Aralık seçilmeden bugün gösterilir; o günde bu kayıt yok.
+  await expect(panel.getByRole('cell', { name: 'Gunluk Testi' })).toHaveCount(0);
+
+  await page.locator('#rp-from').fill('2029-08-18');
+  await expect(panel.getByRole('cell', { name: 'Gunluk Testi' })).toBeVisible();
 });

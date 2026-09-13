@@ -48,7 +48,7 @@ function kurucu(tablo: string) {
   const cagri: Cagri = { tablo, islemler: [] };
   durum.cagrilar.push(cagri);
 
-  const zincir = ['select', 'eq', 'neq', 'in', 'gte', 'lte', 'order', 'limit',
+  const zincir = ['select', 'eq', 'neq', 'in', 'notIn', 'gte', 'lte', 'order', 'limit',
     'upsert', 'insert', 'update', 'delete', 'is', 'isNot', 'or'];
 
   const nesne: Record<string, unknown> = {
@@ -435,6 +435,8 @@ describe('personel', () => {
 
     expect(islem(cagri('profiles'), 'update')?.arg[0]).toEqual({
       full_name: 'P', mobile: '5321112233', permissions: ['kasa.goruntule'],
+      // Panelden yazılan liste bugünkü şemada; okunurken taşınmamalı.
+      permissions_version: 1,
     });
     expect(islem(cagri('profiles'), 'eq')?.arg).toEqual(['id', 's1']);
   });
@@ -783,6 +785,49 @@ describe('denetim kaydı', () => {
     yanitla('audit_log', { data: [{ id: 1 }] });
     const [kayit] = await repo.listAuditLog(10);
     expect(kayit).toMatchObject({ actorEmail: '-', action: 'UPDATE', tableName: '' });
+  });
+
+  /*
+    Fatura kayıtları Türkiye'deki ayrı bir veritabanında durabiliyor
+    (docs/IKI-SUNUCU.md). Denetim ekranı iki kaynağı birleştiriyor;
+    aşağıdaki üç test o birleştirmenin kurallarını tutuyor.
+  */
+  it('fatura kayıtlarını ayrı kaynaktan alıp tarihe göre birleştirir', async () => {
+    yanitla('audit_log', {
+      data: [
+        { id: 1, table_name: 'reservations', created_at: '2026-03-01T10:00:00Z' },
+        { id: 2, table_name: 'payments', created_at: '2026-03-03T10:00:00Z' },
+      ],
+    });
+    durum.rpcYanitlari.fatura_denetim_kaydi = {
+      data: [{ id: 9, table_name: 'invoices', created_at: '2026-03-02T10:00:00Z' }],
+    };
+
+    const kayitlar = await repo.listAuditLog(10);
+
+    // İki liste tek sıraya iniyor: en yeni en üstte.
+    expect(kayitlar.map((k) => k.id)).toEqual([2, 9, 1]);
+  });
+
+  it('genel sorguda fatura tablolarını HARİÇ tutar', async () => {
+    yanitla('audit_log', { data: [] });
+    await repo.listAuditLog(10);
+
+    // Hariç tutulmazsa bölme yapılmamış kurulumda kayıt çift görünür.
+    expect(islem(cagri('audit_log'), 'notIn')?.arg)
+      .toEqual(['table_name', ['invoices', 'invoice_lines']]);
+  });
+
+  it('fatura tarafı düşerse geri kalanı yine gösterir', async () => {
+    yanitla('audit_log', {
+      data: [{ id: 1, table_name: 'reservations', created_at: '2026-03-01T10:00:00Z' }],
+    });
+    durum.rpcYanitlari.fatura_denetim_kaydi = { data: null, error: HATA };
+
+    // Fatura veritabanına ulaşılamaması ekranı boşaltmamalı; arıza
+    // ayrıca sağlık kontrolünde raporlanıyor (api/health.ts).
+    const kayitlar = await repo.listAuditLog(10);
+    expect(kayitlar.map((k) => k.id)).toEqual([1]);
   });
 });
 
@@ -1435,15 +1480,31 @@ describe('kur önbelleği', () => {
 
 describe('hava durumu', () => {
   it('satırı arayüz tipine çevirir', async () => {
+    // MGM hava olayını kodla veriyor (PB = parçalı bulutlu); okunur adı
+    // istemcide üretiliyor (src/lib/mgm.ts).
     yanitla('weather_forecasts', { data: [{
       business_id: 'b1', day: '2026-09-12', min_c: '17.4', max_c: '28.6',
-      current_c: '24.2', summary: 'Parçalı bulutlu', icon: '4',
+      current_c: '24.2', summary: 'PB', icon: 'PB', hadise: 'PB',
+      humidity: '55', wind_kmh: '12.0',
       fetched_at: '2026-09-12T06:15:00Z',
     }] });
     const [t] = await repo.listWeather('b1');
     expect(t).toEqual({
       businessId: 'b1', day: '2026-09-12', minC: 17.4, maxC: 28.6, currentC: 24.2,
-      summary: 'Parçalı bulutlu', icon: '4', fetchedAt: '2026-09-12T06:15:00Z',
+      summary: 'PB', icon: 'PB', hadise: 'PB', humidity: 55, windKmh: 12,
+      fetchedAt: '2026-09-12T06:15:00Z',
+    });
+  });
+
+  it('saatlik satırı arayüz tipine çevirir', async () => {
+    yanitla('weather_hourly', { data: [{
+      business_id: 'b1', hour: '2026-09-12T19:00', temp_c: '22.5',
+      feels_c: '21.0', humidity: '60', wind_kmh: '8.0', hadise: 'HY',
+    }] });
+    const [s] = await repo.listWeatherHours('b1');
+    expect(s).toEqual({
+      businessId: 'b1', hour: '2026-09-12T19:00', tempC: 22.5, feelsC: 21,
+      humidity: 60, windKmh: 8, hadise: 'HY',
     });
   });
 

@@ -17,13 +17,13 @@ import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult, ErrorReport,
   Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
   Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent, PaymentMethod,
-  Permission, QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
+  QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
-  ExchangeCode, ExchangeRate, WeatherForecast, SpecialDay, SpecialDayKind,
+  ExchangeCode, ExchangeRate, WeatherForecast, WeatherHour, SpecialDay, SpecialDayKind,
   SpecialDaySource, Survey,
 } from '../../types';
-import { VARSAYILAN_BASLANGIC_DURUMU } from '../../types';
+import { VARSAYILAN_BASLANGIC_DURUMU, YETKI_SURUMU, yetkileriTasi } from '../../types';
 import { computeInvoice } from '../invoice';
 
 /**
@@ -89,7 +89,16 @@ function toUser(row: Row): User {
     mobile: (row.mobile as string) ?? '',
     role: (row.role as User['role']) ?? 'owner',
     ownerId: (row.owner_id as string) ?? undefined,
-    permissions: ((row.permissions as Permission[]) ?? OWNER_PERMISSIONS),
+    /*
+      Eski kayıtlar yedi yetkilik listeden geliyor; `yetkileriTasi`
+      bugünkü karşılıklarını üretiyor. Göç SQL tarafında da yapılıyor
+      (0036), burası göçü uygulamamış bir kurulum için güvenlik ağı.
+    */
+    permissions: yetkileriTasi(
+      (row.permissions as string[]) ?? OWNER_PERMISSIONS,
+      Number(row.permissions_version ?? 0),
+    ),
+    permissionsVersion: Number(row.permissions_version ?? 0),
     city: (row.city as string) ?? '',
     district: (row.district as string) ?? '',
     category: (row.category as string) ?? '',
@@ -162,6 +171,8 @@ function toReservation(row: Row): Reservation {
     colorKey: (row.color_key as string) ?? 'diger',
     note: (row.note as string) ?? undefined,
     address: (row.address as string) ?? undefined,
+    city: (row.city as string) ?? undefined,
+    district: (row.district as string) ?? undefined,
     sourceChannel: (row.source_channel as Reservation['sourceChannel']) ?? undefined,
     sourceDetail: (row.source_detail as string) ?? undefined,
     services: (row.services as string[]) ?? [],
@@ -184,6 +195,7 @@ function fromReservation(r: Reservation) {
     deposit_method: r.depositMethod ?? null,
     currency: r.currency, status: r.status, color_key: r.colorKey,
     note: r.note || null, address: r.address || null, services: r.services,
+    city: r.city?.trim() || '', district: r.district?.trim() || '',
     source_channel: r.sourceChannel || null, source_detail: r.sourceDetail?.trim() || null,
   };
 }
@@ -275,7 +287,22 @@ function toWeather(row: Row): WeatherForecast {
     currentC: sayiVeyaYok(row.current_c),
     summary: (row.summary as string) ?? '',
     icon: (row.icon as string) ?? '',
+    hadise: (row.hadise as string) ?? '',
+    humidity: sayiVeyaYok(row.humidity),
+    windKmh: sayiVeyaYok(row.wind_kmh),
     fetchedAt: (row.fetched_at as string) ?? '',
+  };
+}
+
+function toWeatherHour(row: Row): WeatherHour {
+  return {
+    businessId: (row.business_id as string) ?? '',
+    hour: (row.hour as string) ?? '',
+    tempC: sayiVeyaYok(row.temp_c),
+    feelsC: sayiVeyaYok(row.feels_c),
+    humidity: sayiVeyaYok(row.humidity),
+    windKmh: sayiVeyaYok(row.wind_kmh),
+    hadise: (row.hadise as string) ?? '',
   };
 }
 
@@ -482,6 +509,8 @@ function toPaymentAlertRecipient(row: Row): PaymentAlertRecipient {
     name: (row.name as string) ?? '',
     phone: (row.phone as string) ?? '',
     enabled: Boolean(row.enabled),
+    // Eski satırlarda kolon yok; veritabanı varsayılanıyla aynı değere düşülüyor.
+    channel: (row.channel as PaymentAlertRecipient['channel']) ?? 'sms',
   };
 }
 
@@ -816,6 +845,8 @@ export const supabaseRepo: Repository = {
     const { error } = await db().from('profiles')
       .update({
         full_name: input.fullName, mobile: input.mobile, permissions: input.permissions,
+        // Panelden yazılan liste bugünkü şemada; taşıma bir daha çalışmasın.
+        permissions_version: YETKI_SURUMU,
         ...(input.monthlyReport === undefined ? {} : { monthly_report: input.monthlyReport }),
       })
       .eq('id', input.id);
@@ -969,6 +1000,7 @@ export const supabaseRepo: Repository = {
     const { data, error } = await db().from('payment_alert_recipients').upsert({
       ...kimlikAlani(alici.id), business_id: alici.businessId,
       name: alici.name, phone: alici.phone, enabled: alici.enabled,
+      channel: alici.channel,
     }).select().single();
     if (error) fail('Bildirim alıcısı kaydedilemedi.', error);
     return toPaymentAlertRecipient(data);
@@ -1083,6 +1115,20 @@ export const supabaseRepo: Repository = {
       .select('*').eq('business_id', businessId).order('day');
     if (error) fail('Hava durumu okunamadı.', error);
     return (data ?? []).map(toWeather);
+  },
+
+  async listWeatherHours(businessId) {
+    /*
+      Yalnızca BUGÜNDEN İTİBAREN. Geçmiş saatler sunucuda temizleniyor
+      ama temizlik bir kez atlanırsa ekran dün sabahın tahminiyle
+      açılmasın.
+    */
+    const bugun = new Date().toISOString().slice(0, 10);
+    const { data, error } = await db().from('weather_hourly')
+      .select('*').eq('business_id', businessId)
+      .gte('hour', `${bugun}T00:00`).order('hour');
+    if (error) fail('Saatlik hava durumu okunamadı.', error);
+    return (data ?? []).map(toWeatherHour);
   },
 
   async listSpecialDays(businessId) {
@@ -1403,10 +1449,35 @@ export const supabaseRepo: Repository = {
   },
 
   async listAuditLog(limit) {
-    const { data, error } = await db().from('audit_log')
-      .select('*').order('created_at', { ascending: false }).limit(limit);
-    if (error) fail('Denetim kayıtları alınamadı.', error);
-    return (data ?? []).map((row: Row): AuditEntry => ({
+    /*
+      İKİ KAYNAK. Fatura kayıtları Türkiye'deki ayrı bir veritabanında
+      durabiliyor (docs/IKI-SUNUCU.md); oradaki denetim satırları bu
+      veritabanının `audit_log` tablosunda yok. Bu yüzden iki sorgu
+      yapılıyor ve sunucu ikincisini doğru veritabanına yönlendiriyor
+      (sunucu/veri-yonlendirme.ts).
+
+      Sorgular BİRBİRİNİ DIŞLIYOR: burada fatura satırları hariç
+      tutuluyor, fonksiyon ise yalnızca onları döndürüyor. Bölme
+      yapılmamış kurulumda ikisi aynı veritabanına düşse bile kayıt çift
+      görünmüyor.
+    */
+    const FATURA_TABLOLARI = ['invoices', 'invoice_lines'];
+    const [genel, fatura] = await Promise.all([
+      db().from('audit_log')
+        .select('*').notIn('table_name', FATURA_TABLOLARI)
+        .order('created_at', { ascending: false }).limit(limit),
+      db().rpc<Row[]>('fatura_denetim_kaydi', { p_limit: limit }),
+    ]);
+
+    if (genel.error) fail('Denetim kayıtları alınamadı.', genel.error);
+    /*
+      Fatura tarafı düşerse ekran boş kalmamalı: geri kalan kayıtlar
+      gösterilip devam ediliyor. Fatura veritabanının ulaşılamaz olduğu
+      ayrıca sağlık kontrolünde raporlanıyor (api/health.ts).
+    */
+    const faturaSatirlari = fatura.error ? [] : (fatura.data ?? []);
+
+    const cevir = (row: Row): AuditEntry => ({
       id: Number(row.id),
       actorEmail: (row.actor_email as string) ?? '-',
       action: (row.action as AuditEntry['action']) ?? 'UPDATE',
@@ -1415,7 +1486,14 @@ export const supabaseRepo: Repository = {
       summary: (row.summary as string) ?? undefined,
       changed: (row.changed as AuditEntry['changed']) ?? undefined,
       createdAt: (row.created_at as string) ?? '',
-    }));
+    });
+
+    return [...(genel.data ?? []), ...faturaSatirlari]
+      .map(cevir)
+      // İki kaynak birleştiği için sıralama yeniden kuruluyor; `limit`
+      // her sorguya ayrı uygulandığından toplam iki katına çıkabilir.
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
   },
 
   async listInvoices(businessId) {

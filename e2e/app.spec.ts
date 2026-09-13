@@ -140,8 +140,8 @@ test.describe('Üye paneli', () => {
   test('raporlar arasında sekme geçişi çalışır', async ({ page }) => {
     await login(page);
     await page.goto('/panel/raporlar');
-    await page.getByRole('tab', { name: 'Ay bazlı rapor' }).click();
-    await expect(page.getByRole('tab', { name: 'Ay bazlı rapor' })).toHaveAttribute('aria-selected', 'true');
+    await page.getByRole('tab', { name: 'Aylık rezervasyon raporu' }).click();
+    await expect(page.getByRole('tab', { name: 'Aylık rezervasyon raporu' })).toHaveAttribute('aria-selected', 'true');
     await page.getByRole('tab', { name: 'Gelecek Kaporalar ve Ödemeler' }).click();
     await expect(page.getByText('Toplam kalan alacak')).toBeVisible();
   });

@@ -2,10 +2,19 @@
  * e-Arşiv / e-Fatura gönderim döngüsü.
  *
  * Bu dosya yalnızca akışı yönetir: bekleyen taslakları alır, iki kez
- * gönderilmelerini engeller, sonucu veritabanına yazar. Entegratöre özgü
- * her şey `_parasut.ts` içindedir; başka bir entegratöre geçilirse yalnızca
- * o modülün yerine aynı `sendInvoice` sözleşmesini karşılayan bir modül
- * konur.
+ * gönderilmelerini engeller, sonucu veritabanına yazar. Sağlayıcıya
+ * özgü her şey ayrı modüllerde.
+ *
+ * İKİ YOL VAR:
+ *
+ *   - ÖZEL ENTEGRATÖR (`_parasut.ts`): varsayılan yol. Sahra Takip'i
+ *     kullanan salonların faturaları buradan gider.
+ *
+ *   - GİB DOĞRUDAN (`_gib.ts`): yalnızca `GIB_VKN` ile eşleşen
+ *     işletmenin KENDİ faturaları. Doğrudan entegrasyon izni, izni alan
+ *     mükellefin kendi faturaları içindir; başka mükellefler adına
+ *     fatura kesmek özel entegratör lisansı gerektiriyor. Bu ayrım
+ *     kodda zorlanıyor, kullanıcı ayarına bırakılmıyor.
  */
 import { isAuthorizedCron, isDbConfigured, patchRows, selectRows } from './_db';
 import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard';

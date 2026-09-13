@@ -129,7 +129,7 @@ export default function UrunHizmet() {
     }
   }
 
-  if (!can('ayarlar.duzenle')) {
+  if (!can('stok.duzenle')) {
     return <Alert kind="error">Ürün ve hizmet tanımlarını yalnızca yetkili kullanıcı düzenleyebilir.</Alert>;
   }
 

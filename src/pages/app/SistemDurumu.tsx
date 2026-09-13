@@ -33,7 +33,7 @@ export default function SistemDurumu() {
     }
   }
 
-  if (!can('ayarlar.duzenle')) {
+  if (!can('sistem.yonet')) {
     return <Alert kind="error">Sistem durumunu görüntüleme yetkiniz bulunmuyor.</Alert>;
   }
 

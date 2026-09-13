@@ -5,7 +5,7 @@ import StatCard from '../../components/StatCard';
 import KasaDagilimKarti from '../../components/KasaDagilimKarti';
 import StokDurumu from '../../components/StokDurumu';
 import KurSeridi from '../../components/KurSeridi';
-import HavaDurumu from '../../components/HavaDurumu';
+import HavaDurumu, { SaatlikHava } from '../../components/HavaDurumu';
 import { useAuth } from '../../context/AuthContext';
 import {
   useCashFlow, useLeadStatuses, useLeads, useReservationExpenses,
@@ -129,6 +129,11 @@ export default function Dashboard() {
           </p>
           {/* Güncel hava durumu (madde 29); veri yoksa satır hiç çıkmıyor. */}
           <HavaDurumu className="mt-1" />
+          {/*
+            Bugünün saat saat havası. Salon bugün akşam düğün varken
+            "saat kaçta yağacak" sorusunu panelden çıkmadan yanıtlasın.
+          */}
+          <SaatlikHava className="mt-3 max-w-2xl" />
         </div>
         <Link to="/panel/rezervasyonlar/yeni" className="btn-primary text-white hover:text-white">
           <IconPlus size={18} /> Yeni Rezervasyon

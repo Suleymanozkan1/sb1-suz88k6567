@@ -102,7 +102,7 @@ export default function MusteriAdaylari() {
             WhatsApp&apos;tan gelen ve elle açılan adaylar. Rezervasyona dönüşene kadar takip burada.
           </p>
         </div>
-        {can('rezervasyon.duzenle') && (
+        {can('aday.duzenle') && (
           <div className="flex flex-wrap gap-2">
             <Link to="/panel/musteri-adaylari/yeni" className="btn-primary text-white hover:text-white">
               Yeni aday

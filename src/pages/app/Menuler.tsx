@@ -79,7 +79,7 @@ export default function Menuler() {
     }
   }
 
-  if (!can('ayarlar.duzenle')) {
+  if (!can('tanim.duzenle')) {
     return <Alert kind="error">Menü tanımlarını yalnızca yetkili kullanıcı düzenleyebilir.</Alert>;
   }
 

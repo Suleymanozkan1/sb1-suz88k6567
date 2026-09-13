@@ -493,3 +493,346 @@ export function karRaporu(
     .map((s) => ({ ...s, kar: s.ciro + s.otherIncome - s.expense }))
     .sort((a, b) => b.donem.localeCompare(a.donem));
 }
+
+// =====================================================================
+// Rakip programın rapor listesindeki eksikler
+//
+// Var olan raporlar (program, ay, salon, kanal, gelecek kaporalar,
+// gündüz/gece, ciro-gider-kâr, dönüşüm, anket) olduğu gibi duruyor;
+// aşağıdakiler onların üstüne ekleniyor.
+// =====================================================================
+
+/** Bir gruplama satırı: ad + Totals. */
+export interface KirilimRow extends Totals {
+  anahtar: string;
+  etiket: string;
+}
+
+/**
+ * Serbest anahtara göre kırılım üretir.
+ *
+ * Altı ayrı rapor (il, ilçe, işletme, tavsiye eden, salon, tür) aynı
+ * işi yapıyordu; her biri kendi döngüsünü yazsaydı "iptal edileni say"
+ * hatasını altı yerde ayrı ayrı yapma şansı olurdu.
+ */
+export function kirilim(
+  reservations: Reservation[],
+  balance: BalanceLookup,
+  anahtarla: (r: Reservation) => { anahtar: string; etiket: string } | null,
+): KirilimRow[] {
+  const map = new Map<string, { etiket: string; list: Reservation[] }>();
+  reservations.forEach((r) => {
+    const k = anahtarla(r);
+    if (!k) return;
+    const mevcut = map.get(k.anahtar) ?? { etiket: k.etiket, list: [] };
+    mevcut.list.push(r);
+    map.set(k.anahtar, mevcut);
+  });
+  return [...map.entries()]
+    .map(([anahtar, v]) => ({ anahtar, etiket: v.etiket, ...summarize(v.list, balance) }))
+    .sort((a, b) => b.total - a.total || a.etiket.localeCompare(b.etiket, 'tr'));
+}
+
+/** Boş bırakılmış alanların ortak etiketi. */
+export const BELIRTILMEMIS = 'Belirtilmemiş';
+
+/** İl bazlı rezervasyon raporu. */
+export function ilRaporu(reservations: Reservation[], balance: BalanceLookup): KirilimRow[] {
+  return kirilim(reservations, balance, (r) => {
+    const il = (r.city ?? '').trim();
+    /*
+      Boş il UYDURULMUYOR. İşletmenin iliyle doldurmak, gerçekte başka
+      ilden gelen müşterileri yanlış ile yazmak olurdu.
+    */
+    return il
+      ? { anahtar: il.toLocaleLowerCase('tr'), etiket: il }
+      : { anahtar: '', etiket: BELIRTILMEMIS };
+  });
+}
+
+/** Öneren / tavsiye eden raporu. */
+export function tavsiyeRaporu(reservations: Reservation[], balance: BalanceLookup): KirilimRow[] {
+  return kirilim(reservations, balance, (r) => {
+    /*
+      Yalnızca TAVSİYE ile gelenler. "Instagram" kanalının açıklaması da
+      sourceDetail'de duruyor; hepsi katılsaydı rapor "kim tavsiye etti"
+      sorusuna değil "açıklama ne yazıyor" sorusuna cevap verirdi.
+    */
+    if (r.sourceChannel !== 'Tavsiye' && r.sourceChannel !== 'Referans') return null;
+    const ad = (r.sourceDetail ?? '').trim();
+    return ad
+      ? { anahtar: ad.toLocaleLowerCase('tr'), etiket: ad }
+      : { anahtar: '', etiket: `${BELIRTILMEMIS} (tavsiye eden yazılmamış)` };
+  });
+}
+
+/** İşletme (firma) bazlı rapor: birden çok salon işletmesi olanlar için. */
+export function isletmeRaporu(
+  reservations: Reservation[],
+  balance: BalanceLookup,
+  isletmeAdi: (id: string) => string,
+): KirilimRow[] {
+  return kirilim(reservations, balance, (r) => ({
+    anahtar: r.businessId,
+    etiket: isletmeAdi(r.businessId) || BELIRTILMEMIS,
+  }));
+}
+
+export interface HaftaRow extends Totals {
+  /** Haftanın pazartesi günü, ISO. */
+  baslangic: string;
+  bitis: string;
+  etiket: string;
+}
+
+/**
+ * Haftalık rapor.
+ *
+ * Hafta PAZARTESİ başlıyor: salonun iş haftası cumartesi-pazara doğru
+ * dolduğu için, pazar günüyle başlayan bir hafta yoğun iki günü ikiye
+ * bölerdi.
+ */
+export function haftalikRapor(reservations: Reservation[], balance: BalanceLookup): HaftaRow[] {
+  const map = new Map<string, Reservation[]>();
+  reservations.forEach((r) => {
+    const g = new Date(`${r.date}T00:00:00`);
+    const kaydir = (g.getDay() + 6) % 7; // Pazartesi = 0
+    g.setDate(g.getDate() - kaydir);
+    const anahtar = g.toISOString().slice(0, 10);
+    const list = map.get(anahtar) ?? [];
+    list.push(r);
+    map.set(anahtar, list);
+  });
+  return [...map.entries()]
+    .map(([baslangic, list]) => {
+      const son = new Date(`${baslangic}T00:00:00`);
+      son.setDate(son.getDate() + 6);
+      const bitis = son.toISOString().slice(0, 10);
+      return {
+        baslangic,
+        bitis,
+        etiket: `${baslangic.slice(8, 10)}.${baslangic.slice(5, 7)} - ${bitis.slice(8, 10)}.${bitis.slice(5, 7)}.${bitis.slice(0, 4)}`,
+        ...summarize(list, balance),
+      };
+    })
+    .sort((a, b) => b.baslangic.localeCompare(a.baslangic));
+}
+
+export interface YilAyHucresi {
+  count: number;
+  total: number;
+  guests: number;
+}
+
+export interface YilAyRow {
+  yil: number;
+  /** 12 ay; olmayan ay sıfır hücre. */
+  aylar: YilAyHucresi[];
+  toplam: YilAyHucresi;
+}
+
+/**
+ * Yıllık / aylık rezervasyon matrisi.
+ *
+ * Ay bazlı rapor ayları alt alta diziyor; bu rapor yılları YAN YANA
+ * koyuyor ki "geçen eylül ile bu eylül" karşılaştırılabilsin. Aynı
+ * veriden iki farklı soru.
+ */
+export function yilAyRaporu(reservations: Reservation[]): YilAyRow[] {
+  const bos = (): YilAyHucresi => ({ count: 0, total: 0, guests: 0 });
+  const map = new Map<number, YilAyRow>();
+
+  reservations.forEach((r) => {
+    const yil = Number(r.date.slice(0, 4));
+    const ay = Number(r.date.slice(5, 7)) - 1;
+    if (!Number.isFinite(yil) || ay < 0 || ay > 11) return;
+    let satir = map.get(yil);
+    if (!satir) {
+      satir = { yil, aylar: Array.from({ length: 12 }, bos), toplam: bos() };
+      map.set(yil, satir);
+    }
+    const h = satir.aylar[ay]!;
+    h.count += 1; h.total += r.totalAmount; h.guests += r.guestCount;
+    satir.toplam.count += 1;
+    satir.toplam.total += r.totalAmount;
+    satir.toplam.guests += r.guestCount;
+  });
+
+  return [...map.values()].sort((a, b) => b.yil - a.yil);
+}
+
+export interface TahsilatAyRow {
+  /** yyyy-mm */
+  donem: string;
+  etiket: string;
+  adet: number;
+  tutar: number;
+  /** Ödeme tipine göre dağılım. */
+  tipler: Record<string, number>;
+}
+
+/**
+ * Aylık tahsilat (gelir) raporu.
+ *
+ * Ay bazlı rapordan FARKLI: orada ciro düğün gününe yazılır (tahakkuk),
+ * burada para KASAYA GİRDİĞİ güne (nakit). Eylülde yapılacak bir düğünün
+ * martta alınan kaporası, ay raporunda eylülde, burada martta görünür.
+ * "Bu ay elime ne geçti" sorusunun cevabı bu tablodadır.
+ */
+export function tahsilatAyRaporu(payments: Payment[]): TahsilatAyRow[] {
+  const map = new Map<string, TahsilatAyRow>();
+  payments.forEach((p) => {
+    const donem = p.date.slice(0, 7);
+    let satir = map.get(donem);
+    if (!satir) {
+      const ay = Number(donem.slice(5, 7)) - 1;
+      satir = {
+        donem,
+        etiket: `${MONTH_NAMES[ay] ?? donem} ${donem.slice(0, 4)}`,
+        adet: 0, tutar: 0, tipler: {},
+      };
+      map.set(donem, satir);
+    }
+    satir.adet += 1;
+    satir.tutar += p.amount;
+    satir.tipler[p.method] = (satir.tipler[p.method] ?? 0) + p.amount;
+  });
+  return [...map.values()].sort((a, b) => b.donem.localeCompare(a.donem));
+}
+
+export interface IslemAyRow {
+  donem: string;
+  etiket: string;
+  /** Olay türüne göre sayım: eklendi, güncellendi, silindi... */
+  olaylar: Record<string, number>;
+  toplam: number;
+}
+
+/**
+ * Aylık rezervasyon işlemleri raporu.
+ *
+ * "Kaç rezervasyon var" değil, "o ay ne yapıldı": kaç tahsilat girildi,
+ * kaçı düzeltildi, kaçı silindi. Bir tutarsızlığın hangi ay doğduğunu
+ * bulmanın en kısa yolu.
+ */
+export function islemAyRaporu(
+  olaylar: { event: string; createdAt: string }[],
+): IslemAyRow[] {
+  const map = new Map<string, IslemAyRow>();
+  olaylar.forEach((o) => {
+    const donem = (o.createdAt || '').slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(donem)) return;
+    let satir = map.get(donem);
+    if (!satir) {
+      const ay = Number(donem.slice(5, 7)) - 1;
+      satir = {
+        donem,
+        etiket: `${MONTH_NAMES[ay] ?? donem} ${donem.slice(0, 4)}`,
+        olaylar: {}, toplam: 0,
+      };
+      map.set(donem, satir);
+    }
+    satir.olaylar[o.event] = (satir.olaylar[o.event] ?? 0) + 1;
+    satir.toplam += 1;
+  });
+  return [...map.values()].sort((a, b) => b.donem.localeCompare(a.donem));
+}
+
+export interface SurecRow {
+  reservation: Reservation;
+  /** Sözleşme numarası verilmiş mi. */
+  sozlesme: boolean;
+  /** Kapora alınmış mı. */
+  kapora: boolean;
+  /** Tahsilat toplamın yüzde kaçı. */
+  yuzde: number;
+  kalan: number;
+  /** Düğüne kaç gün kaldı; geçmişse negatif. */
+  kalanGun: number;
+  /** Sıradaki iş; boşsa tamamlanmış. */
+  sonraki: string;
+}
+
+/**
+ * Rezervasyon süreçleri raporu.
+ *
+ * Her organizasyonun hangi aşamada takıldığını tek tabloda gösterir.
+ * "Sıradaki iş" sütunu, sıralamayı da belirliyor: düğünü yaklaşmış ama
+ * parası eksik kayıtlar en üstte.
+ */
+export function surecRaporu(
+  reservations: Reservation[],
+  balance: BalanceLookup,
+  bugun = todayIso(),
+): SurecRow[] {
+  return reservations
+    .filter((r) => r.status !== 'İptal')
+    .map((r) => {
+      const odenen = balance.paid(r);
+      const kalan = balance.remaining(r);
+      const kalanGun = daysBetween(bugun, r.date);
+      const yuzde = r.totalAmount > 0 ? Math.round((odenen / r.totalAmount) * 100) : 0;
+      const sozlesme = Boolean(r.code?.trim());
+      const kapora = r.deposit > 0;
+
+      let sonraki = '';
+      if (!sozlesme) sonraki = 'Sözleşme numarası yok';
+      else if (!kapora) sonraki = 'Kapora alınmadı';
+      else if (kalan > 0 && kalanGun <= 7 && kalanGun >= 0) sonraki = 'Düğüne bir hafta kaldı, bakiye açık';
+      else if (kalan > 0 && kalanGun < 0) sonraki = 'Düğün geçti, bakiye açık';
+      else if (kalan > 0) sonraki = 'Bakiye tahsil edilecek';
+
+      return { reservation: r, sozlesme, kapora, yuzde, kalan, kalanGun, sonraki };
+    })
+    .sort((a, b) => {
+      // Önce iş bekleyenler, sonra düğünü en yakın olan.
+      const ai = a.sonraki ? 0 : 1;
+      const bi = b.sonraki ? 0 : 1;
+      if (ai !== bi) return ai - bi;
+      return a.reservation.date.localeCompare(b.reservation.date);
+    });
+}
+
+export interface EkGiderRow {
+  kind: string;
+  adet: number;
+  /** Kaç organizasyonda geçti. */
+  organizasyon: number;
+  tutar: number;
+}
+
+/**
+ * Rezervasyon ek kalemleri raporu.
+ *
+ * Rakip programdaki "Extralar" raporunun karşılığı. Bizde "Extralar"
+ * (hizmet kutucukları) 8. madde ile KALDIRILMIŞTI; yerine düğün içi
+ * gider kalemleri geçti. Rapor gerçekte var olan bu kalemleri
+ * özetliyor: hangi kalem kaç düğünde, kaç adet, ne tuttu.
+ */
+export function ekGiderRaporu(
+  giderler: { reservationId: string; kind: string; unitCount: number; unitPrice: number }[],
+): EkGiderRow[] {
+  const map = new Map<string, { ad: string; adet: number; tutar: number; rez: Set<string> }>();
+  giderler.forEach((g) => {
+    const ad = g.kind.trim() || BELIRTILMEMIS;
+    const anahtar = ad.toLocaleLowerCase('tr');
+    /*
+      Gösterilecek ad İLK yazımdan alınıyor. Her satırda üzerine
+      yazılsaydı "Garson" ve "garson" karışımında listede rastgele biri
+      kalırdı; ilk girilen, salonun kendi yazımıdır.
+    */
+    const mevcut = map.get(anahtar) ?? { ad, adet: 0, tutar: 0, rez: new Set<string>() };
+    mevcut.adet += g.unitCount;
+    mevcut.tutar += g.unitCount * g.unitPrice;
+    mevcut.rez.add(g.reservationId);
+    map.set(anahtar, mevcut);
+  });
+  return [...map.values()]
+    .map((v) => ({
+      kind: v.ad,
+      adet: v.adet,
+      organizasyon: v.rez.size,
+      tutar: v.tutar,
+    }))
+    .sort((a, b) => b.tutar - a.tutar);
+}

@@ -16,9 +16,9 @@ import type {
   ErrorReport, PaymentEventKind, QuickReply, Reservation, ReservationExpense, ReservationVendor,
   SeatingTable, SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
-  SmsQueueEntry, User, ExchangeRate, WeatherForecast, SpecialDay, Survey,
+  SmsQueueEntry, User, ExchangeRate, WeatherForecast, WeatherHour, SpecialDay, Survey,
 } from '../../types';
-import { ODEME_OLAYLARI, VARSAYILAN_LEAD_DURUMLARI } from '../../types';
+import { ODEME_OLAYLARI, VARSAYILAN_LEAD_DURUMLARI, YETKI_SURUMU, yetkileriTasi } from '../../types';
 import { odemeOlaylari } from '../odemeOlayi';
 import { takipTarihi } from '../lead';
 import { resmiTatiller } from '../ozelGun';
@@ -26,7 +26,19 @@ import { computeInvoice, formatInvoiceNumber } from '../invoice';
 
 const wait = <T,>(value: T): Promise<T> => Promise.resolve(value);
 
-function users(): User[] { return read<User[]>(KEYS.users, []); }
+/*
+  Yetki listesi OKURKEN bugünkü anahtarlara çevriliyor: tarayıcıda 0036
+  öncesinden kalmış bir kayıt, yetki listesi genişledi diye erişim
+  kaybetmesin. Yazarken çevrilmiyor -- yönetici kutuları tek tek
+  işaretlemişse listeye kendiliğinden yetki eklenmemeli.
+*/
+function users(): User[] {
+  return read<User[]>(KEYS.users, []).map((u) => ({
+    ...u,
+    permissions: yetkileriTasi(u.permissions ?? [], u.permissionsVersion ?? 0),
+    permissionsVersion: YETKI_SURUMU,
+  }));
+}
 function saveUsers(list: User[]) { write(KEYS.users, list); }
 function businesses(): Business[] { return read<Business[]>(KEYS.businesses, []); }
 function reservations(): Reservation[] { return read<Reservation[]>(KEYS.reservations, []); }
@@ -354,6 +366,8 @@ export const localRepo: Repository = {
       role: 'staff',
       ownerId,
       permissions: input.permissions,
+      // Yeni kayıt bugünkü şemayla yazılıyor; okunurken taşınmasın.
+      permissionsVersion: YETKI_SURUMU,
       city: owner.city, district: owner.district, category: owner.category,
       capacity: owner.capacity, currency: owner.currency,
       monthlyReport: input.monthlyReport ?? existing?.monthlyReport ?? false,
@@ -519,6 +533,9 @@ export const localRepo: Repository = {
   async listPaymentAlertRecipients(businessId) {
     return wait(odemeAlicilari()
       .filter((a) => a.businessId === businessId)
+      // Kanal alanı sonradan eklendi; tarayıcıda duran eski kayıtlarda
+      // yok ve `undefined` gelirse ekrandaki seçim boş görünürdü.
+      .map((a) => ({ ...a, channel: a.channel ?? 'sms' }))
       .sort((a, b) => a.name.localeCompare(b.name, 'tr')));
   },
 
@@ -676,6 +693,14 @@ export const localRepo: Repository = {
 
   async listWeather() {
     return wait<WeatherForecast[]>([]);
+  },
+
+  /*
+    Demo kipinde hava durumu YOK. Uydurma bir tahmin gösterilseydi
+    salon sahibi demoyu gerçek sanıp o rakama göre plan yapabilirdi.
+  */
+  async listWeatherHours() {
+    return wait<WeatherHour[]>([]);
   },
 
   async listSpecialDays(businessId) {

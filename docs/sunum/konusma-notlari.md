@@ -105,16 +105,30 @@ gider. "Sistem her gece aynı mesajı atar mı?" sorusu kesin gelir.
 ## 6. Gelmesi kesin sorular
 
 **"Verilerimiz nerede, başkası görebilir mi?"**
-AB bölgesinde, Frankfurt'ta. Her hesap yalnızca kendi verisini görür ve bu
-ayrım arayüzde değil sunucuda tanımlı, yani yazılımda bir hata olsa bile başka
-bir işletmenin kaydı gelmez. Gece otomatik yedek alınır.
+Kendi kiraladığımız iki sunucuda. Kişisel veriler (müşteri adı, telefon,
+rezervasyon, kasa) Almanya'daki sunucuda; fatura kayıtları Türkiye'deki
+ikinci sunucuda. Her hesap yalnızca kendi verisini görür ve bu ayrım
+arayüzde değil veritabanında tanımlı, yani yazılımda bir hata olsa bile
+başka bir işletmenin kaydı gelmez. Gece otomatik yedek alınır.
 
-**"Neden bir sürü servise para veriyoruz? Kendi sunucumuz olsun."**
-22. slayt tam bu soru için. Yazılım kendi sunucunuzda da aynı çalışır.
-Fark şu: güvenlik yamaları, sertifika yenileme, yedek alma ve o yedeğin
-gerçekten geri yüklenebildiğini denemek sizin üzerinizde kalır. Ayda 30
-dolar bu işi devretmenin bedeli. Ekleyin: veritabanı standart PostgreSQL,
-istenirse başka bir sunucuya taşınır, kilitlenme yok.
+**"Neden fatura ayrı bir sunucuda?"**
+Vergi Usul Kanunu fatura kayıtlarının Türkiye sınırları içinde
+muhafazasını istiyor. Verinin geri kalanının yurt dışında durması
+istendiği için ikiye ayırdık. Kullanıcı bunu hiç görmüyor: tek adres,
+tek giriş, tek ekran; ayrım sunucunun içinde.
+
+Devamı gelirse: kişisel verinin Almanya'da olması KVKK m.9 kapsamında
+yurt dışına aktarım. Türkiye'nin hiçbir ülke için yeterlilik kararı yok,
+o yüzden standart sözleşme imzalanıp Kurul'a bildirildi. Bunu
+soruyorlarsa doğru soruyu soruyorlar demektir; geçiştirmeyin.
+
+**"Neden hazır bir servis değil de kendi sunucumuz?"**
+22. slayt tam bu soru için. Yazılım hazır bir serviste de aynı çalışırdı.
+Fark bağımlılık: ücretsiz planın koşulları değişebilir, fiyat artabilir,
+hesap askıya alınabilir. Karşılığında güvenlik yamaları, sertifika
+yenileme ve yedeğin gerçekten geri yüklenebildiğini denemek bizim
+üzerimizde. Ekleyin: veritabanı standart PostgreSQL, istenirse başka bir
+sunucuya taşınır, kilitlenme yok.
 
 **"Hazır programlar var, neden bu?"**
 Savunmaya geçmeyin. "Hangisine baktınız?" diye sorun, sonra somut farka

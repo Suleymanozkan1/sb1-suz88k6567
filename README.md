@@ -632,29 +632,138 @@ fiyatı yazılmaz. Sağlayıcı hiç cevap vermezse **eski kur durur** ve
 tablo temizlenmez: bir dakikalık kesinti ekrandaki kuru silmemeli,
 satırın kendi tarihi zaten ne kadar eski olduğunu söyler.
 
-**Hava durumu.** Sağlayıcı AccuWeather (`ACCUWEATHER_API_KEY`). Her
-işletmenin konum anahtarı panelden girilir (Firmalarım → işletme →
-"Hava durumu konum anahtarı"); boş bırakılan işletme için tahmin
-çekilmez. Ücretsiz katman yalnızca birkaç günlük tahmin verdiği için
-**uzak tarihlerde satır hiç yazılmaz** ve ekran "Tahmin henüz mevcut
-değil" der. Boş satır yazılsaydı düğün gününde "0°" görünür, olmayan bir
-tahmin doğruymuş gibi sunulurdu. Bugünün satırında ayrıca o anki
-sıcaklık tutulur; gözlem alınamazsa yalnızca o alan boş kalır, tahmin
-yine gösterilir.
+**GİB doğrudan entegrasyon (isteğe bağlı modül).** Faturalar
+varsayılan olarak özel entegratörden (Paraşüt) gider. Kendi
+mükellefiyetiniz için GİB'e **doğrudan** bağlanmak isterseniz ayrı bir
+modül var (`api/_gib*.ts`).
+
+**Kapsam sınırı, kodla değil mevzuatla çizili.** Doğrudan entegrasyon
+izni, izni alan mükellefin **kendi** faturaları içindir. Sahra Takip'i
+kullanan salonların faturaları bu yolla kesilemez — başka mükellefler
+adına fatura kesmek **özel entegratör lisansı** gerektirir. Modül bu
+ayrımı kodda zorluyor: yalnızca `GIB_VKN` ile eşleşen işletmenin
+faturasını doğrudan gönderiyor, diğerleri entegratöre düşüyor. Bu bir
+ayar değil, kullanıcının değiştiremeyeceği bir kural.
+
+İki ön koşul kodla sağlanamaz: **GİB entegrasyon onayı** ve **mali
+mühür** (TÜBİTAK KamuSM). İkisi tamamlanmadan modül yapılandırılmamış
+sayılır ve devreye girmez.
+
+| Katman | Dosya | Nasıl doğrulandı |
+|---|---|---|
+| UBL-TR 1.2 belge üretimi | `_gib_ubl.ts` | Birim testi (19) |
+| Fatura kurma, senaryo, durum kodları | `_gib.ts` | Birim testi (17) |
+| XAdES-BES imzalama | `_gib_imza.ts`, `_gib_imzala.ts` | **Gerçek anahtarla imzala → doğrula** (11) |
+| Zarf, zip, SOAP gövdesi | `_gib_zarf.ts` | **Ürettiği zip sistem `unzip`'iyle açılıyor** (16) |
+| GİB'in kabul etmesi | — | **Doğrulanmadı** — onay + mali mühür gerekir |
+
+İmza "yazıldı, umarım doğrudur" bırakılmadı. Testte yerel bir sertifika
+üretiliyor, belge onunla imzalanıyor ve **imza bağımsız olarak
+doğrulanıyor**; ayrıca belge sonradan kurcalandığında doğrulamanın
+**düştüğü** de sınanıyor. Bu, özet → kanonikleştirme → imza zincirinin
+kendi içinde tutarlı olduğunu gösteriyor. Zip de aynı şekilde: elle
+kuruluyor ve sistemin kendi `unzip`'iyle açılabildiği sınanıyor (yapı
+yanlış olsaydı GİB "paket bütünlüğü bozuk" dönerdi).
+
+Doğrulanmayan tek şey **GİB'in bu imzayı kabul edip etmediği**; onu
+ancak gerçek mali mühür ve GİB test ortamı gösterir. Bu sınır bilinçli
+olarak belgeleniyor.
+
+**Tek sunucu bağımlılığı.** Projede sunucu tarafında başka çalışma
+zamanı bağımlılığı yok; `xml-crypto` bilinçli bir istisna. Exclusive
+C14N'i elle yazmak (ad alanı yayılımı, öznitelik sırası, boşluk işleme)
+buradaki en riskli kod olurdu: yanlış kanonikleştirme, imzanın
+matematiksel olarak doğru ama GİB tarafından reddedilir olması demek.
+Kütüphane istemci paketine girmiyor (derleme çıktısında sıfır eşleşme).
+
+Bir not daha: düğün müşterileri şahıs olduğu için kesilecek belge
+e-Fatura değil **e-Arşiv Fatura**'dır ve e-Arşiv'in gelen kutusu yoktur.
+"Size kesilen faturaları görmek" e-Fatura (B2B) tarafındadır.
+
+**Hava durumu.** Sağlayıcı **Meteoroloji Genel Müdürlüğü**
+(`servis.mgm.gov.tr`). **Anahtar gerekmiyor**: kayıt, ücret ve kota yok
+-- AccuWeather'dan bu yüzden geçildi.
+
+Konum da elle girilmiyor. İşletmenin **il ve ilçesinden** MGM istasyonu
+bulunup `businesses.weather_station` alanına yazılır; yeni bir salon
+eklendiğinde alan boş gelir ve ilk çekimde kendiliğinden dolar. İli
+girilmemiş işletme için tahmin çekilmez ve sebebi görev günlüğüne
+yazılır.
+
+İki ayrı görev çalışır:
+
+| Görev | Sıklık | Ne çeker |
+|---|---|---|
+| `/api/hava` | her gün 05:15 | MGM'nin verdiği bütün günler (5 gün) + o anki sıcaklık |
+| `/api/hava-saatlik` | her saat :20 | O günün saat saat tahmini; eski saatleri temizler |
+
+Saatlik veri ayrı tutuluyor çünkü gün ortalaması "düğün saatinde yağmur
+var mı" sorusunu yanıtlamıyor: 30 derece açık bir günün 19:00'unda
+sağanak olabilir. Şerit Özet ekranında ve rezervasyon kartında görünür.
+
+MGM'nin tahmini beş gün olduğu için **uzak tarihlerde satır hiç
+yazılmaz** ve ekran "Tahmin henüz mevcut değil" der. Boş satır
+yazılsaydı düğün gününde "0°" görünür, olmayan bir tahmin doğruymuş gibi
+sunulurdu. Bugünün satırında ayrıca o anki sıcaklık tutulur; gözlem
+alınamazsa yalnızca o alan boş kalır, tahmin yine gösterilir.
+
+MGM belgelenmiş bir API değil; alan adları değişirse tahmin sessizce boş
+kalabilir. Bunun için uç noktada **tanı kipi** var:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  "https://<alan-adiniz>/api/hava?tani=1&il=Konya"
+```
+
+Ham MGM yanıtını olduğu gibi döndürür; alan adı farkı tek istekte
+görülür.
 
 **Özel günler.** Takvimde bayram, arife, kandil, resmî tatil ve okul
-tarihleri renkli nokta ve etiketle işaretlenir. Resmî tatiller, dini
-bayramlar, arifeler ve kandiller **otomatik çekilir**
-(`api/ozel-gunler.ts`, ayda bir); panelden elle girilecek tek şey okul
-tarihleri ve salonun kendi günleridir.
+tatilleri renkli etiketle işaretlenir. Hepsi **otomatik çekilir**
+(`api/ozel-gunler.ts` ve `api/meb-takvim.ts`, ayda bir); panelden elle
+girilecek tek şey salonun kendi günleri ve yerel istisnalardır.
 
-Üç kalem, üç ayrı güven düzeyi:
+Dört kalem, dört ayrı güven düzeyi:
 
 | Kalem | Nereden | Kesinlik |
 |---|---|---|
 | Resmî tatil, dini bayram | Ücretsiz tatil sağlayıcısı, anahtar istemez | Sağlayıcı ne derse o; uzak yıllar "kesinleşmedi" |
 | Arife | Bayramın bir gün öncesi | Bayram kadar kesin — bu bir tanım, tahmin değil |
 | Kandil | Hicri takvimden, **bayrama göre ofsetle** | Hesaplanıyor; her zaman "kesinleşmedi" |
+| Okul tatilleri | MEB çalışma takvimi duyurusu | Resmî ilan; kesin |
+
+**Okul takvimi nasıl bulunuyor.** MEB takvimi makine okunur biçimde
+yayımlamıyor: her yıl mayıs-haziranda bir haber metni çıkıyor ve haber
+**adresteki başlıkla değil kimlikle** çözülüyor — yani yıldan adres
+üretmek mümkün değil. Görev, MEB'in haber arşivini **tek istekle**
+tamamen alıp (~2500 kayıt) başlığı `egitim-ogretim-yili-takvimi` geçen
+duyuruları kendisi buluyor. Hiçbir haber kimliği koda gömülü değil.
+
+Son **iki** eğitim yılı işleniyor: yalnızca en yenisi alınsaydı, yeni
+takvim henüz yayımlanmamışken içinde bulunulan yılın tatilleri de
+yazılmazdı.
+
+Duyurunun cümle kalıbı yıldan yıla değişiyor ve çözümleyici üçünü de
+karşılıyor:
+
+| Yıl | Metindeki ifade |
+|---|---|
+| 2026-2027 | `16 Kasım 2026 Pazartesi günü başlayacak ve 20 Kasım 2026 Cuma günü sona erecek` |
+| 2025-2026 | `10-14 Kasım arasında yapılacak` — yıl yok, kısa aralık |
+| 2024-2025 | `11-15 Kasım 2024'te yapılacak` — kısa aralık, yıl var |
+
+Tatil aralıkları **gün gün** yazılır ki takvimde blok olarak görünsün;
+yalnızca uçlar yazılsaydı aradaki bir güne düşen düğün için ekranda
+hiçbir işaret olmazdı.
+
+**Çözülemezse hiçbir şey yazılmaz.** Boş liste gönderilseydi veritabanı
+o yılın kayıtlarını silip yerine bir şey koymazdı ve MEB'in bir sayfa
+değişikliği takvimi boşaltırdı. Sebebi görmek için:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  "https://<alan-adiniz>/api/meb-takvim?tani=1"
+```
 
 **Kandil neden ofsetle hesaplanıyor?** İki bağımsız takvim — tatil
 sağlayıcısı ve hicri takvim servisi — uzak yıllarda bir gün kayabiliyor;

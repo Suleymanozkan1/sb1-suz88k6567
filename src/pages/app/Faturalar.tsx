@@ -198,7 +198,7 @@ export default function Faturalar() {
     }
   }
 
-  if (!can('kasa.goruntule')) {
+  if (!can('fatura.goruntule')) {
     return <Alert kind="error">Faturaları görüntüleme yetkiniz bulunmuyor.</Alert>;
   }
 
@@ -208,7 +208,7 @@ export default function Faturalar() {
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Faturalar</h1>
-        {can('kasa.duzenle') && (
+        {can('fatura.duzenle') && (
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setSecimAcik((v) => !v)} className="btn-outline btn-sm">
               Kayıtlı Müşterilerden Seç
@@ -245,7 +245,7 @@ export default function Faturalar() {
         değiştirilebilir ve sonradan rezervasyon düzeltildiğinde kesilmiş
         fatura değişmez.
       */}
-      {secimAcik && can('kasa.duzenle') && (
+      {secimAcik && can('fatura.duzenle') && (
         <section className="card mb-6 p-5" aria-labelledby="musteri-sec-baslik">
           <h2 id="musteri-sec-baslik" className="mb-3 font-heading text-lg font-bold text-brand">
             Kayıtlı müşteriler
@@ -278,7 +278,7 @@ export default function Faturalar() {
         </section>
       )}
 
-      {showForm && can('kasa.duzenle') && (
+      {showForm && can('fatura.duzenle') && (
         <form onSubmit={(e) => { void submit(e); }} noValidate className="card mb-6 p-6">
           <h2 className="mb-4 font-heading text-lg font-bold text-brand">Yeni Fatura</h2>
           {formError && <Alert kind="error" className="mb-4">{formError}</Alert>}
@@ -471,7 +471,7 @@ export default function Faturalar() {
                     <Link to={`/panel/faturalar/${invoice.id}`} className="mr-2 text-xs underline">
                       Görüntüle
                     </Link>
-                    {can('kasa.duzenle') && invoice.status !== 'iptal' && (
+                    {can('fatura.duzenle') && invoice.status !== 'iptal' && (
                       <button type="button" onClick={() => setToCancel(invoice)}
                         className="text-xs text-[#b91c1c] hover:underline">
                         İptal et

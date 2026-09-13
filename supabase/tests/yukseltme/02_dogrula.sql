@@ -239,4 +239,49 @@ begin
   end if;
 end $$;
 
+\echo '=== 11) Fatura denetim kaydi ARTIK kapsamiyla yaziliyor ==='
+do $$
+declare
+  v_owner uuid := '11111111-1111-1111-1111-111111111111';
+  v_biz   uuid := '22222222-2222-2222-2222-222222222222';
+  v_fat   uuid;
+  v_adet  integer;
+begin
+  /*
+    0005 denetim tetikleyicisini faturaya bagliyordu ama
+    `write_audit_log` icinde `invoices` dali YOKTU: kayitlar
+    `owner_id`, `record_id` ve `summary` alanlari bos yaziliyor, denetim
+    ekraninin politikasi (`owner_id = owner_scope()`) ise onlari hic
+    gostermiyordu. 0040 dali ekliyor.
+
+    ESKI KAYITLAR kurtarilamiyor: eksik dal yuzunden o satirlarda
+    faturaya baglanacak hicbir alan yok. Sinanabilecek sey, gocten
+    SONRAKI hareketin dogru yazilmasi -- asagidaki fatura 0040
+    uygulandiktan sonra ekleniyor.
+  */
+  select id into v_fat from public.invoices where business_id = v_biz limit 1;
+  if v_fat is null then
+    raise exception 'BASARISIZ: test kurulumu bozuk, eski fatura yok';
+  end if;
+
+  update public.invoices set note = 'denetim sinamasi' where id = v_fat;
+
+  select count(*) into v_adet from public.audit_log
+  where table_name = 'invoices' and record_id = v_fat::text and owner_id = v_owner;
+  if v_adet = 0 then
+    raise exception 'BASARISIZ: yeni fatura denetim kaydi kapsamsiz yazildi';
+  end if;
+
+  -- Denetim fonksiyonu da gormeli.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_owner)::text, true);
+  set local role authenticated;
+  select count(*) into v_adet from public.fatura_denetim_kaydi(500)
+  where record_id = v_fat::text;
+  reset role;
+  if v_adet = 0 then
+    raise exception 'BASARISIZ: denetim fonksiyonu yeni fatura kaydini gormedi';
+  end if;
+end $$;
+
 \echo '=== YUKSELTME TESTI GECTI ==='

@@ -16,6 +16,7 @@ import {
 } from '../../lib/queries';
 import { kasayaGirdiMi } from '../../lib/odemeOlayi';
 import { havaMetni, tahminBul } from '../../lib/hava';
+import { SaatlikHava } from '../../components/HavaDurumu';
 import OdemeGecmisi from '../../components/OdemeGecmisi';
 import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
@@ -253,6 +254,13 @@ export default function RezervasyonDetay() {
               value={havaMetni(tahminBul(havaTahminleri, reservation.date))}
             />
             <Info label="Adres" value={reservation.address || '-'} className="sm:col-span-2" />
+            {/*
+              Düğün gününün saat saat havası. Gün ortalaması "30 derece,
+              açık" diyor olabilirken tören saati 19:00'da sağanak
+              olabiliyor; bahçe kurulumu kararı bu şeride bakıyor.
+              Tahmin yoksa bileşen hiç çizilmiyor.
+            */}
+            <SaatlikHava gun={reservation.date} className="sm:col-span-2 mt-1" />
             <Info
               label="Bize nereden ulaştı"
               value={reservation.sourceChannel

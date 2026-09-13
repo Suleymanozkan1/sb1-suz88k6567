@@ -1,27 +1,46 @@
 /**
  * Hava durumu tahmini (zamanlanmış görev, madde 29).
  *
- * Sağlayıcı AccuWeather. İşletmenin `weather_location` alanındaki konum
- * anahtarı için günlük tahmin çekilip `weather_forecasts` tablosuna
- * yazılıyor; panel o tablodan okuyor.
+ * Sağlayıcı: Meteoroloji Genel Müdürlüğü (servis.mgm.gov.tr).
+ * AccuWeather'dan buraya geçildi çünkü MGM anahtar istemiyor, kotası
+ * yok ve veri resmî kaynaktan geliyor.
  *
- * Anahtar SUNUCUDA: `ACCUWEATHER_API_KEY`. Tarayıcıdan çekilseydi
- * anahtar istemciye inerdi ve her açılan sekme sağlayıcının günlük
- * kotasından yerdi.
+ * GÜNDE BİR KEZ çalışır ve çekebildiği BÜTÜN günleri yazar. Saatlik
+ * tahmin ayrı bir görevde (`api/hava-saatlik.ts`), saatte bir.
  *
- * UZAK TARİHLER İÇİN SATIR YAZILMIYOR. Ücretsiz katman yalnızca birkaç
- * günlük tahmin veriyor; bir yıl sonraki düğün için sağlayıcıda veri
- * yok. Boş bir satır yazılsaydı ekranda "0°" görünür, salon sahibi
- * olmayan bir tahmine bakardı. Satır olmadığında arayüz "Tahmin henüz
- * mevcut değil" diyor.
+ * KONUM ELLE GİRİLMİYOR. İşletmenin il/ilçesinden MGM istasyonu
+ * bulunup `businesses.weather_station` alanına yazılıyor; bir sonraki
+ * çalışmada arama tekrarlanmıyor. Yeni bir salon eklendiğinde alan boş
+ * gelir ve ilk çalışmada kendiliğinden dolar.
+ *
+ * UZAK TARİHLER İÇİN SATIR YAZILMIYOR. MGM'nin tahmini beş gün; bir yıl
+ * sonraki düğün için hiçbir sağlayıcıda veri yok. Boş bir satır
+ * yazılsaydı ekranda "0°" görünür, salon sahibi olmayan bir tahmine
+ * bakardı. Satır olmadığında arayüz "Tahmin henüz mevcut değil" diyor.
  */
-import { isAuthorizedCron, isDbConfigured, selectRows, upsertRows } from './_db';
+import { isAuthorizedCron, isDbConfigured, patchRows, selectRows, upsertRows } from './_db';
 import { json } from './_guard';
+import {
+  gunlukCoz, merkezSec, merkezleriCoz, mgmCek, sonDurumCoz, type Merkez,
+} from './_mgm';
 
 interface IsletmeSatiri {
   id: string;
   name: string;
-  weather_location: string;
+  city: string;
+  district: string;
+  weather_station: string;
+  weather_station_hourly: string;
+  weather_station_current: string;
+}
+
+/** Bir işletmenin MGM istasyon numaraları. */
+export interface Istasyonlar {
+  gunluk: string;
+  saatlik: string;
+  sonDurum: string;
+  /** Bu çalışmada yeni bulunduysa veritabanına yazılacak. */
+  yeni: boolean;
 }
 
 export interface HavaSatiri {
@@ -32,73 +51,9 @@ export interface HavaSatiri {
   current_c: number | null;
   summary: string;
   icon: string;
-}
-
-const ACCU_KOK = 'https://dataservice.accuweather.com';
-
-function sayiVeyaNull(deger: unknown): number | null {
-  const n = Number(deger);
-  return Number.isFinite(n) ? n : null;
-}
-
-/**
- * AccuWeather günlük tahmin yanıtını çözer.
- *
- * Sıcaklık `Metric` altından okunuyor; istek `metric=true` ile
- * atılıyor. `Imperial` okunsaydı Fahrenheit değerler Celsius sanılıp
- * yazılırdı ve 68° bir yaz günü gibi görünürdü.
- *
- * `EpochDate` yerine `Date` alanının ilk 10 karakteri kullanılıyor:
- * epoch, sunucunun saat dilimine göre bir gün kayabiliyor.
- */
-export function accuweatherCevir(govde: unknown, businessId: string): HavaSatiri[] {
-  const kok = govde as { DailyForecasts?: unknown };
-  const liste = Array.isArray(kok?.DailyForecasts) ? kok.DailyForecasts : [];
-
-  const satirlar: HavaSatiri[] = [];
-  for (const ham of liste as Record<string, unknown>[]) {
-    const gun = String(ham.Date ?? '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(gun)) continue;
-
-    const sicaklik = (ham.Temperature ?? {}) as Record<string, Record<string, unknown>>;
-    const gunduz = (ham.Day ?? {}) as Record<string, unknown>;
-
-    const min = sayiVeyaNull(sicaklik.Minimum?.Value);
-    const max = sayiVeyaNull(sicaklik.Maximum?.Value);
-    const ozet = String(gunduz.IconPhrase ?? '').trim();
-
-    /*
-      Ne sıcaklık ne özet varsa satır yazılmıyor: içi boş bir kayıt,
-      "tahmin var ama bilinmiyor" gibi görünürdü.
-    */
-    if (min === null && max === null && !ozet) continue;
-
-    satirlar.push({
-      business_id: businessId,
-      day: gun,
-      min_c: min,
-      max_c: max,
-      current_c: null,
-      summary: ozet,
-      icon: gunduz.Icon === undefined || gunduz.Icon === null ? '' : String(gunduz.Icon),
-    });
-  }
-  return satirlar;
-}
-
-/**
- * AccuWeather anlık gözlem yanıtından o anki sıcaklığı çıkarır.
- *
- * Ayrı bir tabloya yazılmıyor; bugünün tahmin satırına işleniyor.
- * Gözlem alınamazsa null dönüyor ve o alan boş kalıyor -- tahmin yine
- * de gösteriliyor, yalnızca "şu an" satırı görünmüyor.
- */
-export function guncelSicakligiCoz(govde: unknown): number | null {
-  const liste = Array.isArray(govde) ? govde : [];
-  const ilk = liste[0] as Record<string, unknown> | undefined;
-  if (!ilk) return null;
-  const sicaklik = (ilk.Temperature ?? {}) as Record<string, Record<string, unknown>>;
-  return sayiVeyaNull(sicaklik.Metric?.Value);
+  humidity: number | null;
+  wind_kmh: number | null;
+  hadise: string;
 }
 
 /** Bugünün tarihi (UTC). Sunucu Türkiye'de de olsa gün sınırı aynı kalsın. */
@@ -106,81 +61,180 @@ function bugun(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * İşletmenin MGM istasyon numaralarını bulur.
+ *
+ * Kayıtlı numara varsa yeniden aranmıyor: her çalışmada arama yapmak,
+ * MGM'ye işletme başına fazladan bir istek demekti.
+ *
+ * İlçe biliniyorsa ÖNCE ilçeyle soruluyor. `?il=Konya` sorgusu ilin
+ * yalnızca birincil merkezini (Meram) döndürüyor; ilçesi Ereğli olan bir
+ * salon o listede hiç yok ve il merkezinin havasını görürdü.
+ */
+export async function istasyonBul(
+  isletme: IsletmeSatiri,
+  cek: (yol: string) => Promise<unknown> = mgmCek,
+): Promise<Istasyonlar | null> {
+  const kayitli = isletme.weather_station.trim();
+  if (kayitli) {
+    return {
+      gunluk: kayitli,
+      // Eski kayıtta yalnızca günlük numara olabilir; ona düşülüyor.
+      saatlik: isletme.weather_station_hourly.trim() || kayitli,
+      sonDurum: isletme.weather_station_current.trim()
+        || isletme.weather_station_hourly.trim() || kayitli,
+      yeni: false,
+    };
+  }
+
+  const il = isletme.city.trim();
+  if (!il) return null;
+  const ilce = isletme.district.trim();
+
+  const sorgular = ilce
+    ? [`/merkezler?il=${encodeURIComponent(il)}&ilce=${encodeURIComponent(ilce)}`,
+       `/merkezler?il=${encodeURIComponent(il)}`]
+    : [`/merkezler?il=${encodeURIComponent(il)}`];
+
+  for (const yol of sorgular) {
+    let merkezler: Merkez[];
+    try {
+      merkezler = merkezleriCoz(await cek(yol));
+    } catch {
+      continue;
+    }
+    const secilen = merkezSec(merkezler, ilce);
+    if (secilen) {
+      return {
+        gunluk: secilen.gunlukNo,
+        saatlik: secilen.saatlikNo,
+        sonDurum: secilen.sonDurumNo,
+        yeni: true,
+      };
+    }
+  }
+  return null;
+}
+
 export default async function handler(request: Request): Promise<Response> {
-  // Cron dışı çağrılara kapalı: sağlayıcı kotası herkese açık bir uç
-  // noktadan tüketilebilmemeli.
+  // Cron dışı çağrılara kapalı: sağlayıcıya herkese açık bir uç
+  // noktadan yük bindirilememeli.
   if (!isAuthorizedCron(request)) return json({ error: 'Yetkisiz.' }, 401);
   if (!isDbConfigured()) return json({ error: 'Veritabanı yapılandırması eksik.' }, 500);
 
-  const anahtar = process.env.ACCUWEATHER_API_KEY;
-  if (!anahtar) {
-    /*
-      Sessizce başarılı dönmüyor: hava durumu boş kaldığında sebebinin
-      "sağlayıcı tanımlı değil" olduğu görev günlüğünden okunabilmeli.
-    */
-    return json({ error: 'ACCUWEATHER_API_KEY tanımlı değil.' }, 500);
+  /*
+    Tanı kipi: MGM belgelenmiş bir API değil. Alan adları değişirse
+    tahmin sessizce boş kalır. `?tani=1` ile ham yanıt dönüyor, böylece
+    sorunun kaynağı tek istekle görülebiliyor.
+  */
+  const url = new URL(request.url);
+  if (url.searchParams.get('tani') === '1') {
+    const istno = url.searchParams.get('istno');
+    const il = url.searchParams.get('il');
+    try {
+      const yol = istno
+        ? `/tahminler/gunluk?istno=${encodeURIComponent(istno)}`
+        : `/merkezler?il=${encodeURIComponent(il ?? 'Ankara')}`;
+      return json({ yol, ham: await mgmCek(yol) });
+    } catch (error) {
+      return json({ error: 'MGM yanıt vermedi.', detail: String(error) }, 502);
+    }
   }
 
   let isletmeler: IsletmeSatiri[];
   try {
     isletmeler = await selectRows<IsletmeSatiri>(
-      'businesses?select=id,name,weather_location&weather_location=neq.',
+      'businesses?select=id,name,city,district,weather_station,weather_station_hourly,weather_station_current',
     );
   } catch (error) {
     return json({ error: 'İşletmeler okunamadı.', detail: String(error) }, 502);
   }
 
   const gun = bugun();
-  const sonuc: { business: string; days: number; detail: string }[] = [];
+  const sonuc: { business: string; days: number; station: string; detail: string }[] = [];
 
   for (const isletme of isletmeler) {
-    const konum = encodeURIComponent(isletme.weather_location.trim());
-    let satirlar: HavaSatiri[];
+    const istasyon = await istasyonBul(isletme);
+    if (!istasyon) {
+      /*
+        İli boş bir işletme için sessizce geçilmiyor: hava durumunun
+        neden görünmediği görev günlüğünden okunabilmeli.
+      */
+      sonuc.push({
+        business: isletme.id, days: 0, station: '',
+        detail: isletme.city.trim() ? 'MGM istasyonu bulunamadı.' : 'İşletmenin ili girilmemiş.',
+      });
+      continue;
+    }
 
-    try {
-      const yanit = await fetch(
-        `${ACCU_KOK}/forecasts/v1/daily/5day/${konum}?apikey=${encodeURIComponent(anahtar)}&language=tr-tr&metric=true`,
-        { signal: AbortSignal.timeout(15_000) },
-      );
-      if (!yanit.ok) {
-        sonuc.push({ business: isletme.id, days: 0, detail: `Sağlayıcı ${yanit.status} döndü.` });
-        continue;
+    // Bulunan numaralar kaydediliyor: bir dahaki sefere arama yapılmasın.
+    if (istasyon.yeni) {
+      try {
+        await patchRows(`businesses?id=eq.${isletme.id}`, {
+          weather_station: istasyon.gunluk,
+          weather_station_hourly: istasyon.saatlik,
+          weather_station_current: istasyon.sonDurum,
+        });
+      } catch {
+        /* yazılamadıysa tahmin yine çekiliyor; yalnızca arama tekrarlanır */
       }
-      satirlar = accuweatherCevir(await yanit.json(), isletme.id);
+    }
+
+    let satirlar: HavaSatiri[];
+    try {
+      const tahminler = gunlukCoz(
+        await mgmCek(`/tahminler/gunluk?istno=${encodeURIComponent(istasyon.gunluk)}`),
+      );
+      satirlar = tahminler.map((t) => ({
+        business_id: isletme.id,
+        day: t.gun,
+        min_c: t.minC,
+        max_c: t.maxC,
+        current_c: null,
+        /*
+          `summary` hadise kodunun kendisini taşıyor; okunur adı
+          istemcide üretiliyor (src/lib/mgm.ts). Sunucuda çevrilseydi
+          ad değiştiğinde geçmiş satırlar eski adla kalırdı.
+        */
+        summary: t.hadise,
+        icon: t.hadise,
+        humidity: t.nem,
+        wind_kmh: t.ruzgarKmh,
+        hadise: t.hadise,
+      }));
     } catch (error) {
-      sonuc.push({ business: isletme.id, days: 0, detail: String(error) });
+      sonuc.push({ business: isletme.id, days: 0, station: istasyon.gunluk, detail: String(error) });
       continue;
     }
 
     /*
-      Anlık gözlem ayrı bir istek ve BAŞARISIZLIĞI tahminin yazılmasını
-      engellemiyor: "şu an kaç derece" bilgisi olmadan da düğün günü
-      tahmini işe yarıyor.
+      Anlık gözlem AYRI bir istek ve başarısızlığı tahminin yazılmasını
+      engellemiyor: "şu an kaç derece" olmadan da düğün günü tahmini işe
+      yarıyor.
     */
     try {
-      const yanit = await fetch(
-        `${ACCU_KOK}/currentconditions/v1/${konum}?apikey=${encodeURIComponent(anahtar)}&language=tr-tr`,
-        { signal: AbortSignal.timeout(15_000) },
+      const simdi = sonDurumCoz(
+        await mgmCek(`/sondurumlar?istNo=${encodeURIComponent(istasyon.sonDurum)}`),
       );
-      if (yanit.ok) {
-        const simdi = guncelSicakligiCoz(await yanit.json());
-        const bugunSatiri = satirlar.find((s) => s.day === gun);
-        if (bugunSatiri && simdi !== null) bugunSatiri.current_c = simdi;
-      }
+      const bugunSatiri = satirlar.find((s) => s.day === gun);
+      if (bugunSatiri && simdi !== null) bugunSatiri.current_c = simdi;
     } catch {
       /* gözlem alınamadı; tahmin yine de yazılıyor */
     }
 
     if (satirlar.length === 0) {
-      sonuc.push({ business: isletme.id, days: 0, detail: 'Sağlayıcı tahmin vermedi.' });
+      sonuc.push({
+        business: isletme.id, days: 0, station: istasyon.gunluk,
+        detail: 'MGM tahmin vermedi.',
+      });
       continue;
     }
 
     try {
       await upsertRows('weather_forecasts', satirlar, 'business_id,day');
-      sonuc.push({ business: isletme.id, days: satirlar.length, detail: '' });
+      sonuc.push({ business: isletme.id, days: satirlar.length, station: istasyon.gunluk, detail: '' });
     } catch (error) {
-      sonuc.push({ business: isletme.id, days: 0, detail: String(error) });
+      sonuc.push({ business: isletme.id, days: 0, station: istasyon.gunluk, detail: String(error) });
     }
   }
 

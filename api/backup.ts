@@ -35,9 +35,21 @@ export default async function handler(request: Request): Promise<Response> {
     try {
       run = await insertRow<BackupRun>('backup_runs', { owner_id: owner.id, status: 'calisiyor' });
 
-      const data = await callRpc<unknown>('export_owner_data', { p_owner_id: owner.id });
+      const data = await callRpc<Record<string, unknown>>(
+        'export_owner_data', { p_owner_id: owner.id });
+      /*
+        Faturalar ayrı bir çağrıyla alınıyor: bölme yapılmış kurulumda
+        başka bir veritabanında duruyorlar (docs/IKI-SUNUCU.md) ve
+        `export_owner_data` onları göremiyor. Yönlendirme kararını sunucu
+        veriyor, burada iki adres bilinmiyor.
+
+        Sonuç TEK dosyada birleşiyor. İki ayrı yedek dosyası olsaydı biri
+        eksik kaldığında ancak geri yükleme gününde fark edilirdi.
+      */
+      const fatura = await callRpc<Record<string, unknown>>(
+        'export_invoice_data', { p_owner_id: owner.id });
       const counts = await callRpc<unknown>('backup_row_counts', { p_owner_id: owner.id });
-      const content = JSON.stringify(data);
+      const content = JSON.stringify({ ...data, ...fatura });
 
       const stamp = new Date().toISOString().slice(0, 10);
       const path = `${owner.id}/${stamp}.json`;

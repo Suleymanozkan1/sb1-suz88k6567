@@ -85,6 +85,34 @@ Sıra önemlidir ve atlanamaz:
 >
 > Gelir/gider kayıtları, rezervasyonlar ve tahsilatlar etkilenmez.
 
+- `0036` panel yetkilerini yediden yirmi beşe çıkarır ve panelin daha önce
+  hiçbir yetkiye bağlı olmayan ekranlarını (müşteriler, ürün-hizmet,
+  müşteri adayları, hatırlatmalar, SMS kayıtları, İYS izinleri) kendi
+  yetkilerine bağlar.
+
+> **`0036` kimsenin erişimini daraltmaz.** Göç, her personele bugün fiilen
+> yapabildiği işin karşılığını yazar: yetkiye bağlı olmayan ekranlar
+> herkese açıktı, o yüzden herkese verilir; `ayarlar.duzenle` panelin
+> yönetim tarafının tamamıydı, parçalarına açılır. Taşınan kayıt
+> `profiles.permissions_version = 1` ile damgalanır; göç yeniden
+> çalıştırılırsa listeyi ikinci kez genişletmez.
+>
+> Göçten SONRA açılan personel hesabının varsayılanı yalnızca
+> görüntülemedir (rezervasyon, müşteri, tanımlar). Eskiden varsayılan tam
+> yetkiydi: elle daraltılmadıkça yeni açılan her hesap kasayı da silmeyi
+> de yapabiliyordu. Yeni hesapların yetkisini Kullanıcılar ekranından
+> verin; "Tüm yetkileri ver" kutusu hepsini tek hamlede işaretler.
+
+- `0038` hava durumunu MGM'ye taşır: `weather_hourly` tablosu ve üç
+  istasyon numarası kolonu. `ACCUWEATHER_API_KEY` artık okunmuyor.
+- `0039` MEB okul takvimini yazan `okul_gunlerini_yaz` fonksiyonunu kurar.
+  Okul tarihleri artık elle girilmiyor; ayda bir MEB duyurusundan çekilir.
+
+- `0037` rezervasyona `city` ve `district` kolonları ekler (il bazlı rapor).
+  Alanlar isteğe bağlı; eski kayıtlarda boş kalır ve rapor onları
+  "Belirtilmemiş" satırında toplar. Boş ili işletmenin iliyle doldurmak,
+  gerçekte başka ilden gelen müşterileri yanlış ile yazmak olurdu.
+
 PostgREST'in bağlanacağı role şifre verin:
 
 ```bash
@@ -161,6 +189,10 @@ sudo chmod 700 /var/lib/sahra/yedekler
 PORT=8787
 DIST_DIZINI=/opt/sahra/dist
 PGRST_URL=http://127.0.0.1:3000
+# Fatura verisi Türkiye'deki ayrı bir sunucuda tutulacaksa (VUK) o
+# sunucudaki PostgREST'in adresi. Boş bırakılırsa her şey tek
+# veritabanında kalır. Ayrıntı: docs/IKI-SUNUCU.md
+PGRST_FATURA_URL=
 JWT_SECRET=<JWT_SECRET>
 OTP_SECRET=<OTP_SECRET>
 CRON_SECRET=<CRON_SECRET>
@@ -183,6 +215,10 @@ PARASUT_CLIENT_SECRET=<...>
 PARASUT_USERNAME=<...>
 PARASUT_PASSWORD=<...>
 PARASUT_COMPANY_ID=<...>
+
+# Yönetici bildirimleri WhatsApp'tan gidecekse (bölüm 11)
+WHATSAPP_WEB_ETKIN=0
+WHATSAPP_WEB_OTURUM=/var/lib/sahra/whatsapp-oturum
 
 # WhatsApp (isteğe bağlı)
 WHATSAPP_VERIFY_TOKEN=<...>
@@ -421,6 +457,62 @@ git push
 
 Veritabanı göçleri otomatik uygulanmadığı için geri alma yalnızca kodu
 etkiler; veri olduğu gibi kalır.
+
+## 11. Yönetici bildirimleri WhatsApp'tan (isteğe bağlı)
+
+Ödeme uyarıları SMS yerine WhatsApp'tan gidebilir; mesajlar yöneticinin
+telefonunda o sohbette kalıcı olarak birikir ve Meta'ya ücret ödenmez.
+
+**AYRI BİR NUMARA GEREKİR.** Meta'nın kuralı: bir numara Cloud API ile
+WhatsApp uygulamasında aynı anda kullanılamaz. Müşteri adaylarını
+yakalayan numara Cloud API'ye kayıtlıysa bu yol için ikinci bir hat
+alınmalıdır.
+
+**RİSK.** Otomatik gönderim WhatsApp'ın kullanım şartlarına aykırıdır ve
+numara banlanabilir. Sistem riski şöyle sınırlıyor: yalnızca yönetici
+bildirimleri bu yoldan gider (müşteriye giden hiçbir mesaj geçmez),
+gönderimler arasına bekleme konur, günlük tavan kanaldan bağımsız
+uygulanır. Ban gelirse yalnızca bu ikinci numara etkilenir; müşteri
+iletişim numarası etkilenmez ve bildirimler SMS'ten gitmeye devam eder.
+
+```bash
+# /etc/sahra.env
+WHATSAPP_WEB_ETKIN=1
+WHATSAPP_WEB_OTURUM=/var/lib/sahra/whatsapp-oturum
+```
+
+```bash
+sudo mkdir -p /var/lib/sahra/whatsapp-oturum
+sudo chown www-data:www-data /var/lib/sahra/whatsapp-oturum
+sudo chmod 700 /var/lib/sahra/whatsapp-oturum
+```
+
+Eşleştirme bir kerelik ve SSH'den yapılır:
+
+```bash
+cd /opt/sahra
+sudo -u www-data --preserve-env=WHATSAPP_WEB_ETKIN,WHATSAPP_WEB_OTURUM \
+  node sunucu-dist/sunucu/whatsapp-esle.js
+```
+
+Terminalde bir QR çıkar. İkinci telefondan **WhatsApp > Ayarlar > Bağlı
+cihazlar > Cihaz bağla** ile okutun. "BAĞLANDI" yazdığında oturum diske
+yazılmıştır; sunucu bundan sonra kendisi bağlanır.
+
+> **QR panelde neden yok?** O kare, WhatsApp hesabına cihaz bağlama
+> yetkisi verir: gören herkes hesabı kendi cihazına bağlayabilir.
+> Tarayıcıya açılan bir uç nokta olsaydı yetkilendirmede yapılacak tek
+> bir hata hesabın devredilmesi demekti.
+
+Son adım panelde: **Ödeme Bildirimleri** ekranında ilgili yöneticinin
+kanalını `WhatsApp` yapın. Kanalı `SMS` kalanlar eskisi gibi SMS alır.
+
+Oturum dizini **hesabın kendisidir**: eline geçen kişi o WhatsApp
+hesabından mesaj atabilir. Dizin 0700 olmalı, yedeğe ve Git'e girmemeli.
+
+Oturum düşerse (telefondan "bağlı cihaz" kaldırılırsa ya da uzun süre
+çevrimdışı kalırsa) bildirimler otomatik olarak SMS'e döner; eşleştirme
+komutunu yeniden çalıştırmak yeterlidir.
 
 ## Sorun giderme
 
