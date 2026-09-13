@@ -65,8 +65,8 @@ test('İşletmenin kendi özel günü eklenir, takvimde görünür ve silinir', 
 
   // Takvimde de görünmeli: iki ekran aynı kayda bakıyor.
   await page.goto('/panel/takvim');
-  await page.getByRole('button', { name: 'Sonraki ay' }).click();
-  await page.getByRole('button', { name: 'Sonraki ay' }).click();
+  await page.getByLabel('Yıl').selectOption(String(hedef.getFullYear()));
+  await page.getByRole('button', { name: AY_ADLARI[hedef.getMonth()], exact: true }).click();
   await expect(page.getByRole('button', {
     name: new RegExp(`1 ${AY_ADLARI[hedef.getMonth()]} .*Okullar kapanıyor`),
   })).toBeVisible();

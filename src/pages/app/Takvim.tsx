@@ -6,16 +6,36 @@ import { gunlereGore } from '../../lib/ozelGun';
 import { QueryBoundary } from '../../components/QueryState';
 import { DAY_NAMES_SHORT, MONTH_NAMES } from '../../data/constants';
 import { formatMoney, okunakliMetinRengi, toIso, todayIso } from '../../lib/format';
-import { IconChevronLeft, IconChevronRight, IconPlus } from '../../components/Icons';
+import { IconPlus } from '../../components/Icons';
 import type { Reservation } from '../../types';
 import { OZEL_GUN_ADI, OZEL_GUN_RENGI } from '../../types';
+
+/** yyyy-mm-dd -> "01.07.2026"; hücrede ayın adı yazmadığı için tam tarih. */
+function gunMetni(iso: string): string {
+  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+}
+
+/**
+ * Etiketin ikinci satırı: "14:00 - 18:00 (Düğün)". Saat girilmemiş eski
+ * kayıtlarda saat yerine seans adı yazılıyor, satır hiç boş kalmıyor.
+ */
+function saatMetni(r: Reservation): string {
+  const saat = r.startTime && r.endTime ? `${r.startTime} - ${r.endTime}` : (r.startTime ?? r.slot);
+  return `${saat} (${r.organizationType})`;
+}
 
 export default function Takvim() {
   const { reservations, colors, balance, isLoading, error } = useReservationsWithBalances();
   const { data: ozelGunler = [] } = useSpecialDays();
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
+  /*
+    Bugün metin olarak tutuluyor (yyyy-mm-dd). `new Date()` her render'da
+    yeni bir nesne üretip useMemo bağımlılıklarını boşuna bozuyordu.
+  */
+  const today = todayIso();
+  const buYil = Number(today.slice(0, 4));
+  const buAy = Number(today.slice(5, 7)) - 1;
+  const [year, setYear] = useState(buYil);
+  const [month, setMonth] = useState(buAy);
   const [selected, setSelected] = useState<string | null>(null);
 
   const byDate = useMemo(() => {
@@ -37,14 +57,27 @@ export default function Takvim() {
   const ozelGunHaritasi = useMemo(() => gunlereGore(ozelGunler), [ozelGunler]);
 
   const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
-  const today = todayIso();
 
-  function shift(delta: number) {
-    const d = new Date(year, month + delta, 1);
-    setYear(d.getFullYear());
-    setMonth(d.getMonth());
-    setSelected(null);
-  }
+  /*
+    Yıl listesi elle yazılmıyor: salonlar 3-4 yıl sonrasına rezervasyon
+    alıyor. Listede hem bugünün yılı hem de kayıtlı en uzak düğün yılı
+    bulunsun ki ileri tarihli bir rezervasyona ok tuşuyla yol almadan
+    gidilebilsin.
+  */
+  const yillar = useMemo(() => {
+    let enAz = buYil - 2;
+    let enCok = buYil + 3;
+    reservations.forEach((r) => {
+      const y = Number(r.date.slice(0, 4));
+      if (Number.isFinite(y)) {
+        if (y < enAz) enAz = y;
+        if (y > enCok) enCok = y;
+      }
+    });
+    if (year < enAz) enAz = year;
+    if (year > enCok) enCok = year;
+    return Array.from({ length: enCok - enAz + 1 }, (_, i) => enAz + i);
+  }, [reservations, year, buYil]);
 
   const selectedItems = selected ? byDate.get(selected) ?? [] : [];
 
@@ -70,163 +103,216 @@ export default function Takvim() {
       */}
       <div className={`grid gap-6 ${selected ? 'lg:grid-cols-3' : ''}`}>
         <section className={`card p-4 ${selected ? 'lg:col-span-2' : ''}`}>
-          <div className="mb-4 flex items-center justify-between">
-            <button type="button" onClick={() => shift(-1)} aria-label="Önceki ay" className="rounded border border-line p-2 text-brand hover:border-accent-ink hover:text-accent-ink">
-              <IconChevronLeft size={18} />
-            </button>
-            <div className="text-center">
-              <h2 className="font-heading text-lg font-bold text-brand">
-                {MONTH_NAMES[month]} {year}
-              </h2>
+          {/*
+            Ay ileri/geri okları yerine on iki ayın tamamı şerit hâlinde.
+            Eylülden Marta gitmek altı tıklama sürüyordu; artık bir tane.
+            Düğmeler ayrıca ok tuşundan çok daha büyük bir hedef.
+          */}
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {MONTH_NAMES.map((ad, i) => (
               <button
+                key={ad}
                 type="button"
-                className="text-xs text-accent-ink"
-                onClick={() => {
-                  setYear(now.getFullYear());
-                  setMonth(now.getMonth());
-                }}
+                onClick={() => { setMonth(i); setSelected(null); }}
+                aria-pressed={i === month}
+                className={`rounded border px-3 py-1.5 text-sm font-semibold transition ${
+                  i === month
+                    ? 'border-accent-ink bg-accent-ink text-white'
+                    : 'border-line bg-white text-brand hover:border-accent-ink hover:text-accent-ink'
+                }`}
               >
-                Bugüne dön
+                {ad}
               </button>
-            </div>
-            <button type="button" onClick={() => shift(1)} aria-label="Sonraki ay" className="rounded border border-line p-2 text-brand hover:border-accent-ink hover:text-accent-ink">
-              <IconChevronRight size={18} />
+            ))}
+            <label className="ml-auto flex items-center gap-2 text-sm text-brand-muted">
+              <span className="sr-only">Yıl</span>
+              <select
+                value={year}
+                onChange={(e) => { setYear(Number(e.target.value)); setSelected(null); }}
+                aria-label="Yıl"
+                className="rounded border border-line bg-white px-2 py-1.5 text-sm font-semibold text-brand"
+              >
+                {yillar.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="rounded border border-line px-3 py-1.5 text-sm font-semibold text-accent-ink hover:border-accent-ink"
+              onClick={() => {
+                setYear(buYil);
+                setMonth(buAy);
+                setSelected(null);
+              }}
+            >
+              Bugün
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-sm font-semibold text-brand-muted">
-            {DAY_NAMES_SHORT.map((d) => (
-              <span key={d} className="py-1.5">{d}</span>
-            ))}
-          </div>
+          <h2 className="mb-3 rounded bg-brand py-2 text-center font-heading text-xl font-bold text-white">
+            {MONTH_NAMES[month]} {year}
+          </h2>
 
-          <div className="mt-1 grid grid-cols-7 gap-1">
-            {cells.map((cell, i) => {
-              if (!cell) return <span key={`e${i}`} className="min-h-[150px] rounded bg-surface/50" />;
-              const items = byDate.get(cell) ?? [];
-              const ozel = ozelGunHaritasi.get(cell) ?? [];
-              const isToday = cell === today;
-              const isSelected = cell === selected;
-              const day = Number(cell.slice(-2));
-              /*
-                Özel gün ARIA etiketine de giriyor: renkli nokta yalnızca
-                gören kullanıcıya bilgi verir, ekran okuyucuda bayram
-                günü sıradan bir gün gibi duyulurdu.
-              */
-              const etiket = [
-                `${day} ${MONTH_NAMES[month]} ${year}`,
-                `${items.length} rezervasyon`,
-                ...ozel.map((g) => g.label),
-              ].join(', ');
+          {/*
+            Punto büyüdüğü için hücreye tam tarih ve iki satırlık etiket
+            sığması gerekiyor; dar ekranda hücreleri ezmek yerine ızgara
+            yatay kaydırılıyor.
+          */}
+          <div className="overflow-x-auto">
+            <div className="min-w-[840px]">
+              <div className="grid grid-cols-7 gap-1 text-center text-sm font-semibold text-brand-muted">
+                {DAY_NAMES_SHORT.map((d, i) => (
+                  <span key={d} className={`rounded py-1.5 ${i >= 5 ? 'bg-[#fdf3d8] text-brand' : ''}`}>{d}</span>
+                ))}
+              </div>
 
-              return (
-                /*
-                  Hücre artık tek bir düğme DEĞİL. Rezervasyon etiketleri
-                  kendi bağlantıları: üstüne basınca kayıt doğrudan
-                  açılıyor. Önce günü seçip sağdaki panelden kaydı bulmak
-                  gerekiyordu -- aynı şeye ulaşmak için iki tıklama.
+              <div className="mt-1 grid grid-cols-7 gap-1">
+                {cells.map(({ iso, ayIcinde, haftaSonu }) => {
+                  const items = byDate.get(iso) ?? [];
+                  const ozel = ozelGunHaritasi.get(iso) ?? [];
+                  const isToday = iso === today;
+                  const isSelected = iso === selected;
+                  const ay = Number(iso.slice(5, 7)) - 1;
+                  /*
+                    Özel gün ARIA etiketine de giriyor: renkli etiket
+                    yalnızca gören kullanıcıya bilgi verir, ekran
+                    okuyucuda bayram günü sıradan bir gün gibi duyulurdu.
+                  */
+                  const etiket = [
+                    `${Number(iso.slice(8, 10))} ${MONTH_NAMES[ay]} ${iso.slice(0, 4)}`,
+                    `${items.length} rezervasyon`,
+                    ...ozel.map((g) => g.label),
+                  ].join(', ');
 
-                  Günü seçen düğme hücrenin ARKASINDA, tam boy duruyor
-                  (`absolute inset-0`): boş bir yere basmak da günü
-                  seçiyor, yalnızca rakamın üstüne değil. İçerik
-                  `pointer-events-none`, etiketler yeniden açıyor; böylece
-                  düğmenin içine düğme yerleştirilmiş olmuyor.
-                */
-                <div
-                  key={cell}
-                  className={`relative min-h-[150px] rounded border transition ${
-                    isSelected
-                      ? 'border-accent-ink bg-accent-ink/5'
-                      : isToday
-                        ? 'border-accent-ink/50 bg-white'
-                        : 'border-line bg-white hover:border-accent-ink/50'
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSelected(isSelected ? null : cell)}
-                    aria-pressed={isSelected}
-                    aria-label={etiket}
-                    className="absolute inset-0 h-full w-full rounded"
-                  />
+                  return (
+                    /*
+                      Hücre tek bir düğme DEĞİL. Rezervasyon etiketleri
+                      kendi bağlantıları: üstüne basınca kayıt doğrudan
+                      açılıyor. Önce günü seçip sağdaki panelden kaydı
+                      bulmak gerekiyordu -- aynı şeye iki tıklama.
 
-                  <div className="pointer-events-none relative p-2">
-                    <div className="flex items-center justify-between gap-1">
-                      {/* Ayın günü: takvimde ilk okunan rakam, en büyük punto. */}
-                      <span className={`text-lg font-bold leading-none ${isToday ? 'text-accent-ink' : 'text-brand'}`}>
-                        {day}
-                      </span>
-                      {/*
-                        Özel gün NOKTA ile işaretleniyor, hücrenin zeminini
-                        boyamakla değil: zemin boyansaydı üstündeki
-                        rezervasyon etiketlerinin rengi okunmaz olurdu.
-                      */}
-                      {ozel.length > 0 && (
-                        <span className="flex shrink-0 gap-0.5">
-                          {ozel.slice(0, 3).map((g) => (
-                            <span
-                              key={g.id}
-                              className="h-2 w-2 rounded-full"
-                              style={{ background: OZEL_GUN_RENGI[g.kind] }}
-                            />
-                          ))}
-                        </span>
-                      )}
-                    </div>
+                      Günü seçen düğme hücrenin ARKASINDA, tam boy
+                      (`absolute inset-0`): boş bir yere basmak da günü
+                      seçiyor. İçerik `pointer-events-none`, etiketler
+                      yeniden açıyor; böylece düğme içine düğme girmiyor.
+                    */
+                    <div
+                      key={iso}
+                      className={`relative min-h-[150px] rounded border transition ${
+                        isSelected
+                          ? 'border-accent-ink bg-accent-ink/5'
+                          : isToday
+                            ? 'border-accent-ink bg-[#fffdf4]'
+                            : /*
+                                Hafta sonu sütunları ayrı zeminde: salonun
+                                dolu günleri bunlar, boş bir Cumartesi bir
+                                bakışta görülebilmeli. Rakip programın sarı
+                                sütunu okunaklı olsun diye açık tonda.
+                              */
+                              `border-line hover:border-accent-ink/50 ${
+                                !ayIcinde ? 'bg-surface/70' : haftaSonu ? 'bg-[#fdf3d8]' : 'bg-white'
+                              }`
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setSelected(isSelected ? null : iso)}
+                        aria-pressed={isSelected}
+                        aria-label={etiket}
+                        className="absolute inset-0 h-full w-full rounded"
+                      />
 
-                    {ozel.length > 0 && (
-                      <span
-                        className="mt-1 block truncate text-xs font-medium leading-tight"
-                        style={{ color: OZEL_GUN_RENGI[ozel[0]!.kind] }}
-                        title={ozel.map((g) => g.label).join(' · ')}
-                      >
-                        {ozel[0]!.label}
-                      </span>
-                    )}
-
-                    <div className="pointer-events-auto mt-1.5 space-y-1">
-                      {items.slice(0, 3).map((r) => {
-                        const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
-                        return (
-                          <Link
-                            key={r.id}
-                            to={`/panel/rezervasyonlar/${r.id}`}
-                            title={`${r.customerName} · ${r.slot} · ${r.organizationType}`}
-                            /*
-                              İsim KIRPILMIYOR, alt satıra sarıyor.
-                              Punto büyüyünce hücreye sığan harf sayısı
-                              azaldı ve "Zuhal…" gibi yarım isimler
-                              kaldı; yarım bir isim, küçük puntolu tam
-                              isimden daha az işe yarıyor. İki satır
-                              sınırı var ki tek bir uzun isim hücreyi
-                              sayfa boyu uzatmasın; tamamı `title`'da.
-                            */
-                            className="block rounded px-1.5 py-1 text-sm font-medium leading-snug [overflow-wrap:anywhere] line-clamp-2 hover:opacity-90 hover:underline"
-                            style={{ background: color, color: okunakliMetinRengi(color) }}
-                          >
-                            {r.slot === 'Gündüz' ? '☀' : '☾'} {r.customerName}
-                          </Link>
-                        );
-                      })}
-                      {items.length > 3 && (
-                        /*
-                          Kalanları göstermek de bir eylem: günü seçip
-                          sağdaki panele bakmak. Yazı olarak kalsaydı
-                          tıklanabilir olduğu anlaşılmazdı.
-                        */
-                        <button
-                          type="button"
-                          onClick={() => setSelected(cell)}
-                          className="block w-full rounded px-1.5 py-0.5 text-left text-sm text-brand-muted underline hover:text-brand"
+                      <div className="pointer-events-none relative p-2">
+                        {/*
+                          Tam tarih yazılıyor, yalnızca gün rakamı değil:
+                          komşu ayların günleri de ızgarada durduğu için
+                          "31" tek başına hangi aya ait belli olmuyordu.
+                        */}
+                        <span
+                          className={`block text-center text-lg font-bold leading-none ${
+                            isToday ? 'text-accent-ink' : ayIcinde ? 'text-brand' : 'text-brand-muted'
+                          }`}
                         >
-                          +{items.length - 3} daha
-                        </button>
-                      )}
+                          {gunMetni(iso)}
+                        </span>
+
+                        {/*
+                          Özel gün, rezervasyonla aynı biçimde etiket:
+                          önceki küçük nokta + minik yazı, ekrana uzaktan
+                          bakan birine bayramı fark ettirmiyordu.
+                        */}
+                        {ozel.length > 0 && (
+                          <div className="mt-1.5 space-y-1">
+                            {ozel.slice(0, 2).map((g) => (
+                              <span
+                                key={g.id}
+                                title={g.label}
+                                className="block rounded px-1.5 py-1 text-center text-sm font-semibold leading-snug [overflow-wrap:anywhere] line-clamp-2"
+                                style={{
+                                  background: OZEL_GUN_RENGI[g.kind],
+                                  color: okunakliMetinRengi(OZEL_GUN_RENGI[g.kind]),
+                                }}
+                              >
+                                {g.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="pointer-events-auto mt-1.5 space-y-1">
+                          {items.slice(0, 3).map((r) => {
+                            const color = colors.find((c) => c.key === r.colorKey)?.color ?? '#47b2e4';
+                            return (
+                              <Link
+                                key={r.id}
+                                to={`/panel/rezervasyonlar/${r.id}`}
+                                title={`${r.customerName} · ${saatMetni(r)}`}
+                                /*
+                                  İsim KIRPILMIYOR, alt satıra sarıyor.
+                                  Punto büyüyünce hücreye sığan harf sayısı
+                                  azaldı ve "Zuhal…" gibi yarım isimler
+                                  kaldı; yarım bir isim, küçük puntolu tam
+                                  isimden daha az işe yarıyor. İki satır
+                                  sınırı var ki tek bir uzun isim hücreyi
+                                  sayfa boyu uzatmasın; tamamı `title`'da.
+                                */
+                                className="block rounded px-1.5 py-1 text-center leading-snug no-underline hover:opacity-90"
+                                style={{ background: color, color: okunakliMetinRengi(color) }}
+                              >
+                                <span className="block text-sm font-semibold [overflow-wrap:anywhere] line-clamp-2">
+                                  {r.customerName}
+                                </span>
+                                {/*
+                                  Saat ve organizasyon türü etiketin
+                                  kendisinde: hangi gün kaçta hangi tören
+                                  var sorusu, kaydı açmadan yanıtlanıyor.
+                                */}
+                                <span className="block text-xs font-medium leading-snug [overflow-wrap:anywhere] line-clamp-2">
+                                  {saatMetni(r)}
+                                </span>
+                              </Link>
+                            );
+                          })}
+                          {items.length > 3 && (
+                            /*
+                              Kalanları göstermek de bir eylem: günü seçip
+                              sağdaki panele bakmak. Yazı olarak kalsaydı
+                              tıklanabilir olduğu anlaşılmazdı.
+                            */
+                            <button
+                              type="button"
+                              onClick={() => setSelected(iso)}
+                              className="block w-full rounded px-1.5 py-0.5 text-center text-sm text-brand-muted underline hover:text-brand"
+                            >
+                              +{items.length - 3} daha
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-line pt-4 text-sm">
@@ -242,12 +328,10 @@ export default function Takvim() {
               bilgi olan rezervasyon renklerini aşağı iterdi.
             */}
             {[...new Set(
-              cells.filter((c): c is string => Boolean(c))
-                .flatMap((c) => ozelGunHaritasi.get(c) ?? [])
-                .map((g) => g.kind),
+              cells.flatMap((c) => ozelGunHaritasi.get(c.iso) ?? []).map((g) => g.kind),
             )].map((kind) => (
               <span key={kind} className="flex items-center gap-1.5 text-brand-muted">
-                <span className="h-3.5 w-3.5 rounded-full" style={{ background: OZEL_GUN_RENGI[kind] }} />
+                <span className="h-3.5 w-3.5 rounded" style={{ background: OZEL_GUN_RENGI[kind] }} />
                 {OZEL_GUN_ADI[kind]}
               </span>
             ))}
@@ -258,7 +342,7 @@ export default function Takvim() {
         <section className="card p-5">
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="font-heading text-lg font-bold text-brand">
-              {Number(selected.slice(-2))} {MONTH_NAMES[month]} kayıtları
+              {Number(selected.slice(8, 10))} {MONTH_NAMES[Number(selected.slice(5, 7)) - 1]} kayıtları
             </h2>
             <button type="button" className="text-sm text-brand-muted underline hover:text-brand"
               onClick={() => setSelected(null)}>
@@ -314,7 +398,7 @@ export default function Takvim() {
                         <div className="min-w-0">
                           <span className="block truncate text-base font-semibold">{r.customerName}</span>
                           <span className="mt-0.5 block text-sm text-brand-muted">
-                            {Number(r.date.slice(-2))} {MONTH_NAMES[Number(r.date.slice(5, 7)) - 1]} · {r.slot} · {r.guestCount} kişi
+                            {Number(r.date.slice(-2))} {MONTH_NAMES[Number(r.date.slice(5, 7)) - 1]} · {saatMetni(r)} · {r.guestCount} kişi
                           </span>
                         </div>
                         <span className="shrink-0 rounded px-2 py-1 text-xs font-medium" style={{ background: color, color: okunakliMetinRengi(color) }}>
@@ -337,13 +421,31 @@ export default function Takvim() {
   );
 }
 
-/** Pazartesi başlangıçlı ay ızgarası; boş hücreler null döner */
-function buildMonthGrid(year: number, month: number): (string | null)[] {
+interface IzgaraGunu {
+  iso: string;
+  /** Gösterilen aya mi ait, yoksa komşu ayın taşma günü mü. */
+  ayIcinde: boolean;
+  haftaSonu: boolean;
+}
+
+/**
+ * Pazartesi başlangıçlı ay ızgarası. Baştaki ve sondaki boşluklar komşu
+ * ayların gerçek günleriyle dolduruluyor: ayın son gününe denk gelen bir
+ * düğün, sonraki aya bakarken de görünsün.
+ */
+function buildMonthGrid(year: number, month: number): IzgaraGunu[] {
   const first = new Date(year, month, 1);
   const offset = (first.getDay() + 6) % 7; // Pazartesi = 0
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (string | null)[] = Array.from({ length: offset }, () => null);
-  for (let d = 1; d <= daysInMonth; d += 1) cells.push(toIso(new Date(year, month, d)));
-  while (cells.length % 7 !== 0) cells.push(null);
-  return cells;
+  const gunler: IzgaraGunu[] = [];
+  const baslangic = new Date(year, month, 1 - offset);
+  const toplam = Math.ceil((offset + new Date(year, month + 1, 0).getDate()) / 7) * 7;
+  for (let i = 0; i < toplam; i += 1) {
+    const g = new Date(baslangic.getFullYear(), baslangic.getMonth(), baslangic.getDate() + i);
+    gunler.push({
+      iso: toIso(g),
+      ayIcinde: g.getMonth() === month && g.getFullYear() === year,
+      haftaSonu: g.getDay() === 0 || g.getDay() === 6,
+    });
+  }
+  return gunler;
 }

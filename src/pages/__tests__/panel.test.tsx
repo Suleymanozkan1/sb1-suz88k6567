@@ -137,16 +137,18 @@ describe('Rezervasyon takvimi', () => {
     expect(dayButtons[0]).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('önceki/sonraki ay gezinmesi başlığı değiştirir', async () => {
+  it('ay şeridi başlığı değiştirir, Bugün geri getirir', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/takvim');
     // Veriler async yüklendiği için takvim görünene kadar bekle
     await screen.findByRole('heading', { name: 'Rezervasyon Takvimi' });
     const heading = () => screen.getAllByRole('heading', { level: 2 })[0].textContent;
     const before = heading();
-    await user.click(screen.getByRole('button', { name: 'Sonraki ay' }));
-    expect(heading()).not.toBe(before);
-    await user.click(screen.getByRole('button', { name: 'Önceki ay' }));
+    // Ok tuşları yerine on iki ayın tamamı şeritte duruyor.
+    const hedef = before?.startsWith('Ocak') ? 'Temmuz' : 'Ocak';
+    await user.click(screen.getByRole('button', { name: hedef }));
+    expect(heading()).toContain(hedef);
+    await user.click(screen.getByRole('button', { name: 'Bugün' }));
     expect(heading()).toBe(before);
   });
 });

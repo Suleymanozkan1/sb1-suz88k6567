@@ -375,7 +375,7 @@ test.describe('Ayarlar ekranı', () => {
 });
 
 test.describe('Takvim ekranı', () => {
-  test('ay gezinmesi başlığı değiştirir ve geri döner', async ({ page }) => {
+  test('ay şeridinden başka aya geçilir ve Bugün ile dönülür', async ({ page }) => {
     await login(page);
     await page.goto('/panel/takvim');
     await expect(page.getByRole('heading', { name: 'Rezervasyon Takvimi', level: 1 })).toBeVisible();
@@ -383,10 +383,12 @@ test.describe('Takvim ekranı', () => {
     const baslik = page.locator('h2').first();
     const ilk = await baslik.textContent();
 
-    await page.getByRole('button', { name: 'Sonraki ay' }).click();
-    await expect(baslik).not.toHaveText(ilk ?? '');
+    // On iki ayın tamamı şeritte: ok tuşuyla tek tek ilerlemek gerekmiyor.
+    const hedefAy = ilk?.startsWith('Ocak') ? 'Temmuz' : 'Ocak';
+    await page.getByRole('button', { name: hedefAy, exact: true }).click();
+    await expect(baslik).toContainText(hedefAy);
 
-    await page.getByRole('button', { name: 'Önceki ay' }).click();
+    await page.getByRole('button', { name: 'Bugün' }).click();
     await expect(baslik).toHaveText(ilk ?? '');
   });
 
@@ -397,11 +399,9 @@ test.describe('Takvim ekranı', () => {
     });
 
     await page.goto('/panel/takvim');
-    // Ekim 2026'ya kadar ilerle.
-    for (let i = 0; i < 24; i += 1) {
-      if (await page.locator('h2').first().textContent() === 'Ekim 2026') break;
-      await page.getByRole('button', { name: 'Sonraki ay' }).click();
-    }
+    await page.getByLabel('Yıl').selectOption('2026');
+    await page.getByRole('button', { name: 'Ekim', exact: true }).click();
+    await expect(page.locator('h2').first()).toHaveText('Ekim 2026');
 
     await expect(page.getByLabel(/17 Ekim 2026, 1 rezervasyon/)).toBeVisible();
   });
