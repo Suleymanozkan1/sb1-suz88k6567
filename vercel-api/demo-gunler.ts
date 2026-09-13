@@ -20,12 +20,17 @@
  * değişiyor ve her ziyaretçi için MEB arşivini yeniden ayrıştırmak hem
  * yavaş hem gereksiz. `vercel.json` içindeki cron ayda bir bu adresi
  * çağırıp önbelleği tazeliyor.
+ *
+ * HAVA TAHMİNİ BURADA DEĞİL. Ayrı uç noktada (`vercel-api/demo-hava.ts`):
+ * bu dosyanın işi yavaş ve kırılgan (beş yıllık tatil listesi, hicri
+ * çevrim, MEB arşivi), tahmin ise her gün değişiyor ve gömülü yedeği yok.
+ * İkisi bir arada olduğunda takvim tarafındaki her aksaklık hava
+ * durumunu da götürüyordu.
  */
 import {
   HICRI_FARKI, kandilleriHesapla, ramazanCipasi, tatilleriCek, type OzelGun,
-} from '../api/ozel-gunler';
-import { arsiviCek, duyuruyuCoz, takvimDuyurulari } from '../api/meb-takvim';
-import { gunlukCoz, merkezSec, merkezleriCoz, mgmCek } from '../api/_mgm';
+} from '../api/ozel-gunler.js';
+import { arsiviCek, duyuruyuCoz, takvimDuyurulari } from '../api/meb-takvim.js';
 
 /** Geçen yıl + bu yıl + 3: demo verisi bugünün iki yanına yayılıyor. */
 const GERI_YIL = 1;
@@ -36,40 +41,6 @@ export interface DemoGun {
   label: string;
   kind: string;
   tentative?: boolean;
-}
-
-export interface DemoHava {
-  gun: string;
-  enDusuk: number | null;
-  enYuksek: number | null;
-  hadise?: string;
-}
-
-/** Demo işletmesinin konumu; tohumdaki salonla aynı il. */
-const DEMO_IL = 'Konya';
-const DEMO_ILCE = 'Selçuklu';
-
-/**
- * Hava tahmini (MGM).
- *
- * Tohuma gömülmüyor: sıcaklık bir hafta sonra yanlış olur ve
- * eskimiş bir tahmin, boş bir kutudan daha kötüdür. Yalnızca canlı
- * kaynaktan geliyor; MGM ulaşılamazsa ekran "veri yok" diyor.
- */
-async function havaTahmini(): Promise<DemoHava[]> {
-  const merkezler = merkezleriCoz(
-    await mgmCek(`/merkezler?il=${encodeURIComponent(DEMO_IL)}&ilce=${encodeURIComponent(DEMO_ILCE)}`),
-  );
-  const merkez = merkezSec(merkezler, DEMO_ILCE);
-  if (!merkez) return [];
-
-  const tahminler = gunlukCoz(await mgmCek(`/tahminler/gunluk?istno=${merkez.gunlukNo}`));
-  return tahminler.map((t) => ({
-    gun: t.gun,
-    enDusuk: t.enDusuk,
-    enYuksek: t.enYuksek,
-    hadise: t.hadise,
-  }));
 }
 
 async function ozelGunler(yillar: number[]): Promise<DemoGun[]> {
@@ -136,31 +107,21 @@ export default async function handler(_req: unknown, res: VercelYanit): Promise<
   const yillar = Array.from({ length: YIL_SAYISI }, (_, i) => buYil - GERI_YIL + i);
 
   /*
-    Üç kaynak birbirinden bağımsız: MEB düşerse bayramlar yine dönüyor,
-    MGM düşerse takvim yine doluyor. Biri boş gelse bile ekran tümüyle
-    boşalmıyor.
+    İki kaynak birbirinden bağımsız: MEB düşerse bayramlar yine dönüyor.
+    Hava tahmini AYRI uç noktada (vercel-api/demo-hava.ts) -- takvim
+    ayrıştırması yavaş ve kırılgan, tahmin ona bağlı kalmamalı.
   */
-  const [gunler, okul, hava] = await Promise.all([
+  const [gunler, okul] = await Promise.all([
     ozelGunler(yillar).catch(() => [] as DemoGun[]),
     okulGunleri().catch(() => [] as DemoGun[]),
-    havaTahmini().catch(() => [] as DemoHava[]),
   ]);
 
   const tumu = [...gunler, ...okul].sort((a, b) => a.day.localeCompare(b.day));
 
   res.setHeader('content-type', 'application/json; charset=utf-8');
-  /*
-    Takvim ayda bir değişiyor, hava tahmini her gün. Önbellek SÜRESİ
-    hava verisine göre seçiliyor: otuz gün beklenseydi ekranda üç
-    haftalık bayat tahmin durur, bu da boş kutudan kötü olurdu.
-  */
-  res.setHeader(
-    'cache-control',
-    hava.length > 0
-      ? 'public, s-maxage=10800, stale-while-revalidate=86400'
-      : 'public, s-maxage=2592000, stale-while-revalidate=86400',
-  );
+  // 30 gün kenarda, bayatsa 1 gün daha servis edilip arkada tazeleniyor.
+  res.setHeader('cache-control', 'public, s-maxage=2592000, stale-while-revalidate=86400');
   res.status(tumu.length === 0 ? 503 : 200).send(JSON.stringify({
-    uretim: new Date().toISOString(), gunler: tumu, hava,
+    uretim: new Date().toISOString(), gunler: tumu,
   }));
 }
