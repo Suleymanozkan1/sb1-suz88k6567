@@ -671,18 +671,51 @@ Ham MGM yanıtını olduğu gibi döndürür; alan adı farkı tek istekte
 görülür.
 
 **Özel günler.** Takvimde bayram, arife, kandil, resmî tatil ve okul
-tarihleri renkli nokta ve etiketle işaretlenir. Resmî tatiller, dini
-bayramlar, arifeler ve kandiller **otomatik çekilir**
-(`api/ozel-gunler.ts`, ayda bir); panelden elle girilecek tek şey okul
-tarihleri ve salonun kendi günleridir.
+tatilleri renkli etiketle işaretlenir. Hepsi **otomatik çekilir**
+(`api/ozel-gunler.ts` ve `api/meb-takvim.ts`, ayda bir); panelden elle
+girilecek tek şey salonun kendi günleri ve yerel istisnalardır.
 
-Üç kalem, üç ayrı güven düzeyi:
+Dört kalem, dört ayrı güven düzeyi:
 
 | Kalem | Nereden | Kesinlik |
 |---|---|---|
 | Resmî tatil, dini bayram | Ücretsiz tatil sağlayıcısı, anahtar istemez | Sağlayıcı ne derse o; uzak yıllar "kesinleşmedi" |
 | Arife | Bayramın bir gün öncesi | Bayram kadar kesin — bu bir tanım, tahmin değil |
 | Kandil | Hicri takvimden, **bayrama göre ofsetle** | Hesaplanıyor; her zaman "kesinleşmedi" |
+| Okul tatilleri | MEB çalışma takvimi duyurusu | Resmî ilan; kesin |
+
+**Okul takvimi nasıl bulunuyor.** MEB takvimi makine okunur biçimde
+yayımlamıyor: her yıl mayıs-haziranda bir haber metni çıkıyor ve haber
+**adresteki başlıkla değil kimlikle** çözülüyor — yani yıldan adres
+üretmek mümkün değil. Görev, MEB'in haber arşivini **tek istekle**
+tamamen alıp (~2500 kayıt) başlığı `egitim-ogretim-yili-takvimi` geçen
+duyuruları kendisi buluyor. Hiçbir haber kimliği koda gömülü değil.
+
+Son **iki** eğitim yılı işleniyor: yalnızca en yenisi alınsaydı, yeni
+takvim henüz yayımlanmamışken içinde bulunulan yılın tatilleri de
+yazılmazdı.
+
+Duyurunun cümle kalıbı yıldan yıla değişiyor ve çözümleyici üçünü de
+karşılıyor:
+
+| Yıl | Metindeki ifade |
+|---|---|
+| 2026-2027 | `16 Kasım 2026 Pazartesi günü başlayacak ve 20 Kasım 2026 Cuma günü sona erecek` |
+| 2025-2026 | `10-14 Kasım arasında yapılacak` — yıl yok, kısa aralık |
+| 2024-2025 | `11-15 Kasım 2024'te yapılacak` — kısa aralık, yıl var |
+
+Tatil aralıkları **gün gün** yazılır ki takvimde blok olarak görünsün;
+yalnızca uçlar yazılsaydı aradaki bir güne düşen düğün için ekranda
+hiçbir işaret olmazdı.
+
+**Çözülemezse hiçbir şey yazılmaz.** Boş liste gönderilseydi veritabanı
+o yılın kayıtlarını silip yerine bir şey koymazdı ve MEB'in bir sayfa
+değişikliği takvimi boşaltırdı. Sebebi görmek için:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  "https://<alan-adiniz>/api/meb-takvim?tani=1"
+```
 
 **Kandil neden ofsetle hesaplanıyor?** İki bağımsız takvim — tatil
 sağlayıcısı ve hicri takvim servisi — uzak yıllarda bir gün kayabiliyor;

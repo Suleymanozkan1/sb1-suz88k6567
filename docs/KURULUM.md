@@ -103,6 +103,11 @@ Sıra önemlidir ve atlanamaz:
 > de yapabiliyordu. Yeni hesapların yetkisini Kullanıcılar ekranından
 > verin; "Tüm yetkileri ver" kutusu hepsini tek hamlede işaretler.
 
+- `0038` hava durumunu MGM'ye taşır: `weather_hourly` tablosu ve üç
+  istasyon numarası kolonu. `ACCUWEATHER_API_KEY` artık okunmuyor.
+- `0039` MEB okul takvimini yazan `okul_gunlerini_yaz` fonksiyonunu kurar.
+  Okul tarihleri artık elle girilmiyor; ayda bir MEB duyurusundan çekilir.
+
 - `0037` rezervasyona `city` ve `district` kolonları ekler (il bazlı rapor).
   Alanlar isteğe bağlı; eski kayıtlarda boş kalır ve rapor onları
   "Belirtilmemiş" satırında toplar. Boş ili işletmenin iliyle doldurmak,

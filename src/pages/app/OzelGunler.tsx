@@ -18,14 +18,15 @@ import { IconPlus, IconTrash } from '../../components/Icons';
  *
  * İKİ KAYNAK var ve ekranda ayrı duruyorlar:
  *
- *  - ORTAK GÜNLER: resmî tatiller, dini bayramlar, arifeler ve
- *    kandiller. Bunları sunucudaki zamanlanmış görev SAĞLAYICIDAN
- *    ÇEKİYOR (api/ozel-gunler.ts); panelden düzenlenemiyor ve
- *    silinemiyor, çünkü her ay yeniden yazılıyorlar.
+ *  - ORTAK GÜNLER: resmî tatiller, dini bayramlar, arifeler, kandiller
+ *    ve OKUL TATİLLERİ. Bunları sunucudaki zamanlanmış görevler
+ *    ÇEKİYOR (api/ozel-gunler.ts, api/meb-takvim.ts); panelden
+ *    düzenlenemiyor ve silinemiyor, çünkü her ay yeniden yazılıyorlar.
  *
- *  - İŞLETMENİN GÜNLERİ: okul açılış/kapanış tarihleri ve salonun kendi
- *    özel günleri. Okul takvimini Millî Eğitim Bakanlığı bir duyuruyla
- *    yayımlıyor, makine okunur bir kaynağı yok; buradan giriliyor.
+ *  - İŞLETMENİN GÜNLERİ: salonun kendi özel günleri ve yerel tatiller.
+ *    Okul günü türü elle girişte DE duruyor: özel bir okulun kendi
+ *    takvimi veya ilçeye özel bir tatil, MEB'in ülke geneli
+ *    duyurusunda yer almıyor.
  *
  * KESİNLEŞMEMİŞ TARİHLER ayrıca işaretleniyor. Uzak yılların dini
  * bayramları ve hesaplanan kandiller için sağlayıcı kesin konuşmuyor;
@@ -131,8 +132,10 @@ export default function OzelGunler() {
         Kandiller hicri takvimden hesaplandığı, uzak yılların bayram tarihleri de
         henüz resmen ilan edilmediği için <strong>kesinleşmedi</strong> olarak
         işaretlenir — bu günleri Diyanet takviminden doğrulayın.
-        Okul açılış/kapanış tarihleri Millî Eğitim Bakanlığı'nın duyurusuyla
-        belirlendiği için aşağıdan elle eklenir.
+        <strong>Okul tatilleri</strong> de Millî Eğitim Bakanlığı&apos;nın çalışma
+        takvimi duyurusundan otomatik çekilir. Yalnızca ülke geneli takvim gelir;
+        özel bir okulun kendi takvimini veya ilçeye özel bir tatili aşağıdan elle
+        ekleyebilirsiniz.
       </Alert>
 
       {duzenlenebilir && (

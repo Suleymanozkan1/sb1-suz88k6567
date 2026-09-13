@@ -16,6 +16,7 @@ import invoice from '../api/invoice';
 import iys from '../api/iys';
 import login from '../api/login';
 import otp from '../api/otp';
+import mebTakvim from '../api/meb-takvim';
 import ozelGunler from '../api/ozel-gunler';
 import oturum from '../api/oturum';
 import reminders from '../api/reminders';
@@ -46,6 +47,7 @@ export const ROTALAR: Record<string, Isleyici> = {
   '/api/iys': iys,
   '/api/login': login,
   '/api/otp': otp,
+  '/api/meb-takvim': mebTakvim,
   '/api/ozel-gunler': ozelGunler,
   '/api/oturum': oturum,
   '/api/sms': sms,
@@ -116,6 +118,15 @@ export const CRON_GOREVLERI: Record<string, keyof typeof ROTALAR> = {
     kendiliğinden alıyor. Gece 4: kimse ekranda değilken.
   */
   '0 4 2 * *': '/api/ozel-gunler',
+  /*
+    MEB okul takvimi ayda bir, ayın 3'ünde. Duyuru mayıs-haziranda
+    çıkıyor ama tarihi yıldan yıla kayıyor (2024'te 28 mayıs, 2025'te 15
+    mayıs, 2026'da 13 haziran); "haziranda bir kez çek" deseydik, mayısta
+    çıkan bir takvim bir ay boyunca görünmezdi. Aylık tarama ayrıca
+    ERTELEMELERİ de yakalıyor: MEB bir tatili kaydırdığında duyuru
+    güncelleniyor.
+  */
+  '0 4 3 * *': '/api/meb-takvim',
 };
 
 /**
