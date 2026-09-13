@@ -15,9 +15,9 @@
  * duyurular bulunuyor, en yenisi çözülüyor. Böylece hiçbir kimlik veya
  * adres koda gömülmüyor ve her yıl kendiliğinden çalışıyor.
  */
-import { callRpc, isAuthorizedCron, isDbConfigured } from './_db';
-import { json } from './_guard';
-import { metneCevir, takvimiCoz, type OkulGunu } from './_meb';
+import { callRpc, isAuthorizedCron, isDbConfigured } from './_db.js';
+import { json } from './_guard.js';
+import { metneCevir, takvimiCoz, type OkulGunu } from './_meb.js';
 
 export const MEB_KOKU = process.env.MEB_URL ?? 'https://www.meb.gov.tr';
 

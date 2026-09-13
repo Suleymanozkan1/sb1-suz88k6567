@@ -15,10 +15,6 @@
     {
       "src": "vercel-api/demo-hava.ts",
       "use": "@vercel/node"
-    },
-    {
-      "src": "vercel-api/saglik.ts",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -29,10 +25,6 @@
     {
       "src": "/api/demo-hava",
       "dest": "/vercel-api/demo-hava.ts"
-    },
-    {
-      "src": "/api/saglik",
-      "dest": "/vercel-api/saglik.ts"
     },
     {
       "handle": "filesystem"
