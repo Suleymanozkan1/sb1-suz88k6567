@@ -632,6 +632,39 @@ fiyatı yazılmaz. Sağlayıcı hiç cevap vermezse **eski kur durur** ve
 tablo temizlenmez: bir dakikalık kesinti ekrandaki kuru silmemeli,
 satırın kendi tarihi zaten ne kadar eski olduğunu söyler.
 
+**GİB doğrudan entegrasyon (isteğe bağlı modül).** Faturalar
+varsayılan olarak özel entegratörden (Paraşüt) gider. Kendi
+mükellefiyetiniz için GİB'e **doğrudan** bağlanmak isterseniz ayrı bir
+modül var (`api/_gib*.ts`).
+
+**Kapsam sınırı, kodla değil mevzuatla çizili.** Doğrudan entegrasyon
+izni, izni alan mükellefin **kendi** faturaları içindir. Sahra Takip'i
+kullanan salonların faturaları bu yolla kesilemez — başka mükellefler
+adına fatura kesmek **özel entegratör lisansı** gerektirir. Modül bu
+ayrımı kodda zorluyor: yalnızca `GIB_VKN` ile eşleşen işletmenin
+faturasını doğrudan gönderiyor, diğerleri entegratöre düşüyor. Bu bir
+ayar değil, kullanıcının değiştiremeyeceği bir kural.
+
+İki ön koşul kodla sağlanamaz: **GİB entegrasyon onayı** ve **mali
+mühür** (TÜBİTAK KamuSM). İkisi tamamlanmadan modül yapılandırılmamış
+sayılır ve devreye girmez.
+
+| Katman | Dosya | Test edilebilir mi |
+|---|---|---|
+| UBL-TR 1.2 belge üretimi | `_gib_ubl.ts` | **Evet**, tamamen |
+| Fatura kurma, senaryo, durum kodları | `_gib.ts` | **Evet** |
+| XAdES-BES imzalama | `_gib_imza.ts` | Yapısı evet, **geçerliliği hayır** — mali mühür gerekir |
+| SOAP gönderim | — | **Hayır** — GİB onayı ve test ortamı erişimi gerekir |
+
+İmzanın GİB tarafından kabul edilip edilmediği ancak gerçek mali mühür
+ve GİB test ortamıyla görülebilir; birim testleri imzanın **yapısını**
+sınıyor, geçerliliğini değil. Bu sınır bilinçli olarak belgeleniyor:
+"yazıldı, çalışıyor" demek yanlış olurdu.
+
+Bir not daha: düğün müşterileri şahıs olduğu için kesilecek belge
+e-Fatura değil **e-Arşiv Fatura**'dır ve e-Arşiv'in gelen kutusu yoktur.
+"Size kesilen faturaları görmek" e-Fatura (B2B) tarafındadır.
+
 **Hava durumu.** Sağlayıcı **Meteoroloji Genel Müdürlüğü**
 (`servis.mgm.gov.tr`). **Anahtar gerekmiyor**: kayıt, ücret ve kota yok
 -- AccuWeather'dan bu yüzden geçildi.
