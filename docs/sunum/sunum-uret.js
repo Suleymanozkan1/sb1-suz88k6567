@@ -709,7 +709,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
 {
   const s = slayt(SURFACE);
   baslik(s, 'ALTYAPI', 'Sistem neyin üzerinde çalışıyor');
-  s.addText('Sistem üç parçadan oluşur: kullanıcının gördüğü arayüz, arayüzü sunan kendi sunucumuz ve verinin durduğu veritabanı. Üçü de tek bir makinede çalışır. Yanlarındaki servisler yalnızca ilgili özellik açıksa devreye girer.', {
+  s.addText('Sistem üç parçadan oluşur: kullanıcının gördüğü arayüz, arayüzü sunan kendi sunucumuz ve verinin durduğu veritabanı. Fatura kayıtları, Vergi Usul Kanunu gereği Türkiye’deki ikinci bir veritabanında tutulur. Yanlarındaki servisler yalnızca ilgili özellik açıksa devreye girer.', {
     x: KENAR, y: 1.66, w: GENIS, h: 0.36, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 13.5, color: MUTED,
   });
@@ -756,14 +756,14 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     ],
   });
   dipnot(s, 'İlk iki satır zorunludur; geri kalanı isteğe bağlıdır ve biri kapatıldığında yalnızca o özellik kapanır.', 6.7, { kucuk: true });
-  s.addNotes('Üç parça da kiralanan tek bir sunucuda çalışır: PostgreSQL, veritabanını HTTP\u2019ye açan PostgREST ve siteyi sunup zamanlanmış görevleri çalıştıran Node süreci. Hepsi ücretsiz ve açık kaynak. Dışarıya yalnızca 80 ve 443 portları açıktır; veritabanı internete hiç açılmaz.');
+  s.addNotes('Üç parça kiralanan bir sunucuda çalışır: PostgreSQL, veritabanını HTTP\u2019ye açan PostgREST ve siteyi sunup zamanlanmış görevleri çalıştıran Node süreci. Hepsi ücretsiz ve açık kaynak. Dışarıya yalnızca 80 ve 443 portları açıktır; veritabanı internete hiç açılmaz. Fatura kayıtları için Türkiye\u2019de ikinci bir sunucu daha var: orada yalnızca PostgreSQL ve PostgREST çalışıyor, ona da yalnızca ana sunucu erişebiliyor. Kullanıcı bu ayrımı hiç görmez -- tek adres, tek giriş.');
 }
 
 /* ══ 22 · Neden kendi sunucumuz ══════════════════════════════ */
 {
   const s = slayt(NAVY);
   baslik(s, 'NEDEN', 'Neden kendi sunucumuz', { koyu: true });
-  s.addText('Sistem kiralanan tek bir sunucuda çalışır. Hazır bir servise bağlansak yazılım aynı çalışırdı; fark, kimin elinde durduğunda.', {
+  s.addText('Sistem kiraladığımız sunucularda çalışır. Hazır bir servise bağlansak yazılım aynı çalışırdı; fark, kimin elinde durduğunda.', {
     x: KENAR, y: 1.66, w: GENIS, h: 0.34, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 13.5, color: PALE,
   });
@@ -797,7 +797,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   kartlar(s, {
     y: 1.85, h: 1.95, sutun: 3, koyu: true,
     items: [
-      ['Sunucu konumu', 'Veriler AB bölgesinde (Frankfurt) tutulur.'],
+      ['Sunucu konumu', 'Kişisel veriler Almanya’daki sunucuda, fatura kayıtları Türkiye’deki sunucuda tutulur.'],
       ['Gecelik yedek', 'Her gece otomatik yedek alınır; geri yükleme prosedürü belgelidir.'],
       ['Veri ayrımı', 'Her hesap yalnızca kendi verisini görür. Ayrım sunucu düzeyindedir.'],
     ],
@@ -814,7 +814,7 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: KENAR, y: 5.7, w: GENIS, h: 0.9, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12.5, color: PALE, lineSpacing: 18,
   });
-  s.addNotes('Veriler kendi sunucumuzdaki PostgreSQL üzerinde tutulur.');
+  s.addNotes('Veriler kendi sunucularımızdaki PostgreSQL üzerinde tutulur. İki sunucu olmasının sebebi Vergi Usul Kanunu: fatura kayıtları Türkiye sınırları içinde muhafaza edilmek zorunda. Kişisel verinin Almanya\u2019da tutulması KVKK m.9 kapsamında yurt dışına aktarımdır; standart sözleşme imzalanıp Kurul\u2019a bildirilmiştir.');
 }
 
 /* ══ 24 · Kurulum ═════════════════════════════════════════════ */
@@ -874,11 +874,12 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
   }
 
   sutun(0, 'Altyapı ve mağaza', [
-    ['Sunucu (VPS)', '200-400 ₺'],
+    ['Ana sunucu', '9-11 €'],
+    ['Fatura sunucusu', 'en küçük VDS'],
     ['Alan adı', '~25 ₺'],
     ['Apple Developer', '$99/yıl'],
     ['Google Play (tek sefer)', '$25'],
-  ], 'İlk ikisi veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar; sunucu üzerindeki yazılımların hepsi ücretsiz ve açık kaynaktır. Alan adı yıllık ücretin aylığa bölümüdür. Son ikisi yalnızca mobil uygulama mağazalarda yayınlanacaksa gerekir.');
+  ], 'İlk üçü veritabanı, barındırma, gecelik yedek ve zamanlanmış görevlerin tamamını kapsar; sunucu üzerindeki yazılımların hepsi ücretsiz ve açık kaynaktır. İkinci sunucu Vergi Usul Kanunu gereğidir ve yalnızca fatura kayıtlarını tutar; en küçük paket yeter. Alan adı yıllık ücretin aylığa bölümüdür. Son ikisi yalnızca mobil uygulama mağazalarda yayınlanacaksa gerekir.');
 
   sutun(1, 'SMS (kullandıkça)', [
     ['1.000 SMS', '370 ₺'],
@@ -904,11 +905,11 @@ function tablo(s, { basliklar, satirlar, x, y, w, colW, rowH = 0.46, hizalar = [
     x: KENAR, y: 6.2, w: GENIS, h: 0.6, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 12.5, color: INK, lineSpacing: 17,
   });
-  s.addText('Fiyatlar Eylül 2026’da sağlayıcıların yayımlanmış listelerinden alınmıştır. Sunucu ve alan adı Türk sağlayıcılarda ₺, yurt dışında € ya da $ üzerinden faturalandırılır.', {
+  s.addText('Fiyatlar Eylül 2026’da sağlayıcıların yayımlanmış listelerinden alınmıştır. Ana sunucu Almanya’da € ile faturalanır (Hetzner CX33 ya da netcup VPS 1000 G12); üzerine ayrıca IPv4 ücreti binebilir. Türkiye’deki fatura sunucusunun tutarı sağlayıcıya göre değişir.', {
     x: KENAR, y: 6.85, w: GENIS, h: 0.4, isTextBox: true, margin: 0,
     fontFace: B, fontSize: 11, color: MUTED,
   });
-  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100-150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider sunucu kirası ve alan adından ibarettir; yazılım tarafında lisans ücreti yoktur. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
+  s.addNotes('Ayda 30 organizasyon kaydeden bir salon, kayıt onayı ve hatırlatma ile yaklaşık 100-150 SMS gönderir; 1.000’lik paket birkaç ay yeter. Sabit gider iki sunucu kirası ve alan adından ibarettir; yazılım tarafında lisans ücreti yoktur. İkinci sunucu sorulursa: Vergi Usul Kanunu fatura kayıtlarının Türkiye\u2019de tutulmasını istiyor, o yüzden ayrı; küçük olduğu için maliyeti de küçük. İYS paketi yalnızca ticari ileti gönderilecekse gündeme gelir.');
 }
 
 pres.writeFile({ fileName: 'Sahra-Takip-Tanitim.pptx' }).then((f) => console.log('Yazıldı:', f));
