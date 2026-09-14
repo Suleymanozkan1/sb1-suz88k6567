@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { girdidenHareket, kasaBakiyesi, kasaDagilimi, kasaHareketleri } from './kasa';
+import {
+  girdidenHareket, kasaBakiyesi, kasaDagilimi, kasaHareketleri, kasaSuzgecOzeti,
+} from './kasa';
 import type { CashFlowEntry } from '../types';
 import type { ReservationIncomeRow } from './reports';
 
@@ -154,5 +156,41 @@ describe('hareketleri toplama', () => {
     expect(d.toplam).toBe(0);
     expect(d.belirtilmemis).toBe(0);
     expect(d.tahsilEdilmemis).toBe(0);
+  });
+});
+
+/*
+  Karttaki rakam kasadaki para değil, EKRANDAKİ LİSTENİN NETİ. Açıklama
+  yalnızca tarih aralığını söylüyordu; tür süzgeci de rakamı değiştirdiği
+  hâlde yazmıyordu. Tür "Gelir" seçiliyken gider sıfırlanıyor ve bakiye
+  yanındaki "Toplam Gelir" kartının aynısı oluyordu -- kullanıcı bunu
+  kasadan para çıkmış gibi okuyabiliyordu.
+*/
+describe('kasaSuzgecOzeti', () => {
+  it('süzgeç yokken bütün kayıtları söyler', () => {
+    expect(kasaSuzgecOzeti('', {})).toBe('Bütün kayıtlar');
+  });
+
+  it('iki uçlu aralığı gün.ay.yıl yazar', () => {
+    // ISO biçimi ekranda okunmuyor.
+    expect(kasaSuzgecOzeti('', { from: '2026-01-01', to: '2026-03-31' }))
+      .toBe('01.01.2026 - 31.03.2026 arası');
+  });
+
+  it('tek uçlu aralığın yönünü belirtir', () => {
+    expect(kasaSuzgecOzeti('', { from: '2026-05-10' })).toBe('10.05.2026 ve sonrası');
+    expect(kasaSuzgecOzeti('', { to: '2026-05-10' })).toBe('10.05.2026 ve öncesi');
+  });
+
+  it('tür süzülüyken karşı tarafın hesaba girmediğini yazar', () => {
+    expect(kasaSuzgecOzeti('Gelir', {}))
+      .toBe('Bütün kayıtlar · yalnızca gelir satırları, gider bu rakama girmiyor');
+    expect(kasaSuzgecOzeti('Gider', {}))
+      .toBe('Bütün kayıtlar · yalnızca gider satırları, gelir bu rakama girmiyor');
+  });
+
+  it('tarih ve tür birlikte süzüldüğünde ikisini de anlatır', () => {
+    expect(kasaSuzgecOzeti('Gelir', { from: '2026-01-01', to: '2026-03-31' }))
+      .toBe('01.01.2026 - 31.03.2026 arası · yalnızca gelir satırları, gider bu rakama girmiyor');
   });
 });

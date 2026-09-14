@@ -690,6 +690,47 @@ test('İşletme bazlı rapor bütün işletmeleri karşılaştırır', async ({ 
   await expect(page.getByText('Tek işletme raporlanıyor.')).toBeVisible();
 });
 
+/*
+  KASA KARTININ AÇIKLAMASI SÜZGECİ DOĞRU ANLATMALI.
+
+  Karttaki rakam kasadaki para değil, ekrandaki listenin neti. Açıklama
+  yalnızca tarih aralığını söylüyordu; oysa rakam TÜR SÜZGECİNDEN de
+  etkileniyor. Tür "Gelir" seçilince gider sıfırlanıyor ve "Bakiye",
+  yanındaki "Toplam Gelir" kartının aynısı oluyordu -- kullanıcı bunu
+  kasadan para çıkmış gibi okuyabiliyordu.
+*/
+test('Kasa toplam kartı hangi süzgeçten geldiğini yazar', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/kasa');
+
+  // Süzgeç yokken: bütün kayıtlar ve gerçek bakiye.
+  await expect(page.getByText('Süzgeçteki Bakiye')).toBeVisible();
+  await expect(page.getByText('Bütün kayıtlar', { exact: true })).toBeVisible();
+
+  // Tarih aralığı girilince açıklama aralığı gün.ay.yıl yazmalı.
+  await page.locator('#cf-from').fill('2026-01-01');
+  await page.locator('#cf-to').fill('2026-03-31');
+  await expect(page.getByText('01.01.2026 - 31.03.2026 arası', { exact: true })).toBeVisible();
+
+  /*
+    Tür süzülünce başlık da değişmeli: bir taraf hesaba hiç girmiyorken
+    "Bakiye" demek yanlış olurdu.
+  */
+  await page.locator('#cf-filter-kind').selectOption('Gelir');
+  await expect(page.getByText('Süzgeçteki Gelir Toplamı')).toBeVisible();
+  await expect(page.getByText('Süzgeçteki Bakiye')).toHaveCount(0);
+  await expect(
+    page.getByText('01.01.2026 - 31.03.2026 arası · yalnızca gelir satırları, gider bu rakama girmiyor'),
+  ).toBeVisible();
+
+  // Süzgeç kaldırılınca eski hâline dönmeli.
+  await page.locator('#cf-filter-kind').selectOption('');
+  await page.locator('#cf-from').fill('');
+  await page.locator('#cf-to').fill('');
+  await expect(page.getByText('Süzgeçteki Bakiye')).toBeVisible();
+  await expect(page.getByText('Bütün kayıtlar', { exact: true })).toBeVisible();
+});
+
 test('Günlük rezervasyonlar seçilen günü gösterir', async ({ page }) => {
   await login(page);
   await page.goto('/panel/rezervasyonlar/yeni');
