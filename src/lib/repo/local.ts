@@ -320,8 +320,47 @@ function takvimiTazele(): void {
   tazelemeSozu = Promise.all([
     gunleriTazele().catch(() => undefined),
     havayiTazele().catch(() => undefined),
-    kurlariTazele().catch(() => undefined),
   ]);
+}
+
+/**
+ * Kur tazeliği: satır bu süreden eskiyse yeniden çekiliyor.
+ *
+ * Yarım saat, TCMB'nin yayım ritmine göre seçildi. Merkez Bankası kuru
+ * iş günü içinde BİR KEZ (öğleden sonra) yayımlıyor; saniyede bir
+ * sormanın karşılığı yok, aynı değer tekrar tekrar okunurdu. Uç
+ * noktanın önbelleği de altı saatlik, yani bu çağrıların çoğu TCMB'ye
+ * hiç ulaşmadan CDN'den dönüyor.
+ */
+const KUR_TAZELIK = 30 * 60_000;
+
+let kurSozu: Promise<unknown> | null = null;
+let kurDenemesi = 0;
+
+/**
+ * Kuru gerektiğinde yeniden çeker.
+ *
+ * TAKVİMDEN AYRI DURUYOR ve bilerek. Takvim ile hava, sekme açıkken
+ * değişmeyen veriler; uygulama ömründe bir kez çekilip bırakılıyorlar.
+ * Kur öyle değil: panel gün boyu açık kalıyor ve TCMB gün içinde yeni
+ * değer yayımlıyor. Tek seferlik çekilseydi sabah açılan sekme akşama
+ * kadar sabahki kuru gösterirdi -- salon sahibi ona bakıp fiyat verirdi.
+ */
+function kuruTazele(): Promise<unknown> {
+  // Süren bir istek varsa ikincisi açılmıyor: aynı anda iki ekran kur
+  // isteyebiliyor.
+  if (kurSozu) return kurSozu;
+  /*
+    Başarısız deneme de sayılıyor. Yalnızca yazılan satırın yaşına
+    bakılsaydı, TCMB ulaşılamazken depo boş kalacağı için her okuma yeni
+    bir istek açardı ve ekran her tazelendiğinde boşuna sorulurdu.
+  */
+  if (kurDenemesi && Date.now() - kurDenemesi < KUR_TAZELIK) return Promise.resolve();
+  kurDenemesi = Date.now();
+  kurSozu = kurlariTazele()
+    .catch(() => undefined)
+    .finally(() => { kurSozu = null; });
+  return kurSozu;
 }
 
 /**
@@ -733,7 +772,7 @@ export const localRepo: Repository = {
     liste boş kalıyor ve şerit hiç çizilmiyor.
   */
   async listExchangeRates() {
-    await tazelemeyiBekle();
+    await kuruTazele();
     return wait(read<ExchangeRate[]>(KEYS.exchangeRates, []));
   },
 

@@ -690,14 +690,24 @@ export function useAddErrorReport() {
  * dolduruyor, buradan yalnızca okunuyor. Tarayıcıdan çekilseydi API
  * anahtarı istemciye inerdi.
  *
- * Beş dakikada bir tazeleniyor; görev de o sıklıkta çalışıyor, daha
- * sıkı sormak aynı satırı tekrar tekrar okumak olurdu.
+ * SEKME AÇIK KALDIĞINDA DA GÜNCELLENİYOR. Panel gün boyu açık duruyor;
+ * kur tek seferlik okunsaydı sabah açılan sekme akşama kadar sabahki
+ * rakamı gösterirdi. Sorgu on dakikada bir soruyor, depo katmanı da
+ * satır yarım saattan eskiyse ağa çıkıyor: en kötü durumda ekrandaki kur
+ * kırk dakikalık. Günde bir kez yayımlanan bir değer için bu yeterli,
+ * daha sıkı sormak aynı satırı tekrar okumak olurdu.
+ *
+ * Sekmeye dönüldüğünde de soruluyor: öğle arasından dönen kullanıcı
+ * bekleme olmadan güncel rakamı görüyor. Depodaki yaş kontrolü bunu da
+ * ucuz tutuyor -- veri tazeyse ağa hiç çıkılmıyor.
  */
 export function useExchangeRates() {
   return useQuery({
     queryKey: keys.exchangeRates(),
     queryFn: () => repo.listExchangeRates(),
     staleTime: 5 * 60_000,
+    refetchInterval: 10 * 60_000,
+    refetchOnWindowFocus: true,
   });
 }
 

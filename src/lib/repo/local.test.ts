@@ -28,10 +28,13 @@ function makeReservation(over: Partial<Reservation> = {}): Reservation {
  * yazılsaydı, üretilen veri o güne denk geldiğinde test tedarikçi kuralı
  * yüzünden değil "bu salonda zaten rezervasyon var" diye düşerdi.
  */
-async function bosGun(hallId: string, slot: string): Promise<string> {
+async function bosGun(hallId: string | string[], slot: string): Promise<string> {
+  // Birden çok salon verilebiliyor: "aynı gün farklı salonlara açılabilir"
+  // testi, günün HER İKİ salonda da boş olmasını istiyor.
+  const salonlar = new Set(Array.isArray(hallId) ? hallId : [hallId]);
   const dolu = new Set(
     (await localRepo.listReservations('biz_demo'))
-      .filter((r) => r.hallId === hallId && r.slot === slot)
+      .filter((r) => salonlar.has(r.hallId) && r.slot === slot)
       .map((r) => r.date),
   );
   const g = new Date('2029-01-01T00:00:00Z');
@@ -462,7 +465,16 @@ describe('faturalar', () => {
 describe('salonlar', () => {
   it('aynı gün ve seansta farklı salonlara rezervasyon açılabilir', async () => {
     seedIfEmpty();
-    const ortak = { date: '2027-06-12', slot: 'Gece' as const };
+    /*
+      TARİH SABİT YAZILAMAZ. Demo verisi bugünün çevresindeki iki yılı
+      dolduruyor ve o pencere takvimle birlikte KAYIYOR: sabit `2027-06-12`
+      aylarca boş kaldı, bir gün üretilen veri o güne denk geldi ve test
+      salon kuralı yüzünden değil "bu salonda zaten rezervasyon var" diye
+      düştü. Aynı tuzağa karşı yazılmış `bosGun` yardımcısı vardı ama bu
+      iki test ona bağlanmamıştı.
+    */
+    const date = await bosGun(['hall_demo1', 'hall_demo2'], 'Gece');
+    const ortak = { date, slot: 'Gece' as const };
     await localRepo.saveReservation(makeReservation({
       ...ortak, businessId: 'biz_demo', hallId: 'hall_demo1', code: 'A1',
     }));
@@ -473,7 +485,10 @@ describe('salonlar', () => {
 
   it('aynı salona aynı gün ve seansta ikinci kayıt açılamaz', async () => {
     seedIfEmpty();
-    const ortak = { date: '2027-06-13', slot: 'Gece' as const, businessId: 'biz_demo', hallId: 'hall_demo1' };
+    // Burada da boş gün aranıyor: ilk kayıt (B1) çakışırsa test, sınamak
+    // istediği ikinci kayıt kuralına hiç gelemeden düşerdi.
+    const date = await bosGun('hall_demo1', 'Gece');
+    const ortak = { date, slot: 'Gece' as const, businessId: 'biz_demo', hallId: 'hall_demo1' };
     await localRepo.saveReservation(makeReservation({ ...ortak, code: 'B1' }));
     await expect(localRepo.saveReservation(makeReservation({ ...ortak, code: 'B2' })))
       .rejects.toThrow(/zaten bir rezervasyon/);

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { uzakGun } from './tarih';
+
 /**
  * TEK GERÇEK VERİ KAYNAĞI (madde 34) ve son kontrol (madde 36).
  *
@@ -56,7 +58,7 @@ test('Aynı tahsilat kasada, rezervasyonda ve raporda aynı rakamı gösteriyor'
   await page.goto('/panel/rezervasyonlar/yeni');
   await page.locator('#customerName').fill('Bütünlük Testi');
   await page.locator('#customerPhone').fill('5329998877');
-  await page.locator('#date').fill('2027-09-18');
+  await page.locator('#date').fill(uzakGun(60));
   await page.locator('#guestCount').fill('300');
   await page.locator('#totalAmount').fill('300000');
   await page.locator('#deposit').fill('50000');
@@ -96,7 +98,7 @@ test('Tahsilat silinince kasa ve kalan birlikte geri dönüyor', async ({ page }
   await page.goto('/panel/rezervasyonlar/yeni');
   await page.locator('#customerName').fill('Geri Alma Testi');
   await page.locator('#customerPhone').fill('5329998866');
-  await page.locator('#date').fill('2027-10-09');
+  await page.locator('#date').fill(uzakGun(61));
   await page.locator('#guestCount').fill('200');
   await page.locator('#totalAmount').fill('100000');
   await page.locator('#deposit').fill('10000');
@@ -132,7 +134,7 @@ test('Düğün içi gider kasadan tam tutarıyla düşüyor', async ({ page }) =
   await page.goto('/panel/rezervasyonlar/yeni');
   await page.locator('#customerName').fill('Gider Bütünlük');
   await page.locator('#customerPhone').fill('5329998855');
-  await page.locator('#date').fill('2027-11-13');
+  await page.locator('#date').fill(uzakGun(62));
   await page.locator('#guestCount').fill('250');
   await page.locator('#totalAmount').fill('200000');
   await page.locator('#deposit').fill('0');
