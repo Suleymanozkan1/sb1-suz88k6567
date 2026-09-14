@@ -889,3 +889,196 @@ export function sistemDurumu(): Promise<SistemDurumu> {
     };
   });
 }
+
+/* ═══ Özel günler ═════════════════════════════════════════════════ */
+
+export interface OzelGun {
+  id: string; gun: string; ad: string; tur: string; kaynak: string; kesinlesmedi: boolean;
+}
+
+const ORNEK_OZEL_GUN: OzelGun[] = [
+  { id: 'og1', gun: '2026-10-29', ad: 'Cumhuriyet Bayramı', tur: 'resmi_tatil',
+    kaynak: 'tohum', kesinlesmedi: false },
+  { id: 'og2', gun: '2027-03-19', ad: 'Ramazan Bayramı Arifesi', tur: 'arife',
+    kaynak: 'saglayici', kesinlesmedi: true },
+  { id: 'og3', gun: '2027-06-15', ad: 'Okulların kapanışı', tur: 'okul',
+    kaynak: 'saglayici', kesinlesmedi: true },
+];
+
+/**
+ * Takvimdeki özel günler.
+ *
+ * Salonun kendi günleri ile sağlayıcıdan gelenler AYNI listede: takvimde
+ * ikisi de aynı işi görüyor, ayrı çekilseydi ekran iki isteği beklerdi.
+ * Ayrımı `kaynak` taşıyor.
+ */
+export function ozelGunler(limit = 200): Promise<OzelGun[]> {
+  return sorgu(ORNEK_OZEL_GUN, async () => {
+    const { data, error } = await db().from('special_days')
+      .select('id, day, label, kind, source, tentative')
+      .order('day', { ascending: true }).limit(limit);
+    return denetle(data, error, 'Özel günler okunamadı.').map((s) => {
+      const g = s as unknown as {
+        id: string; day: string; label: string; kind: string;
+        source: string | null; tentative: boolean | null;
+      };
+      return { id: g.id, gun: g.day, ad: g.label, tur: g.kind,
+        kaynak: g.source ?? 'isletme', kesinlesmedi: Boolean(g.tentative) };
+    });
+  });
+}
+
+/* ═══ Müşteri adayları ════════════════════════════════════════════ */
+
+export interface Aday {
+  id: string; ad: string; telefon: string; durum: string; kaynak: string;
+  etkinlikTarihi: string; kisi: number | null; teklif: number | null;
+  sonIletisim: string; takip: string; not: string;
+}
+
+const ORNEK_ADAY: Aday[] = [
+  { id: 'a1', ad: 'Sena & Barış', telefon: '5321110045', durum: 'teklif_verildi',
+    kaynak: 'Instagram', etkinlikTarihi: gunEkle(180), kisi: 300, teklif: 28_000_000,
+    sonIletisim: gunEkle(-2), takip: gunEkle(5), not: 'Cumartesi gecesi istiyor.' },
+  { id: 'a2', ad: 'Elif Hanım', telefon: '5321110046', durum: 'aranacak',
+    kaynak: 'WhatsApp', etkinlikTarihi: gunEkle(240), kisi: 180, teklif: null,
+    sonIletisim: gunEkle(-1), takip: gunEkle(-1), not: '' },
+  { id: 'a3', ad: 'Yıldız Ailesi', telefon: '5321110047', durum: 'rezervasyona_dondu',
+    kaynak: 'Tavsiye', etkinlikTarihi: gunEkle(95), kisi: 420, teklif: 41_000_000,
+    sonIletisim: gunEkle(-9), takip: '', not: 'Sözleşme imzalandı.' },
+];
+
+/**
+ * Müşteri adayları (görüşme defteri).
+ *
+ * Panelde en kalabalık ekranlardan biri; telefonda tamamını çekmek hem
+ * yavaş hem gereksiz. Varsayılan sınır iki yüz: saha kullanıcısı son
+ * görüşmelere bakıyor, arşive masaüstünden giriliyor.
+ */
+export function adaylar(limit = 200): Promise<Aday[]> {
+  return sorgu(ORNEK_ADAY, async () => {
+    const { data, error } = await db().from('customer_leads')
+      .select(`id, full_name, phone, status, source, event_date, guest_count,
+               quoted_price_kurus, last_contact_at, next_followup_at, note`)
+      .order('updated_at', { ascending: false }).limit(limit);
+    return denetle(data, error, 'Müşteri adayları okunamadı.').map((s) => {
+      const a = s as unknown as {
+        id: string; full_name: string; phone: string; status: string; source: string;
+        event_date: string | null; guest_count: number | null;
+        quoted_price_kurus: number | null; last_contact_at: string | null;
+        next_followup_at: string | null; note: string | null;
+      };
+      return {
+        id: a.id, ad: a.full_name, telefon: a.phone, durum: a.status, kaynak: a.source,
+        etkinlikTarihi: a.event_date ?? '', kisi: a.guest_count,
+        teklif: a.quoted_price_kurus, sonIletisim: a.last_contact_at ?? '',
+        takip: a.next_followup_at ?? '', not: a.note ?? '',
+      };
+    });
+  });
+}
+
+export interface AdayDurumu {
+  kod: string; ad: string; ton: string; etkin: boolean; kapali: boolean;
+}
+
+const ORNEK_ADAY_DURUMU: AdayDurumu[] = [
+  { kod: 'yeni', ad: 'Yeni', ton: 'bekleyen', etkin: true, kapali: false },
+  { kod: 'aranacak', ad: 'Aranacak', ton: 'bekleyen', etkin: true, kapali: false },
+  { kod: 'teklif_verildi', ad: 'Teklif Verildi', ton: 'teklif', etkin: true, kapali: false },
+  { kod: 'rezervasyona_dondu', ad: 'Rezervasyona Döndü', ton: 'olumlu', etkin: true, kapali: true },
+  { kod: 'olumsuz', ad: 'Olumsuz', ton: 'kapali', etkin: true, kapali: true },
+];
+
+/**
+ * İşletmenin tanımladığı aday durumları.
+ *
+ * Kod yerine ad göstermek için gerekli: aday kaydında `teklif_verildi`
+ * duruyor, ekranda "Teklif Verildi" yazmalı. Liste işletmeye göre
+ * değiştiği için sabit bir eşleme tablosu tutulamıyor.
+ */
+export function adayDurumlari(): Promise<AdayDurumu[]> {
+  return sorgu(ORNEK_ADAY_DURUMU, async () => {
+    const { data, error } = await db().from('lead_statuses')
+      .select('code, label, tone, active, is_closed')
+      .order('sort_order', { ascending: true });
+    return denetle(data, error, 'Aday durumları okunamadı.').map((s) => {
+      const d = s as unknown as {
+        code: string; label: string; tone: string; active: boolean; is_closed: boolean;
+      };
+      return { kod: d.code, ad: d.label, ton: d.tone, etkin: d.active, kapali: d.is_closed };
+    });
+  });
+}
+
+/* ═══ Ödeme bildirimleri ══════════════════════════════════════════ */
+
+export interface OdemeOlayi {
+  id: string; olay: string; tutar: number | null; eskiTutar: number | null;
+  kisi: string; an: string;
+}
+
+const ORNEK_ODEME_OLAYI: OdemeOlayi[] = [
+  { id: 'o1', olay: 'tutar_degisti', tutar: 3_000_000, eskiTutar: 2_500_000,
+    kisi: 'mudur@sahra.com', an: `${gunEkle(-1)}T14:20:00.000Z` },
+  { id: 'o2', olay: 'tahsilat_eklendi', tutar: 5_000_000, eskiTutar: null,
+    kisi: 'kasa@sahra.com', an: `${gunEkle(-2)}T10:05:00.000Z` },
+];
+
+/**
+ * Para ile ilgili son değişiklikler.
+ *
+ * Panelde "Ödeme Bildirimleri" ekranının karşılığı. Yöneticinin telefonda
+ * sorduğu tek soru şu: bugün rakamlara kim dokundu.
+ */
+export function odemeOlaylari(limit = 100): Promise<OdemeOlayi[]> {
+  return sorgu(ORNEK_ODEME_OLAYI, async () => {
+    const { data, error } = await db().from('payment_events')
+      .select('id, event, amount_kurus, old_amount_kurus, actor_email, created_at')
+      .order('created_at', { ascending: false }).limit(limit);
+    return denetle(data, error, 'Ödeme bildirimleri okunamadı.').map((s) => {
+      const o = s as unknown as {
+        id: string; event: string; amount_kurus: number | null;
+        old_amount_kurus: number | null; actor_email: string | null; created_at: string;
+      };
+      return { id: o.id, olay: o.event, tutar: o.amount_kurus,
+        eskiTutar: o.old_amount_kurus, kisi: o.actor_email ?? '-', an: o.created_at };
+    });
+  });
+}
+
+/* ═══ İşletmeler ══════════════════════════════════════════════════ */
+
+export interface Isletme {
+  id: string; ad: string; kategori: string; kapasite: number; il: string; ilce: string;
+}
+
+const ORNEK_ISLETME: Isletme[] = [
+  { id: 'biz_demo', ad: 'Grand Sahra Düğün ve Davet Salonu', kategori: 'Düğün Salonu',
+    kapasite: 500, il: 'Konya', ilce: 'Selçuklu' },
+  { id: 'biz_demo2', ad: 'Yıldız Kır Bahçesi', kategori: 'Kır Düğünü / Bahçe',
+    kapasite: 300, il: 'Konya', ilce: 'Meram' },
+];
+
+/**
+ * Kullanıcının işletmeleri.
+ *
+ * Telefonda DÜZENLEME YOK, yalnızca liste: işletme tanımı yılda bir
+ * değişen bir ayar ve küçük ekranda yanlış dokunuşla bozulması en pahalı
+ * kayıt. Düzenleme panelde kalıyor.
+ */
+export function isletmeler(): Promise<Isletme[]> {
+  return sorgu(ORNEK_ISLETME, async () => {
+    const { data, error } = await db().from('businesses')
+      .select('id, name, category, capacity, city, district')
+      .order('name', { ascending: true });
+    return denetle(data, error, 'İşletmeler okunamadı.').map((s) => {
+      const i = s as unknown as {
+        id: string; name: string; category: string | null; capacity: number;
+        city: string | null; district: string | null;
+      };
+      return { id: i.id, ad: i.name, kategori: i.category ?? '-', kapasite: i.capacity,
+        il: i.city ?? '-', ilce: i.district ?? '-' };
+    });
+  });
+}
