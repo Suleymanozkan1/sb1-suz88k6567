@@ -216,11 +216,11 @@ PARASUT_USERNAME=<...>
 PARASUT_PASSWORD=<...>
 PARASUT_COMPANY_ID=<...>
 
-# Yönetici bildirimleri WhatsApp'tan gidecekse (bölüm 11)
+# Yönetici bildirimleri WhatsApp'tan gidecekse (bölüm 12)
 WHATSAPP_WEB_ETKIN=0
 WHATSAPP_WEB_OTURUM=/var/lib/sahra/whatsapp-oturum
 
-# WhatsApp (isteğe bağlı)
+# Gelen mesajlar müşteri adayına düşsün (bölüm 11)
 WHATSAPP_VERIFY_TOKEN=<...>
 WHATSAPP_APP_SECRET=<...>
 WHATSAPP_ACCESS_TOKEN=<...>
@@ -458,7 +458,97 @@ git push
 Veritabanı göçleri otomatik uygulanmadığı için geri alma yalnızca kodu
 etkiler; veri olduğu gibi kalır.
 
-## 11. Yönetici bildirimleri WhatsApp'tan (isteğe bağlı)
+## 11. Gelen WhatsApp mesajları müşteri adayına düşsün (isteğe bağlı)
+
+Instagram'dan gelip WhatsApp'a yazan kişi `Panel → Müşteri Adayları`
+listesine kendiliğinden düşer. Mesajın aslı kayıtta durur, telefon
+numarası on haneye indirgenir ve aynı kişinin ikinci mesajı yeni kayıt
+açmaz, mevcut kaydın altına yazılır.
+
+**ÜCRET YOK.** Mesaj *almak* için Meta'ya ödeme yapılmaz ve erişim jetonu
+bile gerekmez: `WHATSAPP_ACCESS_TOKEN` ile `WHATSAPP_PHONE_NUMBER_ID`
+yalnızca sunucudan mesaj *göndermek* için lazım. Personel cevabı
+`Panel → Müşteri Adayları → WhatsApp'ta Aç` düğmesinden, kendi
+telefonundan yazarsa gönderme ücreti de doğmaz.
+
+**NUMARA SEÇİMİ — geri dönüşü zahmetli.** Cloud API'ye bağlanan numara
+telefondaki WhatsApp ve WhatsApp Business uygulamalarından **düşer**; o
+numaranın mesajlarına artık yalnızca panelden bakılır. Personelin günlük
+kullandığı hat bağlanırsa telefondan yazışma imkânı kalmaz. Bağlantı
+için ayrı bir hat açmak daha güvenlidir.
+
+### 11.1 Önce mock modla deneyin (Meta'sız)
+
+Meta tarafına dokunmadan boru hattının tamamı denenebilir: numara
+bağlamadan, jeton almadan.
+
+```bash
+# /etc/sahra.env
+WHATSAPP_MOCK_MODE=true
+```
+
+```bash
+sudo systemctl restart sahra
+```
+
+Panelde oturum açın ve `/api/whatsapp-test` ucuna bir örnek mesaj
+gönderin; aynı çözümleyiciden geçip `Müşteri Adayları` listesinde
+görünmelidir. Uç nokta **oturum ister** ve yalnızca mock mod açıkken
+çalışır.
+
+Gerçek webhook'un imza doğrulaması bundan etkilenmez: mock mod açık diye
+imzasız bildirim kabul edilseydi, unutulan bir ayar üretimde herkesin
+sahte talep yazabildiği bir kapı bırakırdı. Yine de deneme bitince
+kapatın:
+
+```bash
+WHATSAPP_MOCK_MODE=false
+```
+
+### 11.2 Meta tarafı
+
+1. [Meta for Developers](https://developers.facebook.com/) üzerinde
+   uygulama açın, **WhatsApp** ürününü ekleyin.
+2. Numarayı WhatsApp Business hesabına bağlayıp doğrulayın.
+3. Webhook adresi: `https://<alan-adiniz>/api/whatsapp`
+   (`/api/webhooks/whatsapp` de aynı işleyiciye gider).
+   **Verify token** alanına uzun ve rastgele bir dize yazın.
+   `messages` alanına abone olun.
+4. Aynı dizeyi sunucuda `WHATSAPP_VERIFY_TOKEN`, uygulamanın
+   **App Secret** değerini `WHATSAPP_APP_SECRET` olarak tanımlayın.
+
+```bash
+# /etc/sahra.env -- sudo chmod 600
+WHATSAPP_VERIFY_TOKEN=<Meta panelinde yazdığınız dize>
+WHATSAPP_APP_SECRET=<Meta uygulamasının App Secret değeri>
+```
+
+İkisi de **sunucuda kalır**; tarayıcıya gönderilmez, Git'e girmez.
+`WHATSAPP_APP_SECRET` gelen her bildirimin imzasını doğrular — o olmadan
+adresi bilen herkes sahte müşteri adayı yazabilirdi.
+
+### 11.3 Numarayı işletmeye bağlayın
+
+Son adım panelde: **WhatsApp Ayarları** ekranında Meta'nın verdiği
+**Phone number ID** değerini girin. Bu eşleme olmadan gelen mesaj
+kaydedilmez — hangi işletmeye ait olduğu bilinmeyen satır, kimsenin
+göremeyeceği bir kayıt olurdu.
+
+Aynı ekrandan otomatik karşılama ve mesai dışı mesajı da açılır.
+
+### 11.4 Çalıştığını doğrulayın
+
+Bağlı numaraya başka bir telefondan mesaj atın. Birkaç saniye içinde
+`Panel → Müşteri Adayları` listesinde görünmeli.
+
+| Belirti | Olası sebep |
+|---|---|
+| Meta "doğrulama başarısız" diyor | `WHATSAPP_VERIFY_TOKEN` panelde yazdığınızla birebir aynı değil |
+| Mesaj geliyor ama liste boş | Phone number ID eşlemesi yapılmamış (11.3) |
+| Günlükte imza hatası | `WHATSAPP_APP_SECRET` yanlış ya da tanımsız |
+| `404` dönüyor | Adres yanlış; `/api/whatsapp` olmalı |
+
+## 12. Yönetici bildirimleri WhatsApp'tan (isteğe bağlı)
 
 Ödeme uyarıları SMS yerine WhatsApp'tan gidebilir; mesajlar yöneticinin
 telefonunda o sohbette kalıcı olarak birikir ve Meta'ya ücret ödenmez.
