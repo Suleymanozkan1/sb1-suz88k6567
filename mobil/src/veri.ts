@@ -112,6 +112,39 @@ export function isletmeBellegiTemizle(): void {
   isletmeBellek = null;
 }
 
+/* ═══ Para birimi çevrimi ═════════════════════════════════════════ */
+
+/*
+  Şema iki ayrı para birimi kullanıyor ve karışması sessiz hata üretiyor
+  (bkz. 0008_odeme_plani_is_emri_tedarikci.sql: "Kuruş/TL karışımı sessiz
+  tutar kaymasına yol açar"):
+
+    • TL, `numeric(12,2)` — reservations.total_amount, reservations.deposit,
+      payments.amount, cash_flow.amount, reservation_expenses.unit_price,
+      payment_events.amount
+    • Kuruş, `bigint` — sütun adı `_kurus` ile biter: menus.price_kurus,
+      invoices.*_kurus, customer_leads.quoted_price_kurus
+
+  Mobil uygulamanın tamamı KURUŞ taşır (`bicim.tutar` yüze bölerek yazar),
+  çünkü kayan noktalı TL toplamlarında kuruş artıkları birikiyordu. Bu
+  yüzden TL sütunları veri katmanının sınırında çevriliyor; `_kurus`
+  sütunları olduğu gibi geçiyor.
+
+  Bu çevrim yokken tanıtım kipi doğru görünüyordu (örnek veri zaten kuruş),
+  ama gerçek sunucuya bağlanınca 150.000 ₺'lik bir düğün ekranda
+  1.500,00 ₺ yazıyordu.
+*/
+
+/** Veritabanındaki TL değerini kuruşa çevirir. */
+export function kurusa(tl: number | null | undefined): number {
+  return Math.round((Number(tl) || 0) * 100);
+}
+
+/** Kuruşu veritabanının beklediği TL değerine çevirir. */
+export function tlye(kurus: number | null | undefined): number {
+  return Math.round(Number(kurus) || 0) / 100;
+}
+
 /* ═══ Rezervasyon ═════════════════════════════════════════════════ */
 
 export interface Rezervasyon {
@@ -242,8 +275,8 @@ function esle(r: SatirDb, tahsilat: number): Rezervasyon {
     tur: r.organization_type,
     renk: TUR_RENK[r.organization_type] ?? '#47b2e4',
     salon: r.halls?.name ?? '-', davetli: r.guest_count ?? 0,
-    toplam: r.total_amount ?? 0, kapora: r.deposit ?? 0,
-    tahsilat: (r.deposit ?? 0) + tahsilat, durum: r.status,
+    toplam: kurusa(r.total_amount), kapora: kurusa(r.deposit),
+    tahsilat: kurusa(r.deposit) + tahsilat, durum: r.status,
   };
 }
 
@@ -254,7 +287,7 @@ async function tahsilatToplamlari(kimlikler: string[]): Promise<Record<string, n
   const toplam: Record<string, number> = {};
   for (const s of data ?? []) {
     const satir = s as unknown as { reservation_id: string; amount: number };
-    toplam[satir.reservation_id] = (toplam[satir.reservation_id] ?? 0) + satir.amount;
+    toplam[satir.reservation_id] = (toplam[satir.reservation_id] ?? 0) + kurusa(satir.amount);
   }
   return toplam;
 }
@@ -310,7 +343,8 @@ export function tahsilatlar(rezervasyonId: string): Promise<Tahsilat[]> {
       .eq('reservation_id', rezervasyonId).order('date', { ascending: false });
     return denetle(data, error, 'Tahsilatlar okunamadı.').map((s) => {
       const p = s as unknown as { id: string; date: string; amount: number; method: string; note: string | null };
-      return { id: p.id, tarih: p.date, tutar: p.amount, sekil: p.method, aciklama: p.note ?? '' };
+      return { id: p.id, tarih: p.date, tutar: kurusa(p.amount),
+        sekil: p.method, aciklama: p.note ?? '' };
     });
   });
 }
@@ -320,7 +354,7 @@ export async function tahsilatEkle(
 ): Promise<void> {
   if (tanitim) return;
   const { error } = await db().from('payments').insert({
-    reservation_id: rezervasyonId, amount: tutar, method: sekil,
+    reservation_id: rezervasyonId, amount: tlye(tutar), method: sekil,
     note: aciklama || null, date: bugunIso(),
   });
   if (error) throw new Error(error.message);
@@ -387,8 +421,8 @@ export async function rezervasyonEkle(girdi: YeniRezervasyon): Promise<string | 
     slot: girdi.seans,
     organization_type: girdi.tur,
     guest_count: girdi.davetli,
-    total_amount: girdi.toplam,
-    deposit: girdi.kapora,
+    total_amount: tlye(girdi.toplam),
+    deposit: tlye(girdi.kapora),
     status: girdi.durum,
     source_channel: girdi.kanal || null,
     source_detail: girdi.kanalDetay?.trim() || null,
@@ -441,7 +475,7 @@ export function kasaOzeti(): Promise<KasaOzet> {
     let gelir = 0, gider = 0;
     for (const s of satirlar) {
       const k = s as unknown as { kind: string; amount: number };
-      if (k.kind === 'Gelir') gelir += k.amount; else gider += k.amount;
+      if (k.kind === 'Gelir') gelir += kurusa(k.amount); else gider += kurusa(k.amount);
     }
 
     // İptal edilen organizasyon kasaya para getirmez; kaporası da sayılmaz.
@@ -454,7 +488,7 @@ export function kasaOzeti(): Promise<KasaOzet> {
     const t = await tahsilatToplamlari(kimlikler);
 
     for (const r of kayitlar) {
-      gelir += r.deposit ?? 0;
+      gelir += kurusa(r.deposit);
       gelir += t[r.id] ?? 0;
     }
 
@@ -467,12 +501,13 @@ export function kasaOzeti(): Promise<KasaOzet> {
       .select('unit_count, unit_price');
     for (const g of (giderler ?? []) as unknown as
       { unit_count: number; unit_price: number }[]) {
-      gider += (g.unit_count ?? 0) * (g.unit_price ?? 0);
+      gider += (g.unit_count ?? 0) * kurusa(g.unit_price);
     }
 
     // Kalan alacak: kapora da ödenmiş paradır, düşülmesi gerekiyor.
     const kalan = kayitlar.reduce(
-      (toplam, r) => toplam + Math.max(0, r.total_amount - (r.deposit ?? 0) - (t[r.id] ?? 0)),
+      (toplam, r) => toplam
+        + Math.max(0, kurusa(r.total_amount) - kurusa(r.deposit) - (t[r.id] ?? 0)),
       0,
     );
 
@@ -494,7 +529,7 @@ export function kasaHareketleri(limit = 50): Promise<KasaSatiri[]> {
       return {
         id: k.id, tarih: k.date, tur: k.kind,
         baslik: k.description?.trim() || k.category || '-',
-        kategori: k.category ?? '', tutar: k.amount,
+        kategori: k.category ?? '', tutar: kurusa(k.amount),
       };
     });
   });
@@ -507,7 +542,8 @@ export async function kasaEkle(
   // business_id zorunlu bir sütun; gönderilmezse kayıt hiç açılmaz.
   const { error } = await db().from('cash_flow').insert({
     business_id: await aktifIsletmeId(),
-    kind: tur, description: baslik, category: kategori, amount: tutar, date: bugunIso(),
+    kind: tur, description: baslik, category: kategori,
+    amount: tlye(tutar), date: bugunIso(),
   });
   if (error) throw new Error(error.message);
 }
@@ -1034,15 +1070,19 @@ const ORNEK_ODEME_OLAYI: OdemeOlayi[] = [
 export function odemeOlaylari(limit = 100): Promise<OdemeOlayi[]> {
   return sorgu(ORNEK_ODEME_OLAYI, async () => {
     const { data, error } = await db().from('payment_events')
-      .select('id, event, amount_kurus, old_amount_kurus, actor_email, created_at')
+      .select('id, event, amount, old_amount, actor_email, created_at')
       .order('created_at', { ascending: false }).limit(limit);
     return denetle(data, error, 'Ödeme bildirimleri okunamadı.').map((s) => {
       const o = s as unknown as {
-        id: string; event: string; amount_kurus: number | null;
-        old_amount_kurus: number | null; actor_email: string | null; created_at: string;
+        id: string; event: string; amount: number | null;
+        old_amount: number | null; actor_email: string | null; created_at: string;
       };
-      return { id: o.id, olay: o.event, tutar: o.amount_kurus,
-        eskiTutar: o.old_amount_kurus, kisi: o.actor_email ?? '-', an: o.created_at };
+      return {
+        id: o.id, olay: o.event,
+        tutar: o.amount === null ? null : kurusa(o.amount),
+        eskiTutar: o.old_amount === null ? null : kurusa(o.old_amount),
+        kisi: o.actor_email ?? '-', an: o.created_at,
+      };
     });
   });
 }

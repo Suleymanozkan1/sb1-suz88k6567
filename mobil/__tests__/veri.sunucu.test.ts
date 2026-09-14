@@ -103,8 +103,8 @@ const REZ_SATIRI = {
   id: 'r1', code: '2026-1', customer_name: 'Ayşe Yılmaz',
   customer_phone: '5321112233', date: '2026-09-12',
   start_time: '19:00:00', end_time: '23:00:00', slot: 'Gece',
-  organization_type: 'Düğün', guest_count: 300, total_amount: 25_000_000,
-  deposit: 6_000_000, status: 'Kesin Rezervasyon', halls: { name: 'Kristal Salon' },
+  organization_type: 'Düğün', guest_count: 300, total_amount: 250_000,
+  deposit: 60_000, status: 'Kesin Rezervasyon', halls: { name: 'Kristal Salon' },
 };
 
 describe('sunucu kipi', () => {
@@ -132,8 +132,8 @@ describe('rezervasyon eşlemesi', () => {
     // mobil ekran ile web paneli aynı kayıt için farklı rakam gösterir.
     durum.satirlar.reservations = [REZ_SATIRI];
     durum.satirlar.payments = [
-      { reservation_id: 'r1', amount: 2_000_000 },
-      { reservation_id: 'r1', amount: 1_000_000 },
+      { reservation_id: 'r1', amount: 20_000 },
+      { reservation_id: 'r1', amount: 10_000 },
     ];
 
     const [r] = await veri.tumKayitlar();
@@ -145,8 +145,8 @@ describe('rezervasyon eşlemesi', () => {
   it('başka rezervasyonun ödemesini karıştırmaz', async () => {
     durum.satirlar.reservations = [REZ_SATIRI, { ...REZ_SATIRI, id: 'r2', deposit: 0 }];
     durum.satirlar.payments = [
-      { reservation_id: 'r1', amount: 2_000_000 },
-      { reservation_id: 'r2', amount: 5_000_000 },
+      { reservation_id: 'r1', amount: 20_000 },
+      { reservation_id: 'r2', amount: 50_000 },
     ];
 
     const [ilk, ikinci] = await veri.tumKayitlar();
@@ -204,7 +204,7 @@ describe('rezervasyon eşlemesi', () => {
 describe('tahsilat', () => {
   it('satırı çevirir ve yeniden eskiye ister', async () => {
     durum.satirlar.payments = [
-      { id: 'p1', date: '2026-02-01', amount: 1_500_000, method: 'Havale/EFT', note: null },
+      { id: 'p1', date: '2026-02-01', amount: 15_000, method: 'Havale/EFT', note: null },
     ];
 
     const [t] = await veri.tahsilatlar('r1');
@@ -220,7 +220,7 @@ describe('tahsilat', () => {
 
     const govde = islem(cagri('payments'), 'insert')?.arg[0] as Record<string, unknown>;
     expect(govde).toMatchObject({
-      reservation_id: 'r1', amount: 500_000, method: 'Nakit', note: 'Ara ödeme',
+      reservation_id: 'r1', amount: 5_000, method: 'Nakit', note: 'Ara ödeme',
     });
     expect(govde.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
@@ -270,7 +270,7 @@ describe('rezervasyon ekleme', () => {
     expect(govde).toMatchObject({
       business_id: 'b1', hall_id: 'h1', customer_name: 'Ayşe', customer_phone: '5321112233',
       organization_type: 'Düğün', guest_count: 300,
-      total_amount: 25_000_000, deposit: 6_000_000,
+      total_amount: 250_000, deposit: 60_000,
     });
   });
 
@@ -327,12 +327,12 @@ describe('kasa', () => {
 
     const ozet = await veri.kasaOzeti();
 
-    // 15.000 serbest gelir + 20.000 kapora + 40.000 tahsilat
-    expect(ozet.gelir).toBe(75_000);
-    expect(ozet.gider).toBe(3_000);
-    expect(ozet.bakiye).toBe(72_000);
-    // 100.000 - 20.000 kapora - 40.000 tahsilat
-    expect(ozet.alacak).toBe(40_000);
+    // 15.000 TL serbest gelir + 20.000 TL kapora + 40.000 TL tahsilat
+    expect(ozet.gelir).toBe(7_500_000);
+    expect(ozet.gider).toBe(300_000);
+    expect(ozet.bakiye).toBe(7_200_000);
+    // 100.000 - 20.000 kapora - 40.000 tahsilat, kuruş olarak
+    expect(ozet.alacak).toBe(4_000_000);
   });
 
   it('düğün içi gideri kasadan düşer', async () => {
@@ -347,8 +347,9 @@ describe('kasa', () => {
     ];
 
     const ozet = await veri.kasaOzeti();
-    expect(ozet.gider).toBe(25_000);
-    expect(ozet.bakiye).toBe(25_000);
+    // 10 x 2.000 TL + 1 x 5.000 TL = 25.000 TL gider, 50.000 TL kapora geliri.
+    expect(ozet.gider).toBe(2_500_000);
+    expect(ozet.bakiye).toBe(2_500_000);
   });
 
   it('fazla tahsil edilmiş kayıt alacağı eksiye düşürmez', async () => {
@@ -381,7 +382,7 @@ describe('kasa', () => {
     const [k] = await veri.kasaHareketleri();
 
     expect(k).toEqual({
-      id: 'k1', tarih: '2026-01-01', tur: 'Gider', baslik: 'Kira', kategori: '', tutar: 5_000,
+      id: 'k1', tarih: '2026-01-01', tur: 'Gider', baslik: 'Kira', kategori: '', tutar: 500_000,
     });
   });
 
@@ -401,7 +402,7 @@ describe('kasa', () => {
     await veri.kasaEkle('Gelir', 'Salon kiralama', 'Diğer', 1_500_000);
     const govde = islem(cagri('cash_flow'), 'insert')?.arg[0] as Record<string, unknown>;
     expect(govde).toMatchObject({
-      kind: 'Gelir', description: 'Salon kiralama', category: 'Diğer', amount: 1_500_000,
+      kind: 'Gelir', description: 'Salon kiralama', category: 'Diğer', amount: 15_000,
     });
     // business_id zorunlu bir sütun; gönderilmezse kayıt hiç açılmaz.
     expect(govde.business_id).toBe('biz_1');
@@ -593,5 +594,51 @@ describe('yönetim ekranları', () => {
     durum.satirlar.sms_queue = [];
     durum.satirlar.sms_consents = [];
     await expect(veri.sistemDurumu()).resolves.toMatchObject({ sonYedek: '-', yedekDurum: '-' });
+  });
+});
+
+/*
+  Şemadaki iki para birimi (TL `numeric(12,2)` ve kuruş `bigint _kurus`)
+  karışınca hiçbir şey hata vermiyor, yalnızca rakam kayıyor. Tanıtım
+  kipi de yakalamıyor: örnek veri zaten kuruş cinsinden yazılı.
+
+  Bu bölüm çevrimin iki yönünü de sabitliyor. Daha önce çevrim hiç yoktu
+  ve gerçek sunucuya bağlanan uygulama 250.000 TL'lik bir düğünü
+  2.500,00 ₺ olarak gösteriyordu.
+*/
+describe('para birimi sınırı', () => {
+  it('TL sütunlarını kuruşa çevirir, _kurus sütunlarına dokunmaz', async () => {
+    durum.satirlar.reservations = [{ ...REZ_SATIRI, total_amount: 250_000, deposit: 60_000 }];
+    durum.satirlar.menus = [{
+      id: 'm1', name: 'Standart', pricing: 'kisi_basi',
+      price_kurus: 45_000, description: null, is_active: true,
+    }];
+
+    const [r] = await veri.tumKayitlar();
+    const [m] = await veri.menuler();
+
+    expect(r.toplam).toBe(25_000_000);   // 250.000 TL
+    expect(r.kapora).toBe(6_000_000);    //  60.000 TL
+    expect(m.fiyat).toBe(45_000);        // zaten kuruş: çevrilmez
+  });
+
+  it('yazarken kuruşu TL sütununa geri çevirir', async () => {
+    await veri.kasaEkle('Gider', 'Çiçek', 'Süsleme', 123_456);
+    const govde = islem(cagri('cash_flow'), 'insert')?.arg[0] as Record<string, unknown>;
+    expect(govde.amount).toBe(1_234.56);
+  });
+
+  it('kuruş artığını yuvarlar: numeric(12,2) iki hane tutuyor', async () => {
+    // 1 kuruş bile kaybolursa `deposit <= total_amount` kısıtı bir kayıtta
+    // beklenmedik biçimde tetiklenebiliyor.
+    expect(veri.kurusa(1_234.56)).toBe(123_456);
+    expect(veri.tlye(123_456)).toBe(1_234.56);
+    expect(veri.kurusa(veri.tlye(999_999))).toBe(999_999);
+  });
+
+  it('boş ve geçersiz değerde sıfır döner', () => {
+    expect(veri.kurusa(null)).toBe(0);
+    expect(veri.kurusa(undefined)).toBe(0);
+    expect(veri.tlye(null)).toBe(0);
   });
 });
