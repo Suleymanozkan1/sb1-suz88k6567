@@ -294,6 +294,53 @@ test.describe('hacimli veriyle panel taraması', () => {
     expect(hatalar).toEqual([]);
   });
 
+  /*
+    "Hata Bildir" düğmesi `fixed bottom-4 right-4` duruyor ve sayfanın
+    sonuna inildiğinde en alttaki satırın sağ ucunu örtüyordu: sayfalama
+    şeridinde "Sayfa 1 / 2" yazısı ve "Sonraki" düğmesi düğmenin altında
+    kalıyor, tıklanamıyordu.
+
+    Geometrik denetim: iki kutunun kesişmemesi gerekiyor. Ekran
+    görüntüsü karşılaştırması bunu yakalamazdı -- örtme yalnızca liste
+    yeterince uzun olduğunda ve sayfa sonuna inildiğinde çıkıyor.
+  */
+  test('hata bildir düğmesi sayfalama şeridini örtmüyor', async ({ page }) => {
+    await girisVeDoldur(page);
+
+    // Sayfalama yalnızca on kayıttan fazlasında çiziliyor; hacimli veri şart.
+    await page.goto('/panel/rezervasyonlar');
+    const serit = page.getByRole('navigation', { name: 'Kayıt sayfaları' });
+    await expect(serit).toBeVisible({ timeout: 15_000 });
+
+    // Örtme sayfa sonuna inilince ortaya çıkıyor.
+    await serit.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
+
+    const dugme = page.getByRole('button', { name: 'Hata Bildir' });
+    await expect(dugme).toBeVisible();
+
+    const d = await dugme.boundingBox();
+    const sonraki = await page.getByRole('button', { name: 'Sonraki' }).boundingBox();
+    const sayfaYazisi = await serit.getByText(/^Sayfa \d+ \/ \d+$/).boundingBox();
+
+    expect(d, 'Hata Bildir düğmesi ölçülemedi').not.toBeNull();
+    expect(sonraki, '"Sonraki" düğmesi ölçülemedi').not.toBeNull();
+    expect(sayfaYazisi, 'sayfa sayacı ölçülemedi').not.toBeNull();
+
+    const kesisiyor = (a: NonNullable<typeof d>, b: NonNullable<typeof d>) =>
+      a.x < b.x + b.width && b.x < a.x + a.width
+      && a.y < b.y + b.height && b.y < a.y + a.height;
+
+    expect(kesisiyor(d!, sonraki!), '"Sonraki" düğmesi Hata Bildir\'in altında kalıyor')
+      .toBe(false);
+    expect(kesisiyor(d!, sayfaYazisi!), 'sayfa sayacı Hata Bildir\'in altında kalıyor')
+      .toBe(false);
+
+    // Örtülmediğini davranışla da doğrula: düğme gerçekten tıklanabilmeli.
+    await page.getByRole('button', { name: 'Sonraki' }).click();
+    await expect(serit.getByText(/^Sayfa 2 \/ \d+$/)).toBeVisible();
+  });
+
   test('takvim hacimli ayda çiziliyor', async ({ page }) => {
     const hatalar = hatalariTopla(page);
     await girisVeDoldur(page);

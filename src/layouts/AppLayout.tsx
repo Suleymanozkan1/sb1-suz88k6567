@@ -167,7 +167,15 @@ export default function AppLayout() {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 p-4 md:p-6">
+        {/*
+          ALTTA FAZLADAN BOŞLUK. "Hata Bildir" düğmesi `fixed bottom-4
+          right-4` duruyor ve sayfanın sonuna inildiğinde en alttaki
+          satırın sağ ucunu örtüyordu -- sayfalama şeridinde "Sayfa 1 / 2"
+          ve "Sonraki" düğmesinin üstüne biniyordu. Boşluk burada, sayfa
+          düzeninde: tek tek ekranlara eklenseydi yeni eklenen her ekranda
+          aynı hata baştan çıkardı.
+        */}
+        <main className="min-w-0 flex-1 p-4 pb-24 md:p-6 md:pb-24">
           <DemoNotice className="mb-5" />
           {/*
             Yetkisiz ekran menünün İÇİNDE kapatılıyor: kullanıcı boş bir
