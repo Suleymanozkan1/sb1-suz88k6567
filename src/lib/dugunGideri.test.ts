@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   DUGUN_GIDERI_KATEGORISI, giderKasaSatirlari, giderToplami, giderlerToplami, netHesap,
+  tedarikciGiderleri, tedarikcidenMi,
 } from './dugunGideri';
-import type { Payment, Reservation, ReservationExpense } from '../types';
+import type {
+  Payment, Reservation, ReservationExpense, ReservationVendor, Vendor,
+} from '../types';
 
 /**
  * Düğün içi gider hesabı.
@@ -158,5 +161,83 @@ describe('giderKasaSatirlari', () => {
       taraflar,
     );
     expect(satirlar.map((s) => s.date)).toEqual(['2026-10-04', '2026-09-12']);
+  });
+});
+
+
+/*
+  Tedarikçi ücretleri ("Ürün ve Hizmet" bölümü) düğünün maliyetidir ama
+  gider defterine hiç girmiyordu: net tutar, kasa ve kâr raporu bu parayı
+  görmüyordu. 60.500 ₺ tedarikçi ödemesi olan bir düğün kârlı
+  görünebiliyordu.
+
+  Satırlar KAYDEDİLMİYOR, okunduğu anda türetiliyor: kaydedilseydi bir
+  ücret düzeltildiğinde gider satırı geride kalır, aynı para iki yerde
+  farklı görünürdü.
+*/
+describe('tedarikçi ücretleri düğün içi gidere sayılıyor', () => {
+  const tedarikci = (over: Partial<Vendor> = {}): Vendor => ({
+    id: 'v1', businessId: 'b1', name: 'Lale Çiçekçilik', category: 'Çiçek / Süsleme',
+    kind: 'hizmet', phone: '', note: '', unitPrice: 0,
+    boxCount: 0, unitsPerBox: 0, looseCount: 0, isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    ...over,
+  } as Vendor);
+
+  const atama = (over: Partial<ReservationVendor> = {}): ReservationVendor => ({
+    id: 'rv1', reservationId: 'r1', vendorId: 'v1', cost: 6500, note: '', ...over,
+  });
+
+  it('her ücretli tedarikçi bir gider satırına dönüşüyor', () => {
+    const satirlar = tedarikciGiderleri(
+      [atama(), atama({ id: 'rv2', vendorId: 'v2', cost: 45000 })],
+      [tedarikci(), tedarikci({ id: 'v2', name: 'Buz Gösterisi' })],
+      'b1',
+    );
+
+    expect(satirlar).toHaveLength(2);
+    expect(giderlerToplami(satirlar)).toBe(51500);
+    // Kalem adı tedarikçinin adı: defterde kategoriden daha anlaşılır.
+    expect(satirlar[0].kind).toBe('Lale Çiçekçilik');
+    expect(satirlar[1].kind).toBe('Buz Gösterisi');
+  });
+
+  it('ücretsiz tedarikçi defteri uzatmıyor', () => {
+    expect(tedarikciGiderleri([atama({ cost: 0 })], [tedarikci()], 'b1')).toHaveLength(0);
+  });
+
+  it('türetilmiş satır işaretli, elle girilen değil', () => {
+    const [tedarikciSatiri] = tedarikciGiderleri([atama()], [tedarikci()], 'b1');
+    expect(tedarikcidenMi(tedarikciSatiri)).toBe(true);
+    expect(tedarikcidenMi(gider())).toBe(false);
+  });
+
+  it('silinmiş tedarikçide satır kayboluyor değil, adsız kalıyor', () => {
+    /*
+      Tedarikçi kaydı silinse bile PARA HARCANMIŞ durumda. Satır düşürülse
+      kâr olduğundan yüksek görünürdü; adı bilinmiyorsa da tutar defterde
+      kalmalı.
+    */
+    const [satir] = tedarikciGiderleri([atama()], [], 'b1');
+    expect(satir.kind).toBe('Tedarikçi');
+    expect(giderToplami(satir)).toBe(6500);
+  });
+
+  it('net hesap tedarikçi ücretini de düşüyor', () => {
+    const tedarikciGider = tedarikciGiderleri([atama({ cost: 20000 })], [tedarikci()], 'b1');
+    const hepsi = [...tedarikciGider];
+    // Kalan bakiye 50.000, tedarikçi 20.000 -> elde 30.000 kalıyor.
+    expect(netHesap(rez(), [], hepsi, 50000).net).toBe(30000);
+  });
+
+  it('kasa satırı tedarikçi giderinden de çıkıyor', () => {
+    const tedarikciGider = tedarikciGiderleri([atama({ cost: 9000 })], [tedarikci()], 'b1');
+    const satirlar = giderKasaSatirlari(tedarikciGider, [rez()], () => 'Zuhal & Rana');
+
+    expect(satirlar).toHaveLength(1);
+    expect(satirlar[0].amount).toBe(9000);
+    expect(satirlar[0].category).toBe(DUGUN_GIDERI_KATEGORISI);
+    // Tarih organizasyonun günü: aylık raporda düğünle aynı aya düşmeli.
+    expect(satirlar[0].date).toBe('2026-09-12');
   });
 });

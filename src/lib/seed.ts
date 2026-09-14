@@ -704,7 +704,6 @@ export function seedIfEmpty(): void {
   ]);
   write(KEYS.consents, ek.consents);
   write(KEYS.queue, ek.queue);
-  write(KEYS.seating, ek.seating);
   write(KEYS.tasks, ek.tasks);
   write(KEYS.resVendors, ek.resVendors);
   write(KEYS.paymentEvents, ek.paymentEvents);

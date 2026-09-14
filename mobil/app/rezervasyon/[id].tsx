@@ -9,8 +9,8 @@ import {
 } from '../../src/bicim';
 import { aralik, renk, yazi, yuvarlak } from '../../src/tema';
 import {
-  isDurumu, isEmri, masalar, rezervasyon, tahsilatEkle, tahsilatlar,
-  type IsSatiri, type Masa, type Rezervasyon, type Tahsilat,
+  isDurumu, isEmri, rezervasyon, tahsilatEkle, tahsilatlar,
+  type IsSatiri, type Rezervasyon, type Tahsilat,
 } from '../../src/veri';
 import HatirlatmaGonder from '../../src/bilesenler/HatirlatmaGonder';
 
@@ -24,8 +24,6 @@ import HatirlatmaGonder from '../../src/bilesenler/HatirlatmaGonder';
 export default function Ayrinti() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const yonlendir = useRouter();
-  const [masaAcik, setMasaAcik] = useState(false);
-  const [masaListe, setMasaListe] = useState<Masa[]>([]);
   const [kayit, setKayit] = useState<Rezervasyon | null>(null);
   const [odemeler, setOdemeler] = useState<Tahsilat[]>([]);
   const [isler, setIsler] = useState<IsSatiri[]>([]);
@@ -41,13 +39,12 @@ export default function Ayrinti() {
     if (!id) return;
     try {
       setHata('');
-      const [r, t, i, m] = await Promise.all([
-        rezervasyon(id), tahsilatlar(id), isEmri(id), masalar(id),
+      const [r, t, i] = await Promise.all([
+        rezervasyon(id), tahsilatlar(id), isEmri(id),
       ]);
       setKayit(r);
       setOdemeler(t);
       setIsler(i);
-      setMasaListe(m);
     } catch (e) {
       setHata(e instanceof Error ? e.message : 'Kayıt okunamadı.');
     } finally {
@@ -125,7 +122,6 @@ export default function Ayrinti() {
 
       <View style={s.kisayollar}>
         <Kisayol metin="Belgeler" onPress={() => yonlendir.push(`/belge/${kayit.id}`)} />
-        <Kisayol metin="Masa düzeni" onPress={() => setMasaAcik((o) => !o)} />
       </View>
 
       {/* Para durumu: en üstte, tek bakışta okunacak şekilde. */}
@@ -251,40 +247,6 @@ export default function Ayrinti() {
                 <Text style={[yazi.tutar as object, { color: renk.lacivert }]}>{tutar(o.tutar)}</Text>
               </View>
             ))}
-          </Kart>
-        </>
-      ) : null}
-
-      {masaAcik ? (
-        <>
-          <BolumBasligi
-            sag={
-              <Text style={[yazi.minik as object, { color: renk.metinSolgun }]}>
-                {masaListe.reduce((t, m) => t + m.koltuk, 0)} koltuk
-              </Text>
-            }
-          >
-            Masa düzeni
-          </BolumBasligi>
-          <Kart>
-            {masaListe.length === 0 ? (
-              <Yazi tur="kucuk" renkli={renk.metinSolgun}>
-                Bu rezervasyon için masa planı oluşturulmamış.
-              </Yazi>
-            ) : masaListe.map((m, i) => (
-              <View key={m.id} style={[s.satir, i > 0 && { marginTop: aralik.m }]}>
-                <View style={{ flex: 1 }}>
-                  <Yazi tur="kucuk" renkli={renk.metin}>{m.no}. masa</Yazi>
-                  {m.not ? <Yazi tur="minik" renkli={renk.metinSolgun}>{m.not}</Yazi> : null}
-                </View>
-                <Yazi tur="kucuk" renkli={renk.metinSolgun}>{m.koltuk} koltuk</Yazi>
-              </View>
-            ))}
-            {masaListe.length > 0 && masaListe.reduce((t, m) => t + m.koltuk, 0) < kayit.davetli ? (
-              <Yazi tur="kucuk" renkli={renk.tehlike} style={{ marginTop: aralik.m }}>
-                Koltuk sayısı davetliyi karşılamıyor: {kayit.davetli - masaListe.reduce((t, m) => t + m.koltuk, 0)} kişilik eksik.
-              </Yazi>
-            ) : null}
           </Kart>
         </>
       ) : null}

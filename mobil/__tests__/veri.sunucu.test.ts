@@ -305,22 +305,6 @@ describe('rezervasyon ekleme', () => {
   });
 });
 
-describe('masa düzeni', () => {
-  it('satırı çevirir ve masa numarasına göre ister', async () => {
-    durum.satirlar.seating_tables = [
-      { id: 'm1', table_no: 1, seats: 10, label: 'Gelin masası' },
-      { id: 'm2', table_no: 2, seats: 8, label: null },
-    ];
-
-    const liste = await veri.masalar('r1');
-
-    expect(liste).toEqual([
-      { id: 'm1', no: 1, koltuk: 10, not: 'Gelin masası' },
-      { id: 'm2', no: 2, koltuk: 8, not: '' },
-    ]);
-    expect(islem(cagri('seating_tables'), 'order')?.arg).toEqual(['table_no']);
-  });
-});
 
 describe('kasa', () => {
   /*

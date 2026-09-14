@@ -548,62 +548,6 @@ describe('menüler', () => {
   });
 });
 
-describe('masa düzeni', () => {
-  async function rezervasyonAc() {
-    seedIfEmpty();
-    return localRepo.saveReservation(makeReservation({
-      businessId: 'biz_demo', hallId: 'hall_demo1', code: 'G1',
-      date: '2027-06-17', guestCount: 250,
-    }));
-  }
-
-  it('plan kaydedilir ve masa numarasına göre sıralı okunur', async () => {
-    const r = await rezervasyonAc();
-    await localRepo.saveSeating(r.id, [
-      { tableNo: 3, seats: 10, label: 'Üç' },
-      { tableNo: 1, seats: 10, label: 'Bir' },
-    ]);
-    expect((await localRepo.listSeating(r.id)).map((t) => t.tableNo)).toEqual([1, 3]);
-  });
-
-  it('aynı masa numarası iki kez kullanılamaz', async () => {
-    const r = await rezervasyonAc();
-    await expect(localRepo.saveSeating(r.id, [
-      { tableNo: 1, seats: 10, label: '' },
-      { tableNo: 1, seats: 8, label: '' },
-    ])).rejects.toThrow(/aynı masa numarası/i);
-  });
-
-  it('geçersiz koltuk sayısı reddedilir', async () => {
-    const r = await rezervasyonAc();
-    await expect(localRepo.saveSeating(r.id, [{ tableNo: 1, seats: 0, label: '' }]))
-      .rejects.toThrow(/koltuk sayısı/);
-    await expect(localRepo.saveSeating(r.id, [{ tableNo: 1, seats: 99, label: '' }]))
-      .rejects.toThrow(/koltuk sayısı/);
-  });
-
-  it('planın tamamı değiştirilir, eski masalar kalmaz', async () => {
-    const r = await rezervasyonAc();
-    await localRepo.saveSeating(r.id, [
-      { tableNo: 1, seats: 10, label: '' }, { tableNo: 2, seats: 10, label: '' },
-    ]);
-    await localRepo.saveSeating(r.id, [{ tableNo: 1, seats: 12, label: 'Tek masa' }]);
-    const plan = await localRepo.listSeating(r.id);
-    expect(plan).toHaveLength(1);
-    expect(plan[0].seats).toBe(12);
-  });
-
-  it('başka rezervasyonun planı etkilenmez', async () => {
-    const r1 = await rezervasyonAc();
-    const r2 = await localRepo.saveReservation(makeReservation({
-      businessId: 'biz_demo', hallId: 'hall_demo2', code: 'G2', date: '2027-06-18',
-    }));
-    await localRepo.saveSeating(r1.id, [{ tableNo: 1, seats: 10, label: '' }]);
-    await localRepo.saveSeating(r2.id, [{ tableNo: 1, seats: 8, label: '' }]);
-    expect((await localRepo.listSeating(r1.id))[0].seats).toBe(10);
-    expect((await localRepo.listSeating(r2.id))[0].seats).toBe(8);
-  });
-});
 
 describe('iş emri', () => {
   it('satırlar saate göre okunur ve boş başlık reddedilir', async () => {

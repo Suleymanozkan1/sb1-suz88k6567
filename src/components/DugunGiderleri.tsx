@@ -6,9 +6,9 @@ import { formatMoney } from '../lib/format';
 import { errorMessage } from '../lib/authHelpers';
 import { uid } from '../lib/ids';
 import {
-  useDeleteReservationExpense, useReservationExpenses, useSaveReservationExpense,
+  useDeleteReservationExpense, useDugunGiderleri, useSaveReservationExpense,
 } from '../lib/queries';
-import { giderToplami, netHesap } from '../lib/dugunGideri';
+import { giderToplami, netHesap, tedarikcidenMi } from '../lib/dugunGideri';
 import type { Payment, Reservation, ReservationExpense } from '../types';
 
 /**
@@ -29,7 +29,7 @@ export default function DugunGiderleri({
   kalanBakiye: number;
   duzenlenebilir: boolean;
 }) {
-  const { data: hepsi = [] } = useReservationExpenses();
+  const { data: hepsi = [] } = useDugunGiderleri();
   const kaydet = useSaveReservationExpense();
   const sil = useDeleteReservationExpense();
 
@@ -123,12 +123,30 @@ export default function DugunGiderleri({
             <tbody>
               {giderler.map((g) => (
                 <tr key={g.id} className="border-b border-line/60 last:border-0">
-                  <td className="py-2.5 text-brand">{g.kind}</td>
+                  <td className="py-2.5 text-brand">
+                    {g.kind}
+                    {/*
+                      Tedarikçiden gelen satır ROZETLE ayrılıyor. Rakam
+                      aynı defterde ama kaynağı başka: kullanıcı bu satırı
+                      neden silemediğini rozetsiz anlayamazdı.
+                    */}
+                    {tedarikcidenMi(g) && (
+                      <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-[11px] text-brand-muted">
+                        Tedarikçi
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2.5 text-right text-brand">{g.unitCount}</td>
                   <td className="py-2.5 text-right text-brand">{para(g.unitPrice)}</td>
                   <td className="py-2.5 text-right font-medium text-brand">{para(giderToplami(g))}</td>
                   <td className="py-2.5 text-right">
-                    {duzenlenebilir && (
+                    {/*
+                      Tedarikçi satırı buradan SİLİNMİYOR: defterde
+                      karşılığı yok, "Ürün ve Hizmet" bölümündeki ücretten
+                      türüyor. Silme düğmesi konsaydı basan kullanıcı
+                      satırın geri geldiğini görürdü.
+                    */}
+                    {duzenlenebilir && !tedarikcidenMi(g) && (
                       <button type="button" onClick={() => setSilinecek(g)}
                         aria-label={`${g.kind} giderini sil`}
                         className="rounded p-1 text-brand-muted hover:text-danger">

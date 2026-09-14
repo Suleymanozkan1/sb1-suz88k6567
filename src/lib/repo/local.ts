@@ -15,7 +15,7 @@ import type {
   Business, CashFlowEntry, ColorSetting, EnqueueResult, Invoice,
   EventTask, Hall, Menu, Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent,
   ErrorReport, PaymentEventKind, QuickReply, Reservation, ReservationExpense, ReservationVendor,
-  SeatingTable, SmsConsent, SmsLogEntry, Vendor,
+  SmsConsent, SmsLogEntry, Vendor,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
   SmsQueueEntry, User, ExchangeRate, WeatherForecast, WeatherHour, SpecialDay, Survey,
 } from '../../types';
@@ -187,7 +187,6 @@ function normalizePhone(raw: string): string | null {
 
 const halls = () => read<Hall[]>(KEYS.halls, []);
 const menus = () => read<Menu[]>(KEYS.menus, []);
-const seating = () => read<SeatingTable[]>(KEYS.seating, []);
 /**
  * Varsayılan taslak metinler.
  *
@@ -413,6 +412,24 @@ export const localRepo: Repository = {
     const user = requireUser(id);
     if (user.password !== currentPassword) throw new RepoError('Mevcut şifreniz hatalı.');
     saveUsers(users().map((u) => (u.id === id ? { ...u, password: nextPassword } : u)));
+  },
+
+  /*
+    Doğrulama TARAYICIDA, çünkü demo kipinde sunucu yok.
+
+    Çelik kasa perdesi doğrudan `/api/sifre` çağırıyordu. Tanıtım
+    dağıtımında o uç nokta bulunmuyor (`vercel.json` yalnızca üç demo
+    fonksiyonunu yayınlıyor), istek index.html'e düşüyor ve ekranda
+    "Sunucuya ulaşılamadı." yazıyordu -- şifre doğru girilse bile.
+
+    Burada şifre zaten tarayıcıdaki depoda; karşılaştırmak yeni bir
+    açık yaratmıyor. Gerçek kurulumda `supabase` deposu devrede ve
+    doğrulama sunucuda yapılıyor.
+  */
+  async verifyPassword(password) {
+    const id = read<string | null>(KEYS.session, null);
+    if (!id) return false;
+    return wait(requireUser(id).password === password);
   },
 
   async updateProfile(patch) {
@@ -1208,25 +1225,6 @@ export const localRepo: Repository = {
     return wait(undefined);
   },
 
-  async listSeating(reservationId) {
-    return wait(seating().filter((t) => t.reservationId === reservationId)
-      .sort((a, b) => a.tableNo - b.tableNo));
-  },
-
-  async saveSeating(reservationId, tables) {
-    const numbers = tables.map((t) => t.tableNo);
-    if (new Set(numbers).size !== numbers.length) {
-      throw new RepoError('Aynı masa numarası birden çok kez kullanılamaz.');
-    }
-    if (tables.some((t) => t.seats < 1 || t.seats > 50)) {
-      throw new RepoError('Masa başına koltuk sayısı 1 ile 50 arasında olmalıdır.');
-    }
-    const others = seating().filter((t) => t.reservationId !== reservationId);
-    const next = tables.map((t) => ({ ...t, id: uid('seat'), reservationId }));
-    write(KEYS.seating, [...others, ...next]);
-    return wait(undefined);
-  },
-
   async listTemplates(businessId) {
     const kayitli = templates().filter((t) => t.businessId === businessId);
     // İlk açılışta varsayılan taslaklar üretilir; boş bir liste kullanıcıya
@@ -1320,6 +1318,13 @@ export const localRepo: Repository = {
 
   async listReservationVendors(reservationId) {
     return wait(resVendors().filter((rv) => rv.reservationId === reservationId));
+  },
+
+  async listBusinessReservationVendors(businessId) {
+    const kayitlar = new Set(
+      reservations().filter((r) => r.businessId === businessId).map((r) => r.id),
+    );
+    return wait(resVendors().filter((rv) => kayitlar.has(rv.reservationId)));
   },
 
   async saveReservationVendors(reservationId, rows) {

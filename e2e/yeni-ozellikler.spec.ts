@@ -99,28 +99,6 @@ test('Aynı salona aynı gün ve seansta ikinci kayıt engellenir', async ({ pag
   await expect(page.getByText(/bu salonda|zaten bir rezervasyon/i).first()).toBeVisible();
 });
 
-test('Masa düzeni: plan önerilir, kaydedilir ve eksik koltuk uyarısı verir', async ({ page }) => {
-  await login(page);
-  await page.goto('/panel/rezervasyonlar/yeni');
-  await page.locator('#customerName').fill('Masa Testi');
-  await page.locator('#customerPhone').fill('5321117733');
-  await page.locator('#date').fill('2028-01-15');
-  await page.locator('#guestCount').fill('250');
-  await page.locator('#totalAmount').fill('200000');
-  await page.getByRole('button', { name: /Kaydet/ }).click();
-  await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
-
-  await expect(page.getByRole('heading', { name: 'Masa Oturma Düzeni' })).toBeVisible();
-  await page.getByRole('button', { name: 'Davetliye göre plan öner' }).click();
-  // 250 / 10 = 25 masa, 250 koltuk
-  await expect(page.getByText('25', { exact: true }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Masa düzenini kaydet' }).click();
-  await expect(page.getByText('Kaydedilmemiş değişiklik var.')).toBeHidden();
-
-  // Bir masayı silince koltuk eksilir ve uyarı çıkar
-  await page.getByRole('button', { name: '1. masayı sil', exact: true }).click();
-  await expect(page.getByText(/koltuk eksik/)).toBeVisible();
-});
 
 test('Tahsilat makbuzu açılır ve tutarı taşır', async ({ page }) => {
   await login(page);

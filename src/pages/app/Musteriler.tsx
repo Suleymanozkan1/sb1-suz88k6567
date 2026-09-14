@@ -7,6 +7,7 @@ import { QueryBoundary } from '../../components/QueryState';
 import { formatDate, formatMoney, formatPhone, normalizeTr } from '../../lib/format';
 import { downloadCsv, toCsv } from '../../lib/reports';
 import { IconDownload, IconSearch } from '../../components/Icons';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 
 interface CustomerRow {
   name: string;
@@ -58,6 +59,30 @@ export default function Musteriler() {
     return customers.filter((c) => normalizeTr(`${c.name} ${c.phone} ${c.email ?? ''}`).includes(q));
   }, [customers, query]);
 
+  /*
+    SAYFALAMA. Liste rezervasyonlardan türüyor ve salon yıllar içinde
+    binlerce müşteriye ulaşıyor; tamamı tek seferde çizildiğinde tablo
+    hem geç açılıyor hem de aranan kaydı bulmak imkânsızlaşıyor.
+
+    Filtre değişince BİRİNCİ SAYFAYA dönülüyor: arama yazıldığında
+    kullanıcı 7. sayfada kalsaydı sonuç var olduğu hâlde ekran boş
+    görünürdü. İmza karşılaştırması render sırasında yapılıyor; efekt
+    kullanılsaydı ekran önce boş listeyi çizer, sonra düzelirdi.
+  */
+  const [boyut, setBoyut] = useSayfaBoyutu();
+  const [sayfa, setSayfa] = useState(1);
+  const [sonSorgu, setSonSorgu] = useState(query);
+  if (query !== sonSorgu) { setSonSorgu(query); setSayfa(1); }
+
+  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / boyut));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const sayfalanan = filtered.slice((gecerliSayfa - 1) * boyut, gecerliSayfa * boyut);
+
+  /*
+    CSV bütün listeyi indiriyor, görünen sayfayı değil. Salon sahibi
+    "müşteri listesini indir" dediğinde 50 satırlık bir parça değil,
+    tamamını bekliyor.
+  */
   function exportCsv() {
     const csv = toCsv(
       ['Müşteri', 'Telefon', 'E-Posta', 'Kayıt Adedi', 'Toplam', 'Ödenen', 'Kalan', 'Son Organizasyon'],
@@ -102,7 +127,7 @@ export default function Musteriler() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
+              {sayfalanan.map((c) => (
                 <tr key={c.phone + c.name} className="border-b border-line/60 last:border-0 hover:bg-surface/60">
                   <td className="px-4 py-3 font-medium text-brand">{c.name}</td>
                   <td className="px-4 py-3">
@@ -119,6 +144,17 @@ export default function Musteriler() {
           </table>
         )}
       </div>
+
+      <Sayfalama
+        toplam={filtered.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="ms-boyut"
+        birim="müşteri"
+      />
 
       <p className="mt-4 text-sm text-brand-muted">
         Müşteri kayıtları rezervasyonlardan otomatik oluşturulur.{' '}

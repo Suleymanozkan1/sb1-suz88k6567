@@ -8,7 +8,61 @@
  * Hesap tek yerde: rezervasyon ekranındaki net tutar, Kasa ekranındaki
  * gider satırları ve raporlar aynı fonksiyonlardan besleniyor.
  */
-import type { Payment, Reservation, ReservationExpense } from '../types';
+import type { Payment, Reservation, ReservationExpense, ReservationVendor, Vendor } from '../types';
+
+/**
+ * Tedarikçi ücretlerini düğün içi gider satırlarına çevirir.
+ *
+ * NEDEN TÜRETİLİYOR, KOPYALANMIYOR. "Ürün ve Hizmet" bölümünde girilen
+ * ücretler (orkestra, çiçek, gelinlik) düğünün maliyetidir ama gider
+ * defterine hiç girmiyordu: rezervasyonun net tutarı, kasa ve kâr
+ * raporu bu parayı hiç görmüyordu. Salon 60.500 ₺ tedarikçi ödemesi
+ * olan bir düğünü kârlı sanabiliyordu.
+ *
+ * Satırlar kaydedilmiyor, okunduğu anda hesaplanıyor -- tıpkı
+ * `giderKasaSatirlari` gibi. Kaydedilseydi bir tedarikçi ücreti
+ * düzeltildiğinde ya da tedarikçi silindiğinde gider satırı geride
+ * kalır, aynı para iki yerde farklı görünürdü. Tek gerçek kaynak
+ * tedarikçi satırının kendisi.
+ *
+ * ID ÖNEKLİ: bu satırlar elle silinemez ya da düzenlenemez, çünkü
+ * defterde karşılıkları yok. Ekran öneki görünce satırı kilitliyor ve
+ * kullanıcıyı ücretin girildiği yere yönlendiriyor.
+ */
+export const TEDARIKCI_GIDER_ONEKI = 'tedarikci_';
+
+export function tedarikciGiderleri(
+  resVendors: ReservationVendor[],
+  vendors: Vendor[],
+  businessId: string,
+): ReservationExpense[] {
+  const ad = new Map(vendors.map((v) => [v.id, v]));
+  return resVendors
+    // Ücretsiz satır gidere girmiyor: sıfırlık bir kalem defteri
+    // uzatıyor, hiçbir sorunun cevabını değiştirmiyor.
+    .filter((rv) => rv.cost > 0)
+    .map((rv) => {
+      const v = ad.get(rv.vendorId);
+      return {
+        id: `${TEDARIKCI_GIDER_ONEKI}${rv.id}`,
+        businessId,
+        reservationId: rv.reservationId,
+        // Tedarikçinin adı kalem adı oluyor: "Buz Gösterisi" satırı
+        // defterde "Şov / Animasyon" kategorisinden daha anlaşılır.
+        kind: v?.name ?? 'Tedarikçi',
+        unitCount: 1,
+        unitPrice: rv.cost,
+        note: rv.note,
+        createdAt: '',
+        updatedAt: '',
+      };
+    });
+}
+
+/** Satır tedarikçiden mi türedi? Elle düzenlenemeyenler bunlar. */
+export function tedarikcidenMi(gider: ReservationExpense): boolean {
+  return gider.id.startsWith(TEDARIKCI_GIDER_ONEKI);
+}
 
 /** Bir gider satırının toplamı. Alan değil, hesap: birim x birim fiyat. */
 export function giderToplami(g: ReservationExpense): number {

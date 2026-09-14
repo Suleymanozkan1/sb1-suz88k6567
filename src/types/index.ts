@@ -174,15 +174,6 @@ export interface Menu {
   createdAt: string;
 }
 
-/** Rezervasyona bağlı tek bir masa. */
-export interface SeatingTable {
-  id: string;
-  reservationId: string;
-  tableNo: number;
-  seats: number;
-  label: string;
-}
-
 /** Etkinlik günü iş emri satırı. */
 export interface EventTask {
   id: string;

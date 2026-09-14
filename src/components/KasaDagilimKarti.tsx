@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import GizliTutar from './GizliTutar';
 import { formatMoney } from '../lib/format';
+import { repo } from '../lib/repo';
 import type { KasaDagilimi } from '../lib/kasa';
 
 /**
@@ -20,7 +22,7 @@ import type { KasaDagilimi } from '../lib/kasa';
  * bakılmasına karşı.
  */
 export default function KasaDagilimKarti({
-  dagilim, currency, email, baslik = 'Kasa Durumu',
+  dagilim, currency, email, baslik = 'Kasa Durumu', perdele = false,
 }: {
   dagilim: KasaDagilimi;
   currency: string;
@@ -31,6 +33,16 @@ export default function KasaDagilimKarti({
    */
   email?: string;
   baslik?: string;
+  /**
+   * Kasa toplamını yıldızlar ve yanına açma düğmesi koyar.
+   *
+   * AÇIKÇA VERİLİYOR, `email` varlığından türetilmiyor. Kart iki yerde
+   * kullanılıyor: özet ekranında (perdeli) ve Kasa ekranında (açık).
+   * Kasa ekranında zaten bütün hareketler satır satır dökülüyor, oradaki
+   * toplamı perdelemek kullanıcıyı okumak istediği rakamı açmaya
+   * zorlardı. İki davranış birbirine karışmasın diye bayrak ayrı.
+   */
+  perdele?: boolean;
 }) {
   const [acik, setAcik] = useState(!email);
   const [girilen, setGirilen] = useState('');
@@ -38,26 +50,28 @@ export default function KasaDagilimKarti({
   const [bekliyor, setBekliyor] = useState(false);
 
   /*
-    Doğrulama SUNUCUDA yapılıyor. Tarayıcıda karşılaştırılsaydı şifrenin
-    kendisini ya da bir kopyasını istemciye göndermek gerekirdi; kaynağı
-    açan herkes görürdü.
+    Doğrulama DEPO KATMANINDAN geçiyor, doğrudan `/api/sifre` çağrısıyla
+    değil.
+
+    Eskiden bu bileşen uç noktayı kendisi çağırıyordu ve tanıtım
+    dağıtımında o uç nokta yok: istek index.html'e düşüyor, JSON
+    beklenirken HTML geliyor ve ekranda doğru şifreyle bile "Sunucuya
+    ulaşılamadı." yazıyordu.
+
+    Depo katmanı bunu zaten ayırıyor: gerçek kurulumda şifre SUNUCUDA
+    doğrulanıyor (tarayıcıya inmiyor), demo kipinde tarayıcıdaki depoda
+    karşılaştırılıyor. Bileşenin hangisinde olduğunu bilmesi gerekmiyor.
   */
   async function ac(e: React.FormEvent) {
     e.preventDefault();
     setBekliyor(true);
     setHata('');
     try {
-      const yanit = await fetch('/api/sifre', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ islem: 'dogrula', email, mevcut: girilen }),
-      });
-      if (yanit.ok) {
+      if (await repo.verifyPassword(girilen)) {
         setAcik(true);
         setGirilen('');
       } else {
-        const govde = (await yanit.json()) as { error?: string };
-        setHata(govde.error ?? 'Şifre doğrulanamadı.');
+        setHata('Şifre doğrulanamadı.');
       }
     } catch {
       setHata('Sunucuya ulaşılamadı.');
@@ -74,7 +88,9 @@ export default function KasaDagilimKarti({
             {baslik}
           </h2>
           <p className={`mt-1 font-heading text-2xl font-bold ${dagilim.toplam >= 0 ? 'text-brand' : 'text-danger'}`}>
-            {formatMoney(dagilim.toplam, currency)}
+            {perdele
+              ? <GizliTutar deger={formatMoney(dagilim.toplam, currency)} dugme />
+              : formatMoney(dagilim.toplam, currency)}
           </p>
         </div>
         {email && acik && (

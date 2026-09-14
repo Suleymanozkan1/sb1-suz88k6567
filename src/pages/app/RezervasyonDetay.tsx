@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import MasaDuzeni from '../../components/MasaDuzeni';
 import IsEmri from '../../components/IsEmri';
 import TedarikciAtama from '../../components/TedarikciAtama';
 import HatirlatmaGonder from '../../components/HatirlatmaGonder';
@@ -473,19 +472,6 @@ export default function RezervasyonDetay() {
         <TedarikciAtama
           reservationId={reservation.id}
           currency={reservation.currency}
-          canEdit={can('rezervasyon.duzenle')}
-        />
-      </section>
-
-      <section className="card mb-6 p-5">
-        <h2 className="mb-1 font-heading text-lg font-bold text-brand">Masa Oturma Düzeni</h2>
-        <p className="mb-4 text-sm text-brand-muted">
-          Davetli sayısına göre masa planı oluşturun; planın koltuk toplamı davetli sayısını
-          karşılamıyorsa uyarı gösterilir.
-        </p>
-        <MasaDuzeni
-          reservationId={reservation.id}
-          guestCount={reservation.guestCount}
           canEdit={can('rezervasyon.duzenle')}
         />
       </section>
