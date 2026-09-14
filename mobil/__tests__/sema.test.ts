@@ -99,9 +99,17 @@ function kullanimlariOku(dosya: string): Kullanim[] {
     const tablo = m[1];
     kullanim.push({ tablo, ad: '', tur: 'tablo' });
 
-    for (const sel of kuyruk.matchAll(/\.select\(\s*'([^']*)'/g)) {
+    /*
+      Tek tırnak VE ters tırnak: uzun bir `select` satıra sığmadığında
+      şablon dizgisiyle yazılıyor. Ayrıştırıcı yalnızca tek tırnağa
+      bakarken bu çağrılar sessizce denetim dışında kalıyordu -- mobil
+      `customer_leads` sorgusu olmayan iki sütun istediği hâlde test
+      yeşil kalmıştı.
+    */
+    for (const sel of kuyruk.matchAll(/\.select\(\s*['`]([^'`]*)['`]/g)) {
       for (const parca of sel[1].split(',')) {
-        const ham = parca.trim();
+        // Şablon dizgisinde satır sonu ve girinti var; sütun adı değil.
+        const ham = parca.replace(/\s+/g, ' ').trim();
         // PostgREST gömme sözdizimi sütun değildir: "iliski(...)" ya da "iliski!inner".
         if (!ham || ham === '*' || ham.includes('(') || ham.includes(')') || ham.includes('!')) continue;
         const ad = ham.split(':')[0].trim();

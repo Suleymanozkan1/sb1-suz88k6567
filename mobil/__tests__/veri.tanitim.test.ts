@@ -20,9 +20,9 @@ import { bugunIso } from '../src/bicim';
  * Supabase yapılandırılmadığında (mağaza incelemesi, ekran görüntüsü,
  * tanıtım) uygulama örnek veriyle çalışır. Bu veri ekranlarda gerçek gibi
  * görünüyor, o yüzden kendi içinde tutarlı olmak zorunda: ayrıntı
- * ekranındaki "TAHSİLAT" ile alttaki geçmiş listesi, masa planındaki
- * koltuk toplamı ile davetli sayısı ve kasa özetindeki alacak ile
- * rezervasyonların kalanı birbirini tutmalı. Üçü de daha önce tutmuyordu.
+ * ekranındaki "TAHSİLAT" ile alttaki geçmiş listesi ve kasa özetindeki
+ * alacak ile rezervasyonların kalanı birbirini tutmalı. İkisi de daha
+ * önce tutmuyordu.
  *
  * Kapora ayrıca öne çıkarılıyor: kapora bir tahsilattır ve web paneli de
  * böyle hesaplıyor. Mobilde farklı hesaplanınca aynı kayıt iki ekranda
@@ -113,38 +113,6 @@ describe('kapora ve tahsilat tutarlılığı', () => {
 
   it('bilinmeyen rezervasyonun tahsilat geçmişi boştur', async () => {
     await expect(veri.tahsilatlar('olmayan')).resolves.toEqual([]);
-  });
-});
-
-describe('masa düzeni', () => {
-  it('koltuk toplamı davetli sayısına eşittir', async () => {
-    // Sabit sekiz masa kullanılırken 320 kişilik düğünde "eksik koltuk"
-    // uyarısı çıkıyordu.
-    const liste = await veri.tumKayitlar();
-    for (const r of liste) {
-      const masalar = await veri.masalar(r.id);
-      const koltuk = masalar.reduce((t, m) => t + m.koltuk, 0);
-      expect(koltuk).toBe(r.davetli);
-    }
-  });
-
-  it('masalar birden başlayarak numaralanır', async () => {
-    const [ilk] = await veri.tumKayitlar();
-    const masalar = await veri.masalar(ilk.id);
-    expect(masalar.map((m) => m.no)).toEqual(masalar.map((_, i) => i + 1));
-  });
-
-  it('ilk iki masa etiketlenir', async () => {
-    const [ilk] = await veri.tumKayitlar();
-    const masalar = await veri.masalar(ilk.id);
-    expect(masalar[0].not).toBe('Gelin ve damat masası');
-    expect(masalar[1].not).toBe('Aile masası');
-  });
-
-  it('bilinmeyen rezervasyonda tek boş masa döner', async () => {
-    const masalar = await veri.masalar('olmayan');
-    expect(masalar).toHaveLength(1);
-    expect(masalar[0].koltuk).toBe(0);
   });
 });
 

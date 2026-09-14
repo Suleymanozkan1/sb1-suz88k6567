@@ -18,7 +18,7 @@ import { IconDownload, IconPlus, IconTrash, IconWallet } from '../../components/
 import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import StatCard from '../../components/StatCard';
 import KasaDagilimKarti from '../../components/KasaDagilimKarti';
-import { kasaDagilimi, kasaHareketleri } from '../../lib/kasa';
+import { kasaDagilimi, kasaHareketleri, kasaSuzgecOzeti } from '../../lib/kasa';
 import { giderKasaSatirlari } from '../../lib/dugunGideri';
 import type { GiderSatiri } from '../../lib/dugunGideri';
 import { PAYMENT_METHODS } from '../../data/constants';
@@ -307,10 +307,17 @@ export default function Kasa() {
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Toplam Gelir" value={formatMoney(totals.income, currency)} icon={IconWallet} tone="success" />
         <StatCard label="Toplam Gider" value={formatMoney(totals.expense, currency)} icon={IconWallet} tone="danger" />
+        {/*
+          Karttaki rakam KASADAKİ PARA DEĞİL, ekrandaki listenin neti.
+          Açıklama eskiden yalnızca tarih aralığını söylüyordu; rakam tür
+          süzgecinden de etkilendiği için eksikti. Tür seçiliyken başlık
+          da "Bakiye" demiyor: bir taraf hesaba hiç girmiyorken bakiye
+          demek yanlış olurdu.
+        */}
         <StatCard
-          label="Süzgeçteki Bakiye"
+          label={kindFilter ? `Süzgeçteki ${kindFilter} Toplamı` : 'Süzgeçteki Bakiye'}
           value={formatMoney(totals.income - totals.expense, currency)}
-          hint="Yukarıdaki tarih aralığına göre"
+          hint={kasaSuzgecOzeti(kindFilter, { from, to })}
           icon={IconWallet}
           tone={totals.income - totals.expense >= 0 ? 'success' : 'danger'}
         />

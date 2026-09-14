@@ -26,7 +26,39 @@
 -- role geçer. Roller yoksa mevcut göçlerdeki grant satırları düşer.
 do $$ begin create role anon nologin; exception when duplicate_object then null; end $$;
 do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;
-do $$ begin create role service_role nologin bypassrls; exception when duplicate_object then null; end $$;
+
+/*
+  service_role: BYPASSRLS İSTENİYOR AMA ŞART DEĞİL.
+
+  BYPASSRLS'i yalnızca superuser verebilir. Kendi sunucumuzda bu sorun
+  değildi; barındırılan PostgreSQL'lerde (Neon / Vercel Postgres) ise
+  veritabanı sahibi superuser DEĞİL ve bu satır "permission denied to
+  create role" ile göçü durduruyordu -- ilk göçte, yani hiçbir şey
+  kurulmadan.
+
+  Bu yüzden iki aşamalı: önce BYPASSRLS ile denenir, yetki yoksa rol
+  onsuz açılır. Rolün kaybettiği tek şey RLS'i aşma yetkisi; arka plan
+  işleri (yedek, anket, fatura durumu) zaten TABLO SAHİBİ olarak
+  bağlandığında RLS'i aşıyor -- sahip, `force row level security`
+  konmadıkça politikalara tabi değil ve bu şemada hiçbir tabloda o bayrak
+  yok.
+
+  `duplicate_object` ayrıca yakalanıyor: rol zaten varsa nitelikleri
+  DEĞİŞTİRİLMİYOR. Var olan bir kurulumda rolü yeniden tanımlamak,
+  farkında olmadan yetki genişletmek ya da daraltmak olurdu.
+*/
+do $$
+begin
+  create role service_role nologin bypassrls;
+exception
+  when duplicate_object then null;
+  when insufficient_privilege then
+    begin
+      create role service_role nologin;
+      raise notice 'service_role BYPASSRLS olmadan acildi (superuser degil).';
+    exception when duplicate_object then null;
+    end;
+end $$;
 
 -- ------------------------------------------------------------ auth şeması
 create schema if not exists auth;

@@ -182,6 +182,7 @@ export default function Dashboard() {
             label={`${ayAdi} ayı toplam program`}
             value={<><GizliTutar deger={formatNumber(ayinKayitlari.length)} dugme /> kayıt</>}
             hint={<><GizliTutar deger={formatNumber(yaklasan.length)} /> tanesi bugün ve sonrasında</>}
+            ipucu={`${ayAdi} ayında tarihi olan iptal edilmemiş bütün kayıtlar; bugün ve sonrasındakiler ayrıca sayılıyor.`}
             icon={IconCalendar}
             tone="accent"
           />
@@ -189,6 +190,7 @@ export default function Dashboard() {
             label="Bu ay satılan düğün"
             value={<GizliTutar deger={formatNumber(aySatilan.length)} dugme />}
             hint={`${ayAdi} ayında açılan sözleşme sayısı`}
+            ipucu={`Sözleşmesi ${ayAdi} ayında açılan kayıtlar. Düğün tarihi başka aya düşebilir; burada sayılan satışın yapıldığı ay.`}
             icon={IconPlus}
             tone="brand"
           />
@@ -196,6 +198,11 @@ export default function Dashboard() {
             label={`${ayAdi} ayı cirosu`}
             value={<GizliTutar deger={formatMoney(ayToplam.total, currency)} dugme />}
             hint={<>Tahsil edilen <GizliTutar deger={formatMoney(ayToplam.collected, currency)} /></>}
+            /* Perde kapalıyken ipucunda rakam YOK: yoksa fare üstünde
+               durmak tutarı ele verir ve perde işe yaramaz. */
+            ipucu={tutarlarAcik
+              ? `Sözleşme toplamı ${formatMoney(ayToplam.total, currency)}, tahsil edilen ${formatMoney(ayToplam.collected, currency)}.`
+              : `${ayAdi} ayı organizasyonlarının sözleşme toplamı ve tahsil edilen kısmı.`}
             icon={IconWallet}
             tone="brand"
           />
@@ -203,6 +210,9 @@ export default function Dashboard() {
             label="Bu ayın kalan alacağı"
             value={<GizliTutar deger={formatMoney(ayToplam.remaining, currency)} dugme />}
             hint={`${ayAdi} ayı organizasyonlarından`}
+            ipucu={tutarlarAcik
+              ? `Sözleşme toplamı eksi tahsilat: ${formatMoney(ayToplam.remaining, currency)}.`
+              : `${ayAdi} ayı organizasyonlarında sözleşme toplamından tahsilat düşüldükten sonra kalan.`}
             icon={IconWallet}
             tone={ayToplam.remaining > 0 ? 'danger' : 'success'}
           />

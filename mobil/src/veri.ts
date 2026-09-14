@@ -112,6 +112,39 @@ export function isletmeBellegiTemizle(): void {
   isletmeBellek = null;
 }
 
+/* ═══ Para birimi çevrimi ═════════════════════════════════════════ */
+
+/*
+  Şema iki ayrı para birimi kullanıyor ve karışması sessiz hata üretiyor
+  (bkz. 0008_odeme_plani_is_emri_tedarikci.sql: "Kuruş/TL karışımı sessiz
+  tutar kaymasına yol açar"):
+
+    • TL, `numeric(12,2)` — reservations.total_amount, reservations.deposit,
+      payments.amount, cash_flow.amount, reservation_expenses.unit_price,
+      payment_events.amount
+    • Kuruş, `bigint` — sütun adı `_kurus` ile biter: menus.price_kurus,
+      invoices.*_kurus, customer_leads.quoted_price_kurus
+
+  Mobil uygulamanın tamamı KURUŞ taşır (`bicim.tutar` yüze bölerek yazar),
+  çünkü kayan noktalı TL toplamlarında kuruş artıkları birikiyordu. Bu
+  yüzden TL sütunları veri katmanının sınırında çevriliyor; `_kurus`
+  sütunları olduğu gibi geçiyor.
+
+  Bu çevrim yokken tanıtım kipi doğru görünüyordu (örnek veri zaten kuruş),
+  ama gerçek sunucuya bağlanınca 150.000 ₺'lik bir düğün ekranda
+  1.500,00 ₺ yazıyordu.
+*/
+
+/** Veritabanındaki TL değerini kuruşa çevirir. */
+export function kurusa(tl: number | null | undefined): number {
+  return Math.round((Number(tl) || 0) * 100);
+}
+
+/** Kuruşu veritabanının beklediği TL değerine çevirir. */
+export function tlye(kurus: number | null | undefined): number {
+  return Math.round(Number(kurus) || 0) / 100;
+}
+
 /* ═══ Rezervasyon ═════════════════════════════════════════════════ */
 
 export interface Rezervasyon {
@@ -150,9 +183,15 @@ export interface IsSatiri {
   tamam: boolean;
 }
 
+/*
+  `src/data/constants.ts` DEFAULT_COLOR_SETTINGS ile aynı palet. Nikâh
+  rengi orada erişilebilirlik için KOYULAŞTIRILMIŞTI (#3498db -> #2875b5);
+  mobil eski değeri taşımaya devam ediyordu ve aynı rezervasyon iki
+  uygulamada iki ayrı renkte görünüyordu.
+*/
 const TUR_RENK: Record<string, string> = {
   'Düğün': '#47b2e4', 'Nişan': '#f39c12', 'Kına': '#e74c3c',
-  'Sünnet': '#18d26e', 'Nikâh': '#3498db', 'Kokteyl': '#16a085',
+  'Sünnet': '#18d26e', 'Nikâh': '#2875b5', 'Kokteyl': '#16a085',
 };
 
 const ORNEK: Rezervasyon[] = [
@@ -242,8 +281,8 @@ function esle(r: SatirDb, tahsilat: number): Rezervasyon {
     tur: r.organization_type,
     renk: TUR_RENK[r.organization_type] ?? '#47b2e4',
     salon: r.halls?.name ?? '-', davetli: r.guest_count ?? 0,
-    toplam: r.total_amount ?? 0, kapora: r.deposit ?? 0,
-    tahsilat: (r.deposit ?? 0) + tahsilat, durum: r.status,
+    toplam: kurusa(r.total_amount), kapora: kurusa(r.deposit),
+    tahsilat: kurusa(r.deposit) + tahsilat, durum: r.status,
   };
 }
 
@@ -254,7 +293,7 @@ async function tahsilatToplamlari(kimlikler: string[]): Promise<Record<string, n
   const toplam: Record<string, number> = {};
   for (const s of data ?? []) {
     const satir = s as unknown as { reservation_id: string; amount: number };
-    toplam[satir.reservation_id] = (toplam[satir.reservation_id] ?? 0) + satir.amount;
+    toplam[satir.reservation_id] = (toplam[satir.reservation_id] ?? 0) + kurusa(satir.amount);
   }
   return toplam;
 }
@@ -310,7 +349,8 @@ export function tahsilatlar(rezervasyonId: string): Promise<Tahsilat[]> {
       .eq('reservation_id', rezervasyonId).order('date', { ascending: false });
     return denetle(data, error, 'Tahsilatlar okunamadı.').map((s) => {
       const p = s as unknown as { id: string; date: string; amount: number; method: string; note: string | null };
-      return { id: p.id, tarih: p.date, tutar: p.amount, sekil: p.method, aciklama: p.note ?? '' };
+      return { id: p.id, tarih: p.date, tutar: kurusa(p.amount),
+        sekil: p.method, aciklama: p.note ?? '' };
     });
   });
 }
@@ -320,7 +360,7 @@ export async function tahsilatEkle(
 ): Promise<void> {
   if (tanitim) return;
   const { error } = await db().from('payments').insert({
-    reservation_id: rezervasyonId, amount: tutar, method: sekil,
+    reservation_id: rezervasyonId, amount: tlye(tutar), method: sekil,
     note: aciklama || null, date: bugunIso(),
   });
   if (error) throw new Error(error.message);
@@ -387,8 +427,8 @@ export async function rezervasyonEkle(girdi: YeniRezervasyon): Promise<string | 
     slot: girdi.seans,
     organization_type: girdi.tur,
     guest_count: girdi.davetli,
-    total_amount: girdi.toplam,
-    deposit: girdi.kapora,
+    total_amount: tlye(girdi.toplam),
+    deposit: tlye(girdi.kapora),
     status: girdi.durum,
     source_channel: girdi.kanal || null,
     source_detail: girdi.kanalDetay?.trim() || null,
@@ -441,7 +481,7 @@ export function kasaOzeti(): Promise<KasaOzet> {
     let gelir = 0, gider = 0;
     for (const s of satirlar) {
       const k = s as unknown as { kind: string; amount: number };
-      if (k.kind === 'Gelir') gelir += k.amount; else gider += k.amount;
+      if (k.kind === 'Gelir') gelir += kurusa(k.amount); else gider += kurusa(k.amount);
     }
 
     // İptal edilen organizasyon kasaya para getirmez; kaporası da sayılmaz.
@@ -454,7 +494,7 @@ export function kasaOzeti(): Promise<KasaOzet> {
     const t = await tahsilatToplamlari(kimlikler);
 
     for (const r of kayitlar) {
-      gelir += r.deposit ?? 0;
+      gelir += kurusa(r.deposit);
       gelir += t[r.id] ?? 0;
     }
 
@@ -467,12 +507,13 @@ export function kasaOzeti(): Promise<KasaOzet> {
       .select('unit_count, unit_price');
     for (const g of (giderler ?? []) as unknown as
       { unit_count: number; unit_price: number }[]) {
-      gider += (g.unit_count ?? 0) * (g.unit_price ?? 0);
+      gider += (g.unit_count ?? 0) * kurusa(g.unit_price);
     }
 
     // Kalan alacak: kapora da ödenmiş paradır, düşülmesi gerekiyor.
     const kalan = kayitlar.reduce(
-      (toplam, r) => toplam + Math.max(0, r.total_amount - (r.deposit ?? 0) - (t[r.id] ?? 0)),
+      (toplam, r) => toplam
+        + Math.max(0, kurusa(r.total_amount) - kurusa(r.deposit) - (t[r.id] ?? 0)),
       0,
     );
 
@@ -494,7 +535,7 @@ export function kasaHareketleri(limit = 50): Promise<KasaSatiri[]> {
       return {
         id: k.id, tarih: k.date, tur: k.kind,
         baslik: k.description?.trim() || k.category || '-',
-        kategori: k.category ?? '', tutar: k.amount,
+        kategori: k.category ?? '', tutar: kurusa(k.amount),
       };
     });
   });
@@ -507,7 +548,8 @@ export async function kasaEkle(
   // business_id zorunlu bir sütun; gönderilmezse kayıt hiç açılmaz.
   const { error } = await db().from('cash_flow').insert({
     business_id: await aktifIsletmeId(),
-    kind: tur, description: baslik, category: kategori, amount: tutar, date: bugunIso(),
+    kind: tur, description: baslik, category: kategori,
+    amount: tlye(tutar), date: bugunIso(),
   });
   if (error) throw new Error(error.message);
 }
@@ -516,7 +558,25 @@ export async function kasaEkle(
 
 export interface Salon { id: string; ad: string; kapasite: number; aktif: boolean; kayit: number }
 export interface Menu { id: string; ad: string; fiyatTuru: 'kisi_basi' | 'sabit'; fiyat: number; aciklama: string; aktif: boolean }
-export interface Tedarikci { id: string; ad: string; kategori: string; telefon: string; aktif: boolean }
+/**
+ * Ürün ve Hizmet kalemi (eski adıyla tedarikçi).
+ *
+ * İki tür aynı tabloda: `hizmet` düğün içi gidere girer, `urun` stoğu
+ * takip edilir. Stok alanları yalnızca üründe dolu -- veritabanı kısıtı
+ * da bunu zorluyor, "3 koli DJ" gibi bir satır oluşamıyor.
+ */
+export interface Tedarikci {
+  id: string; ad: string; kategori: string; telefon: string; aktif: boolean;
+  tur: 'hizmet' | 'urun';
+  /** Kuruş. Şemada TL `numeric`; sınırda çevriliyor. */
+  birimFiyat: number;
+  koli: number; koliIci: number; tekAdet: number; kritikEsik: number;
+}
+
+/** Bir ürünün toplam adedi: koli x koli içi + tek adet. Saklanmaz, hesaplanır. */
+export function stokToplami(t: Tedarikci): number {
+  return t.koli * t.koliIci + t.tekAdet;
+}
 export interface Musteri { ad: string; telefon: string; kayitSayisi: number; sonTarih: string; toplam: number }
 
 const ORNEK_SALON: Salon[] = [
@@ -531,12 +591,36 @@ const ORNEK_MENU: Menu[] = [
   { id: 'mn3', ad: 'Nişan Paketi', fiyatTuru: 'sabit', fiyat: 5_500_000, aciklama: 'Salon, süsleme, servis dahil', aktif: true },
 ];
 
+function hizmet(
+  id: string, ad: string, kategori: string, telefon: string,
+  birimFiyat: number, aktif = true,
+): Tedarikci {
+  return {
+    id, ad, kategori, telefon, aktif, tur: 'hizmet', birimFiyat,
+    koli: 0, koliIci: 0, tekAdet: 0, kritikEsik: 0,
+  };
+}
+
+function urun(
+  id: string, ad: string, kategori: string, birimFiyat: number,
+  koli: number, koliIci: number, tekAdet: number, kritikEsik: number,
+): Tedarikci {
+  return {
+    id, ad, kategori, telefon: '', aktif: true, tur: 'urun', birimFiyat,
+    koli, koliIci, tekAdet, kritikEsik,
+  };
+}
+
 const ORNEK_TEDARIKCI: Tedarikci[] = [
-  { id: 'td1', ad: 'Ritim Orkestra', kategori: 'Orkestra', telefon: '5321110011', aktif: true },
-  { id: 'td2', ad: 'Kare Fotoğraf', kategori: 'Fotoğraf', telefon: '5321110022', aktif: true },
-  { id: 'td3', ad: 'Gül Çiçekçilik', kategori: 'Çiçek', telefon: '5321110033', aktif: true },
-  { id: 'td4', ad: 'Tatlı Ev Pastanesi', kategori: 'Pasta', telefon: '5321110044', aktif: true },
-  { id: 'td5', ad: 'Işık Ses Sistemleri', kategori: 'Ses ve ışık', telefon: '5321110055', aktif: false },
+  hizmet('td1', 'Ritim Orkestra', 'Orkestra', '5321110011', 1_800_000),
+  hizmet('td2', 'Kare Fotoğraf', 'Fotoğraf', '5321110022', 1_200_000),
+  hizmet('td3', 'Gül Çiçekçilik', 'Çiçek', '5321110033', 450_000),
+  hizmet('td4', 'Tatlı Ev Pastanesi', 'Pasta', '5321110044', 350_000),
+  hizmet('td5', 'Işık Ses Sistemleri', 'Ses ve ışık', '5321110055', 900_000, false),
+  // Stok kritik seviyenin altında: ekranda uyarı çıkmalı.
+  urun('td6', 'Su (0,5 lt)', 'İçecek', 900, 10, 24, 6, 300),
+  urun('td7', 'Kola (200 ml)', 'İçecek', 1_800, 4, 24, 0, 50),
+  urun('td8', 'Peçete', 'Süsleme', 400, 6, 50, 12, 0),
 ];
 
 export function salonlar(): Promise<Salon[]> {
@@ -568,10 +652,22 @@ export function menuler(): Promise<Menu[]> {
 export function tedarikciler(): Promise<Tedarikci[]> {
   return sorgu(ORNEK_TEDARIKCI, async () => {
     const { data, error } = await db().from('vendors')
-      .select('id, name, category, phone, is_active').order('name');
-    return denetle(data, error, 'Tedarikçiler okunamadı.').map((s) => {
-      const v = s as unknown as { id: string; name: string; category: string; phone: string; is_active: boolean };
-      return { id: v.id, ad: v.name, kategori: v.category, telefon: v.phone, aktif: v.is_active };
+      .select('id, name, category, phone, is_active, kind, unit_price, '
+        + 'box_count, units_per_box, loose_count, min_count')
+      .order('name');
+    return denetle(data, error, 'Ürün ve hizmet kayıtları okunamadı.').map((s) => {
+      const v = s as unknown as {
+        id: string; name: string; category: string; phone: string; is_active: boolean;
+        kind: 'hizmet' | 'urun'; unit_price: number; box_count: number;
+        units_per_box: number; loose_count: number; min_count: number;
+      };
+      return {
+        id: v.id, ad: v.name, kategori: v.category, telefon: v.phone,
+        aktif: v.is_active, tur: v.kind ?? 'hizmet',
+        birimFiyat: kurusa(v.unit_price),
+        koli: Number(v.box_count ?? 0), koliIci: Number(v.units_per_box ?? 0),
+        tekAdet: Number(v.loose_count ?? 0), kritikEsik: Number(v.min_count ?? 0),
+      };
     });
   });
 }
@@ -888,4 +984,635 @@ export function sistemDurumu(): Promise<SistemDurumu> {
       sonIysAktarim: '-',
     };
   });
+}
+
+/* ═══ Özel günler ═════════════════════════════════════════════════ */
+
+export interface OzelGun {
+  id: string; gun: string; ad: string; tur: string; kaynak: string; kesinlesmedi: boolean;
+}
+
+const ORNEK_OZEL_GUN: OzelGun[] = [
+  { id: 'og1', gun: '2026-10-29', ad: 'Cumhuriyet Bayramı', tur: 'resmi_tatil',
+    kaynak: 'tohum', kesinlesmedi: false },
+  { id: 'og2', gun: '2027-03-19', ad: 'Ramazan Bayramı Arifesi', tur: 'arife',
+    kaynak: 'saglayici', kesinlesmedi: true },
+  { id: 'og3', gun: '2027-06-15', ad: 'Okulların kapanışı', tur: 'okul',
+    kaynak: 'saglayici', kesinlesmedi: true },
+];
+
+/**
+ * Takvimdeki özel günler.
+ *
+ * Salonun kendi günleri ile sağlayıcıdan gelenler AYNI listede: takvimde
+ * ikisi de aynı işi görüyor, ayrı çekilseydi ekran iki isteği beklerdi.
+ * Ayrımı `kaynak` taşıyor.
+ */
+export function ozelGunler(limit = 200): Promise<OzelGun[]> {
+  return sorgu(ORNEK_OZEL_GUN, async () => {
+    const { data, error } = await db().from('special_days')
+      .select('id, day, label, kind, source, tentative')
+      .order('day', { ascending: true }).limit(limit);
+    return denetle(data, error, 'Özel günler okunamadı.').map((s) => {
+      const g = s as unknown as {
+        id: string; day: string; label: string; kind: string;
+        source: string | null; tentative: boolean | null;
+      };
+      return { id: g.id, gun: g.day, ad: g.label, tur: g.kind,
+        kaynak: g.source ?? 'isletme', kesinlesmedi: Boolean(g.tentative) };
+    });
+  });
+}
+
+/* ═══ Müşteri adayları ════════════════════════════════════════════ */
+
+export interface Aday {
+  id: string; ad: string; telefon: string; durum: string; kaynak: string;
+  /** Gün taşımayan ifadeler ("mayısın ilk haftası") `tarihMetni` alanında. */
+  etkinlikTarihi: string; tarihMetni: string;
+  kisi: number | null;
+  /** Kuruş. Şemada TL `numeric` olarak duruyor, sınırda çevriliyor. */
+  teklif: number | null;
+  sonIletisim: string; takip: string; opsiyon: string;
+  talep: string; not: string;
+}
+
+const ORNEK_ADAY: Aday[] = [
+  { id: 'a1', ad: 'Sena & Barış', telefon: '5321110045', durum: 'teklif_verildi',
+    kaynak: 'Instagram', etkinlikTarihi: gunEkle(180), tarihMetni: '',
+    kisi: 300, teklif: 28_000_000, sonIletisim: gunEkle(-2), takip: gunEkle(5),
+    opsiyon: gunEkle(9), talep: '300 kişilik düğün için fiyat',
+    not: 'Cumartesi gecesi istiyor.' },
+  { id: 'a2', ad: 'Elif Hanım', telefon: '5321110046', durum: 'aranacak',
+    kaynak: 'WhatsApp', etkinlikTarihi: '', tarihMetni: 'Mayısın ilk haftası',
+    kisi: 180, teklif: null, sonIletisim: gunEkle(-1), takip: gunEkle(-1),
+    opsiyon: '', talep: 'Nişan için salon müsait mi', not: '' },
+  { id: 'a3', ad: 'Yıldız Ailesi', telefon: '5321110047', durum: 'rezervasyona_dondu',
+    kaynak: 'Tavsiye', etkinlikTarihi: gunEkle(95), tarihMetni: '',
+    kisi: 420, teklif: 41_000_000, sonIletisim: gunEkle(-9), takip: '',
+    opsiyon: '', talep: '', not: 'Sözleşme imzalandı.' },
+];
+
+/**
+ * Müşteri adayları (görüşme defteri).
+ *
+ * Panelde en kalabalık ekranlardan biri; telefonda tamamını çekmek hem
+ * yavaş hem gereksiz. Varsayılan sınır iki yüz: saha kullanıcısı son
+ * görüşmelere bakıyor, arşive masaüstünden giriliyor.
+ */
+interface AdaySatiri {
+  id: string; name: string; phone: string; status: string; source: string;
+  event_date: string | null; event_date_text: string | null;
+  guest_count: number | null; offer_amount: number | null;
+  last_contact_at: string | null; next_followup_at: string | null;
+  option_date: string | null; request_text: string | null; note: string | null;
+}
+
+/** Ham satırı ekranın beklediği alanlara çevirir. Liste ve kart aynı eşlemeyi kullanır. */
+function adayEsle(s: unknown): Aday {
+  const a = s as AdaySatiri;
+  return {
+    id: a.id, ad: a.name, telefon: a.phone, durum: a.status, kaynak: a.source,
+    etkinlikTarihi: a.event_date ?? '', tarihMetni: a.event_date_text ?? '',
+    kisi: a.guest_count,
+    teklif: a.offer_amount === null || a.offer_amount === undefined
+      ? null : kurusa(a.offer_amount),
+    sonIletisim: a.last_contact_at ?? '', takip: a.next_followup_at ?? '',
+    opsiyon: a.option_date ?? '', talep: a.request_text ?? '', not: a.note ?? '',
+  };
+}
+
+const ADAY_ALAN = 'id, name, phone, status, source, event_date, event_date_text, '
+  + 'guest_count, offer_amount, last_contact_at, next_followup_at, '
+  + 'option_date, request_text, note';
+
+export function adaylar(limit = 200): Promise<Aday[]> {
+  return sorgu(ORNEK_ADAY, async () => {
+    const { data, error } = await db().from('customer_leads')
+      .select(ADAY_ALAN)
+      .order('updated_at', { ascending: false }).limit(limit);
+    return denetle(data, error, 'Müşteri adayları okunamadı.').map(adayEsle);
+  });
+}
+
+/** Tek aday; kart ekranı için. */
+export async function aday(id: string): Promise<Aday | null> {
+  if (tanitim) return ORNEK_ADAY.find((a) => a.id === id) ?? null;
+  const { data, error } = await db().from('customer_leads')
+    .select(ADAY_ALAN).eq('id', id).maybeSingle();
+  if (error) throw new Error(`Aday okunamadı. (${error.message})`);
+  return data ? adayEsle(data) : null;
+}
+
+/**
+ * Adayın durumunu değiştirir.
+ *
+ * Telefonda en çok yapılan işlem: personel müşteriyi arıyor ve sonucu
+ * işaretliyor. `last_contact_at` da aynı anda yazılıyor -- ayrı bırakılsa
+ * "bugün arananlar" süzgeci aramayı hiç görmezdi.
+ */
+export async function adayDurumYaz(id: string, durum: string): Promise<void> {
+  if (tanitim) return;
+  const { error } = await db().from('customer_leads')
+    .update({ status: durum, last_contact_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export interface YeniAday {
+  ad: string; telefon: string; durum: string; kaynak: string;
+  tarih: string; tarihMetni: string; kisi: number | null; talep: string;
+}
+
+/**
+ * Yeni aday açar.
+ *
+ * Telefon ON HANEYE indirgenerek yazılıyor: şema yorumu aynı kişinin
+ * "+90...", "0..." ve "..." yazımlarının tek kayda düşmesini buna
+ * bağlıyor.
+ *
+ * Gün taşımayan tarih ifadesi ("mayısın ilk haftası") `event_date_text`
+ * alanına gidiyor, uydurma bir güne çevrilmiyor: yanlış bir gün salonun
+ * o tarihte dolu sanılmasına yol açardı.
+ */
+export async function adayEkle(girdi: YeniAday): Promise<string | null> {
+  if (tanitim) return null;
+  const { data, error } = await db().from('customer_leads').insert({
+    business_id: await aktifIsletmeId(),
+    name: girdi.ad,
+    phone: girdi.telefon.replace(/\D/g, '').slice(-10),
+    status: girdi.durum,
+    source: girdi.kaynak,
+    event_date: girdi.tarih || null,
+    event_date_text: girdi.tarihMetni,
+    guest_count: girdi.kisi,
+    request_text: girdi.talep,
+  }).select('id').single();
+  if (error) throw new Error(error.message);
+  return (data as unknown as { id: string }).id;
+}
+
+export interface AdayDurumu {
+  kod: string; ad: string; ton: string; etkin: boolean;
+  kapali: boolean; baslangic: boolean; kazanim: boolean; takipGunu: number;
+}
+
+const ORNEK_ADAY_DURUMU: AdayDurumu[] = [
+  { kod: 'yeni', ad: 'Yeni', ton: 'bekleyen', etkin: true,
+    kapali: false, baslangic: true, kazanim: false, takipGunu: 0 },
+  { kod: 'aranacak', ad: 'Aranacak', ton: 'bekleyen', etkin: true,
+    kapali: false, baslangic: false, kazanim: false, takipGunu: 2 },
+  { kod: 'teklif_verildi', ad: 'Teklif Verildi', ton: 'teklif', etkin: true,
+    kapali: false, baslangic: false, kazanim: false, takipGunu: 7 },
+  { kod: 'rezervasyona_dondu', ad: 'Rezervasyona Döndü', ton: 'olumlu', etkin: true,
+    kapali: true, baslangic: false, kazanim: true, takipGunu: 0 },
+  { kod: 'olumsuz', ad: 'Olumsuz', ton: 'kapali', etkin: true,
+    kapali: true, baslangic: false, kazanim: false, takipGunu: 0 },
+];
+
+/**
+ * İşletmenin tanımladığı aday durumları.
+ *
+ * Kod yerine ad göstermek için gerekli: aday kaydında `teklif_verildi`
+ * duruyor, ekranda "Teklif Verildi" yazmalı. Liste işletmeye göre
+ * değiştiği için sabit bir eşleme tablosu tutulamıyor.
+ */
+export function adayDurumlari(): Promise<AdayDurumu[]> {
+  return sorgu(ORNEK_ADAY_DURUMU, async () => {
+    const { data, error } = await db().from('lead_statuses')
+      .select('code, label, tone, active, is_closed, is_initial, is_won, followup_days')
+      .order('sort_order', { ascending: true });
+    return denetle(data, error, 'Aday durumları okunamadı.').map((s) => {
+      const d = s as unknown as {
+        code: string; label: string; tone: string; active: boolean;
+        is_closed: boolean; is_initial: boolean; is_won: boolean; followup_days: number;
+      };
+      return {
+        kod: d.code, ad: d.label, ton: d.tone, etkin: d.active, kapali: d.is_closed,
+        baslangic: d.is_initial, kazanim: d.is_won, takipGunu: d.followup_days ?? 0,
+      };
+    });
+  });
+}
+
+/* ═══ Ödeme bildirimleri ══════════════════════════════════════════ */
+
+export interface OdemeOlayi {
+  id: string; olay: string; tutar: number | null; eskiTutar: number | null;
+  kisi: string; an: string;
+}
+
+const ORNEK_ODEME_OLAYI: OdemeOlayi[] = [
+  { id: 'o1', olay: 'tutar_degisti', tutar: 3_000_000, eskiTutar: 2_500_000,
+    kisi: 'mudur@sahra.com', an: `${gunEkle(-1)}T14:20:00.000Z` },
+  { id: 'o2', olay: 'tahsilat_eklendi', tutar: 5_000_000, eskiTutar: null,
+    kisi: 'kasa@sahra.com', an: `${gunEkle(-2)}T10:05:00.000Z` },
+];
+
+/**
+ * Para ile ilgili son değişiklikler.
+ *
+ * Panelde "Ödeme Bildirimleri" ekranının karşılığı. Yöneticinin telefonda
+ * sorduğu tek soru şu: bugün rakamlara kim dokundu.
+ */
+export function odemeOlaylari(limit = 100): Promise<OdemeOlayi[]> {
+  return sorgu(ORNEK_ODEME_OLAYI, async () => {
+    const { data, error } = await db().from('payment_events')
+      .select('id, event, amount, old_amount, actor_email, created_at')
+      .order('created_at', { ascending: false }).limit(limit);
+    return denetle(data, error, 'Ödeme bildirimleri okunamadı.').map((s) => {
+      const o = s as unknown as {
+        id: string; event: string; amount: number | null;
+        old_amount: number | null; actor_email: string | null; created_at: string;
+      };
+      return {
+        id: o.id, olay: o.event,
+        tutar: o.amount === null ? null : kurusa(o.amount),
+        eskiTutar: o.old_amount === null ? null : kurusa(o.old_amount),
+        kisi: o.actor_email ?? '-', an: o.created_at,
+      };
+    });
+  });
+}
+
+/* ═══ İşletmeler ══════════════════════════════════════════════════ */
+
+export interface Isletme {
+  id: string; ad: string; kategori: string; kapasite: number;
+  il: string; ilce: string; telefon: string;
+}
+
+const ORNEK_ISLETME: Isletme[] = [
+  { id: 'demo', ad: 'Grand Sahra Düğün ve Davet Salonu', kategori: 'Düğün Salonu',
+    kapasite: 500, il: 'Konya', ilce: 'Selçuklu', telefon: '3323334455' },
+  { id: 'biz_demo2', ad: 'Yıldız Kır Bahçesi', kategori: 'Kır Düğünü / Bahçe',
+    kapasite: 300, il: 'Konya', ilce: 'Meram', telefon: '3323334466' },
+];
+
+/**
+ * Kullanıcının işletmeleri.
+ *
+ * Telefonda DÜZENLEME YOK, yalnızca liste ve etkin işletme seçimi:
+ * işletme tanımı yılda bir değişen bir ayar ve küçük ekranda yanlış
+ * dokunuşla bozulması en pahalı kayıt. Düzenleme panelde kalıyor.
+ */
+export function isletmeler(): Promise<Isletme[]> {
+  return sorgu(ORNEK_ISLETME, async () => {
+    const { data, error } = await db().from('businesses')
+      .select('id, name, category, capacity, city, district, phone')
+      .order('name', { ascending: true });
+    return denetle(data, error, 'İşletmeler okunamadı.').map((s) => {
+      const i = s as unknown as {
+        id: string; name: string; category: string | null; capacity: number;
+        city: string | null; district: string | null; phone: string | null;
+      };
+      return { id: i.id, ad: i.name, kategori: i.category ?? '-', kapasite: i.capacity,
+        il: i.city ?? '-', ilce: i.district ?? '-', telefon: i.phone ?? '' };
+    });
+  });
+}
+
+/**
+ * Etkin işletmeyi değiştirir.
+ *
+ * Birden çok salonu olan kullanıcı için telefonda en çok gereken işlem
+ * bu: hangi salonun kayıtlarına baktığını değiştirmek. Düzenlemenin
+ * aksine geri alınabilir ve hiçbir kaydı bozmuyor.
+ *
+ * Bellek de düşürülüyor; yoksa sonraki yazma işlemi ESKİ işletmeye
+ * gider ve kayıt yanlış salonda açılır.
+ */
+export async function aktifIsletmeSec(id: string): Promise<void> {
+  if (tanitim) return;
+  const kimlik = kullaniciId(await gecerliJeton());
+  if (!kimlik) throw new Error('Oturum bulunamadı.');
+  const { error } = await db().from('profiles')
+    .update({ active_business_id: id }).eq('id', kimlik);
+  if (error) throw new Error(error.message);
+  isletmeBellek = id;
+}
+
+/** Etkin işletmenin kimliği; seçili olanı işaretlemek için. */
+export async function etkinIsletme(): Promise<string> {
+  if (tanitim) return ISLETME.id;
+  try {
+    return await aktifIsletmeId();
+  } catch {
+    // Etkin işletme seçili değilse liste yine de gösterilmeli; kullanıcı
+    // tam olarak buradan seçim yapacak.
+    return '';
+  }
+}
+
+/* ═══ Ödeme bildirim kuralları ve alıcıları ═══════════════════════ */
+
+export interface OdemeKurali {
+  id: string; olay: string; acik: boolean; metin: string;
+}
+
+export interface OdemeAlicisi {
+  id: string; ad: string; telefon: string; acik: boolean; kanal: string;
+}
+
+/** Panel ile aynı sıra; liste her açılışta aynı düzende gelsin. */
+export const ODEME_OLAYLARI = [
+  'tahsilat_eklendi', 'tutar_degisti', 'tip_degisti',
+  'tarih_degisti', 'tahsilat_silindi', 'kasaya_girmedi',
+] as const;
+
+/** `src/types/index.ts` içindeki ODEME_OLAY_ADI ile aynı metinler. */
+export const ODEME_OLAY_ADI: Record<string, string> = {
+  tahsilat_eklendi: 'Yeni tahsilat',
+  tutar_degisti: 'Tutar değişti',
+  tip_degisti: 'Ödeme tipi değişti',
+  tarih_degisti: 'Tarih değişti',
+  tahsilat_silindi: 'Tahsilat silindi',
+  kasaya_girmedi: 'Kasaya girmedi',
+};
+
+const ORNEK_ODEME_KURALI: OdemeKurali[] = [
+  { id: 'ok1', olay: 'tahsilat_eklendi', acik: true,
+    metin: '{isletme}: {kod} için {tutar} tahsilat girildi. Kalan {kalan}.' },
+  { id: 'ok2', olay: 'tutar_degisti', acik: true,
+    metin: '{isletme}: {kod} tahsilatı {eski_tutar} yerine {tutar} oldu. İşlem: {kullanici}.' },
+  { id: 'ok3', olay: 'tip_degisti', acik: false,
+    metin: '{isletme}: {kod} ödeme tipi {eski_tip} yerine {tip} oldu.' },
+  { id: 'ok4', olay: 'tarih_degisti', acik: false,
+    metin: '{isletme}: {kod} tahsilat tarihi değişti.' },
+  { id: 'ok5', olay: 'tahsilat_silindi', acik: true,
+    metin: '{isletme}: {kod} için {tutar} tutarındaki tahsilat silindi. İşlem: {kullanici}.' },
+  { id: 'ok6', olay: 'kasaya_girmedi', acik: true,
+    metin: '{isletme}: {kod} için {tutar} çek/senet alındı, kasaya HENÜZ girmedi.' },
+];
+
+const ORNEK_ODEME_ALICISI: OdemeAlicisi[] = [
+  { id: 'oa1', ad: 'Salon sahibi', telefon: '5321110001', acik: true, kanal: 'whatsapp' },
+  { id: 'oa2', ad: 'Muhasebe', telefon: '5321110002', acik: true, kanal: 'sms' },
+];
+
+/**
+ * Hangi ödeme olayında yöneticiye mesaj gideceği.
+ *
+ * Metin koda gömülü değil; salondan salona değişiyor ve panelden
+ * düzenleniyor. Mobilde açma/kapama var, metin düzenleme yok: 400
+ * karakterlik bir şablonu telefon klavyesinde düzeltmek, yer tutucuyu
+ * ({tutar} gibi) bozma riskini gereksiz yere taşıyor.
+ */
+export function odemeKurallari(): Promise<OdemeKurali[]> {
+  return sorgu(ORNEK_ODEME_KURALI, async () => {
+    const { data, error } = await db().from('payment_alerts')
+      .select('id, event, enabled, body');
+    const liste = denetle(data, error, 'Bildirim kuralları okunamadı.').map((s) => {
+      const k = s as unknown as { id: string; event: string; enabled: boolean; body: string };
+      return { id: k.id, olay: k.event, acik: k.enabled, metin: k.body };
+    });
+    // Sıra veritabanından gelmiyor; panelle aynı düzeni burada kuruyoruz.
+    const sira = new Map(ODEME_OLAYLARI.map((o, i) => [o as string, i]));
+    return liste.sort((a, b) => (sira.get(a.olay) ?? 99) - (sira.get(b.olay) ?? 99));
+  });
+}
+
+/** Tek bir kuralı açar ya da kapatır. Metne dokunulmaz. */
+export async function odemeKuralDurumu(id: string, acik: boolean): Promise<void> {
+  if (tanitim) return;
+  const { error } = await db().from('payment_alerts').update({ enabled: acik }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Bildirimi alacak kişiler.
+ *
+ * Mobilde yalnızca okunur: numara eklemek ya da silmek, yanlış girildiğinde
+ * mesajın başkasına gitmesi demek. Bu ekran "bildirim kime gidiyor"
+ * sorusunu cevaplamak için var.
+ */
+export function odemeAlicilari(): Promise<OdemeAlicisi[]> {
+  return sorgu(ORNEK_ODEME_ALICISI, async () => {
+    const { data, error } = await db().from('payment_alert_recipients')
+      .select('id, name, phone, enabled, channel').order('name');
+    return denetle(data, error, 'Bildirim alıcıları okunamadı.').map((s) => {
+      const a = s as unknown as {
+        id: string; name: string; phone: string; enabled: boolean; channel: string | null;
+      };
+      return { id: a.id, ad: a.name, telefon: a.phone, acik: a.enabled, kanal: a.channel ?? 'sms' };
+    });
+  });
+}
+
+/* ═══ Fatura ayrıntısı ════════════════════════════════════════════ */
+
+export interface FaturaSatiri {
+  id: string; sira: number; aciklama: string; miktar: number; birim: string;
+  birimFiyat: number; kdvOrani: number; matrah: number; kdv: number; toplam: number;
+}
+
+export interface FaturaDetay extends Fatura {
+  alici: string; vergiNo: string; vergiDairesi: string;
+  adres: string; eposta: string; aliciTelefon: string;
+  iskonto: number; brut: number; paraBirimi: string;
+  saglayiciHatasi: string; iptalGerekcesi: string; not: string;
+  satirlar: FaturaSatiri[];
+}
+
+const ORNEK_FATURA_SATIRI: FaturaSatiri[] = [
+  { id: 'fs1', sira: 1, aciklama: 'Düğün organizasyonu - salon ve menü', miktar: 300,
+    birim: 'Kişi', birimFiyat: 45_000, kdvOrani: 20,
+    matrah: 13_500_000, kdv: 2_700_000, toplam: 16_200_000 },
+  { id: 'fs2', sira: 2, aciklama: 'Süsleme ve çiçek', miktar: 1,
+    birim: 'Adet', birimFiyat: 250_000, kdvOrani: 20,
+    matrah: 250_000, kdv: 50_000, toplam: 300_000 },
+];
+
+/**
+ * Tek faturanın tamamı: alıcı bilgisi ve kalemler.
+ *
+ * Liste satırındaki toplam "hangi kalemden geldi" sorusunu cevaplamıyor;
+ * müşteri aradığında personelin bakacağı yer burası.
+ *
+ * Bu ekran RESMÎ BELGE DEĞİL, sistemdeki kaydın kendisi. Entegratöre
+ * gönderilen belge ayrı; ikisi karışmasın diye durum her zaman görünür.
+ *
+ * Tutarlar şemada zaten kuruş (`_kurus` ekli sütunlar); çevrim yok.
+ */
+export async function faturaDetay(id: string): Promise<FaturaDetay | null> {
+  if (tanitim) {
+    const temel = ORNEK_FATURA.find((f) => f.id === id);
+    if (!temel) return null;
+    return {
+      ...temel, alici: temel.musteri, vergiNo: '', vergiDairesi: '',
+      adres: 'Selçuklu / Konya', eposta: '', aliciTelefon: '5321110011',
+      iskonto: 0, brut: temel.matrah, paraBirimi: 'TRY',
+      saglayiciHatasi: '', iptalGerekcesi: '', not: '',
+      satirlar: ORNEK_FATURA_SATIRI,
+    };
+  }
+
+  const { data, error } = await db().from('invoices')
+    .select('id, invoice_number, buyer_name, issue_date, base_kurus, vat_kurus, '
+      + 'total_kurus, gross_kurus, discount_kurus, status, kind, buyer_tax_id, '
+      + 'buyer_tax_office, buyer_address, buyer_email, buyer_phone, currency, '
+      + 'provider_error, cancel_reason, note')
+    .eq('id', id).maybeSingle();
+  if (error) throw new Error(`Fatura okunamadı. (${error.message})`);
+  if (!data) return null;
+
+  const f = data as unknown as {
+    id: string; invoice_number: string | null; buyer_name: string; issue_date: string;
+    base_kurus: number; vat_kurus: number; total_kurus: number;
+    gross_kurus: number; discount_kurus: number; status: string; kind: string;
+    buyer_tax_id: string | null; buyer_tax_office: string | null;
+    buyer_address: string | null; buyer_email: string | null; buyer_phone: string | null;
+    currency: string | null; provider_error: string | null;
+    cancel_reason: string | null; note: string | null;
+  };
+
+  const { data: satirVeri, error: satirHata } = await db().from('invoice_lines')
+    .select('id, line_no, description, quantity, unit, unit_price_kurus, '
+      + 'vat_rate, base_kurus, vat_kurus, total_kurus')
+    .eq('invoice_id', id).order('line_no', { ascending: true });
+
+  const satirlar = denetle(satirVeri, satirHata, 'Fatura kalemleri okunamadı.').map((s) => {
+    const l = s as unknown as {
+      id: string; line_no: number; description: string; quantity: number;
+      unit: string; unit_price_kurus: number; vat_rate: number;
+      base_kurus: number; vat_kurus: number; total_kurus: number;
+    };
+    return {
+      id: l.id, sira: l.line_no, aciklama: l.description, miktar: Number(l.quantity),
+      birim: l.unit, birimFiyat: l.unit_price_kurus, kdvOrani: l.vat_rate,
+      matrah: l.base_kurus, kdv: l.vat_kurus, toplam: l.total_kurus,
+    };
+  });
+
+  return {
+    id: f.id, no: f.invoice_number ?? '-', musteri: f.buyer_name, tarih: f.issue_date,
+    matrah: f.base_kurus, kdv: f.vat_kurus, toplam: f.total_kurus,
+    durum: f.status, tur: f.kind,
+    alici: f.buyer_name, vergiNo: f.buyer_tax_id ?? '',
+    vergiDairesi: f.buyer_tax_office ?? '', adres: f.buyer_address ?? '',
+    eposta: f.buyer_email ?? '', aliciTelefon: f.buyer_phone ?? '',
+    iskonto: f.discount_kurus, brut: f.gross_kurus, paraBirimi: f.currency ?? 'TRY',
+    saglayiciHatasi: f.provider_error ?? '', iptalGerekcesi: f.cancel_reason ?? '',
+    not: f.note ?? '', satirlar,
+  };
+}
+
+/* ═══ Renk ayarları ═══════════════════════════════════════════════ */
+
+export interface RenkAyari { anahtar: string; ad: string; renk: string }
+
+/** `src/data/constants.ts` DEFAULT_COLOR_SETTINGS ile birebir aynı liste. */
+const ORNEK_RENK: RenkAyari[] = [
+  { anahtar: 'dugun', ad: 'Düğün', renk: '#47b2e4' },
+  { anahtar: 'sunnet', ad: 'Sünnet', renk: '#18d26e' },
+  { anahtar: 'nisan', ad: 'Nişan', renk: '#f39c12' },
+  { anahtar: 'kina', ad: 'Kına', renk: '#e74c3c' },
+  { anahtar: 'konferans', ad: 'Konferans', renk: '#8e44ad' },
+  { anahtar: 'kokteyl', ad: 'Kokteyl', renk: '#16a085' },
+  { anahtar: 'nikah', ad: 'Nikâh', renk: '#2875b5' },
+  { anahtar: 'dogumgunu', ad: 'Doğum Günü', renk: '#d81b60' },
+  { anahtar: 'toplanti', ad: 'Toplantı', renk: '#56717d' },
+  { anahtar: 'diger', ad: 'Diğer', renk: '#95a5a6' },
+];
+
+/**
+ * Takvimdeki rezervasyon renkleri.
+ *
+ * Tek bir `jsonb` sütunda duruyor: renk listesi işletmeye özel ve
+ * organizasyon türleri değiştikçe uzayıp kısalıyor; her tür için ayrı
+ * satır açmak tabloyu tür tanımlarının kopyası hâline getirirdi.
+ */
+export function renkAyarlari(): Promise<RenkAyari[]> {
+  return sorgu(ORNEK_RENK, async () => {
+    const { data, error } = await db().from('color_settings')
+      .select('settings').maybeSingle();
+    if (error) throw new Error(`Renk ayarları okunamadı. (${error.message})`);
+
+    const ham = (data as unknown as { settings: unknown } | null)?.settings;
+    if (!Array.isArray(ham)) return ORNEK_RENK;
+
+    return ham.map((s) => {
+      const r = s as { key?: string; label?: string; color?: string };
+      return {
+        anahtar: r.key ?? '', ad: r.label ?? r.key ?? '',
+        renk: r.color ?? '#47b2e4',
+      };
+    }).filter((r) => r.anahtar !== '');
+  });
+}
+
+/* ═══ WhatsApp hesabı ve otomatik cevap ══════════════════════════ */
+
+export interface WhatsappHesabi {
+  numaraKimligi: string; gorunenNumara: string;
+  otomatikAcik: boolean; karsilamaMesaji: string;
+  mesaiDisiAcik: boolean; mesaiDisiMesaji: string;
+  mesaiBaslangic: string; mesaiBitis: string; mesaiGunleri: number[];
+}
+
+const ORNEK_WHATSAPP: WhatsappHesabi = {
+  numaraKimligi: '000000000000000',
+  gorunenNumara: '+90 332 333 44 55',
+  otomatikAcik: true,
+  karsilamaMesaji: 'Mesajınız bize ulaştı. En kısa sürede size döneceğiz.',
+  mesaiDisiAcik: true,
+  mesaiDisiMesaji:
+    'Mesajınız bize ulaştı. Şu an çalışma saatlerimiz dışındayız, '
+    + 'ilk iş günü size döneceğiz.',
+  mesaiBaslangic: '09:00',
+  mesaiBitis: '19:00',
+  mesaiGunleri: [1, 2, 3, 4, 5, 6, 7],
+};
+
+/**
+ * WhatsApp numarası eşlemesi ve otomatik cevap ayarları.
+ *
+ * Hesap tanımlı değilse `null` döner: bu bir hata değil, henüz
+ * kurulmamış demek. Ekran bunu ayrı anlatıyor.
+ *
+ * Saatler işletmenin YEREL saati (Türkiye, UTC+3). Sunucu UTC
+ * çalıştığı için çevrim kodda yapılıyor; ham değer olduğu gibi
+ * gösteriliyor.
+ */
+export async function whatsappHesabi(): Promise<WhatsappHesabi | null> {
+  if (tanitim) return ORNEK_WHATSAPP;
+
+  const { data, error } = await db().from('whatsapp_accounts')
+    .select('phone_number_id, display_phone, auto_reply_enabled, welcome_message, '
+      + 'after_hours_enabled, after_hours_message, work_start, work_end, work_days')
+    .maybeSingle();
+  if (error) throw new Error(`WhatsApp ayarları okunamadı. (${error.message})`);
+  if (!data) return null;
+
+  const h = data as unknown as {
+    phone_number_id: string; display_phone: string | null;
+    auto_reply_enabled: boolean; welcome_message: string;
+    after_hours_enabled: boolean; after_hours_message: string;
+    work_start: string; work_end: string; work_days: number[] | null;
+  };
+
+  return {
+    numaraKimligi: h.phone_number_id, gorunenNumara: h.display_phone ?? '',
+    otomatikAcik: h.auto_reply_enabled, karsilamaMesaji: h.welcome_message,
+    mesaiDisiAcik: h.after_hours_enabled, mesaiDisiMesaji: h.after_hours_message,
+    // Postgres `time` "09:00:00" döndürür; ekranda saniye istenmiyor.
+    mesaiBaslangic: (h.work_start ?? '').slice(0, 5),
+    mesaiBitis: (h.work_end ?? '').slice(0, 5),
+    mesaiGunleri: h.work_days ?? [],
+  };
+}
+
+/**
+ * Otomatik cevabı açar ya da kapatır.
+ *
+ * Tek boolean, geri alınabilir ve telefonda gerçekten gereken işlem:
+ * salon kapalıyken gelen mesajlara otomatik cevap gitmesin istendiğinde
+ * panele gidilmesi bekleniyordu.
+ */
+export async function whatsappOtomatikDurumu(
+  numaraKimligi: string, acik: boolean,
+): Promise<void> {
+  if (tanitim) return;
+  const { error } = await db().from('whatsapp_accounts')
+    .update({ auto_reply_enabled: acik }).eq('phone_number_id', numaraKimligi);
+  if (error) throw new Error(error.message);
 }

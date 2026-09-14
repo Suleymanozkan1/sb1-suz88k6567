@@ -1,4 +1,5 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Etiket, Govde } from '../src/bilesenler/duzen';
 import { BosDurum, Kart, Yazi } from '../src/bilesenler/temel';
 import { tarihUzun, tutar } from '../src/bicim';
@@ -11,8 +12,14 @@ import { faturalar, type Fatura } from '../src/veri';
  * Fatura kesme telefonda yapılmıyor: matrah, KDV oranı ve alıcı bilgisi
  * yanlış girildiğinde gönderilmiş fatura düzeltilemiyor, yalnızca iptal
  * edilebiliyor. Mobilde yalnızca görüntülenir.
+ *
+ * Satıra dokunmak fatura kartını açıyor: listedeki toplam "hangi kalemden
+ * geldi" sorusunu cevaplamıyor ve müşteri aradığında personelin bakacağı
+ * bir yer kalmıyordu.
  */
 export default function Faturalar() {
+  const yonlendir = useRouter();
+
   return (
     <Govde<Fatura[]>
       yukle={() => faturalar()}
@@ -21,7 +28,13 @@ export default function Faturalar() {
       {(liste) => (
         <>
           {liste.map((f) => (
-            <Kart key={f.id} style={{ marginBottom: aralik.s }}>
+            <Pressable
+              key={f.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${f.musteri} faturası`}
+              onPress={() => yonlendir.push(`/fatura/${f.id}`)}
+            >
+            <Kart style={{ marginBottom: aralik.s }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1 }}>
                   <Yazi tur="altBaslik" renkli={renk.lacivert}>{f.musteri}</Yazi>
@@ -41,6 +54,7 @@ export default function Faturalar() {
                 <Kalem etiket="TOPLAM" deger={tutar(f.toplam)} vurgu />
               </View>
             </Kart>
+            </Pressable>
           ))}
 
           <Yazi tur="kucuk" renkli={renk.metinSolgun} style={{ marginTop: aralik.l }}>

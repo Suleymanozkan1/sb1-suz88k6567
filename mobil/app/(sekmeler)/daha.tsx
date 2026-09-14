@@ -19,8 +19,9 @@ const BOLUMLER: { baslik: string; satirlar: [string, string, string][] }[] = [
     satirlar: [
       ['Müşteriler', 'Kayıtlardan türetilen müşteri defteri', '/musteriler'],
       ['Salonlar', 'Salon tanımları ve kapasiteleri', '/salonlar'],
+      ['Özel günler', 'Bayram, arife, kandil ve okul takvimi', '/ozel-gunler'],
       ['Menüler', 'Menü ve paket tanımları', '/menuler'],
-      ['Tedarikçiler', 'Orkestra, fotoğraf, çiçek, pasta', '/tedarikciler'],
+      ['Ürün ve hizmet', 'Orkestra, fotoğraf, çiçek ve stoklu ürünler', '/urun-hizmet'],
     ],
   },
   {
@@ -28,14 +29,17 @@ const BOLUMLER: { baslik: string; satirlar: [string, string, string][] }[] = [
     satirlar: [
       ['Faturalar', 'e-Arşiv ve e-Fatura kayıtları', '/faturalar'],
       ['Raporlar', 'Aylık ciro ve organizasyon dağılımı', '/raporlar'],
+      ['Ödeme bildirimleri', 'Para değişikliklerinde yöneticiye mesaj', '/odeme-bildirimleri'],
     ],
   },
   {
     baslik: 'İletişim',
     satirlar: [
+      ['Müşteri adayları', 'Rezervasyona dönmemiş görüşmeler', '/musteri-adaylari'],
       ['Hatırlatmalar', 'Taslak mesajlar ve otomatik gönderim', '/hatirlatmalar'],
       ['SMS kayıtları', 'Gönderilen ve engellenen mesajlar', '/sms'],
       ['İYS izinleri', 'Ticari ileti onay ve ret kayıtları', '/izinler'],
+      ['WhatsApp ayarları', 'Numara eşlemesi ve otomatik cevap', '/whatsapp-ayarlari'],
     ],
   },
   {
@@ -44,7 +48,9 @@ const BOLUMLER: { baslik: string; satirlar: [string, string, string][] }[] = [
       ['Kullanıcılar', 'Personel hesapları ve yetkileri', '/kullanicilar'],
       ['Denetim kaydı', 'Kim neyi ne zaman değiştirdi', '/denetim'],
       ['Sistem durumu', 'Yedek, SMS kuyruğu ve İYS durumu', '/sistem'],
-      ['Ayarlar', 'İşletme bilgileri ve renk ayarları', '/ayarlar'],
+      ['İşletmeler', 'İşletme listesi ve etkin salon seçimi', '/isletmeler'],
+      ['Ayarlar', 'İşletme bilgileri ve tercihi', '/ayarlar'],
+      ['Renk ayarları', 'Takvimdeki rezervasyon renkleri', '/renk-ayarlari'],
       ['Hesap', 'Oturum bilgileri ve çıkış', '/hesap'],
     ],
   },

@@ -91,18 +91,31 @@ export default function Raporlar() {
   const { data: halls = [] } = useHalls();
   const { data: businesses = [] } = useBusinesses();
 
+  const [params] = useSearchParams();
+  const istenenTab = params.get('tab');
+  const [tab, setTab] = useState<Tab>(
+    istenenTab && (TAB_KEYS as string[]).includes(istenenTab) ? (istenenTab as Tab) : 'cizelge',
+  );
+
   /*
     RAPOR KAPSAMI. Varsayılan etkin işletme; sahibi birden çok salon
     işletiyorsa buradan hepsini birden seçebiliyor. Eskiden rapor yalnızca
     etkin işletmeye bakıyordu ve "toplam ne kadar iş yaptım" sorusunun
     cevabı için iki raporu elle toplamak gerekiyordu.
+
+    "İŞLETME BAZLI REZERVASYON" RAPORU İSTİSNA: varsayılanı BÜTÜN
+    işletmeler. Bu raporun tamamı işletmeleri yan yana karşılaştırmak
+    için var; tek işletmeye düştüğünde tek satır çiziyor ve hangi salonun
+    daha iyi iş yaptığı sorusu cevapsız kalıyordu. Kullanıcı yine de
+    kutulardan daraltabilir -- ELLE YAPILAN SEÇİM HER ZAMAN ÜSTÜN.
   */
   const [secilenIsletmeler, setSecilenIsletmeler] = useState<string[]>([]);
   const kapsam = useMemo(() => {
     const gecerli = secilenIsletmeler.filter((id) => businesses.some((b) => b.id === id));
     if (gecerli.length > 0) return gecerli;
+    if (tab === 'isletme' && businesses.length > 0) return businesses.map((b) => b.id);
     return user?.activeBusinessId ? [user.activeBusinessId] : [];
-  }, [secilenIsletmeler, businesses, user?.activeBusinessId]);
+  }, [secilenIsletmeler, businesses, user?.activeBusinessId, tab]);
 
   const { reservations, balance, isLoading, error } = useReservationsForBusinesses(kapsam);
   const { data: menus = [] } = useMenus();
@@ -116,11 +129,6 @@ export default function Raporlar() {
   const { data: smsKayitlari = [] } = useSmsLog();
   const { data: denetimKayitlari = [] } = useAuditLog(200);
   const { data: personel = [] } = useStaff();
-  const [params] = useSearchParams();
-  const istenenTab = params.get('tab');
-  const [tab, setTab] = useState<Tab>(
-    istenenTab && (TAB_KEYS as string[]).includes(istenenTab) ? (istenenTab as Tab) : 'cizelge',
-  );
   // Boş aralık "tüm kayıtlar" demektir ve diğer raporlar bunu bekliyor;
   // varsayılanı bu hafta yapmak onları sessizce daraltırdı. Çizelge kendi
   // içinde bu haftaya düşer.
@@ -522,6 +530,15 @@ export default function Raporlar() {
             {kapsam.length > 1
               ? `${kapsam.length} işletmenin kayıtları birlikte raporlanıyor.`
               : 'Tek işletme raporlanıyor.'}
+            {/*
+              Seçim yapılmadığında bu raporun bütün işletmeleri kapsadığı
+              ayrıca yazılıyor: kullanıcı kutulardan hiçbirine dokunmadığı
+              hâlde birden çok satır görünce "ben ne seçtim" diye
+              duraksıyordu.
+            */}
+            {tab === 'isletme' && secilenIsletmeler.length === 0
+              ? ' İşletme bazlı rapor varsayılan olarak hepsini karşılaştırır.'
+              : ''}
           </p>
         </fieldset>
       )}

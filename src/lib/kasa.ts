@@ -124,3 +124,42 @@ export function kasaHareketleri(
       .map((g) => ({ tutar: -g.amount })),
   ];
 }
+
+/**
+ * Kasa ekranındaki toplam kartlarının hangi süzgeçten geldiğini anlatan
+ * kısa cümle.
+ *
+ * NEDEN GEREKLİ. Karttaki rakam "kasada şu an ne var" değil, EKRANDAKİ
+ * LİSTENİN NETİ. Açıklama yalnızca tarih aralığını söylüyordu; oysa
+ * rakam TÜR SÜZGECİNDEN de etkileniyor. Tür "Gelir" seçildiğinde gider
+ * sıfırlanıyor ve bakiye, yanındaki "Toplam Gelir" kartının aynısı
+ * oluyordu -- kullanıcı bunu kasadan para çıkmış gibi okuyabiliyordu.
+ *
+ * Tarihler gün/ay/yıl olarak yazılıyor: ISO biçimi ekranda okunmuyor.
+ */
+export function kasaSuzgecOzeti(
+  tur: string,
+  aralik: { from?: string; to?: string } = {},
+): string {
+  const gun = (iso: string) => {
+    const [y, a, g] = iso.split('-');
+    return y && a && g ? `${g}.${a}.${y}` : iso;
+  };
+
+  const { from, to } = aralik;
+  let zaman: string;
+  if (from && to) zaman = `${gun(from)} - ${gun(to)} arası`;
+  else if (from) zaman = `${gun(from)} ve sonrası`;
+  else if (to) zaman = `${gun(to)} ve öncesi`;
+  else zaman = 'Bütün kayıtlar';
+
+  if (!tur) return zaman;
+
+  /*
+    Tür süzülüyken kartın adı ("Bakiye") artık gelir eksi gider anlamına
+    gelmiyor: bir taraf hesaba hiç girmiyor. Bunu açıkça yazmak, rakamı
+    yanlış okumanın önündeki tek engel.
+  */
+  const karsi = tur === 'Gelir' ? 'gider' : 'gelir';
+  return `${zaman} · yalnızca ${tur.toLocaleLowerCase('tr-TR')} satırları, ${karsi} bu rakama girmiyor`;
+}

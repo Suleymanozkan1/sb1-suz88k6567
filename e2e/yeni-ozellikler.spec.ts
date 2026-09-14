@@ -649,6 +649,88 @@ test('İl bazlı rapor girilen ile göre gruplar', async ({ page }) => {
   await expect(panel.getByRole('cell', { name: 'Belirtilmemiş' })).toBeVisible();
 });
 
+/*
+  İŞLETME BAZLI RAPOR BÜTÜN İŞLETMELERİ KAPSAR.
+
+  Rapor kapsamı varsayılan olarak yalnızca etkin işletmeydi. Bu raporun
+  tamamı işletmeleri yan yana koymak için var; tek işletmeye düşünce tek
+  satır çiziyor ve "hangi salon daha iyi iş yaptı" sorusu cevapsız
+  kalıyordu. Elle yapılan seçim yine üstün.
+*/
+test('İşletme bazlı rapor bütün işletmeleri karşılaştırır', async ({ page }) => {
+  // Demo tohumunda iki işletme var; karşılaştırma için yenisi gerekmiyor.
+  await login(page);
+  await page.goto('/panel/raporlar');
+  await page.getByRole('tab', { name: 'İşletme bazlı rezervasyon', exact: true }).click();
+
+  const panel = page.getByRole('tabpanel');
+  const kapsamKutusu = page.getByRole('group', { name: 'Rapor kapsamı' });
+
+  // HİÇBİR KUTUYA DOKUNULMADAN iki işletme de raporda olmalı.
+  await expect(panel.getByRole('cell', { name: 'Grand Sahra Düğün ve Davet Salonu' }))
+    .toBeVisible();
+  await expect(panel.getByRole('cell', { name: 'Yıldız Kır Bahçesi' })).toBeVisible();
+  await expect(page.getByText(/varsayılan olarak hepsini karşılaştırır/)).toBeVisible();
+
+  /*
+    Elle daraltma hâlâ üstün. Varsayılan "hepsi seçili" olduğu için bir
+    kutuya dokunmak onu LİSTEDEN ÇIKARIR; geriye diğeri kalır. Seçim
+    yapıldığı anda varsayılan devre dışı kalmalı, yoksa kullanıcının
+    daralttığı rapor kendiliğinden yeniden genişlerdi.
+  */
+  await kapsamKutusu.getByText('Yıldız Kır Bahçesi', { exact: true }).click();
+  await expect(page.getByText('Tek işletme raporlanıyor.')).toBeVisible();
+  await expect(panel.getByRole('cell', { name: 'Yıldız Kır Bahçesi' })).toHaveCount(0);
+  await expect(panel.getByRole('cell', { name: 'Grand Sahra Düğün ve Davet Salonu' }))
+    .toBeVisible();
+
+  // Diğer raporlarda varsayılan değişmedi: seçim yokken yalnızca etkin işletme.
+  await page.getByRole('button', { name: 'Yalnızca etkin işletme' }).click();
+  await page.getByRole('tab', { name: 'İl bazlı rezervasyon', exact: true }).click();
+  await expect(page.getByText('Tek işletme raporlanıyor.')).toBeVisible();
+});
+
+/*
+  KASA KARTININ AÇIKLAMASI SÜZGECİ DOĞRU ANLATMALI.
+
+  Karttaki rakam kasadaki para değil, ekrandaki listenin neti. Açıklama
+  yalnızca tarih aralığını söylüyordu; oysa rakam TÜR SÜZGECİNDEN de
+  etkileniyor. Tür "Gelir" seçilince gider sıfırlanıyor ve "Bakiye",
+  yanındaki "Toplam Gelir" kartının aynısı oluyordu -- kullanıcı bunu
+  kasadan para çıkmış gibi okuyabiliyordu.
+*/
+test('Kasa toplam kartı hangi süzgeçten geldiğini yazar', async ({ page }) => {
+  await login(page);
+  await page.goto('/panel/kasa');
+
+  // Süzgeç yokken: bütün kayıtlar ve gerçek bakiye.
+  await expect(page.getByText('Süzgeçteki Bakiye')).toBeVisible();
+  await expect(page.getByText('Bütün kayıtlar', { exact: true })).toBeVisible();
+
+  // Tarih aralığı girilince açıklama aralığı gün.ay.yıl yazmalı.
+  await page.locator('#cf-from').fill('2026-01-01');
+  await page.locator('#cf-to').fill('2026-03-31');
+  await expect(page.getByText('01.01.2026 - 31.03.2026 arası', { exact: true })).toBeVisible();
+
+  /*
+    Tür süzülünce başlık da değişmeli: bir taraf hesaba hiç girmiyorken
+    "Bakiye" demek yanlış olurdu.
+  */
+  await page.locator('#cf-filter-kind').selectOption('Gelir');
+  await expect(page.getByText('Süzgeçteki Gelir Toplamı')).toBeVisible();
+  await expect(page.getByText('Süzgeçteki Bakiye')).toHaveCount(0);
+  await expect(
+    page.getByText('01.01.2026 - 31.03.2026 arası · yalnızca gelir satırları, gider bu rakama girmiyor'),
+  ).toBeVisible();
+
+  // Süzgeç kaldırılınca eski hâline dönmeli.
+  await page.locator('#cf-filter-kind').selectOption('');
+  await page.locator('#cf-from').fill('');
+  await page.locator('#cf-to').fill('');
+  await expect(page.getByText('Süzgeçteki Bakiye')).toBeVisible();
+  await expect(page.getByText('Bütün kayıtlar', { exact: true })).toBeVisible();
+});
+
 test('Günlük rezervasyonlar seçilen günü gösterir', async ({ page }) => {
   await login(page);
   await page.goto('/panel/rezervasyonlar/yeni');
