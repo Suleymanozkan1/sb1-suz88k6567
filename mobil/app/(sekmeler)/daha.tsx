@@ -19,6 +19,7 @@ const BOLUMLER: { baslik: string; satirlar: [string, string, string][] }[] = [
     satirlar: [
       ['Müşteriler', 'Kayıtlardan türetilen müşteri defteri', '/musteriler'],
       ['Salonlar', 'Salon tanımları ve kapasiteleri', '/salonlar'],
+      ['Özel günler', 'Bayram, arife, kandil ve okul takvimi', '/ozel-gunler'],
       ['Menüler', 'Menü ve paket tanımları', '/menuler'],
       ['Tedarikçiler', 'Orkestra, fotoğraf, çiçek, pasta', '/tedarikciler'],
     ],
@@ -28,6 +29,7 @@ const BOLUMLER: { baslik: string; satirlar: [string, string, string][] }[] = [
     satirlar: [
       ['Faturalar', 'e-Arşiv ve e-Fatura kayıtları', '/faturalar'],
       ['Raporlar', 'Aylık ciro ve organizasyon dağılımı', '/raporlar'],
+      ['Ödeme bildirimleri', 'Para değişikliklerinde yöneticiye mesaj', '/odeme-bildirimleri'],
     ],
   },
   {
@@ -44,6 +46,7 @@ const BOLUMLER: { baslik: string; satirlar: [string, string, string][] }[] = [
       ['Kullanıcılar', 'Personel hesapları ve yetkileri', '/kullanicilar'],
       ['Denetim kaydı', 'Kim neyi ne zaman değiştirdi', '/denetim'],
       ['Sistem durumu', 'Yedek, SMS kuyruğu ve İYS durumu', '/sistem'],
+      ['İşletmeler', 'İşletme listesi ve etkin salon seçimi', '/isletmeler'],
       ['Ayarlar', 'İşletme bilgileri ve renk ayarları', '/ayarlar'],
       ['Hesap', 'Oturum bilgileri ve çıkış', '/hesap'],
     ],

@@ -1090,35 +1090,163 @@ export function odemeOlaylari(limit = 100): Promise<OdemeOlayi[]> {
 /* ═══ İşletmeler ══════════════════════════════════════════════════ */
 
 export interface Isletme {
-  id: string; ad: string; kategori: string; kapasite: number; il: string; ilce: string;
+  id: string; ad: string; kategori: string; kapasite: number;
+  il: string; ilce: string; telefon: string;
 }
 
 const ORNEK_ISLETME: Isletme[] = [
-  { id: 'biz_demo', ad: 'Grand Sahra Düğün ve Davet Salonu', kategori: 'Düğün Salonu',
-    kapasite: 500, il: 'Konya', ilce: 'Selçuklu' },
+  { id: 'demo', ad: 'Grand Sahra Düğün ve Davet Salonu', kategori: 'Düğün Salonu',
+    kapasite: 500, il: 'Konya', ilce: 'Selçuklu', telefon: '3323334455' },
   { id: 'biz_demo2', ad: 'Yıldız Kır Bahçesi', kategori: 'Kır Düğünü / Bahçe',
-    kapasite: 300, il: 'Konya', ilce: 'Meram' },
+    kapasite: 300, il: 'Konya', ilce: 'Meram', telefon: '3323334466' },
 ];
 
 /**
  * Kullanıcının işletmeleri.
  *
- * Telefonda DÜZENLEME YOK, yalnızca liste: işletme tanımı yılda bir
- * değişen bir ayar ve küçük ekranda yanlış dokunuşla bozulması en pahalı
- * kayıt. Düzenleme panelde kalıyor.
+ * Telefonda DÜZENLEME YOK, yalnızca liste ve etkin işletme seçimi:
+ * işletme tanımı yılda bir değişen bir ayar ve küçük ekranda yanlış
+ * dokunuşla bozulması en pahalı kayıt. Düzenleme panelde kalıyor.
  */
 export function isletmeler(): Promise<Isletme[]> {
   return sorgu(ORNEK_ISLETME, async () => {
     const { data, error } = await db().from('businesses')
-      .select('id, name, category, capacity, city, district')
+      .select('id, name, category, capacity, city, district, phone')
       .order('name', { ascending: true });
     return denetle(data, error, 'İşletmeler okunamadı.').map((s) => {
       const i = s as unknown as {
         id: string; name: string; category: string | null; capacity: number;
-        city: string | null; district: string | null;
+        city: string | null; district: string | null; phone: string | null;
       };
       return { id: i.id, ad: i.name, kategori: i.category ?? '-', kapasite: i.capacity,
-        il: i.city ?? '-', ilce: i.district ?? '-' };
+        il: i.city ?? '-', ilce: i.district ?? '-', telefon: i.phone ?? '' };
+    });
+  });
+}
+
+/**
+ * Etkin işletmeyi değiştirir.
+ *
+ * Birden çok salonu olan kullanıcı için telefonda en çok gereken işlem
+ * bu: hangi salonun kayıtlarına baktığını değiştirmek. Düzenlemenin
+ * aksine geri alınabilir ve hiçbir kaydı bozmuyor.
+ *
+ * Bellek de düşürülüyor; yoksa sonraki yazma işlemi ESKİ işletmeye
+ * gider ve kayıt yanlış salonda açılır.
+ */
+export async function aktifIsletmeSec(id: string): Promise<void> {
+  if (tanitim) return;
+  const kimlik = kullaniciId(await gecerliJeton());
+  if (!kimlik) throw new Error('Oturum bulunamadı.');
+  const { error } = await db().from('profiles')
+    .update({ active_business_id: id }).eq('id', kimlik);
+  if (error) throw new Error(error.message);
+  isletmeBellek = id;
+}
+
+/** Etkin işletmenin kimliği; seçili olanı işaretlemek için. */
+export async function etkinIsletme(): Promise<string> {
+  if (tanitim) return ISLETME.id;
+  try {
+    return await aktifIsletmeId();
+  } catch {
+    // Etkin işletme seçili değilse liste yine de gösterilmeli; kullanıcı
+    // tam olarak buradan seçim yapacak.
+    return '';
+  }
+}
+
+/* ═══ Ödeme bildirim kuralları ve alıcıları ═══════════════════════ */
+
+export interface OdemeKurali {
+  id: string; olay: string; acik: boolean; metin: string;
+}
+
+export interface OdemeAlicisi {
+  id: string; ad: string; telefon: string; acik: boolean; kanal: string;
+}
+
+/** Panel ile aynı sıra; liste her açılışta aynı düzende gelsin. */
+export const ODEME_OLAYLARI = [
+  'tahsilat_eklendi', 'tutar_degisti', 'tip_degisti',
+  'tarih_degisti', 'tahsilat_silindi', 'kasaya_girmedi',
+] as const;
+
+/** `src/types/index.ts` içindeki ODEME_OLAY_ADI ile aynı metinler. */
+export const ODEME_OLAY_ADI: Record<string, string> = {
+  tahsilat_eklendi: 'Yeni tahsilat',
+  tutar_degisti: 'Tutar değişti',
+  tip_degisti: 'Ödeme tipi değişti',
+  tarih_degisti: 'Tarih değişti',
+  tahsilat_silindi: 'Tahsilat silindi',
+  kasaya_girmedi: 'Kasaya girmedi',
+};
+
+const ORNEK_ODEME_KURALI: OdemeKurali[] = [
+  { id: 'ok1', olay: 'tahsilat_eklendi', acik: true,
+    metin: '{isletme}: {kod} için {tutar} tahsilat girildi. Kalan {kalan}.' },
+  { id: 'ok2', olay: 'tutar_degisti', acik: true,
+    metin: '{isletme}: {kod} tahsilatı {eski_tutar} yerine {tutar} oldu. İşlem: {kullanici}.' },
+  { id: 'ok3', olay: 'tip_degisti', acik: false,
+    metin: '{isletme}: {kod} ödeme tipi {eski_tip} yerine {tip} oldu.' },
+  { id: 'ok4', olay: 'tarih_degisti', acik: false,
+    metin: '{isletme}: {kod} tahsilat tarihi değişti.' },
+  { id: 'ok5', olay: 'tahsilat_silindi', acik: true,
+    metin: '{isletme}: {kod} için {tutar} tutarındaki tahsilat silindi. İşlem: {kullanici}.' },
+  { id: 'ok6', olay: 'kasaya_girmedi', acik: true,
+    metin: '{isletme}: {kod} için {tutar} çek/senet alındı, kasaya HENÜZ girmedi.' },
+];
+
+const ORNEK_ODEME_ALICISI: OdemeAlicisi[] = [
+  { id: 'oa1', ad: 'Salon sahibi', telefon: '5321110001', acik: true, kanal: 'whatsapp' },
+  { id: 'oa2', ad: 'Muhasebe', telefon: '5321110002', acik: true, kanal: 'sms' },
+];
+
+/**
+ * Hangi ödeme olayında yöneticiye mesaj gideceği.
+ *
+ * Metin koda gömülü değil; salondan salona değişiyor ve panelden
+ * düzenleniyor. Mobilde açma/kapama var, metin düzenleme yok: 400
+ * karakterlik bir şablonu telefon klavyesinde düzeltmek, yer tutucuyu
+ * ({tutar} gibi) bozma riskini gereksiz yere taşıyor.
+ */
+export function odemeKurallari(): Promise<OdemeKurali[]> {
+  return sorgu(ORNEK_ODEME_KURALI, async () => {
+    const { data, error } = await db().from('payment_alerts')
+      .select('id, event, enabled, body');
+    const liste = denetle(data, error, 'Bildirim kuralları okunamadı.').map((s) => {
+      const k = s as unknown as { id: string; event: string; enabled: boolean; body: string };
+      return { id: k.id, olay: k.event, acik: k.enabled, metin: k.body };
+    });
+    // Sıra veritabanından gelmiyor; panelle aynı düzeni burada kuruyoruz.
+    const sira = new Map(ODEME_OLAYLARI.map((o, i) => [o as string, i]));
+    return liste.sort((a, b) => (sira.get(a.olay) ?? 99) - (sira.get(b.olay) ?? 99));
+  });
+}
+
+/** Tek bir kuralı açar ya da kapatır. Metne dokunulmaz. */
+export async function odemeKuralDurumu(id: string, acik: boolean): Promise<void> {
+  if (tanitim) return;
+  const { error } = await db().from('payment_alerts').update({ enabled: acik }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Bildirimi alacak kişiler.
+ *
+ * Mobilde yalnızca okunur: numara eklemek ya da silmek, yanlış girildiğinde
+ * mesajın başkasına gitmesi demek. Bu ekran "bildirim kime gidiyor"
+ * sorusunu cevaplamak için var.
+ */
+export function odemeAlicilari(): Promise<OdemeAlicisi[]> {
+  return sorgu(ORNEK_ODEME_ALICISI, async () => {
+    const { data, error } = await db().from('payment_alert_recipients')
+      .select('id, name, phone, enabled, channel').order('name');
+    return denetle(data, error, 'Bildirim alıcıları okunamadı.').map((s) => {
+      const a = s as unknown as {
+        id: string; name: string; phone: string; enabled: boolean; channel: string | null;
+      };
+      return { id: a.id, ad: a.name, telefon: a.phone, acik: a.enabled, kanal: a.channel ?? 'sms' };
     });
   });
 }
