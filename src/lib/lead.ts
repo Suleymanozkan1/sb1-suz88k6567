@@ -151,7 +151,41 @@ export function leadOzeti(
       durumKodu: d.code, ton: d.tone,
     });
   }
+
+  /*
+    TANIMI KALMAMIŞ DURUMDAKİ ADAYLAR.
+
+    Kutular yalnızca tanımlı durumlardan üretiliyordu; kodu listede
+    bulunmayan bir aday hiçbir kutuya düşmüyor, ama üstteki "Toplam N"
+    onu sayıyordu. Ekranda "Toplam 93 müşteri adayı" yazarken kutuların
+    toplamı 21 ediyordu ve aradaki 72 kayıt görünmez haldeydi.
+
+    Bu yalnızca tanıtım verisinin sorunu değil: gerçek bir salon bir
+    durumu silip yerine yenisini tanımladığında eski koddaki adaylar aynı
+    şekilde kaybolurdu. Kayıp sessiz olmasın diye kendi kutusunu alıyor;
+    tıklanınca listede süzülüyor ve sahibi onları yeni bir duruma
+    taşıyabiliyor.
+  */
+  const tanimli = new Set(durumlar.map((d) => d.code));
+  const tanimsiz = leads.filter((l) => !tanimli.has(l.status)).length;
+  if (tanimsiz > 0) {
+    kutular.push({
+      anahtar: 'tanimsiz',
+      etiket: 'Durumu tanımsız',
+      deger: tanimsiz,
+      ton: 'dikkat',
+    });
+  }
+
   return kutular;
+}
+
+/** Durumu tanımlı listede bulunmayan adaylar. */
+export function tanimsizDurumlu(
+  leads: CustomerLead[], durumlar: LeadStatusDef[],
+): CustomerLead[] {
+  const tanimli = new Set(durumlar.map((d) => d.code));
+  return leads.filter((l) => !tanimli.has(l.status));
 }
 
 /** Dashboard'da toplam aday sayısı. */
