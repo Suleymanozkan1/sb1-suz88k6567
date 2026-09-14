@@ -124,7 +124,9 @@ test('Otomatik gelen türler elle girilemiyor, sebebi ekranda yazıyor', async (
 */
 test('Kur verisi yokken şerit hiç çizilmiyor', async ({ page }) => {
   await login(page);
-  await expect(page.getByRole('heading', { name: 'Döviz / Altın' })).toHaveCount(0);
+  // Başlık listeye göre "Döviz" ya da "Döviz / Altın" olabiliyor; veri
+  // yokken ikisi de çizilmemeli.
+  await expect(page.getByRole('heading', { name: /^Döviz/ })).toHaveCount(0);
 });
 
 /*
@@ -159,7 +161,11 @@ test('Kur gelince şerit çiziliyor', async ({ page }) => {
   await page.getByRole('button', { name: 'Giriş Yap' }).click();
   await expect(page).toHaveURL(/\/panel$/);
 
-  const serit = page.getByRole('heading', { name: 'Döviz / Altın' });
+  /*
+    Başlık "Döviz", "Döviz / Altın" DEĞİL: TCMB altın yayımlamıyor ve
+    sabit başlık, ekranda olmayan bir satırı vaat ediyordu.
+  */
+  const serit = page.getByRole('heading', { name: 'Döviz', exact: true });
   await expect(serit).toBeVisible({ timeout: 15_000 });
 
   // Rakamlar tr-TR biçiminde: ondalık ayıracı virgül.
@@ -168,6 +174,37 @@ test('Kur gelince şerit çiziliyor', async ({ page }) => {
   // TCMB altın vermiyor; uydurma satır eklenmediği burada korunuyor.
   await expect(page.getByText('Gram Altın')).toHaveCount(0);
 });
+
+/*
+  Altın GELİRSE başlık kendiliğinden dönüyor. Başlık listeye bakacak
+  şekilde yazıldı; ücretli sağlayıcı bağlandığında elle bir düzeltme
+  gerekmediği burada korunuyor.
+*/
+test('Altın satırı gelince başlık Döviz / Altın oluyor', async ({ page }) => {
+  await block(page);
+  await page.route('**/api/demo-kur', (r) => r.fulfill({
+    status: 200,
+    contentType: 'application/json; charset=utf-8',
+    body: JSON.stringify({
+      uretim: new Date().toISOString(),
+      tarih: '2026-09-11T00:00:00Z',
+      kurlar: [
+        { code: 'USD', buy: 48.4305, sell: 48.5178, quotedAt: '2026-09-11T00:00:00Z' },
+        { code: 'GRAM_ALTIN', buy: 5410.25, sell: 5418.9, quotedAt: '2026-09-11T00:00:00Z' },
+      ],
+      hata: '',
+    }),
+  }));
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Demo bilgilerini doldur' }).click();
+  await page.getByRole('button', { name: 'Giriş Yap' }).click();
+  await expect(page).toHaveURL(/\/panel$/);
+
+  await expect(page.getByRole('heading', { name: 'Döviz / Altın' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Gram Altın')).toBeVisible();
+});
+
 
 /*
   Hava tahmini zinciri: uç nokta -> gunleriTazele -> depo -> ekran.

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { gunGoster, uzakGun } from './tarih';
+
 /**
  * Program raporu, sözleşme çıktısı, kasa bağlantısı ve işletme ekleme.
  *
@@ -66,15 +68,38 @@ test.describe('Program raporu', () => {
 
   test('tarih aralığında yalnızca dolu günler listelenir', async ({ page }) => {
     await login(page);
+
+    /*
+      DOLU GÜN BURADA AÇILIYOR, tohumdan seçilmiyor. Önce sabit bir tarih
+      (`2027-03-08..10`) yazılıydı ve "tohumda bu aralıkta yalnızca 9
+      Mart'ta bir düğün var" varsayımına dayanıyordu. Tohum penceresi
+      bugüne göre kaydığı için o varsayım bir gün bozuldu: 10 Mart'a da
+      kayıt üretildi ve test, sınamak istediği "boş günü listeleme"
+      kuralı yüzünden değil, veri değiştiği için düştü.
+
+      Artık aralık tohumun erişemediği yerde ve içindeki tek kayıt bu
+      testin kendi açtığı kayıt.
+    */
+    const dolu = uzakGun(30);
+    const onceki = uzakGun(29);
+    const sonraki = uzakGun(31);
+
+    await page.goto('/panel/rezervasyonlar/yeni');
+    await page.locator('#customerName').fill('Çizelge Testi');
+    await page.locator('#customerPhone').fill('5329990011');
+    await page.locator('#date').fill(dolu);
+    await page.locator('#guestCount').fill('250');
+    await page.locator('#totalAmount').fill('200000');
+    await page.getByRole('button', { name: /Kaydet/ }).click();
+    await expect(page).toHaveURL(/\/panel\/rezervasyonlar\/[0-9a-f-]{36}$/);
+
     await page.goto('/panel/raporlar?tab=cizelge');
+    await page.locator('#rp-from').fill(onceki);
+    await page.locator('#rp-to').fill(sonraki);
 
-    // Tohumda bu aralıkta yalnızca 9 Mart'ta bir düğün var.
-    await page.locator('#rp-from').fill('2027-03-08');
-    await page.locator('#rp-to').fill('2027-03-10');
-
-    await expect(page.getByText(/^09\.03\.2027 SALI/).first()).toBeVisible();
-    await expect(page.getByText(/^08\.03\.2027/)).toHaveCount(0);
-    await expect(page.getByText(/^10\.03\.2027/)).toHaveCount(0);
+    await expect(page.getByText(gunGoster(dolu)).first()).toBeVisible();
+    await expect(page.getByText(gunGoster(onceki))).toHaveCount(0);
+    await expect(page.getByText(gunGoster(sonraki))).toHaveCount(0);
   });
 
   test('kayıt bulunmayan aralıkta gün sayısını bildirir', async ({ page }) => {

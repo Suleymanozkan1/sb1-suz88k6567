@@ -408,8 +408,19 @@ test('Takvimde ay listesi yok, gün seçilince panel açılır', async ({ page }
   // Sağdaki "ayın kayıtları" bölümü kaldırıldı (madde 7).
   await expect(page.getByText(/ayı kayıtları/)).toHaveCount(0);
 
-  // Bir güne tıklanınca o günün paneli açılıyor.
-  await page.locator('button[aria-label*="rezervasyon"]').first().click();
+  /*
+    HÜCRENİN SOL ÜSTÜNE tıklanıyor, ortasına değil.
+
+    Takvim hücresi bilerek iki katmanlı: günü seçen düğme arkada tam boy,
+    rezervasyon etiketleri önde kendi bağlantıları (`Takvim.tsx`).
+    Ortadan tıklanıyordu ve demo verisi büyüdükçe o nokta bir etiketin
+    altında kaldı -- Playwright "etiket tıklamayı engelliyor" deyip
+    düştü. Oysa ekran doğru çalışıyor: kullanıcı da boş yere basıyor.
+    Tarih yazısının durduğu sol üst köşe her hücrede boş ve
+    `pointer-events-none`, yani tıklama arkadaki düğmeye geçiyor.
+  */
+  await page.locator('button[aria-label*="rezervasyon"]').first()
+    .click({ position: { x: 12, y: 10 } });
   await expect(page.getByRole('button', { name: 'Kapat' })).toBeVisible();
 });
 

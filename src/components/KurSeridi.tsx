@@ -33,11 +33,21 @@ export default function KurSeridi() {
 
   const tarih = sirali[0]?.quotedAt ?? '';
 
+  /*
+    BAŞLIK LİSTEYE BAKIYOR. Sabit "Döviz / Altın" yazılıydı; TCMB altın
+    yayımlamadığı için ekranda yalnızca dolar ile euro duruyor ve başlık
+    olmayan bir satırı vaat ediyordu. Altın ancak ücretli sağlayıcı
+    (`KUR_SAGLAYICI=collectapi`) bağlandığında geliyor; başlık da o zaman
+    kendiliğinden değişiyor.
+  */
+  const altinVar = sirali.some((k) => k.code === 'GRAM_ALTIN' || k.code === 'CEYREK_ALTIN');
+  const baslik = altinVar ? 'Döviz / Altın' : 'Döviz';
+
   return (
     <section className="card mb-4 px-4 py-3" aria-labelledby="kur-baslik">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <h2 id="kur-baslik" className="text-xs uppercase tracking-wide text-brand-muted">
-          Döviz / Altın
+          {baslik}
         </h2>
         <dl className="flex flex-wrap items-center gap-x-6 gap-y-2">
           {sirali.map((k) => (
