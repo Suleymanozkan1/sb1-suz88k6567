@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import Seo from '../../components/Seo';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { QueryBoundary } from '../../components/QueryState';
@@ -51,6 +52,22 @@ export default function UrunHizmet() {
     () => kayitlar.filter((v) => v.kind === sekme),
     [kayitlar, sekme],
   );
+
+  /*
+    SAYFALAMA. Liste zamanla yüzlerce satıra çıkıyor; tamamı tek seferde
+    çizildiğinde ekran hem geç açılıyor hem de aranan kayıt kayboluyor.
+    Süzgeç değişince birinci sayfaya dönülüyor: kullanıcı 7. sayfada
+    kalsaydı sonuç var olduğu hâlde ekran boş görünürdü.
+  */
+  const [boyut, setBoyut] = useSayfaBoyutu();
+  const [sayfa, setSayfa] = useState(1);
+  const [sonImza, setSonImza] = useState('');
+  const imza = `${gorunen.length}`;
+  if (imza !== sonImza) { setSonImza(imza); setSayfa(1); }
+
+  const toplamSayfa = Math.max(1, Math.ceil(gorunen.length / boyut));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const sayfalanan = gorunen.slice((gecerliSayfa - 1) * boyut, gecerliSayfa * boyut);
 
   const kategoriler = form.kind === 'urun' ? URUN_KATEGORILERI : HIZMET_KATEGORILERI;
 
@@ -299,7 +316,7 @@ export default function UrunHizmet() {
               </tr>
             </thead>
             <tbody>
-              {gorunen.map((v) => {
+              {sayfalanan.map((v) => {
                 const toplam = stokToplami(v);
                 const kritik = v.minCount > 0 && toplam <= v.minCount;
                 return (
@@ -343,7 +360,7 @@ export default function UrunHizmet() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {gorunen.map((v) => (
+          {sayfalanan.map((v) => (
             <div key={v.id} className="card p-5">
               <div className="mb-1 flex items-start justify-between gap-2">
                 <h2 className="font-heading font-bold text-brand">{v.name}</h2>
@@ -376,6 +393,17 @@ export default function UrunHizmet() {
           ))}
         </div>
       )}
+
+      <Sayfalama
+        toplam={gorunen.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="uh-boyut"
+        birim="kayıt"
+      />
 
       <ConfirmDialog
         open={Boolean(toDelete)}

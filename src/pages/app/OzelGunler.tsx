@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../../components/Seo';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import Alert from '../../components/Alert';
 import { QueryBoundary } from '../../components/QueryState';
 import { useAuth } from '../../context/AuthContext';
@@ -67,6 +68,22 @@ export default function OzelGunler() {
       .sort((a, b) => a.day.localeCompare(b.day) || a.label.localeCompare(b.label, 'tr')),
     [gunler, gecmisiGoster, bugun],
   );
+
+  /*
+    SAYFALAMA. Liste zamanla yüzlerce satıra çıkıyor; tamamı tek seferde
+    çizildiğinde ekran hem geç açılıyor hem de aranan kayıt kayboluyor.
+    Süzgeç değişince birinci sayfaya dönülüyor: kullanıcı 7. sayfada
+    kalsaydı sonuç var olduğu hâlde ekran boş görünürdü.
+  */
+  const [boyut, setBoyut] = useSayfaBoyutu();
+  const [sayfa, setSayfa] = useState(1);
+  const [sonImza, setSonImza] = useState('');
+  const imza = `${gorunen.length}`;
+  if (imza !== sonImza) { setSonImza(imza); setSayfa(1); }
+
+  const toplamSayfa = Math.max(1, Math.ceil(gorunen.length / boyut));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const sayfalanan = gorunen.slice((gecerliSayfa - 1) * boyut, gecerliSayfa * boyut);
 
   const gecmisSayisi = gunler.filter((g) => g.day < bugun).length;
 
@@ -200,7 +217,7 @@ export default function OzelGunler() {
                 </tr>
               </thead>
               <tbody>
-                {gorunen.map((g) => (
+                {sayfalanan.map((g) => (
                   <tr key={g.id} className="border-b border-line/60 last:border-0">
                     <td className="whitespace-nowrap py-2.5 text-brand">{formatDate(g.day)}</td>
                     <td className="py-2.5">
@@ -247,6 +264,17 @@ export default function OzelGunler() {
           </div>
         )}
       </section>
+
+      <Sayfalama
+        toplam={gorunen.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="og-boyut"
+        birim="gün"
+      />
 
       {silinecek && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"

@@ -41,7 +41,7 @@ const keep = (r: Reservation) => r;
 
 beforeEach(() => clearAll());
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('withinRange', () => {
   it('boş aralıkta her tarihi kabul eder', () => {
@@ -311,6 +311,7 @@ describe('downloadCsv', () => {
     const olustur = vi.fn((_blob: Blob) => olusturulanUrl);
     const serbestBirak = vi.fn();
     vi.stubGlobal('URL', { ...URL, createObjectURL: olustur, revokeObjectURL: serbestBirak });
+    vi.useFakeTimers();
 
     const tiklamalar: HTMLAnchorElement[] = [];
     const gercekOlustur = document.createElement.bind(document);
@@ -333,6 +334,15 @@ describe('downloadCsv', () => {
 
     // Bağlantı DOM'da bırakılmamalı, nesne adresi serbest bırakılmalı.
     expect(document.querySelectorAll('a[download]')).toHaveLength(0);
+    /*
+      İptal GECİKMELİ. `URL.revokeObjectURL` artık `click()` ile aynı
+      çağrıda değil, bir sonraki olay döngüsünde çalışıyor: ana iş
+      parçacığı meşgulken adresin indirme kaydedilmeden geçersiz kalması
+      sessiz bir kayıp doğuruyordu. Adres yine serbest bırakılıyor --
+      sızıntı olmadığı burada korunuyor.
+    */
+    expect(serbestBirak).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(10_000);
     expect(serbestBirak).toHaveBeenCalledWith(olusturulanUrl);
   });
 

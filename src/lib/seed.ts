@@ -50,8 +50,16 @@ const DEMO_CUSTOMERS: [string, string, string][] = [
  * yenisi yazılıyor.
  *
  * Sürümü YALNIZCA tanıtım verisi değiştiğinde artırın.
+ *
+ * 3: Müşteri adaylarının durum kodları ve kasa kategorileri düzeltildi.
+ *    Eski tohum tanımlı listede olmayan kodlar üretiyordu (`gorusuldu`,
+ *    `teklif`, `kazanildi`, `kaybedildi`) ve gider kategorilerini gelir
+ *    satırlarına yazıyordu. Sürüm artırılmasaydı siteyi daha önce açmış
+ *    olan herkes düzeltmeden sonra da eski hatalı veriyi görmeye devam
+ *    ederdi -- ekranda yine "Toplam 93 aday" yazıp kutularda 19
+ *    gösterirdi.
  */
-export const TOHUM_SURUMU = 2;
+export const TOHUM_SURUMU = 3;
 
 /**
  * İlk açılışta demo hesabı ve örnek verileri oluşturur.

@@ -396,6 +396,19 @@ export function toCsv(headers: string[], rows: (string | number)[][]): string {
   return [headers.map(escape).join(';'), ...rows.map((r) => r.map(escape).join(';'))].join('\r\n');
 }
 
+/**
+ * CSV dosyasını indirir.
+ *
+ * ADRES HEMEN İPTAL EDİLMİYOR. `URL.revokeObjectURL` `click()`'ten
+ * hemen sonra, aynı çağrı içinde çağrılıyordu. Tarayıcıların çoğu
+ * indirmeyi eşzamanlı başlatır ve bu çalışır; ana iş parçacığı meşgulken
+ * adresin indirme kaydedilmeden geçersiz kalması bilinen bir tuzak ve
+ * sonucu sessiz: ne hata çıkar ne dosya iner.
+ *
+ * ÖNLEM AMAÇLI: böyle bir kayıp gözlemlenmedi, ölçülen bir hatayı
+ * kapatmıyor. İptal bir sonraki olay döngüsüne bırakılıyor; adres yine
+ * serbest bırakılıyor, sızıntı olmuyor.
+ */
 export function downloadCsv(filename: string, csv: string): void {
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -405,7 +418,7 @@ export function downloadCsv(filename: string, csv: string): void {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 /* ------------------------------------------------ ciro, gider ve kâr */

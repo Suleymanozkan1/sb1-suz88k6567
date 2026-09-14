@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import Seo from '../../components/Seo';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { QueryBoundary } from '../../components/QueryState';
@@ -38,6 +39,22 @@ export default function IzinYonetimi() {
     if (!q) return consents;
     return consents.filter((c) => normalizeTr(`${c.phone} ${c.note ?? ''}`).includes(q));
   }, [consents, query]);
+
+  /*
+    SAYFALAMA. Liste zamanla yüzlerce satıra çıkıyor; tamamı tek seferde
+    çizildiğinde ekran hem geç açılıyor hem de aranan kayıt kayboluyor.
+    Süzgeç değişince birinci sayfaya dönülüyor: kullanıcı 7. sayfada
+    kalsaydı sonuç var olduğu hâlde ekran boş görünürdü.
+  */
+  const [boyut, setBoyut] = useSayfaBoyutu();
+  const [sayfa, setSayfa] = useState(1);
+  const [sonImza, setSonImza] = useState('');
+  const imza = `${filtered.length}`;
+  if (imza !== sonImza) { setSonImza(imza); setSayfa(1); }
+
+  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / boyut));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const sayfalanan = filtered.slice((gecerliSayfa - 1) * boyut, gecerliSayfa * boyut);
 
   const pendingSync = useMemo(
     () => consents.filter((c) => !c.iysSyncedAt).length,
@@ -177,7 +194,7 @@ export default function IzinYonetimi() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
+              {sayfalanan.map((c) => (
                 <tr key={c.id} className="border-b border-line/60 last:border-0">
                   <td className="whitespace-nowrap px-4 py-3 text-brand">{formatPhone(c.phone)}</td>
                   <td className="px-4 py-3">
@@ -214,6 +231,17 @@ export default function IzinYonetimi() {
           </table>
         )}
       </div>
+
+      <Sayfalama
+        toplam={filtered.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="iz-boyut"
+        birim="kayıt"
+      />
 
       <ConfirmDialog
         open={Boolean(toDelete)}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import Seo from '../../components/Seo';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import { useSmsLog, useSmsQueue } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
 import Alert from '../../components/Alert';
@@ -38,6 +39,22 @@ export default function SmsKayitlari() {
       return true;
     });
   }, [logs, query, kind]);
+
+  /*
+    SAYFALAMA. Liste zamanla yüzlerce satıra çıkıyor; tamamı tek seferde
+    çizildiğinde ekran hem geç açılıyor hem de aranan kayıt kayboluyor.
+    Süzgeç değişince birinci sayfaya dönülüyor: kullanıcı 7. sayfada
+    kalsaydı sonuç var olduğu hâlde ekran boş görünürdü.
+  */
+  const [boyut, setBoyut] = useSayfaBoyutu();
+  const [sayfa, setSayfa] = useState(1);
+  const [sonImza, setSonImza] = useState('');
+  const imza = `${filtered.length}`;
+  if (imza !== sonImza) { setSonImza(imza); setSayfa(1); }
+
+  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / boyut));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const sayfalanan = filtered.slice((gecerliSayfa - 1) * boyut, gecerliSayfa * boyut);
 
   return (
     <QueryBoundary isLoading={isLoading} error={error}>
@@ -114,7 +131,7 @@ export default function SmsKayitlari() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((l) => (
+              {sayfalanan.map((l) => (
                 <tr key={l.id} className="border-b border-line/60 last:border-0">
                   <td className="whitespace-nowrap px-4 py-3 text-brand-muted">
                     {new Date(l.sentAt).toLocaleString('tr-TR')}
@@ -130,6 +147,17 @@ export default function SmsKayitlari() {
           </table>
         )}
       </div>
+
+      <Sayfalama
+        toplam={filtered.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="sk-boyut"
+        birim="kayıt"
+      />
       </>
       )}
     </QueryBoundary>
