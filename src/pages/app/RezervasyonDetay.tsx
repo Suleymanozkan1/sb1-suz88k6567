@@ -21,7 +21,9 @@ import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
 import { formatDate, formatDateLong, formatMoney, formatPhone, formatTimeRange, todayIso } from '../../lib/format';
 import { PAYMENT_METHODS } from '../../data/constants';
-import { IconEdit, IconPlus, IconPrint, IconReport, IconTrash } from '../../components/Icons';
+import {
+  IconEdit, IconPlus, IconPrint, IconReport, IconTrash, IconWallet,
+} from '../../components/Icons';
 import type { Payment } from '../../types';
 
 export default function RezervasyonDetay() {
@@ -403,8 +405,8 @@ export default function RezervasyonDetay() {
                         sayılır ve olmayan paraya göre karar alınır.
                       */}
                       {!kasayaGirdiMi(p.method) && (
-                        <span className="ml-2 rounded bg-[#fef3c7] px-1.5 py-0.5 text-[11px] text-[#92400e]">
-                          kasaya girmedi
+                        <span className="ml-2 inline-flex items-center gap-1 rounded bg-[#fef3c7] px-1.5 py-0.5 text-[11px] text-[#92400e]">
+                          <IconWallet size={12} /> kasaya girmedi
                         </span>
                       )}
                     </td>
@@ -419,6 +421,21 @@ export default function RezervasyonDetay() {
                       </Link>
                       {can('kasa.duzenle') && (
                         <>
+                          {/*
+                            KASAYA GÖNDER, SATIRDA. Uyarı penceresi yalnızca
+                            kayıt anında çıkıyor; "Şimdilik kalsın" denince o
+                            tahsilata bir daha ulaşılamıyor ve para kalıcı
+                            olarak kasa dışında kalıyordu. Çek tahsil
+                            edildiğinde basılacak düğme burada.
+                          */}
+                          {!kasayaGirdiMi(p.method) && (
+                            <button type="button" onClick={() => setKasaUyarisi(p)}
+                              aria-label={`${formatDate(p.date)} tahsilatını kasaya gönder`}
+                              title="Nakde çevir, kasaya gönder"
+                              className="rounded p-1 text-[#92400e] hover:text-[#b45309]">
+                              <IconWallet size={15} />
+                            </button>
+                          )}
                           <button type="button" onClick={() => duzenlemeyeAl(p)}
                             aria-label={`${formatDate(p.date)} tahsilatını düzenle`}
                             className="rounded p-1 text-brand-muted hover:text-brand">
@@ -498,6 +515,8 @@ export default function RezervasyonDetay() {
             + 'girmiyor. Para elinize geçtiyse nakde çevirip kasaya gönderebilirsiniz.'
           : ''}
         confirmLabel="Nakde çevir, kasaya gönder"
+        confirmIcon={<IconWallet size={16} />}
+        confirmTone="olagan"
         cancelLabel="Şimdilik kalsın"
         onConfirm={() => { void kasayaGonder(); }}
         onCancel={() => setKasaUyarisi(null)}

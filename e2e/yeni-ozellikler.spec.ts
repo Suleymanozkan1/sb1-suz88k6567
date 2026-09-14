@@ -243,6 +243,23 @@ test('Çek ile alınan tahsilat uyarı verir, geçmişe düşer', async ({ page 
   await expect(gecmis.getByText('Yeni tahsilat').first()).toBeVisible();
   await expect(gecmis.getByText('Kasaya girmedi').first()).toBeVisible();
 
+  /*
+    KASAYA GÖNDER SATIRDA DA OLMALI. Uyarı penceresi yalnızca kayıt
+    anında çıkıyor; "Şimdilik kalsın" dendikten sonra o tahsilata bir
+    daha ulaşılamıyordu ve çek tahsil edildiğinde para kalıcı olarak
+    kasa dışında kalıyordu.
+  */
+  const kasayaGonder = page.getByRole('button', { name: /tahsilatını kasaya gönder/ });
+  await expect(kasayaGonder).toHaveCount(1);
+  await kasayaGonder.click();
+  await expect(page.getByText('Bu tahsilat kasaya girmedi')).toBeVisible();
+  await page.getByRole('button', { name: 'Nakde çevir, kasaya gönder' }).click();
+
+  // Nakde döndü: rozet de düğme de kalkmalı, geçmişe tip değişikliği düşmeli.
+  await expect(page.getByText('kasaya girmedi', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /tahsilatını kasaya gönder/ })).toHaveCount(0);
+  await expect(gecmis.getByText('Ödeme tipi değişti').first()).toBeVisible();
+
   // Düzenleme: tutar değişince geçmişe eski → yeni satırı düşer.
   await page.getByRole('button', { name: /tahsilatını düzenle/ }).first().click();
   await page.locator('#duz-amount').fill('35000');
