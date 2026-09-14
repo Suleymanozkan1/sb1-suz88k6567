@@ -10,6 +10,7 @@ import { formatDate, formatMoney, formatPhone, normalizeTr } from '../../lib/for
 import { downloadCsv, toCsv, withinRange } from '../../lib/reports';
 import { ORGANIZATION_TYPES } from '../../data/constants';
 import { IconDownload, IconEdit, IconPlus, IconReport, IconSearch, IconTrash } from '../../components/Icons';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import type { Reservation, ReservationStatus } from '../../types';
 
@@ -22,8 +23,6 @@ const STATUSES: ReservationStatus[] = ['Ön Rezervasyon', 'Kesin Rezervasyon', '
   sayfaya DEĞİL süzülmüş listenin tamamına bakmayı sürdürüyor; sayfalama
   yalnızca ekrana basılan satırı sınırlıyor.
 */
-const SAYFA_BOYUTU = 50;
-
 const STATUS_STYLES: Record<ReservationStatus, string> = {
   'Ön Rezervasyon': 'bg-[#fef6e7] text-[#92600e]',
   'Kesin Rezervasyon': 'bg-[#e7f5fb] text-[#0c5e8a]',
@@ -77,6 +76,7 @@ export default function Rezervasyonlar() {
   */
   const imza = `${query}|${org}|${status}|${from}|${to}|${sort}`;
   const [sonImza, setSonImza] = useState(imza);
+  const [boyut, setBoyut] = useSayfaBoyutu();
   const [sayfa, setSayfa] = useState(1);
   if (imza !== sonImza) {
     setSonImza(imza);
@@ -87,12 +87,12 @@ export default function Rezervasyonlar() {
     Sayfa numarası burada da kırpılıyor: kayıt silindiğinde son sayfa yok
     olabiliyor ve elde kalan numara aralığın dışına düşüyor.
   */
-  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / SAYFA_BOYUTU));
+  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / boyut));
   const gecerliSayfa = Math.min(sayfa, toplamSayfa);
-  const ilkSira = (gecerliSayfa - 1) * SAYFA_BOYUTU;
+  const ilkSira = (gecerliSayfa - 1) * boyut;
   const sayfalanan = useMemo(
-    () => filtered.slice(ilkSira, ilkSira + SAYFA_BOYUTU),
-    [filtered, ilkSira],
+    () => filtered.slice(ilkSira, ilkSira + boyut),
+    [filtered, ilkSira, boyut],
   );
 
   const totals = useMemo(
@@ -279,24 +279,16 @@ export default function Rezervasyonlar() {
         )}
       </div>
 
-      {filtered.length > SAYFA_BOYUTU && (
-        <nav className="mt-3 flex flex-wrap items-center justify-between gap-3" aria-label="Kayıt sayfaları">
-          <p className="text-sm text-brand-muted">
-            {ilkSira + 1}-{ilkSira + sayfalanan.length} / {filtered.length} kayıt
-          </p>
-          <div className="flex items-center gap-2">
-            <button type="button" className="btn-ghost" disabled={gecerliSayfa <= 1}
-              onClick={() => setSayfa(gecerliSayfa - 1)}>
-              Önceki
-            </button>
-            <span className="text-sm text-brand">Sayfa {gecerliSayfa} / {toplamSayfa}</span>
-            <button type="button" className="btn-ghost" disabled={gecerliSayfa >= toplamSayfa}
-              onClick={() => setSayfa(gecerliSayfa + 1)}>
-              Sonraki
-            </button>
-          </div>
-        </nav>
-      )}
+      <Sayfalama
+        toplam={filtered.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="rz-boyut"
+        birim="rezervasyon"
+      />
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

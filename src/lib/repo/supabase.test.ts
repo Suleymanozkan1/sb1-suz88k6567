@@ -1010,33 +1010,6 @@ describe('salonlar ve menüler', () => {
   });
 });
 
-describe('masa düzeni', () => {
-  it('planı önce siler sonra yazar', async () => {
-    await repo.saveSeating('r1', [
-      { tableNo: 1, seats: 10, label: 'Gelin masası' },
-    ]);
-
-    const silme = cagri('seating_tables', 0);
-    const yazma = cagri('seating_tables', 1);
-    expect(islem(silme, 'delete')).toBeDefined();
-    expect(islem(yazma, 'insert')?.arg[0]).toEqual([
-      { reservation_id: 'r1', table_no: 1, seats: 10, label: 'Gelin masası' },
-    ]);
-  });
-
-  it('boş planda yalnızca siler', async () => {
-    await repo.saveSeating('r1', []);
-    expect(durum.cagrilar.filter((c) => c.tablo === 'seating_tables')).toHaveLength(1);
-  });
-
-  it('silme hatasında yazmaya geçmez', async () => {
-    yanitla('seating_tables', { error: HATA });
-    await expect(repo.saveSeating('r1', [
-      { tableNo: 1, seats: 10, label: '' },
-    ])).rejects.toThrow('Masa düzeni güncellenemedi.');
-    expect(durum.cagrilar.filter((c) => c.tablo === 'seating_tables')).toHaveLength(1);
-  });
-});
 
 /* ------------------------------------------------ şablon ve hatırlatma */
 
@@ -1277,16 +1250,6 @@ describe('listeleme eşlemeleri', () => {
     expect(islem(cagri('menus'), 'order')?.arg).toEqual(['name']);
   });
 
-  it('masa satırını çevirir ve masa numarasına göre ister', async () => {
-    yanitla('seating_tables', {
-      data: [{ id: 't1', reservation_id: 'r1', table_no: '3', seats: '10', label: 'Gelin masası' }],
-    });
-
-    const [masa] = await repo.listSeating('r1');
-
-    expect(masa).toEqual({ id: 't1', reservationId: 'r1', tableNo: 3, seats: 10, label: 'Gelin masası' });
-    expect(islem(cagri('seating_tables'), 'order')?.arg).toEqual(['table_no']);
-  });
 
   it('iş emri satırındaki saati kısaltır', async () => {
     // Postgres time alanı 19:00:00 döner; arayüz saat:dakika gösterir.

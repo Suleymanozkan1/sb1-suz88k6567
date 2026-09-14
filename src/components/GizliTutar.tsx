@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IconEye, IconEyeOff } from './Icons';
 import { useTutarGorunur } from '../lib/tutarGizleme';
 
 /**
@@ -16,21 +17,55 @@ import { useTutarGorunur } from '../lib/tutarGizleme';
  * KLAVYE İLE DE AÇILIYOR. Yalnızca `:hover` ile yapılsaydı klavye
  * kullanan ve dokunmatik ekrandaki kullanıcı tutarı hiç göremezdi;
  * odaklanma da açıyor ve düğme herkes için çalışıyor.
+ *
+ * DÜĞME RAKAMIN YANINDA (`dugme`). Perdeyi kaldıran tek düğme sayfanın
+ * en üstündeydi; perdelenen rakama bakan kullanıcı onu görmüyor, yıldızın
+ * yanında bir açma yolu arıyordu. Düğme artık rakamın yanına da
+ * konulabiliyor ve aynı genel tercihi çeviriyor: birinden açılınca
+ * ekrandaki bütün tutarlar birlikte açılıyor, kapatılana kadar da açık
+ * kalıyor.
+ *
+ * SAYI DA PERDELENEBİLİYOR, yalnızca para değil: "bu ay kaç düğün
+ * sattık" rakamı da omzun üstünden okunmaması gereken bir bilgi. Bileşen
+ * biçimlenmiş bir metin alıyor, içeriğin para olup olmadığını bilmiyor.
  */
 export default function GizliTutar({
-  deger, className = '',
+  deger, className = '', dugme = false,
 }: {
-  /** Biçimlenmiş tutar: "125.000,00 ₺". */
+  /** Biçimlenmiş değer: "125.000,00 ₺" ya da "17". */
   deger: string;
   className?: string;
+  /** Rakamın yanına "sürekli aç / gizle" düğmesi koyar. */
+  dugme?: boolean;
 }) {
-  const [surekli] = useTutarGorunur();
+  const [surekli, setSurekli] = useTutarGorunur();
   const [uzerinde, setUzerinde] = useState(false);
   const gorunur = surekli || uzerinde;
 
-  if (surekli) return <span className={className}>{deger}</span>;
+  /*
+    Düğme perdelenen metnin DIŞINDA duruyor. İçine konsaydı düğme içinde
+    düğme olurdu: hem erişilebilirlik denetimi buna takılıyor hem de
+    klavyeyle gezen kullanıcı iki ayrı durağı ayırt edemiyordu.
+  */
+  const anahtar = dugme ? (
+    <button
+      type="button"
+      className="ml-1.5 inline-flex translate-y-[2px] text-brand-muted transition hover:text-brand"
+      aria-pressed={surekli}
+      aria-label={surekli ? 'Tutarları gizle' : 'Tutarları sürekli göster'}
+      title={surekli ? 'Tutarları gizle' : 'Tutarları sürekli göster'}
+      onClick={() => setSurekli(!surekli)}
+    >
+      {surekli ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+    </button>
+  ) : null;
 
-  return (
+  if (surekli) return <>
+    <span className={className}>{deger}</span>
+    {anahtar}
+  </>;
+
+  return (<>
     <span
       className={`cursor-default rounded ${className}`}
       tabIndex={0}
@@ -51,5 +86,6 @@ export default function GizliTutar({
         </span>
       )}
     </span>
-  );
+    {anahtar}
+  </>);
 }

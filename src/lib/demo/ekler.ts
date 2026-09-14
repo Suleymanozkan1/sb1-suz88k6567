@@ -16,7 +16,7 @@
 import { uretec } from './uret';
 import type {
   ErrorReport, EventTask, PaymentAlertRecipient, PaymentEvent, QuickReply,
-  Payment, Reservation, ReservationVendor, SeatingTable, SmsConsent, SmsLogEntry,
+  Payment, Reservation, ReservationVendor, SmsConsent, SmsLogEntry,
   SmsQueueEntry, Vendor, WhatsappAccount,
 } from '../../types';
 
@@ -24,7 +24,6 @@ export interface EkKayitlar {
   sms: SmsLogEntry[];
   consents: SmsConsent[];
   queue: SmsQueueEntry[];
-  seating: SeatingTable[];
   tasks: EventTask[];
   resVendors: ReservationVendor[];
   paymentEvents: PaymentEvent[];
@@ -82,7 +81,6 @@ export function ekKayitlar(ayar: EkAyari): EkKayitlar {
   const sms: SmsLogEntry[] = [];
   const consents: SmsConsent[] = [];
   const queue: SmsQueueEntry[] = [];
-  const seating: SeatingTable[] = [];
   const tasks: EventTask[] = [];
   const resVendors: ReservationVendor[] = [];
   const paymentEvents: PaymentEvent[] = [];
@@ -149,18 +147,11 @@ export function ekKayitlar(ayar: EkAyari): EkKayitlar {
   });
 
   /*
-    Masa düzeni ve iş emri: yaklaşan organizasyonlarda hazırlanır, geçmiş
-    kayıtlarda iş emri tamamlanmış görünür.
+    İş emri: yaklaşan organizasyonlarda hazırlanır, geçmiş kayıtlarda
+    tamamlanmış görünür.
   */
   const duzenlenecek = [...gelecek.slice(0, 12), ...gecmis.slice(0, 8)];
   duzenlenecek.forEach((r, i) => {
-    const masaSayisi = Math.max(6, Math.ceil(r.guestCount / 10));
-    for (let m = 0; m < masaSayisi; m += 1) {
-      seating.push({
-        id: `masa_${i}_${m}`, reservationId: r.id, tableNo: m + 1, seats: 10,
-        label: m === 0 ? 'Gelin - damat masası' : m < 3 ? 'Aile' : '',
-      });
-    }
     IS_EMRI.forEach(([atTime, title, responsible], t) => {
       tasks.push({
         id: `is_${i}_${t}`, reservationId: r.id, atTime, title, responsible,
@@ -284,7 +275,7 @@ export function ekKayitlar(ayar: EkAyari): EkKayitlar {
   }];
 
   return {
-    sms, consents, queue, seating, tasks, resVendors,
+    sms, consents, queue, tasks, resVendors,
     paymentEvents, recipients, quickReplies, errorReports, whatsappAccounts,
   };
 }

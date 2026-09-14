@@ -127,17 +127,59 @@ describe('Özet ekranı', () => {
     expect(perdeli.textContent).toBe(tutar);
   });
 
-  it('düğme tutarları sürekli açık bırakıyor ve tercih saklanıyor', async () => {
+  it('üstteki düğme tutarları sürekli açık bırakıyor ve tercih saklanıyor', async () => {
     const user = userEvent.setup();
     renderPanel('/panel');
     await screen.findByRole('heading', { name: /Hoş geldiniz/ });
 
+    /*
+      Açma düğmesi artık birden fazla: biri başlıkta, biri de perdelenen
+      her rakamın yanında. `getByRole` hepsini görüp "birden çok eşleşme"
+      diye düşüyordu; buradaki, metni de olan üstteki düğme.
+    */
     await user.click(screen.getByRole('button', { name: 'Tutarları göster' }));
     expect(screen.queryAllByRole('button', { name: /^Gizli tutar:/ })).toHaveLength(0);
-    expect(screen.getByRole('button', { name: 'Tutarları gizle' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Tutarları gizle' }).length)
+      .toBeGreaterThan(0);
 
     // Tercih tarayıcıda kalıyor: ertesi açılışta yeniden gizlenmemeli.
     expect(read<boolean>(KEYS.amountsVisible, false)).toBe(true);
+  });
+
+  /*
+    Perdeyi kaldıran tek düğme sayfanın en üstündeydi ve yıldızlara bakan
+    kullanıcı onu görmüyordu: rakamın yanında bir açma yolu arıyordu.
+    Rakamın yanındaki düğme aynı genel tercihi çeviriyor -- birinden
+    açılınca ekrandaki bütün tutarlar açılıyor ve kapatılana kadar açık
+    kalıyor.
+  */
+  it('rakamın yanındaki düğme de hepsini açıyor ve açık bırakıyor', async () => {
+    const user = userEvent.setup();
+    renderPanel('/panel');
+    await screen.findByRole('heading', { name: /Hoş geldiniz/ });
+
+    const yanindaki = screen.getAllByRole('button', { name: 'Tutarları sürekli göster' });
+    expect(yanindaki.length).toBeGreaterThan(0);
+
+    await user.click(yanindaki[0]);
+    expect(screen.queryAllByRole('button', { name: /^Gizli tutar:/ })).toHaveLength(0);
+    expect(read<boolean>(KEYS.amountsVisible, false)).toBe(true);
+  });
+
+  /*
+    ÖZETTEKİ SAYILAR DA PERDELİ, yalnızca para değil: "bu ay kaç düğün
+    sattık" da omzun üstünden okunmaması gereken bir bilgi. Birim
+    (kayıt) perdenin dışında kalıyor, yoksa kart neyi saydığını
+    söylemezdi.
+  */
+  it('program ve satış sayıları da perdeli, birimleri açıkta', async () => {
+    renderPanel('/panel');
+    await screen.findByRole('heading', { name: /Hoş geldiniz/ });
+
+    const perdeli = screen.getAllByRole('button', { name: /^Gizli tutar:/ });
+    // Para birimi taşımayan, yani sayı olan en az bir perde olmalı.
+    expect(perdeli.some((d) => !/₺|TL/.test(d.getAttribute('aria-label') ?? ''))).toBe(true);
+    expect(screen.getAllByText(/kayıt/).length).toBeGreaterThan(0);
   });
 
   it('yaklaşan organizasyonları bu ayla sınırlı listeler', async () => {
@@ -570,12 +612,28 @@ describe('Gelir gider kayıtları', () => {
     expect(screen.queryByText('Çelik Kasa Hareketleri')).toBeNull();
   });
 
+  /**
+   * Kasa listesini yalnızca GELİR satırlarına indirir.
+   *
+   * Defter tarihe göre tersten sıralı ve düğün içi giderler (tedarikçi
+   * ücretleri dahil) organizasyonun GÜNÜYLE yazılıyor; ileri tarihli
+   * düğünlerin giderleri listenin başında duruyor ve tahsilat satırları
+   * ilk sayfaya düşmüyor. Süzgeç, testin bakmak istediği satırı ekrana
+   * getiriyor -- sayfa boyutunu büyütmek veri arttıkça yine yetmezdi.
+   */
+  async function yalnizcaGelir(user: ReturnType<typeof userEvent.setup>) {
+    await user.selectOptions(screen.getByLabelText('Tür filtresi'), 'Gelir');
+  }
+
   it('rezervasyon tahsilatlarını sözleşme numarası ve taraflarla listeler', async () => {
+    const user = userEvent.setup();
     seedIfEmpty();
     const kayitlar = new Map((await getReservations(BIZ)).map((r) => [r.code, r]));
     renderPanel('/panel/kasa');
 
     await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+    await yalnizcaGelir(user);
+
     /*
       Kasa sayfalandığı için önceden seçilmiş bir sözleşme ilk sayfada
       olmayabilir. Ölçüt zaten kaydın kendisi değil: EKRANDAKİ kapora
@@ -595,10 +653,12 @@ describe('Gelir gider kayıtları', () => {
   });
 
   it('rezervasyondan gelen satır silinemez', async () => {
+    const user = userEvent.setup();
     seedIfEmpty();
     renderPanel('/panel/kasa');
 
     await screen.findByRole('heading', { name: 'Gelir Gider Kayıtları' });
+    await yalnizcaGelir(user);
     // Türetilmiş satırın silme düğmesi yerine kaynağını söyleyen bir etiket
     // durur; düzeltme rezervasyon ekranından yapılır.
     expect(screen.getAllByText('Rezervasyon').length).toBeGreaterThan(0);

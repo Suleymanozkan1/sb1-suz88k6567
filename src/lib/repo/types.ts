@@ -9,7 +9,7 @@ import type { HatirlatmaKurali, Sablon } from '../sablon';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, ConsentStatus, ErrorReport,  EnqueueResult, MessageCategory, Payment, PaymentAlert, PaymentAlertRecipient,
   PaymentEvent, Permission, QuickReply, Reservation, ReservationExpense, SmsConsent,
-  Invoice, InvoiceKind, BuyerKind, Hall, Menu, SeatingTable,
+  Invoice, InvoiceKind, BuyerKind, Hall, Menu,
   EventTask, Vendor, ReservationVendor,
   SmsLogEntry, SmsQueueEntry, SystemHealth, User,
   CustomerLead, LeadMessage, LeadStatusChange, LeadStatusDef, WhatsappAccount,
@@ -51,6 +51,16 @@ export interface Repository {
   signOut(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   changePassword(currentPassword: string, nextPassword: string): Promise<void>;
+  /**
+   * Oturumdaki kullanıcının şifresini doğrular; değiştirmez.
+   *
+   * NEDEN AYRI. Çelik kasa perdesi şifre soruyor ama şifreyi
+   * değiştirmiyor; `changePassword` çağrılsaydı doğrulamak için şifreyi
+   * kendisiyle değiştirmek gerekirdi ve sunucu tarafında o işlem bütün
+   * oturumları kapatıyor -- kullanıcı kasasına bakmak istediği için
+   * uygulamadan atılırdı.
+   */
+  verifyPassword(password: string): Promise<boolean>;
   updateProfile(patch: Partial<User>): Promise<User>;
 
   /* -- personel ----------------------------------------------------- */
@@ -88,15 +98,21 @@ export interface Repository {
   saveVendor(vendor: Omit<Vendor, 'createdAt'> & { createdAt?: string }): Promise<Vendor>;
   deleteVendor(id: string): Promise<void>;
   listReservationVendors(reservationId: string): Promise<ReservationVendor[]>;
+  /**
+   * İşletmedeki BÜTÜN rezervasyonların tedarikçi satırları.
+   *
+   * Rezervasyon bazlı okuma ekran için yeterliydi; kasa ve kâr raporu
+   * ise tek bir düğüne değil aya bakıyor. Tedarikçi ücretleri düğün içi
+   * gidere sayıldığı için o iki ekranın da listeye ihtiyacı var,
+   * rezervasyon rezervasyon sormak yüzlerce çağrı olurdu.
+   */
+  listBusinessReservationVendors(businessId: string): Promise<ReservationVendor[]>;
   saveReservationVendors(
     reservationId: string,
     rows: Omit<ReservationVendor, 'id' | 'reservationId'>[],
   ): Promise<void>;
 
   /* -- masa oturma düzeni ------------------------------------------- */
-  listSeating(reservationId: string): Promise<SeatingTable[]>;
-  /** Planın tamamını değiştirir; kısmi güncelleme yerine tek işlem. */
-  saveSeating(reservationId: string, tables: Omit<SeatingTable, 'id' | 'reservationId'>[]): Promise<void>;
 
   /* -- rezervasyonlar ----------------------------------------------- */
   listReservations(businessId: string): Promise<Reservation[]>;

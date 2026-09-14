@@ -88,7 +88,6 @@ export const KEYS = {
   invoices: 'invoices',
   halls: 'halls',
   menus: 'menus',
-  seating: 'seating',
   templates: 'templates',
   reminderRules: 'reminder-rules',
   tasks: 'tasks',
@@ -121,4 +120,13 @@ export const KEYS = {
   amountsVisible: 'tutarlar-gorunur',
   /** Demo modu uyarı bandı kullanıcı tarafından kapatıldı mı */
   demoNotice: 'demo-notice',
+  /**
+   * Listelerde tek sayfada kaç kayıt gösterileceği.
+   *
+   * TEK ANAHTAR, her liste için ayrı değil: kullanıcı "ben sayfa başına
+   * 20 kayıt isterim" diyorsa bunu her ekranda ayrı ayrı seçmek
+   * istemiyor. Tarayıcıda saklanıyor -- ekrana ait bir tercih, hesabın
+   * ayarı değil.
+   */
+  pageSize: 'sayfa-boyutu',
 } as const;

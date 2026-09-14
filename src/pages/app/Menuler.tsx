@@ -6,7 +6,7 @@ import { QueryBoundary } from '../../components/QueryState';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import { useDeleteMenu, useMenus, useSaveMenu } from '../../lib/queries';
-import { kurusToLira, liraToKurus, menuTotalKurus } from '../../lib/seating';
+import { kurusToLira, liraToKurus, menuTotalKurus } from '../../lib/menuFiyat';
 import { uid } from '../../lib/ids';
 import { formatMoney } from '../../lib/format';
 import { IconEdit, IconPlus, IconReport, IconTrash } from '../../components/Icons';

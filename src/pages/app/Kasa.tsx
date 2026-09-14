@@ -6,7 +6,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
-  useAddCashFlow, useCashFlow, useDeleteCashFlow, useReservationExpenses,
+  useAddCashFlow, useCashFlow, useDeleteCashFlow, useDugunGiderleri,
   useReservationsWithBalances,
 } from '../../lib/queries';
 import { QueryBoundary } from '../../components/QueryState';
@@ -15,6 +15,7 @@ import { contractParties, downloadCsv, reservationIncome, toCsv, withinRange } f
 import type { ReservationIncomeRow } from '../../lib/reports';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../data/constants';
 import { IconDownload, IconPlus, IconTrash, IconWallet } from '../../components/Icons';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import StatCard from '../../components/StatCard';
 import KasaDagilimKarti from '../../components/KasaDagilimKarti';
 import { kasaDagilimi, kasaHareketleri } from '../../lib/kasa';
@@ -34,8 +35,6 @@ import type { CashFlowEntry, CashFlowKind, PaymentMethod } from '../../types';
   Toplamlar, kasa dağılımı ve CSV çıktısı sayfaya DEĞİL süzülmüş listenin
   tamamına bakar -- sayfalama yalnızca ekrana basılan satırı sınırlar.
 */
-const SAYFA_BOYUTU = 50;
-
 const KAYNAK_ETIKETI: Record<'elle' | 'rezervasyon' | 'dugunGideri', string> = {
   elle: 'Elle girilen',
   rezervasyon: 'Rezervasyon',
@@ -69,12 +68,13 @@ export default function Kasa() {
   const businessId = user?.activeBusinessId ?? '';
   const { data: cashData, isLoading, error: loadError } = useCashFlow();
   const { reservations, payments } = useReservationsWithBalances();
-  const { data: dugunGiderleri = [] } = useReservationExpenses();
+  const { data: dugunGiderleri = [] } = useDugunGiderleri();
   const addMutation = useAddCashFlow();
   const deleteMutation = useDeleteCashFlow();
   const [kindFilter, setKindFilter] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [boyut, setBoyut] = useSayfaBoyutu();
   const [sayfa, setSayfa] = useState(1);
   /*
     Yeni eklenen kaydın kimliği. Liste tarihe göre tersten sıralı olduğu
@@ -207,15 +207,15 @@ export default function Kasa() {
     const sira = filtered.findIndex((e) => e.id === yeniKayit);
     // Süzgeç yeni kaydı dışarıda bırakmışsa sayfa değiştirmenin anlamı yok.
     if (sira < 0) return;
-    setSayfa(Math.floor(sira / SAYFA_BOYUTU) + 1);
-  }, [yeniKayit, filtered]);
+    setSayfa(Math.floor(sira / boyut) + 1);
+  }, [yeniKayit, filtered, boyut]);
 
-  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / SAYFA_BOYUTU));
+  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / boyut));
   const gecerliSayfa = Math.min(sayfa, toplamSayfa);
-  const ilkSira = (gecerliSayfa - 1) * SAYFA_BOYUTU;
+  const ilkSira = (gecerliSayfa - 1) * boyut;
   const sayfalanan = useMemo(
-    () => filtered.slice(ilkSira, ilkSira + SAYFA_BOYUTU),
-    [filtered, ilkSira],
+    () => filtered.slice(ilkSira, ilkSira + boyut),
+    [filtered, ilkSira, boyut],
   );
 
   const categories = form.kind === 'Gelir' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -462,24 +462,15 @@ export default function Kasa() {
         )}
       </div>
 
-      {filtered.length > SAYFA_BOYUTU && (
-        <nav className="mt-3 flex flex-wrap items-center justify-between gap-3" aria-label="Kayıt sayfaları">
-          <p className="text-sm text-brand-muted">
-            {ilkSira + 1}-{ilkSira + sayfalanan.length} / {filtered.length} kayıt
-          </p>
-          <div className="flex items-center gap-2">
-            <button type="button" className="btn-ghost" disabled={gecerliSayfa <= 1}
-              onClick={() => setSayfa(gecerliSayfa - 1)}>
-              Önceki
-            </button>
-            <span className="text-sm text-brand">Sayfa {gecerliSayfa} / {toplamSayfa}</span>
-            <button type="button" className="btn-ghost" disabled={gecerliSayfa >= toplamSayfa}
-              onClick={() => setSayfa(gecerliSayfa + 1)}>
-              Sonraki
-            </button>
-          </div>
-        </nav>
-      )}
+      <Sayfalama
+        toplam={filtered.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="ks-boyut"
+      />
 
       <ConfirmDialog
         open={Boolean(toDelete)}

@@ -4,7 +4,7 @@ import Seo from '../../components/Seo';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
-import { kurusToLira, menuTotalKurus } from '../../lib/seating';
+import { kurusToLira, menuTotalKurus } from '../../lib/menuFiyat';
 import {
   useHalls, useMenus, useReservation, useReservations, useSaveReservation, useSendSms,
   useVendors,

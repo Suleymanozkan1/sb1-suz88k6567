@@ -4,10 +4,12 @@
  * Depo çağrılarını TanStack Query ile sarar: yükleniyor/hata durumları,
  * önbellek ve yazma sonrası otomatik tazeleme tek yerden yönetilir.
  */
+import { useMemo } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { repo } from './repo';
 import { sendSms } from './sms';
 import type { StaffInput } from './repo';
+import { tedarikciGiderleri } from './dugunGideri';
 import { useAuth } from '../context/AuthContext';
 import { makeBalanceLookup } from './money';
 import type {
@@ -45,7 +47,6 @@ export const keys = {
   invoice: (id: string) => ['invoice', id] as const,
   halls: (businessId: string) => ['halls', businessId] as const,
   menus: (businessId: string) => ['menus', businessId] as const,
-  seating: (reservationId: string) => ['seating', reservationId] as const,
   templates: (businessId: string) => ['templates', businessId] as const,
   reminderRules: (businessId: string) => ['reminder-rules', businessId] as const,
   tasks: (reservationId: string) => ['tasks', reservationId] as const,
@@ -60,6 +61,7 @@ export const keys = {
   surveys: (businessId: string) => ['surveys', businessId] as const,
   vendors: (businessId: string) => ['vendors', businessId] as const,
   resVendors: (reservationId: string) => ['resVendors', reservationId] as const,
+  isletmeResVendors: (businessId: string) => ['isletmeResVendors', businessId] as const,
 };
 
 /** Oturumdaki kullanıcının aktif işletmesi */
@@ -279,22 +281,6 @@ export function useDeleteMenu() {
   });
 }
 
-export function useSeating(reservationId: string | undefined) {
-  return useQuery({
-    queryKey: keys.seating(reservationId ?? ''),
-    queryFn: () => repo.listSeating(reservationId!),
-    enabled: Boolean(reservationId),
-  });
-}
-
-export function useSaveSeating(reservationId: string | undefined) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (tables: Parameters<typeof repo.saveSeating>[1]) =>
-      repo.saveSeating(reservationId!, tables),
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.seating(reservationId ?? '') }),
-  });
-}
 
 export function useTemplates(businessId: string | undefined) {
   return useQuery({
@@ -379,13 +365,56 @@ export function useReservationVendors(reservationId: string | undefined) {
   });
 }
 
+/** İşletmedeki bütün tedarikçi atamaları; kasa ve raporlar için. */
+export function useBusinessReservationVendors() {
+  const businessId = useActiveBusinessId();
+  return useQuery({
+    queryKey: keys.isletmeResVendors(businessId),
+    queryFn: () => repo.listBusinessReservationVendors(businessId),
+    enabled: Boolean(businessId),
+  });
+}
+
 export function useSaveReservationVendors(reservationId: string | undefined) {
   const client = useQueryClient();
+  const businessId = useActiveBusinessId();
   return useMutation({
     mutationFn: (rows: Parameters<typeof repo.saveReservationVendors>[1]) =>
       repo.saveReservationVendors(reservationId!, rows),
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.resVendors(reservationId ?? '') }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.resVendors(reservationId ?? '') });
+      /*
+        İşletme geneli liste de tazeleniyor: tedarikçi ücreti artık düğün
+        içi gidere sayılıyor, yani kasa ve kâr raporu da bu kayıttan
+        besleniyor. Yalnızca rezervasyonun listesi tazelenseydi ücret
+        değiştiğinde kasa eski rakamda kalırdı.
+      */
+      void client.invalidateQueries({ queryKey: keys.isletmeResVendors(businessId) });
+    },
   });
+}
+
+/**
+ * Düğün içi giderlerin TAMAMI: elle girilenler + tedarikçi ücretleri.
+ *
+ * Tek kapı olarak duruyor. Üç ekran (rezervasyon detayı, kasa, raporlar)
+ * gideri ayrı ayrı okuyordu; tedarikçi ücretleri eklenince üçünde de
+ * aynı birleştirmeyi tekrarlamak gerekecekti ve biri unutulduğunda o
+ * ekran diğerlerinden farklı bir kâr gösterirdi.
+ */
+export function useDugunGiderleri() {
+  const businessId = useActiveBusinessId();
+  const giderler = useReservationExpenses();
+  const { data: resVendors = [] } = useBusinessReservationVendors();
+  const { data: vendors = [] } = useVendors();
+
+  const elle = giderler.data;
+  const data = useMemo(
+    () => [...(elle ?? []), ...tedarikciGiderleri(resVendors, vendors, businessId)],
+    [elle, resVendors, vendors, businessId],
+  );
+
+  return { ...giderler, data };
 }
 
 export function useInvoices() {

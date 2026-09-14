@@ -208,6 +208,16 @@ test.describe('Kasa ve rezervasyon geliri', () => {
     await page.goto('/panel/kasa');
 
     await expect(page.getByRole('heading', { name: 'Gelir Gider Kayıtları' })).toBeVisible();
+
+    /*
+      Yalnızca gelir satırları: defter tarihe göre tersten sıralı ve düğün
+      içi giderler (tedarikçi ücretleri dahil) organizasyonun GÜNÜYLE
+      yazılıyor, yani ileri tarihli düğünlerin giderleri listenin başında
+      duruyor. Süzgeç, testin bakmak istediği tahsilat satırını ekrana
+      getiriyor; sayfa boyutunu büyütmek veri arttıkça yine yetmezdi.
+    */
+    await page.locator('#cf-filter-kind').selectOption('Gelir');
+
     await expect(page.getByText('Kapora').first()).toBeVisible();
     // Türetilmiş satırın kaynağı belli olmalı; silme düğmesi yerine etiket durur.
     await expect(page.getByText('Rezervasyon', { exact: true }).first()).toBeVisible();

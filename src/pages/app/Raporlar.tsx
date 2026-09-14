@@ -5,7 +5,7 @@ import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import {
   useAuditLog, useBusinesses, useHalls, useCashFlow, useLeadStatuses, usePaymentEvents,
-  usePayments, useReservationExpenses, useSmsLog, useStaff, useSurveys, useLeads, useMenus,
+  usePayments, useDugunGiderleri, useSmsLog, useStaff, useSurveys, useLeads, useMenus,
   useReservationsForBusinesses,
   useReservationsWithBalances,
 } from '../../lib/queries';
@@ -110,7 +110,7 @@ export default function Raporlar() {
   const { data: adayDurumlari = [] } = useLeadStatuses();
   const { data: anketler = [] } = useSurveys();
   const { data: kasaKayitlari = [] } = useCashFlow();
-  const { data: dugunGiderleri = [] } = useReservationExpenses();
+  const { data: dugunGiderleri = [] } = useDugunGiderleri();
   const { data: tahsilatlar = [] } = usePayments();
   const { data: odemeOlaylari = [] } = usePaymentEvents();
   const { data: smsKayitlari = [] } = useSmsLog();

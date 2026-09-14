@@ -15,7 +15,7 @@ import { RepoError, type PublicReservation, type Repository } from './types';
 import { SABLON_SIRASI, type HatirlatmaKurali, type Sablon } from '../sablon';
 import type {
   AuditEntry, Business, CashFlowEntry, ColorSetting, EnqueueResult, ErrorReport,
-  Hall, Menu, SeatingTable, EventTask, Vendor, ReservationVendor,
+  Hall, Menu, EventTask, Vendor, ReservationVendor,
   Payment, PaymentAlert, PaymentAlertRecipient, PaymentEvent, PaymentMethod,
   QuickReply, Reservation, ReservationExpense, SmsConsent, SmsLogEntry, SmsQueueEntry,
   Invoice, InvoiceLine, SystemHealth, User,
@@ -565,15 +565,6 @@ function toMenu(row: Row): Menu {
   };
 }
 
-function toSeating(row: Row): SeatingTable {
-  return {
-    id: String(row.id),
-    reservationId: String(row.reservation_id),
-    tableNo: Number(row.table_no ?? 0),
-    seats: Number(row.seats ?? 0),
-    label: (row.label as string) ?? '',
-  };
-}
 
 function toTemplate(row: Row): Sablon {
   return {
@@ -798,6 +789,22 @@ export const supabaseRepo: Repository = {
       yeni: nextPassword,
     });
     oturumuTemizle();
+  },
+
+  /*
+    Doğrulama SUNUCUDA. Şifre tarayıcıya hiç inmiyor; burada yalnızca
+    "doğru mu" cevabı okunuyor. Hata fırlatılmıyor, `false` dönüyor:
+    yanlış şifre bir çökme değil, beklenen bir cevap.
+  */
+  async verifyPassword(password) {
+    const profile = await currentProfile();
+    if (!profile) return false;
+    try {
+      await sifreIstegi({ islem: 'dogrula', email: profile.email, mevcut: password });
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   async updateProfile(patch) {
@@ -1675,28 +1682,6 @@ export const supabaseRepo: Repository = {
     if (error) fail('Menü silinemedi.', error);
   },
 
-  async listSeating(reservationId) {
-    const { data, error } = await db().from('seating_tables')
-      .select('*').eq('reservation_id', reservationId).order('table_no');
-    if (error) fail('Masa düzeni okunamadı.', error);
-    return (data ?? []).map(toSeating);
-  },
-
-  async saveSeating(reservationId, tables) {
-    // Plan bir bütün olarak değiştirilir: önce mevcut satırlar silinir.
-    const { error: delError } = await db().from('seating_tables')
-      .delete().eq('reservation_id', reservationId);
-    if (delError) fail('Masa düzeni güncellenemedi.', delError);
-    if (tables.length === 0) return;
-
-    const { error } = await db().from('seating_tables').insert(
-      tables.map((t) => ({
-        reservation_id: reservationId, table_no: t.tableNo, seats: t.seats, label: t.label,
-      })),
-    );
-    if (error) fail('Masa düzeni kaydedilemedi.', error);
-  },
-
   async listTemplates(businessId) {
     const { data, error } = await db().from('message_templates')
       .select('*').eq('business_id', businessId);
@@ -1788,6 +1773,27 @@ export const supabaseRepo: Repository = {
   async listReservationVendors(reservationId) {
     const { data, error } = await db().from('reservation_vendors')
       .select('*').eq('reservation_id', reservationId);
+    if (error) fail('Tedarikçi atamaları okunamadı.', error);
+    return (data ?? []).map(toReservationVendor);
+  },
+
+  /*
+    İki adımda okunuyor: önce işletmenin rezervasyon kimlikleri, sonra o
+    kimliklere ait tedarikçi satırları. Tek sorguda birleştirmek için
+    şemaya `business_id` eklemek gerekirdi; aynı bilgiyi iki tabloda
+    tutmak, biri güncellenip diğeri unutulduğunda sessiz bir tutarsızlık
+    bırakır.
+  */
+  async listBusinessReservationVendors(businessId) {
+    const { data: kayitlar, error: resError } = await db().from('reservations')
+      .select('id').eq('business_id', businessId);
+    if (resError) fail('Rezervasyonlar okunamadı.', resError);
+
+    const ids = (kayitlar ?? []).map((r) => (r as { id: string }).id);
+    if (ids.length === 0) return [];
+
+    const { data, error } = await db().from('reservation_vendors')
+      .select('*').in('reservation_id', ids);
     if (error) fail('Tedarikçi atamaları okunamadı.', error);
     return (data ?? []).map(toReservationVendor);
   },

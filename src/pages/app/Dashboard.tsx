@@ -10,7 +10,7 @@ import KurSeridi from '../../components/KurSeridi';
 import HavaDurumu, { SaatlikHava } from '../../components/HavaDurumu';
 import { useAuth } from '../../context/AuthContext';
 import {
-  useCashFlow, useLeadStatuses, useLeads, useReservationExpenses,
+  useCashFlow, useLeadStatuses, useLeads, useDugunGiderleri,
   useReservationsWithBalances,
 } from '../../lib/queries';
 import { leadOzeti, opsiyonuYaklasanlar, toplamAday } from '../../lib/lead';
@@ -38,7 +38,7 @@ export default function Dashboard() {
   const { data: adaylar = [] } = useLeads();
   const { data: adayDurumlari = [] } = useLeadStatuses();
   const cashQuery = useCashFlow();
-  const { data: dugunGiderleri = [] } = useReservationExpenses();
+  const { data: dugunGiderleri = [] } = useDugunGiderleri();
   const today = todayIso();
   const currency = user?.currency ?? 'TL';
 
@@ -163,30 +163,45 @@ export default function Dashboard() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
         <div className="grid gap-4 sm:grid-cols-2">
+          {/*
+            ÖZETTEKİ BÜTÜN RAKAMLAR PERDELİ, yalnızca para değil. Önce
+            sadece ciro ile kalan alacak perdeliydi; program sayısı,
+            satılan düğün adedi ve kasa toplamı açıkta duruyordu. Oysa
+            "bu ay kaç düğün sattık" da yanından geçenin okumaması
+            gereken bir bilgi ve kasa toplamı zaten en hassası.
+
+            Birim (kayıt) perdenin dışında: "••• kayıt" neyin sayıldığını
+            söylüyor, tamamı gizlenseydi kart anlamsız bir yıldız dizisine
+            dönerdi. Perde rakamı gizliyor, ekranın ne olduğunu değil.
+
+            Düğme her rakamın yanında (`dugme`): hepsi aynı tercihi
+            çeviriyor, birinden açılınca hepsi açılıyor ve kapatılana
+            kadar açık kalıyor.
+          */}
           <StatCard
             label={`${ayAdi} ayı toplam program`}
-            value={`${formatNumber(ayinKayitlari.length)} kayıt`}
-            hint={`${formatNumber(yaklasan.length)} tanesi bugün ve sonrasında`}
+            value={<><GizliTutar deger={formatNumber(ayinKayitlari.length)} dugme /> kayıt</>}
+            hint={<><GizliTutar deger={formatNumber(yaklasan.length)} /> tanesi bugün ve sonrasında</>}
             icon={IconCalendar}
             tone="accent"
           />
           <StatCard
             label="Bu ay satılan düğün"
-            value={formatNumber(aySatilan.length)}
+            value={<GizliTutar deger={formatNumber(aySatilan.length)} dugme />}
             hint={`${ayAdi} ayında açılan sözleşme sayısı`}
             icon={IconPlus}
             tone="brand"
           />
           <StatCard
             label={`${ayAdi} ayı cirosu`}
-            value={<GizliTutar deger={formatMoney(ayToplam.total, currency)} />}
+            value={<GizliTutar deger={formatMoney(ayToplam.total, currency)} dugme />}
             hint={<>Tahsil edilen <GizliTutar deger={formatMoney(ayToplam.collected, currency)} /></>}
             icon={IconWallet}
             tone="brand"
           />
           <StatCard
             label="Bu ayın kalan alacağı"
-            value={<GizliTutar deger={formatMoney(ayToplam.remaining, currency)} />}
+            value={<GizliTutar deger={formatMoney(ayToplam.remaining, currency)} dugme />}
             hint={`${ayAdi} ayı organizasyonlarından`}
             icon={IconWallet}
             tone={ayToplam.remaining > 0 ? 'danger' : 'success'}
@@ -198,7 +213,7 @@ export default function Dashboard() {
           kasasında ne kadar nakit olduğu, ekranın yanından geçen herkesin
           göreceği bir bilgi olmamalı.
         */}
-        <KasaDagilimKarti dagilim={dagilim} currency={currency} email={user?.email} />
+        <KasaDagilimKarti dagilim={dagilim} currency={currency} email={user?.email} perdele />
       </div>
 
       {/*

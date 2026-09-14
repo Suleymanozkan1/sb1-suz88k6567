@@ -398,41 +398,6 @@ export async function rezervasyonEkle(girdi: YeniRezervasyon): Promise<string | 
   return (data as unknown as { id: string }).id;
 }
 
-/* ═══ Masa düzeni ═════════════════════════════════════════════════ */
-
-export interface Masa { id: string; no: number; koltuk: number; not: string }
-
-/**
- * Tanıtım masa planı davetli sayısından üretilir.
- *
- * Sabit sekiz masa kullanılırken 320 kişilik bir düğünde "240 kişilik eksik"
- * uyarısı çıkıyor ve tanıtım verisi hatalı görünüyordu. Koltuk toplamı
- * davetli sayısına eşitlenir; artan koltuk son masaya bırakılır.
- */
-function ornekMasalar(davetli: number): Masa[] {
-  const KOLTUK = 10;
-  const adet = Math.max(1, Math.ceil(davetli / KOLTUK));
-  return Array.from({ length: adet }, (_, i) => ({
-    id: `m${i + 1}`,
-    no: i + 1,
-    koltuk: i === adet - 1 ? davetli - KOLTUK * (adet - 1) : KOLTUK,
-    not: i === 0 ? 'Gelin ve damat masası' : i === 1 ? 'Aile masası' : '',
-  }));
-}
-
-export function masalar(rezervasyonId: string): Promise<Masa[]> {
-  const r = ORNEK.find((x) => x.id === rezervasyonId);
-  return sorgu(ornekMasalar(r?.davetli ?? 0), async () => {
-    const { data, error } = await db().from('seating_tables')
-      .select('id, table_no, seats, label')
-      .eq('reservation_id', rezervasyonId).order('table_no');
-    return denetle(data, error, 'Masa düzeni okunamadı.').map((s) => {
-      const m = s as unknown as { id: string; table_no: number; seats: number; label: string | null };
-      return { id: m.id, no: m.table_no, koltuk: m.seats, not: m.label ?? '' };
-    });
-  });
-}
-
 /* ═══ Kasa ════════════════════════════════════════════════════════ */
 
 export interface KasaOzet { gelir: number; gider: number; bakiye: number; alacak: number }

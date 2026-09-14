@@ -235,12 +235,6 @@ describe('okuma kancaları', () => {
     await expect(veri(() => sorgular.useMenus())).resolves.toHaveLength(1);
   });
 
-  it('masa düzenini okur', async () => {
-    const rez = makeReservation();
-    write(KEYS.reservations, [rez]);
-    await repo.saveSeating(rez.id, [{ tableNo: 1, seats: 10, label: 'Gelin' }]);
-    await expect(veri(() => sorgular.useSeating(rez.id))).resolves.toHaveLength(1);
-  });
 
   it('şablonları okur', async () => {
     const liste = await veri(() => sorgular.useTemplates(BIZ));
@@ -457,16 +451,6 @@ describe('yazma kancaları', () => {
     await expect(repo.listMenus(BIZ)).resolves.toHaveLength(0);
   });
 
-  it('masa düzenini kaydeder', async () => {
-    const rez = makeReservation();
-    write(KEYS.reservations, [rez]);
-
-    await yaz(() => sorgular.useSaveSeating(rez.id), [
-      { tableNo: 1, seats: 10, label: 'Gelin masası' },
-    ]);
-
-    await expect(repo.listSeating(rez.id)).resolves.toHaveLength(1);
-  });
 
   it('şablon kaydeder', async () => {
     const [ilk] = await repo.listTemplates(BIZ);

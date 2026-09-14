@@ -274,12 +274,53 @@ test.describe('Müşteriler ekranı', () => {
     await page.goto('/panel/musteriler');
     await expect(page.getByRole('heading', { name: 'Müşteriler', level: 1 })).toBeVisible();
 
+    /*
+      Liste SAYFALI ve son organizasyon tarihine göre sıralı; tanıtım
+      verisindeki yüzlerce müşteri arasında yeni kayıt ilk sayfaya
+      düşmeyebiliyor. Arama kutusu, ekranın kendi yolu: kullanıcı da
+      aradığı müşteriyi böyle buluyor.
+    */
+    await page.locator('#ms-q').fill('Zerrin Müşteri');
+
     const satir = page.getByRole('row', { name: /Zerrin Müşteri/ });
     await expect(satir).toBeVisible();
     await expect(satir).toContainText('200.000,00');
     // Ödenen = kapora, kalan = toplam - kapora.
     await expect(satir).toContainText('50.000,00');
     await expect(satir).toContainText('150.000,00');
+  });
+
+  /*
+    Müşteri listesi sayfalı ve sayfa başına kayıt seçilebiliyor. Tanıtım
+    verisi yüzlerce müşteri üretiyor; tamamı tek seferde çizildiğinde
+    tablo hem geç açılıyor hem de aranan kayıt kaybolıyordu.
+  */
+  test('liste sayfalanıyor ve sayfa boyutu değiştirilebiliyor', async ({ page }) => {
+    await login(page);
+    await page.goto('/panel/musteriler');
+    await expect(page.getByRole('heading', { name: 'Müşteriler', level: 1 })).toBeVisible();
+
+    const serit = page.getByRole('navigation', { name: 'Kayıt sayfaları' });
+    await expect(serit).toBeVisible();
+
+    const satirSayisi = async () =>
+      (await page.getByRole('row').count()) - 1; // başlık satırı hariç
+
+    await page.locator('#ms-boyut').selectOption('10');
+    await expect(serit).toContainText('1-10');
+    expect(await satirSayisi()).toBe(10);
+
+    // Sonraki sayfa 11. kayıttan başlıyor.
+    await serit.getByRole('button', { name: 'Sonraki' }).click();
+    await expect(serit).toContainText('11-20');
+    await expect(serit).toContainText('Sayfa 2');
+
+    // Boyut değişince birinci sayfaya dönülüyor: 2. sayfa 20'likte de
+    // var ama kullanıcı listenin başını bekliyor.
+    await page.locator('#ms-boyut').selectOption('20');
+    await expect(serit).toContainText('1-20');
+    await expect(serit).toContainText('Sayfa 1');
+    expect(await satirSayisi()).toBe(20);
   });
 
   test('arama listeyi daraltır', async ({ page }) => {
