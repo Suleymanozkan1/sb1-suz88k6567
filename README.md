@@ -150,6 +150,12 @@ Sıfırdan kurulum adım adım [`docs/KURULUM.md`](docs/KURULUM.md) dosyasında,
 sunucu seçimi ve maliyet [`docs/SUNUCU-SECIMI.md`](docs/SUNUCU-SECIMI.md)
 dosyasında anlatılıyor.
 
+Sunucu kurmadan, **Vercel + Neon** üzerinde de çalışıyor:
+[`docs/VERCEL.md`](docs/VERCEL.md). Panelin tamamı ve veri ucu orada da
+açılıyor; gece yedeği, WhatsApp Web ve faturayı ayrı sunucuda tutma
+(VUK) bu kipte yok -- hangisinin neden olmadığı belgenin başındaki
+tabloda.
+
 Özet:
 
 1. Ubuntu bir VPS'e PostgreSQL, PostgREST, Node.js ve nginx kurulur.

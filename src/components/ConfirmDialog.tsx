@@ -1,10 +1,26 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 interface Props {
   open: boolean;
   title: string;
   description?: string;
   confirmLabel?: string;
+  /**
+   * Onay düğmesinin başındaki ikon.
+   *
+   * Yıkıcı olmayan ama sonucu para tablosunu değiştiren eylemlerde
+   * (örneğin "kasaya gönder") metin tek başına eylemi ayırt
+   * ettirmiyordu.
+   */
+  confirmIcon?: ReactNode;
+  /**
+   * Onay düğmesinin rengi.
+   *
+   * Varsayılan KIRMIZI: bu bileşen çoğunlukla silme onayı için
+   * kullanılıyor. Ama yıkıcı olmayan eylemlerde ("kasaya gönder")
+   * kırmızı düğme kullanıcıyı bir şey kaybedeceğine inandırıyordu.
+   */
+  confirmTone?: 'tehlike' | 'olagan';
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -15,6 +31,8 @@ export default function ConfirmDialog({
   title,
   description,
   confirmLabel = 'Onayla',
+  confirmIcon,
+  confirmTone = 'tehlike',
   cancelLabel = 'Vazgeç',
   onConfirm,
   onCancel,
@@ -50,10 +68,14 @@ export default function ConfirmDialog({
           <button
             ref={confirmRef}
             type="button"
-            className="btn btn-sm bg-danger text-white hover:bg-[#c0392b]"
+            className={`btn btn-sm inline-flex items-center gap-1.5 text-white ${
+              confirmTone === 'tehlike'
+                ? 'bg-danger hover:bg-[#c0392b]'
+                : 'bg-brand hover:bg-brand-dark'
+            }`}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {confirmIcon}{confirmLabel}
           </button>
         </div>
       </div>

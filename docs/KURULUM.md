@@ -15,6 +15,10 @@ Kurulacak dört parça, hepsi ücretsiz:
 > Komutlardaki `sahratakip.com` yerine kendi alan adınızı yazın.
 > `<...>` ile gösterilen yerlere kendi değerlerinizi koyun.
 
+> Sunucu kurmak istemiyorsanız bu belge size göre değil: Vercel + Neon
+> kurulumu [`VERCEL.md`](VERCEL.md) dosyasında. Orada ne çalışıp ne
+> çalışmadığı belgenin başındaki tabloda.
+
 ## 1. Temel paketler
 
 ```bash

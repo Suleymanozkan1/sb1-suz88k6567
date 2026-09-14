@@ -99,8 +99,8 @@ beforeEach(async () => {
   durum.authYanitlari = {};
   durum.kimlik = null;
 
-  vi.stubEnv('VITE_SUPABASE_URL', 'https://ornek.supabase.co');
-  vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-anahtari');
+  // Kip artık bu bayrağa bakıyor; Supabase adresleri hiç okunmuyor.
+  vi.stubEnv('VITE_SUNUCU_MODU', '1');
   vi.resetModules();
   repo = (await import('./supabase')).supabaseRepo;
 });
