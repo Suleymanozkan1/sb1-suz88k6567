@@ -183,9 +183,15 @@ export interface IsSatiri {
   tamam: boolean;
 }
 
+/*
+  `src/data/constants.ts` DEFAULT_COLOR_SETTINGS ile aynı palet. Nikâh
+  rengi orada erişilebilirlik için KOYULAŞTIRILMIŞTI (#3498db -> #2875b5);
+  mobil eski değeri taşımaya devam ediyordu ve aynı rezervasyon iki
+  uygulamada iki ayrı renkte görünüyordu.
+*/
 const TUR_RENK: Record<string, string> = {
   'Düğün': '#47b2e4', 'Nişan': '#f39c12', 'Kına': '#e74c3c',
-  'Sünnet': '#18d26e', 'Nikâh': '#3498db', 'Kokteyl': '#16a085',
+  'Sünnet': '#18d26e', 'Nikâh': '#2875b5', 'Kokteyl': '#16a085',
 };
 
 const ORNEK: Rezervasyon[] = [
@@ -552,7 +558,25 @@ export async function kasaEkle(
 
 export interface Salon { id: string; ad: string; kapasite: number; aktif: boolean; kayit: number }
 export interface Menu { id: string; ad: string; fiyatTuru: 'kisi_basi' | 'sabit'; fiyat: number; aciklama: string; aktif: boolean }
-export interface Tedarikci { id: string; ad: string; kategori: string; telefon: string; aktif: boolean }
+/**
+ * Ürün ve Hizmet kalemi (eski adıyla tedarikçi).
+ *
+ * İki tür aynı tabloda: `hizmet` düğün içi gidere girer, `urun` stoğu
+ * takip edilir. Stok alanları yalnızca üründe dolu -- veritabanı kısıtı
+ * da bunu zorluyor, "3 koli DJ" gibi bir satır oluşamıyor.
+ */
+export interface Tedarikci {
+  id: string; ad: string; kategori: string; telefon: string; aktif: boolean;
+  tur: 'hizmet' | 'urun';
+  /** Kuruş. Şemada TL `numeric`; sınırda çevriliyor. */
+  birimFiyat: number;
+  koli: number; koliIci: number; tekAdet: number; kritikEsik: number;
+}
+
+/** Bir ürünün toplam adedi: koli x koli içi + tek adet. Saklanmaz, hesaplanır. */
+export function stokToplami(t: Tedarikci): number {
+  return t.koli * t.koliIci + t.tekAdet;
+}
 export interface Musteri { ad: string; telefon: string; kayitSayisi: number; sonTarih: string; toplam: number }
 
 const ORNEK_SALON: Salon[] = [
@@ -567,12 +591,36 @@ const ORNEK_MENU: Menu[] = [
   { id: 'mn3', ad: 'Nişan Paketi', fiyatTuru: 'sabit', fiyat: 5_500_000, aciklama: 'Salon, süsleme, servis dahil', aktif: true },
 ];
 
+function hizmet(
+  id: string, ad: string, kategori: string, telefon: string,
+  birimFiyat: number, aktif = true,
+): Tedarikci {
+  return {
+    id, ad, kategori, telefon, aktif, tur: 'hizmet', birimFiyat,
+    koli: 0, koliIci: 0, tekAdet: 0, kritikEsik: 0,
+  };
+}
+
+function urun(
+  id: string, ad: string, kategori: string, birimFiyat: number,
+  koli: number, koliIci: number, tekAdet: number, kritikEsik: number,
+): Tedarikci {
+  return {
+    id, ad, kategori, telefon: '', aktif: true, tur: 'urun', birimFiyat,
+    koli, koliIci, tekAdet, kritikEsik,
+  };
+}
+
 const ORNEK_TEDARIKCI: Tedarikci[] = [
-  { id: 'td1', ad: 'Ritim Orkestra', kategori: 'Orkestra', telefon: '5321110011', aktif: true },
-  { id: 'td2', ad: 'Kare Fotoğraf', kategori: 'Fotoğraf', telefon: '5321110022', aktif: true },
-  { id: 'td3', ad: 'Gül Çiçekçilik', kategori: 'Çiçek', telefon: '5321110033', aktif: true },
-  { id: 'td4', ad: 'Tatlı Ev Pastanesi', kategori: 'Pasta', telefon: '5321110044', aktif: true },
-  { id: 'td5', ad: 'Işık Ses Sistemleri', kategori: 'Ses ve ışık', telefon: '5321110055', aktif: false },
+  hizmet('td1', 'Ritim Orkestra', 'Orkestra', '5321110011', 1_800_000),
+  hizmet('td2', 'Kare Fotoğraf', 'Fotoğraf', '5321110022', 1_200_000),
+  hizmet('td3', 'Gül Çiçekçilik', 'Çiçek', '5321110033', 450_000),
+  hizmet('td4', 'Tatlı Ev Pastanesi', 'Pasta', '5321110044', 350_000),
+  hizmet('td5', 'Işık Ses Sistemleri', 'Ses ve ışık', '5321110055', 900_000, false),
+  // Stok kritik seviyenin altında: ekranda uyarı çıkmalı.
+  urun('td6', 'Su (0,5 lt)', 'İçecek', 900, 10, 24, 6, 300),
+  urun('td7', 'Kola (200 ml)', 'İçecek', 1_800, 4, 24, 0, 50),
+  urun('td8', 'Peçete', 'Süsleme', 400, 6, 50, 12, 0),
 ];
 
 export function salonlar(): Promise<Salon[]> {
@@ -604,10 +652,22 @@ export function menuler(): Promise<Menu[]> {
 export function tedarikciler(): Promise<Tedarikci[]> {
   return sorgu(ORNEK_TEDARIKCI, async () => {
     const { data, error } = await db().from('vendors')
-      .select('id, name, category, phone, is_active').order('name');
-    return denetle(data, error, 'Tedarikçiler okunamadı.').map((s) => {
-      const v = s as unknown as { id: string; name: string; category: string; phone: string; is_active: boolean };
-      return { id: v.id, ad: v.name, kategori: v.category, telefon: v.phone, aktif: v.is_active };
+      .select('id, name, category, phone, is_active, kind, unit_price, '
+        + 'box_count, units_per_box, loose_count, min_count')
+      .order('name');
+    return denetle(data, error, 'Ürün ve hizmet kayıtları okunamadı.').map((s) => {
+      const v = s as unknown as {
+        id: string; name: string; category: string; phone: string; is_active: boolean;
+        kind: 'hizmet' | 'urun'; unit_price: number; box_count: number;
+        units_per_box: number; loose_count: number; min_count: number;
+      };
+      return {
+        id: v.id, ad: v.name, kategori: v.category, telefon: v.phone,
+        aktif: v.is_active, tur: v.kind ?? 'hizmet',
+        birimFiyat: kurusa(v.unit_price),
+        koli: Number(v.box_count ?? 0), koliIci: Number(v.units_per_box ?? 0),
+        tekAdet: Number(v.loose_count ?? 0), kritikEsik: Number(v.min_count ?? 0),
+      };
     });
   });
 }
@@ -968,20 +1028,29 @@ export function ozelGunler(limit = 200): Promise<OzelGun[]> {
 
 export interface Aday {
   id: string; ad: string; telefon: string; durum: string; kaynak: string;
-  etkinlikTarihi: string; kisi: number | null; teklif: number | null;
-  sonIletisim: string; takip: string; not: string;
+  /** Gün taşımayan ifadeler ("mayısın ilk haftası") `tarihMetni` alanında. */
+  etkinlikTarihi: string; tarihMetni: string;
+  kisi: number | null;
+  /** Kuruş. Şemada TL `numeric` olarak duruyor, sınırda çevriliyor. */
+  teklif: number | null;
+  sonIletisim: string; takip: string; opsiyon: string;
+  talep: string; not: string;
 }
 
 const ORNEK_ADAY: Aday[] = [
   { id: 'a1', ad: 'Sena & Barış', telefon: '5321110045', durum: 'teklif_verildi',
-    kaynak: 'Instagram', etkinlikTarihi: gunEkle(180), kisi: 300, teklif: 28_000_000,
-    sonIletisim: gunEkle(-2), takip: gunEkle(5), not: 'Cumartesi gecesi istiyor.' },
+    kaynak: 'Instagram', etkinlikTarihi: gunEkle(180), tarihMetni: '',
+    kisi: 300, teklif: 28_000_000, sonIletisim: gunEkle(-2), takip: gunEkle(5),
+    opsiyon: gunEkle(9), talep: '300 kişilik düğün için fiyat',
+    not: 'Cumartesi gecesi istiyor.' },
   { id: 'a2', ad: 'Elif Hanım', telefon: '5321110046', durum: 'aranacak',
-    kaynak: 'WhatsApp', etkinlikTarihi: gunEkle(240), kisi: 180, teklif: null,
-    sonIletisim: gunEkle(-1), takip: gunEkle(-1), not: '' },
+    kaynak: 'WhatsApp', etkinlikTarihi: '', tarihMetni: 'Mayısın ilk haftası',
+    kisi: 180, teklif: null, sonIletisim: gunEkle(-1), takip: gunEkle(-1),
+    opsiyon: '', talep: 'Nişan için salon müsait mi', not: '' },
   { id: 'a3', ad: 'Yıldız Ailesi', telefon: '5321110047', durum: 'rezervasyona_dondu',
-    kaynak: 'Tavsiye', etkinlikTarihi: gunEkle(95), kisi: 420, teklif: 41_000_000,
-    sonIletisim: gunEkle(-9), takip: '', not: 'Sözleşme imzalandı.' },
+    kaynak: 'Tavsiye', etkinlikTarihi: gunEkle(95), tarihMetni: '',
+    kisi: 420, teklif: 41_000_000, sonIletisim: gunEkle(-9), takip: '',
+    opsiyon: '', talep: '', not: 'Sözleşme imzalandı.' },
 ];
 
 /**
@@ -991,39 +1060,113 @@ const ORNEK_ADAY: Aday[] = [
  * yavaş hem gereksiz. Varsayılan sınır iki yüz: saha kullanıcısı son
  * görüşmelere bakıyor, arşive masaüstünden giriliyor.
  */
+interface AdaySatiri {
+  id: string; name: string; phone: string; status: string; source: string;
+  event_date: string | null; event_date_text: string | null;
+  guest_count: number | null; offer_amount: number | null;
+  last_contact_at: string | null; next_followup_at: string | null;
+  option_date: string | null; request_text: string | null; note: string | null;
+}
+
+/** Ham satırı ekranın beklediği alanlara çevirir. Liste ve kart aynı eşlemeyi kullanır. */
+function adayEsle(s: unknown): Aday {
+  const a = s as AdaySatiri;
+  return {
+    id: a.id, ad: a.name, telefon: a.phone, durum: a.status, kaynak: a.source,
+    etkinlikTarihi: a.event_date ?? '', tarihMetni: a.event_date_text ?? '',
+    kisi: a.guest_count,
+    teklif: a.offer_amount === null || a.offer_amount === undefined
+      ? null : kurusa(a.offer_amount),
+    sonIletisim: a.last_contact_at ?? '', takip: a.next_followup_at ?? '',
+    opsiyon: a.option_date ?? '', talep: a.request_text ?? '', not: a.note ?? '',
+  };
+}
+
+const ADAY_ALAN = 'id, name, phone, status, source, event_date, event_date_text, '
+  + 'guest_count, offer_amount, last_contact_at, next_followup_at, '
+  + 'option_date, request_text, note';
+
 export function adaylar(limit = 200): Promise<Aday[]> {
   return sorgu(ORNEK_ADAY, async () => {
     const { data, error } = await db().from('customer_leads')
-      .select(`id, full_name, phone, status, source, event_date, guest_count,
-               quoted_price_kurus, last_contact_at, next_followup_at, note`)
+      .select(ADAY_ALAN)
       .order('updated_at', { ascending: false }).limit(limit);
-    return denetle(data, error, 'Müşteri adayları okunamadı.').map((s) => {
-      const a = s as unknown as {
-        id: string; full_name: string; phone: string; status: string; source: string;
-        event_date: string | null; guest_count: number | null;
-        quoted_price_kurus: number | null; last_contact_at: string | null;
-        next_followup_at: string | null; note: string | null;
-      };
-      return {
-        id: a.id, ad: a.full_name, telefon: a.phone, durum: a.status, kaynak: a.source,
-        etkinlikTarihi: a.event_date ?? '', kisi: a.guest_count,
-        teklif: a.quoted_price_kurus, sonIletisim: a.last_contact_at ?? '',
-        takip: a.next_followup_at ?? '', not: a.note ?? '',
-      };
-    });
+    return denetle(data, error, 'Müşteri adayları okunamadı.').map(adayEsle);
   });
 }
 
+/** Tek aday; kart ekranı için. */
+export async function aday(id: string): Promise<Aday | null> {
+  if (tanitim) return ORNEK_ADAY.find((a) => a.id === id) ?? null;
+  const { data, error } = await db().from('customer_leads')
+    .select(ADAY_ALAN).eq('id', id).maybeSingle();
+  if (error) throw new Error(`Aday okunamadı. (${error.message})`);
+  return data ? adayEsle(data) : null;
+}
+
+/**
+ * Adayın durumunu değiştirir.
+ *
+ * Telefonda en çok yapılan işlem: personel müşteriyi arıyor ve sonucu
+ * işaretliyor. `last_contact_at` da aynı anda yazılıyor -- ayrı bırakılsa
+ * "bugün arananlar" süzgeci aramayı hiç görmezdi.
+ */
+export async function adayDurumYaz(id: string, durum: string): Promise<void> {
+  if (tanitim) return;
+  const { error } = await db().from('customer_leads')
+    .update({ status: durum, last_contact_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export interface YeniAday {
+  ad: string; telefon: string; durum: string; kaynak: string;
+  tarih: string; tarihMetni: string; kisi: number | null; talep: string;
+}
+
+/**
+ * Yeni aday açar.
+ *
+ * Telefon ON HANEYE indirgenerek yazılıyor: şema yorumu aynı kişinin
+ * "+90...", "0..." ve "..." yazımlarının tek kayda düşmesini buna
+ * bağlıyor.
+ *
+ * Gün taşımayan tarih ifadesi ("mayısın ilk haftası") `event_date_text`
+ * alanına gidiyor, uydurma bir güne çevrilmiyor: yanlış bir gün salonun
+ * o tarihte dolu sanılmasına yol açardı.
+ */
+export async function adayEkle(girdi: YeniAday): Promise<string | null> {
+  if (tanitim) return null;
+  const { data, error } = await db().from('customer_leads').insert({
+    business_id: await aktifIsletmeId(),
+    name: girdi.ad,
+    phone: girdi.telefon.replace(/\D/g, '').slice(-10),
+    status: girdi.durum,
+    source: girdi.kaynak,
+    event_date: girdi.tarih || null,
+    event_date_text: girdi.tarihMetni,
+    guest_count: girdi.kisi,
+    request_text: girdi.talep,
+  }).select('id').single();
+  if (error) throw new Error(error.message);
+  return (data as unknown as { id: string }).id;
+}
+
 export interface AdayDurumu {
-  kod: string; ad: string; ton: string; etkin: boolean; kapali: boolean;
+  kod: string; ad: string; ton: string; etkin: boolean;
+  kapali: boolean; baslangic: boolean; kazanim: boolean; takipGunu: number;
 }
 
 const ORNEK_ADAY_DURUMU: AdayDurumu[] = [
-  { kod: 'yeni', ad: 'Yeni', ton: 'bekleyen', etkin: true, kapali: false },
-  { kod: 'aranacak', ad: 'Aranacak', ton: 'bekleyen', etkin: true, kapali: false },
-  { kod: 'teklif_verildi', ad: 'Teklif Verildi', ton: 'teklif', etkin: true, kapali: false },
-  { kod: 'rezervasyona_dondu', ad: 'Rezervasyona Döndü', ton: 'olumlu', etkin: true, kapali: true },
-  { kod: 'olumsuz', ad: 'Olumsuz', ton: 'kapali', etkin: true, kapali: true },
+  { kod: 'yeni', ad: 'Yeni', ton: 'bekleyen', etkin: true,
+    kapali: false, baslangic: true, kazanim: false, takipGunu: 0 },
+  { kod: 'aranacak', ad: 'Aranacak', ton: 'bekleyen', etkin: true,
+    kapali: false, baslangic: false, kazanim: false, takipGunu: 2 },
+  { kod: 'teklif_verildi', ad: 'Teklif Verildi', ton: 'teklif', etkin: true,
+    kapali: false, baslangic: false, kazanim: false, takipGunu: 7 },
+  { kod: 'rezervasyona_dondu', ad: 'Rezervasyona Döndü', ton: 'olumlu', etkin: true,
+    kapali: true, baslangic: false, kazanim: true, takipGunu: 0 },
+  { kod: 'olumsuz', ad: 'Olumsuz', ton: 'kapali', etkin: true,
+    kapali: true, baslangic: false, kazanim: false, takipGunu: 0 },
 ];
 
 /**
@@ -1036,13 +1179,17 @@ const ORNEK_ADAY_DURUMU: AdayDurumu[] = [
 export function adayDurumlari(): Promise<AdayDurumu[]> {
   return sorgu(ORNEK_ADAY_DURUMU, async () => {
     const { data, error } = await db().from('lead_statuses')
-      .select('code, label, tone, active, is_closed')
+      .select('code, label, tone, active, is_closed, is_initial, is_won, followup_days')
       .order('sort_order', { ascending: true });
     return denetle(data, error, 'Aday durumları okunamadı.').map((s) => {
       const d = s as unknown as {
-        code: string; label: string; tone: string; active: boolean; is_closed: boolean;
+        code: string; label: string; tone: string; active: boolean;
+        is_closed: boolean; is_initial: boolean; is_won: boolean; followup_days: number;
       };
-      return { kod: d.code, ad: d.label, ton: d.tone, etkin: d.active, kapali: d.is_closed };
+      return {
+        kod: d.code, ad: d.label, ton: d.tone, etkin: d.active, kapali: d.is_closed,
+        baslangic: d.is_initial, kazanim: d.is_won, takipGunu: d.followup_days ?? 0,
+      };
     });
   });
 }
@@ -1249,4 +1396,223 @@ export function odemeAlicilari(): Promise<OdemeAlicisi[]> {
       return { id: a.id, ad: a.name, telefon: a.phone, acik: a.enabled, kanal: a.channel ?? 'sms' };
     });
   });
+}
+
+/* ═══ Fatura ayrıntısı ════════════════════════════════════════════ */
+
+export interface FaturaSatiri {
+  id: string; sira: number; aciklama: string; miktar: number; birim: string;
+  birimFiyat: number; kdvOrani: number; matrah: number; kdv: number; toplam: number;
+}
+
+export interface FaturaDetay extends Fatura {
+  alici: string; vergiNo: string; vergiDairesi: string;
+  adres: string; eposta: string; aliciTelefon: string;
+  iskonto: number; brut: number; paraBirimi: string;
+  saglayiciHatasi: string; iptalGerekcesi: string; not: string;
+  satirlar: FaturaSatiri[];
+}
+
+const ORNEK_FATURA_SATIRI: FaturaSatiri[] = [
+  { id: 'fs1', sira: 1, aciklama: 'Düğün organizasyonu - salon ve menü', miktar: 300,
+    birim: 'Kişi', birimFiyat: 45_000, kdvOrani: 20,
+    matrah: 13_500_000, kdv: 2_700_000, toplam: 16_200_000 },
+  { id: 'fs2', sira: 2, aciklama: 'Süsleme ve çiçek', miktar: 1,
+    birim: 'Adet', birimFiyat: 250_000, kdvOrani: 20,
+    matrah: 250_000, kdv: 50_000, toplam: 300_000 },
+];
+
+/**
+ * Tek faturanın tamamı: alıcı bilgisi ve kalemler.
+ *
+ * Liste satırındaki toplam "hangi kalemden geldi" sorusunu cevaplamıyor;
+ * müşteri aradığında personelin bakacağı yer burası.
+ *
+ * Bu ekran RESMÎ BELGE DEĞİL, sistemdeki kaydın kendisi. Entegratöre
+ * gönderilen belge ayrı; ikisi karışmasın diye durum her zaman görünür.
+ *
+ * Tutarlar şemada zaten kuruş (`_kurus` ekli sütunlar); çevrim yok.
+ */
+export async function faturaDetay(id: string): Promise<FaturaDetay | null> {
+  if (tanitim) {
+    const temel = ORNEK_FATURA.find((f) => f.id === id);
+    if (!temel) return null;
+    return {
+      ...temel, alici: temel.musteri, vergiNo: '', vergiDairesi: '',
+      adres: 'Selçuklu / Konya', eposta: '', aliciTelefon: '5321110011',
+      iskonto: 0, brut: temel.matrah, paraBirimi: 'TRY',
+      saglayiciHatasi: '', iptalGerekcesi: '', not: '',
+      satirlar: ORNEK_FATURA_SATIRI,
+    };
+  }
+
+  const { data, error } = await db().from('invoices')
+    .select('id, invoice_number, buyer_name, issue_date, base_kurus, vat_kurus, '
+      + 'total_kurus, gross_kurus, discount_kurus, status, kind, buyer_tax_id, '
+      + 'buyer_tax_office, buyer_address, buyer_email, buyer_phone, currency, '
+      + 'provider_error, cancel_reason, note')
+    .eq('id', id).maybeSingle();
+  if (error) throw new Error(`Fatura okunamadı. (${error.message})`);
+  if (!data) return null;
+
+  const f = data as unknown as {
+    id: string; invoice_number: string | null; buyer_name: string; issue_date: string;
+    base_kurus: number; vat_kurus: number; total_kurus: number;
+    gross_kurus: number; discount_kurus: number; status: string; kind: string;
+    buyer_tax_id: string | null; buyer_tax_office: string | null;
+    buyer_address: string | null; buyer_email: string | null; buyer_phone: string | null;
+    currency: string | null; provider_error: string | null;
+    cancel_reason: string | null; note: string | null;
+  };
+
+  const { data: satirVeri, error: satirHata } = await db().from('invoice_lines')
+    .select('id, line_no, description, quantity, unit, unit_price_kurus, '
+      + 'vat_rate, base_kurus, vat_kurus, total_kurus')
+    .eq('invoice_id', id).order('line_no', { ascending: true });
+
+  const satirlar = denetle(satirVeri, satirHata, 'Fatura kalemleri okunamadı.').map((s) => {
+    const l = s as unknown as {
+      id: string; line_no: number; description: string; quantity: number;
+      unit: string; unit_price_kurus: number; vat_rate: number;
+      base_kurus: number; vat_kurus: number; total_kurus: number;
+    };
+    return {
+      id: l.id, sira: l.line_no, aciklama: l.description, miktar: Number(l.quantity),
+      birim: l.unit, birimFiyat: l.unit_price_kurus, kdvOrani: l.vat_rate,
+      matrah: l.base_kurus, kdv: l.vat_kurus, toplam: l.total_kurus,
+    };
+  });
+
+  return {
+    id: f.id, no: f.invoice_number ?? '-', musteri: f.buyer_name, tarih: f.issue_date,
+    matrah: f.base_kurus, kdv: f.vat_kurus, toplam: f.total_kurus,
+    durum: f.status, tur: f.kind,
+    alici: f.buyer_name, vergiNo: f.buyer_tax_id ?? '',
+    vergiDairesi: f.buyer_tax_office ?? '', adres: f.buyer_address ?? '',
+    eposta: f.buyer_email ?? '', aliciTelefon: f.buyer_phone ?? '',
+    iskonto: f.discount_kurus, brut: f.gross_kurus, paraBirimi: f.currency ?? 'TRY',
+    saglayiciHatasi: f.provider_error ?? '', iptalGerekcesi: f.cancel_reason ?? '',
+    not: f.note ?? '', satirlar,
+  };
+}
+
+/* ═══ Renk ayarları ═══════════════════════════════════════════════ */
+
+export interface RenkAyari { anahtar: string; ad: string; renk: string }
+
+/** `src/data/constants.ts` DEFAULT_COLOR_SETTINGS ile birebir aynı liste. */
+const ORNEK_RENK: RenkAyari[] = [
+  { anahtar: 'dugun', ad: 'Düğün', renk: '#47b2e4' },
+  { anahtar: 'sunnet', ad: 'Sünnet', renk: '#18d26e' },
+  { anahtar: 'nisan', ad: 'Nişan', renk: '#f39c12' },
+  { anahtar: 'kina', ad: 'Kına', renk: '#e74c3c' },
+  { anahtar: 'konferans', ad: 'Konferans', renk: '#8e44ad' },
+  { anahtar: 'kokteyl', ad: 'Kokteyl', renk: '#16a085' },
+  { anahtar: 'nikah', ad: 'Nikâh', renk: '#2875b5' },
+  { anahtar: 'dogumgunu', ad: 'Doğum Günü', renk: '#d81b60' },
+  { anahtar: 'toplanti', ad: 'Toplantı', renk: '#56717d' },
+  { anahtar: 'diger', ad: 'Diğer', renk: '#95a5a6' },
+];
+
+/**
+ * Takvimdeki rezervasyon renkleri.
+ *
+ * Tek bir `jsonb` sütunda duruyor: renk listesi işletmeye özel ve
+ * organizasyon türleri değiştikçe uzayıp kısalıyor; her tür için ayrı
+ * satır açmak tabloyu tür tanımlarının kopyası hâline getirirdi.
+ */
+export function renkAyarlari(): Promise<RenkAyari[]> {
+  return sorgu(ORNEK_RENK, async () => {
+    const { data, error } = await db().from('color_settings')
+      .select('settings').maybeSingle();
+    if (error) throw new Error(`Renk ayarları okunamadı. (${error.message})`);
+
+    const ham = (data as unknown as { settings: unknown } | null)?.settings;
+    if (!Array.isArray(ham)) return ORNEK_RENK;
+
+    return ham.map((s) => {
+      const r = s as { key?: string; label?: string; color?: string };
+      return {
+        anahtar: r.key ?? '', ad: r.label ?? r.key ?? '',
+        renk: r.color ?? '#47b2e4',
+      };
+    }).filter((r) => r.anahtar !== '');
+  });
+}
+
+/* ═══ WhatsApp hesabı ve otomatik cevap ══════════════════════════ */
+
+export interface WhatsappHesabi {
+  numaraKimligi: string; gorunenNumara: string;
+  otomatikAcik: boolean; karsilamaMesaji: string;
+  mesaiDisiAcik: boolean; mesaiDisiMesaji: string;
+  mesaiBaslangic: string; mesaiBitis: string; mesaiGunleri: number[];
+}
+
+const ORNEK_WHATSAPP: WhatsappHesabi = {
+  numaraKimligi: '000000000000000',
+  gorunenNumara: '+90 332 333 44 55',
+  otomatikAcik: true,
+  karsilamaMesaji: 'Mesajınız bize ulaştı. En kısa sürede size döneceğiz.',
+  mesaiDisiAcik: true,
+  mesaiDisiMesaji:
+    'Mesajınız bize ulaştı. Şu an çalışma saatlerimiz dışındayız, '
+    + 'ilk iş günü size döneceğiz.',
+  mesaiBaslangic: '09:00',
+  mesaiBitis: '19:00',
+  mesaiGunleri: [1, 2, 3, 4, 5, 6, 7],
+};
+
+/**
+ * WhatsApp numarası eşlemesi ve otomatik cevap ayarları.
+ *
+ * Hesap tanımlı değilse `null` döner: bu bir hata değil, henüz
+ * kurulmamış demek. Ekran bunu ayrı anlatıyor.
+ *
+ * Saatler işletmenin YEREL saati (Türkiye, UTC+3). Sunucu UTC
+ * çalıştığı için çevrim kodda yapılıyor; ham değer olduğu gibi
+ * gösteriliyor.
+ */
+export async function whatsappHesabi(): Promise<WhatsappHesabi | null> {
+  if (tanitim) return ORNEK_WHATSAPP;
+
+  const { data, error } = await db().from('whatsapp_accounts')
+    .select('phone_number_id, display_phone, auto_reply_enabled, welcome_message, '
+      + 'after_hours_enabled, after_hours_message, work_start, work_end, work_days')
+    .maybeSingle();
+  if (error) throw new Error(`WhatsApp ayarları okunamadı. (${error.message})`);
+  if (!data) return null;
+
+  const h = data as unknown as {
+    phone_number_id: string; display_phone: string | null;
+    auto_reply_enabled: boolean; welcome_message: string;
+    after_hours_enabled: boolean; after_hours_message: string;
+    work_start: string; work_end: string; work_days: number[] | null;
+  };
+
+  return {
+    numaraKimligi: h.phone_number_id, gorunenNumara: h.display_phone ?? '',
+    otomatikAcik: h.auto_reply_enabled, karsilamaMesaji: h.welcome_message,
+    mesaiDisiAcik: h.after_hours_enabled, mesaiDisiMesaji: h.after_hours_message,
+    // Postgres `time` "09:00:00" döndürür; ekranda saniye istenmiyor.
+    mesaiBaslangic: (h.work_start ?? '').slice(0, 5),
+    mesaiBitis: (h.work_end ?? '').slice(0, 5),
+    mesaiGunleri: h.work_days ?? [],
+  };
+}
+
+/**
+ * Otomatik cevabı açar ya da kapatır.
+ *
+ * Tek boolean, geri alınabilir ve telefonda gerçekten gereken işlem:
+ * salon kapalıyken gelen mesajlara otomatik cevap gitmesin istendiğinde
+ * panele gidilmesi bekleniyordu.
+ */
+export async function whatsappOtomatikDurumu(
+  numaraKimligi: string, acik: boolean,
+): Promise<void> {
+  if (tanitim) return;
+  const { error } = await db().from('whatsapp_accounts')
+    .update({ auto_reply_enabled: acik }).eq('phone_number_id', numaraKimligi);
+  if (error) throw new Error(error.message);
 }

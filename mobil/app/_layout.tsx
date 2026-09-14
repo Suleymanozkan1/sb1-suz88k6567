@@ -20,12 +20,14 @@ const EKRANLAR: [string, string][] = [
   ['musteriler', 'Müşteriler'],
   ['salonlar', 'Salonlar'],
   ['menuler', 'Menüler'],
-  ['tedarikciler', 'Tedarikçiler'],
+  ['urun-hizmet', 'Ürün ve Hizmet'],
   ['faturalar', 'Faturalar'],
   ['raporlar', 'Raporlar'],
   ['ozel-gunler', 'Özel Günler'],
   ['odeme-bildirimleri', 'Ödeme Bildirimleri'],
   ['isletmeler', 'İşletmeler'],
+  ['renk-ayarlari', 'Renk Ayarları'],
+  ['whatsapp-ayarlari', 'WhatsApp Ayarları'],
   ['hatirlatmalar', 'Hatırlatmalar'],
   ['sms', 'SMS Kayıtları'],
   ['izinler', 'İYS İzinleri'],
@@ -62,6 +64,23 @@ function Kok() {
         <Stack.Screen name="rezervasyon/[id]" options={{ headerShown: true, title: 'Rezervasyon' }} />
         <Stack.Screen name="rezervasyon/yeni" options={{ headerShown: true, title: 'Yeni Rezervasyon' }} />
         <Stack.Screen name="belge/[id]" options={{ headerShown: true, title: 'Belgeler' }} />
+        <Stack.Screen name="fatura/[id]" options={{ headerShown: true, title: 'Fatura' }} />
+        <Stack.Screen
+          name="musteri-adaylari/index"
+          options={{ headerShown: true, title: 'Müşteri Adayları' }}
+        />
+        <Stack.Screen
+          name="musteri-adaylari/yeni"
+          options={{ headerShown: true, title: 'Yeni Aday' }}
+        />
+        <Stack.Screen
+          name="musteri-adaylari/[id]"
+          options={{ headerShown: true, title: 'Aday' }}
+        />
+        <Stack.Screen
+          name="musteri-adaylari/durumlar"
+          options={{ headerShown: true, title: 'Aday Durumları' }}
+        />
         {EKRANLAR.map(([ad, baslik]) => (
           <Stack.Screen key={ad} name={ad} options={{ headerShown: true, title: baslik }} />
         ))}

@@ -427,13 +427,42 @@ describe('tanımlar', () => {
     ]);
   });
 
-  it('tedarikçi satırını çevirir', async () => {
+  it('hizmet satırını çevirir', async () => {
     durum.satirlar.vendors = [{
       id: 'v1', name: 'Ritim', category: 'Orkestra', phone: '5321110011', is_active: false,
+      kind: 'hizmet', unit_price: 18_000,
+      box_count: 0, units_per_box: 0, loose_count: 0, min_count: 0,
     }];
     await expect(veri.tedarikciler()).resolves.toEqual([
-      { id: 'v1', ad: 'Ritim', kategori: 'Orkestra', telefon: '5321110011', aktif: false },
+      {
+        id: 'v1', ad: 'Ritim', kategori: 'Orkestra', telefon: '5321110011',
+        aktif: false, tur: 'hizmet', birimFiyat: 1_800_000,
+        koli: 0, koliIci: 0, tekAdet: 0, kritikEsik: 0,
+      },
     ]);
+  });
+
+  it('ürün satırında stok alanlarını taşır', async () => {
+    durum.satirlar.vendors = [{
+      id: 'v2', name: 'Su', category: 'İçecek', phone: '', is_active: true,
+      kind: 'urun', unit_price: 9,
+      box_count: 10, units_per_box: 24, loose_count: 6, min_count: 300,
+    }];
+    const [u] = await veri.tedarikciler();
+    expect(u).toMatchObject({ tur: 'urun', koli: 10, koliIci: 24, tekAdet: 6, kritikEsik: 300 });
+    // Toplam SAKLANMIYOR, hesaplanıyor: 10 x 24 + 6.
+    expect(veri.stokToplami(u!)).toBe(246);
+  });
+
+  it('kind yazmayan eski satırı hizmet sayar', async () => {
+    // 0027 öncesinde açılmış kayıtlarda sütun boş kalabiliyor; ekran
+    // "undefined" bir türle bölüme hiç girmezdi.
+    durum.satirlar.vendors = [{
+      id: 'v3', name: 'Eski', category: '', phone: '', is_active: true,
+    }];
+    const [v] = await veri.tedarikciler();
+    expect(v?.tur).toBe('hizmet');
+    expect(v?.birimFiyat).toBe(0);
   });
 
   it('okuma hatalarını kendi metinleriyle bildirir', async () => {
