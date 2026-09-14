@@ -276,10 +276,27 @@ export interface CashFlowEntry {
 }
 
 /** Müşteri adayının nereden geldiği. */
-export type LeadSource = 'Instagram' | 'WhatsApp' | 'Web Sitesi' | 'Telefon' | 'Manuel' | 'Diğer';
+/**
+ * Adayın bize nereden ulaştığı.
+ *
+ * REZERVASYON FORMUNDAKİ LİSTEYLE AYNI (`LeadChannel`). İkisi aynı
+ * soruyu soruyor; ayrı listeler olduğunda görüşme "Facebook" diyemiyor,
+ * rezervasyon diyebiliyordu ve kanal raporu ikiye bölünüyordu.
+ *
+ * `Manuel` listede ama FORMDA SEÇİLMİYOR: kaynağı boş gelen kayıtlar
+ * için yedek değer (`supabase.ts`). Listeden atılsaydı o kayıtlar açılır
+ * kutuda karşılık bulamaz, düzenlenip kaydedildiğinde kaynakları
+ * sessizce değişirdi.
+ */
+export type LeadSource =
+  | 'Instagram' | 'Facebook' | 'WhatsApp' | 'Web Sitesi'
+  | 'Google' | 'Tavsiye' | 'Telefon' | 'Diğer' | 'Manuel';
 
 export const LEAD_SOURCES: LeadSource[] = [
-  'Instagram', 'WhatsApp', 'Web Sitesi', 'Telefon', 'Manuel', 'Diğer',
+  'Instagram', 'Facebook', 'WhatsApp', 'Web Sitesi',
+  'Google', 'Tavsiye', 'Telefon', 'Diğer',
+  // Yedek değer; formda en sonda duruyor ki elle seçilmesi beklenmesin.
+  'Manuel',
 ];
 
 /**
