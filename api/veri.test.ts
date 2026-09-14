@@ -144,6 +144,43 @@ calistir('veri uç noktası', () => {
     });
   });
 
+  /*
+    Vercel isteği `/veri/halls` yolundan `/api/veri.ts` dosyasına yeniden
+    yazıyor; hedef tablo adresten siliniyor ve kuralın koyduğu
+    parametreyle geliyor. Bu blok düşerse site Vercel'de açılır ama
+    HİÇBİR ekran veri okuyamaz.
+  */
+  describe('Vercel yeniden yazması', () => {
+    it('hedefi yol parametresinden okur', async () => {
+      const jeton = erisimJetonuUret(kullanici[0]!.id);
+      const yanit = await cagir('/api/veri.ts?veriYolu=halls&select=name', jeton);
+      expect(yanit.status).toBe(200);
+      const satirlar = await yanit.json() as { name: string }[];
+      expect(satirlar.map((s) => s.name)).toContain('Salon Bir');
+    });
+
+    it('yol parametresi süzgeç sanılmıyor', async () => {
+      // Çeviriciye gitseydi "veriYolu diye bir sütun yok" hatası verirdi.
+      const jeton = erisimJetonuUret(kullanici[0]!.id);
+      const yanit = await cagir(
+        `/api/veri.ts?veriYolu=halls&id=eq.${kullanici[1]!.salon}`, jeton,
+      );
+      expect(yanit.status).toBe(200);
+      expect(await yanit.json()).toEqual([]);
+    });
+
+    it('yol parametresi rpc çağrısını da taşır', async () => {
+      const jeton = erisimJetonuUret(kullanici[0]!.id);
+      const yanit = await cagir('/api/veri.ts?veriYolu=rpc/olmayan_fonksiyon', jeton, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
+      // Yol çözülmüş olmalı: 404 "geçersiz yol" değil, veritabanı hatası.
+      expect(yanit.status).toBe(400);
+    });
+  });
+
   describe('sözleşme', () => {
     it('temsil istenmeyen yazmada 204 döner', async () => {
       const jeton = erisimJetonuUret(kullanici[0]!.id);

@@ -172,8 +172,14 @@ test.describe('İstemci tarafı güvenlik', () => {
       const code = fs.readFileSync(path.join(dizin, parca), 'utf-8');
       // PGRST_FATURA_URL bir parola değil ama iç ağ adresi taşıyor
       // (docs/IKI-SUNUCU.md); tarayıcıya çıkmamalı.
+      //
+      // DATABASE_URL ve JWT_SECRET Vercel kipiyle birlikte geldi ve
+      // listenin en ağır ikilisi: DATABASE_URL veritabanının kullanıcı
+      // adı ve parolasını taşıyor, JWT_SECRET ise service_role jetonu
+      // imzalayabildiği için satır güvenliğini tamamen aşan bir anahtar
+      // üretiyor. İkisi de yalnızca sunucuda okunur.
       expect(code, `${parca} sunucu sırrı içeriyor`)
-        .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET|PARASUT_CLIENT_SECRET|PARASUT_PASSWORD|WHATSAPP_APP_SECRET|WHATSAPP_ACCESS_TOKEN|WHATSAPP_VERIFY_TOKEN|MAIL_API_KEY|KUR_API_KEY|ACCUWEATHER_API_KEY|GIB_PAROLA|GIB_MUHUR_PAROLA|GIB_MUHUR_ANAHTAR|PGRST_FATURA_URL|WHATSAPP_WEB_OTURUM/i);
+        .not.toMatch(/NETGSM_PASS|OTP_SECRET|service_role_key|IYS_PASSWORD|CRON_SECRET|DATABASE_URL|JWT_SECRET|PARASUT_CLIENT_SECRET|PARASUT_PASSWORD|WHATSAPP_APP_SECRET|WHATSAPP_ACCESS_TOKEN|WHATSAPP_VERIFY_TOKEN|MAIL_API_KEY|KUR_API_KEY|ACCUWEATHER_API_KEY|GIB_PAROLA|GIB_MUHUR_PAROLA|GIB_MUHUR_ANAHTAR|PGRST_FATURA_URL|WHATSAPP_WEB_OTURUM/i);
     }
   });
 });

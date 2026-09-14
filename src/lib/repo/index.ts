@@ -1,8 +1,10 @@
 /**
  * Etkin veri kaynağını seçer.
  *
- * VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY tanımlıysa gerçek veritabanı,
- * aksi hâlde tarayıcı belleği (demo modu) kullanılır.
+ * `VITE_SUNUCU_MODU=1` ise gerçek veritabanı, aksi hâlde tarayıcı belleği
+ * (tanıtım kipi) kullanılıyor. Eskiden karar Supabase adresinin tanımlı
+ * olup olmamasına bakıyordu; Supabase kaldırıldıktan sonra o değişkenler
+ * hiç okunmuyor ve açıklama yanıltıcı kalmıştı.
  */
 import { isSupabaseConfigured, supabaseRepo } from './supabase';
 import { localRepo } from './local';

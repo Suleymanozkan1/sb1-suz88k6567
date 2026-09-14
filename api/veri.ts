@@ -34,6 +34,20 @@ function hata(mesaj: string, durum: number, kod: string): Response {
 }
 
 /**
+ * Vercel'in yeniden yazma sırasında hedefi taşıdığı parametre.
+ *
+ * NEDEN GEREKLİ. nginx `/veri/halls` yolunu OLDUĞU GİBİ geçiriyor, yani
+ * kendi sunucumuzda yol okunabiliyor. Vercel ise `vercel.json`
+ * kuralıyla isteği `/api/veri.ts` dosyasına yeniden yazıyor ve
+ * fonksiyona ulaşan adres artık hedef tabloyu taşımıyor. O yüzden kural
+ * yakaladığı parçayı bu parametreye koyuyor (`?${YOL_PARAMETRESI}=$1`).
+ *
+ * Süzgeç olarak değerlendirilmemesi için çeviriciye gitmeden ÖNCE
+ * siliniyor; kalsaydı "böyle bir sütun yok" hatası verirdi.
+ */
+const YOL_PARAMETRESI = 'veriYolu';
+
+/**
  * `/veri/<tablo>` ya da `/veri/rpc/<fonksiyon>` yolundan hedefi çıkarır.
  *
  * Yol parçası tek: şema adı taşıyan ("public.halls") ya da eğik çizgi
@@ -54,7 +68,9 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   const url = new URL(request.url);
-  const hedef = hedefCoz(url.pathname);
+  const yol = url.searchParams.get(YOL_PARAMETRESI);
+  url.searchParams.delete(YOL_PARAMETRESI);
+  const hedef = hedefCoz(yol ?? url.pathname);
   if (!hedef) return hata('Geçersiz yol.', 404, 'PGRST404');
 
   /*

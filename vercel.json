@@ -9,6 +9,102 @@
       }
     },
     {
+      "src": "api/veri.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/anket-yanit.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/anket.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/backup.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/gib-onizle.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/hava-saatlik.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/hava.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/health.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/invoice.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/iys.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/kurlar.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/login.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/meb-takvim.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/monthly-report.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/otp.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/oturum.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/ozel-gunler.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/reminders.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/sifre.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/sms-queue.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/sms.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/whatsapp-gonder.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/whatsapp-test.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/whatsapp.ts",
+      "use": "@vercel/node"
+    },
+    {
       "src": "vercel-api/demo-gunler.ts",
       "use": "@vercel/node"
     },
@@ -33,6 +129,106 @@
     {
       "src": "/api/demo-kur",
       "dest": "/vercel-api/demo-kur.ts"
+    },
+    {
+      "src": "/api/webhooks/whatsapp",
+      "dest": "/api/whatsapp.ts"
+    },
+    {
+      "src": "/api/whatsapp-gonder",
+      "dest": "/api/whatsapp-gonder.ts"
+    },
+    {
+      "src": "/api/monthly-report",
+      "dest": "/api/monthly-report.ts"
+    },
+    {
+      "src": "/api/whatsapp-test",
+      "dest": "/api/whatsapp-test.ts"
+    },
+    {
+      "src": "/api/hava-saatlik",
+      "dest": "/api/hava-saatlik.ts"
+    },
+    {
+      "src": "/api/anket-yanit",
+      "dest": "/api/anket-yanit.ts"
+    },
+    {
+      "src": "/api/ozel-gunler",
+      "dest": "/api/ozel-gunler.ts"
+    },
+    {
+      "src": "/api/gib-onizle",
+      "dest": "/api/gib-onizle.ts"
+    },
+    {
+      "src": "/api/meb-takvim",
+      "dest": "/api/meb-takvim.ts"
+    },
+    {
+      "src": "/api/sms-queue",
+      "dest": "/api/sms-queue.ts"
+    },
+    {
+      "src": "/api/reminders",
+      "dest": "/api/reminders.ts"
+    },
+    {
+      "src": "/api/whatsapp",
+      "dest": "/api/whatsapp.ts"
+    },
+    {
+      "src": "/api/invoice",
+      "dest": "/api/invoice.ts"
+    },
+    {
+      "src": "/api/backup",
+      "dest": "/api/backup.ts"
+    },
+    {
+      "src": "/api/health",
+      "dest": "/api/health.ts"
+    },
+    {
+      "src": "/api/kurlar",
+      "dest": "/api/kurlar.ts"
+    },
+    {
+      "src": "/api/oturum",
+      "dest": "/api/oturum.ts"
+    },
+    {
+      "src": "/api/anket",
+      "dest": "/api/anket.ts"
+    },
+    {
+      "src": "/api/login",
+      "dest": "/api/login.ts"
+    },
+    {
+      "src": "/api/sifre",
+      "dest": "/api/sifre.ts"
+    },
+    {
+      "src": "/api/hava",
+      "dest": "/api/hava.ts"
+    },
+    {
+      "src": "/api/iys",
+      "dest": "/api/iys.ts"
+    },
+    {
+      "src": "/api/otp",
+      "dest": "/api/otp.ts"
+    },
+    {
+      "src": "/api/sms",
+      "dest": "/api/sms.ts"
+    },
+    {
+      "src": "/veri/(.*)",
+      "dest": "/api/veri.ts?veriYolu=$1"
     },
     {
       "handle": "filesystem"
