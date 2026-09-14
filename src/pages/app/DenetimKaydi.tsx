@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import Seo from '../../components/Seo';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import Alert from '../../components/Alert';
 import { QueryBoundary } from '../../components/QueryState';
 import { useAuditLog, useErrorReports } from '../../lib/queries';
@@ -72,6 +73,22 @@ export default function DenetimKaydi() {
     });
   }, [entries, query, action]);
 
+  /*
+    SAYFALAMA. Liste zamanla yüzlerce satıra çıkıyor; tamamı tek seferde
+    çizildiğinde ekran hem geç açılıyor hem de aranan kayıt kayboluyor.
+    Süzgeç değişince birinci sayfaya dönülüyor: kullanıcı 7. sayfada
+    kalsaydı sonuç var olduğu hâlde ekran boş görünürdü.
+  */
+  const [boyut, setBoyut] = useSayfaBoyutu();
+  const [sayfa, setSayfa] = useState(1);
+  const [sonImza, setSonImza] = useState('');
+  const imza = `${filtered.length}`;
+  if (imza !== sonImza) { setSonImza(imza); setSayfa(1); }
+
+  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / boyut));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const sayfalanan = filtered.slice((gecerliSayfa - 1) * boyut, gecerliSayfa * boyut);
+
   if (!can('denetim.goruntule')) {
     return <Alert kind="error">Denetim kaydını görüntüleme yetkiniz bulunmuyor.</Alert>;
   }
@@ -130,7 +147,7 @@ export default function DenetimKaydi() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((entry) => {
+              {sayfalanan.map((entry) => {
                 const changedKeys = Object.keys(entry.changed ?? {});
                 const isOpen = expanded === entry.id;
                 return (
@@ -187,6 +204,17 @@ export default function DenetimKaydi() {
           </table>
         )}
       </div>
+
+      <Sayfalama
+        toplam={filtered.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="dk-boyut"
+        birim="kayıt"
+      />
 
       {/*
         Kullanıcı bildirimleri (madde 32) denetim kaydının altında: ikisi

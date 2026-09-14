@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import { QueryBoundary } from '../../components/QueryState';
 import { useAuth } from '../../context/AuthContext';
 import { useLeadStatuses, useLeads, useStaff } from '../../lib/queries';
@@ -95,6 +96,22 @@ export default function MusteriAdaylari() {
     });
   }, [adaylar, arama, durum, kaynak, sorumlu, suzgec, harita,
     kayitBas, kayitBit, etkBas, etkBit]);
+
+  /*
+    SAYFALAMA. Liste zamanla yüzlerce satıra çıkıyor; tamamı tek seferde
+    çizildiğinde ekran hem geç açılıyor hem de aranan kayıt kayboluyor.
+    Süzgeç değişince birinci sayfaya dönülüyor: kullanıcı 7. sayfada
+    kalsaydı sonuç var olduğu hâlde ekran boş görünürdü.
+  */
+  const [boyut, setBoyut] = useSayfaBoyutu();
+  const [sayfa, setSayfa] = useState(1);
+  const [sonImza, setSonImza] = useState('');
+  const imza = `${gorunen.length}`;
+  if (imza !== sonImza) { setSonImza(imza); setSayfa(1); }
+
+  const toplamSayfa = Math.max(1, Math.ceil(gorunen.length / boyut));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const sayfalanan = gorunen.slice((gecerliSayfa - 1) * boyut, gecerliSayfa * boyut);
 
   const personelAdi = (id?: string) =>
     personel.find((p) => p.id === id)?.fullName ?? '';
@@ -224,11 +241,28 @@ export default function MusteriAdaylari() {
         </div>
       ) : (
         <ul className="grid gap-3">
-          {gorunen.map((l) => (
+          {sayfalanan.map((l) => (
             <Kart key={l.id} lead={l} personelAdi={personelAdi} harita={harita} />
           ))}
         </ul>
       )}
+
+      {/*
+        Şerit koşulun DIŞINDA: liste boşken de aynı yerde duruyor, aksi
+        hâlde süzgeç sonucu boşaldığında sayfa denetimi ekrandan kayboluyor
+        ve kullanıcı önceki sayfaya dönemiyordu. Kayıt azken bileşen zaten
+        kendini çizmiyor.
+      */}
+      <Sayfalama
+        toplam={gorunen.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="ma-boyut"
+        birim="aday"
+      />
     </QueryBoundary>
   );
 }

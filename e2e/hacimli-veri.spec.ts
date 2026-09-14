@@ -203,7 +203,18 @@ test.describe('hacimli veriyle panel taraması', () => {
     expect(hatalar, 'konsol hatası').toEqual([]);
   });
 
+  /*
+    Bu test ONDAN FAZLA DOSYA indiriyor ve her birini diskten okuyup
+    içeriğini denetliyor: bir Word çizelgesi ve CSV düğmesi çıkan her
+    rapor sekmesi. Varsayılan otuz saniye, tanıtım verisi büyüdükçe
+    yetmez oldu ve test araç bozuk olduğu için değil, süre dolduğu için
+    düştü. Süreyi kısaltmak için sekme sayısını azaltmak, asıl amacı --
+    "her rapor hacim altında da dosya üretebiliyor mu" -- ortadan
+    kaldırırdı.
+  */
   test('rapor indirme araçları hacim altında çalışıyor', async ({ page }) => {
+    test.setTimeout(180_000);
+
     const hatalar = hatalariTopla(page);
     await girisVeDoldur(page);
 
@@ -252,6 +263,21 @@ test.describe('hacimli veriyle panel taraması', () => {
       await sekmeler.nth(i).click();
       const csvDugme = page.getByRole('button', { name: /CSV indir/ });
       if (!(await csvDugme.isVisible())) continue;
+
+      /*
+        SEKME ÇİZİLENE KADAR BEKLENİYOR.
+
+        Test sekmeye geçer geçmez CSV düğmesine basıyordu. Hafif
+        raporlarda sorun yoktu; en ağır rapor (aylık işlem dökümü) hacimli
+        veriyle hesaplanırken tıklama daha çizim bitmeden düşüyor ve
+        indirme hiç başlamıyordu. Gerçek kullanıcı bu kadar hızlı
+        tıklayamaz -- bu, aracın değil testin yarışıydı.
+
+        `aria-selected` sekmenin geçtiğini, kısa bekleme de ağır memo'nun
+        tamamlandığını garanti ediyor.
+      */
+      await expect(sekmeler.nth(i)).toHaveAttribute('aria-selected', 'true');
+      await page.waitForTimeout(300);
 
       const bekle = page.waitForEvent('download');
       await csvDugme.click();

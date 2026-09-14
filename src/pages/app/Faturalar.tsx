@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
+import Sayfalama, { useSayfaBoyutu } from '../../components/Sayfalama';
 import Alert from '../../components/Alert';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { QueryBoundary } from '../../components/QueryState';
@@ -99,6 +100,22 @@ export default function Faturalar() {
     if (!q) return invoices;
     return invoices.filter((i) => normalizeTr(`${i.invoiceNumber} ${i.buyerName}`).includes(q));
   }, [invoices, query]);
+
+  /*
+    SAYFALAMA. Liste zamanla yüzlerce satıra çıkıyor; tamamı tek seferde
+    çizildiğinde ekran hem geç açılıyor hem de aranan kayıt kayboluyor.
+    Süzgeç değişince birinci sayfaya dönülüyor: kullanıcı 7. sayfada
+    kalsaydı sonuç var olduğu hâlde ekran boş görünürdü.
+  */
+  const [boyut, setBoyut] = useSayfaBoyutu();
+  const [sayfa, setSayfa] = useState(1);
+  const [sonImza, setSonImza] = useState('');
+  const imza = `${filtered.length}`;
+  if (imza !== sonImza) { setSonImza(imza); setSayfa(1); }
+
+  const toplamSayfa = Math.max(1, Math.ceil(filtered.length / boyut));
+  const gecerliSayfa = Math.min(sayfa, toplamSayfa);
+  const sayfalanan = filtered.slice((gecerliSayfa - 1) * boyut, gecerliSayfa * boyut);
 
   /** Sözleşme numarası fatura satırında görünsün diye kod çözümü. */
   const rezervasyonKodu = useMemo(() => {
@@ -435,7 +452,7 @@ export default function Faturalar() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((invoice) => (
+              {sayfalanan.map((invoice) => (
                 <tr key={invoice.id} className="border-b border-line/60 last:border-0">
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-brand">
                     {invoice.invoiceNumber}
@@ -484,6 +501,17 @@ export default function Faturalar() {
           </table>
         )}
       </div>
+
+      <Sayfalama
+        toplam={filtered.length}
+        sayfa={gecerliSayfa}
+        boyut={boyut}
+        gosterilen={sayfalanan.length}
+        onSayfa={setSayfa}
+        onBoyut={setBoyut}
+        kimlik="fa-boyut"
+        birim="fatura"
+      />
 
       {reservationId && (
         <p className="mt-4 text-sm">

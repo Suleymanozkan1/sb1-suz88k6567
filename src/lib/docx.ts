@@ -238,5 +238,10 @@ export function downloadDocx(filename: string, bytes: Uint8Array): void {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  /*
+    İptal bir sonraki olay döngüsünde; gerekçe `reports.ts` içindeki
+    `downloadCsv` ile aynı ve yine ÖNLEM amaçlı: adresin indirme
+    kaydedilmeden geçersiz kalması sessiz bir kayıp doğurur.
+  */
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }

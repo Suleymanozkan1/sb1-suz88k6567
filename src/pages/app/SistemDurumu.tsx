@@ -27,7 +27,12 @@ export default function SistemDurumu() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      /*
+        İptal bir sonraki olay döngüsünde. Yedek JSON'u paneldeki EN BÜYÜK
+        dosya ve sessizce inmemesi en ağır sonuç: sahibi yedeği aldığını
+        sanır. Gözlemlenen bir kayıp yok, önlem amaçlı.
+      */
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch (err) {
       setDownloadError(errorMessage(err));
     }
