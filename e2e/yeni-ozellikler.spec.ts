@@ -649,6 +649,47 @@ test('İl bazlı rapor girilen ile göre gruplar', async ({ page }) => {
   await expect(panel.getByRole('cell', { name: 'Belirtilmemiş' })).toBeVisible();
 });
 
+/*
+  İŞLETME BAZLI RAPOR BÜTÜN İŞLETMELERİ KAPSAR.
+
+  Rapor kapsamı varsayılan olarak yalnızca etkin işletmeydi. Bu raporun
+  tamamı işletmeleri yan yana koymak için var; tek işletmeye düşünce tek
+  satır çiziyor ve "hangi salon daha iyi iş yaptı" sorusu cevapsız
+  kalıyordu. Elle yapılan seçim yine üstün.
+*/
+test('İşletme bazlı rapor bütün işletmeleri karşılaştırır', async ({ page }) => {
+  // Demo tohumunda iki işletme var; karşılaştırma için yenisi gerekmiyor.
+  await login(page);
+  await page.goto('/panel/raporlar');
+  await page.getByRole('tab', { name: 'İşletme bazlı rezervasyon', exact: true }).click();
+
+  const panel = page.getByRole('tabpanel');
+  const kapsamKutusu = page.getByRole('group', { name: 'Rapor kapsamı' });
+
+  // HİÇBİR KUTUYA DOKUNULMADAN iki işletme de raporda olmalı.
+  await expect(panel.getByRole('cell', { name: 'Grand Sahra Düğün ve Davet Salonu' }))
+    .toBeVisible();
+  await expect(panel.getByRole('cell', { name: 'Yıldız Kır Bahçesi' })).toBeVisible();
+  await expect(page.getByText(/varsayılan olarak hepsini karşılaştırır/)).toBeVisible();
+
+  /*
+    Elle daraltma hâlâ üstün. Varsayılan "hepsi seçili" olduğu için bir
+    kutuya dokunmak onu LİSTEDEN ÇIKARIR; geriye diğeri kalır. Seçim
+    yapıldığı anda varsayılan devre dışı kalmalı, yoksa kullanıcının
+    daralttığı rapor kendiliğinden yeniden genişlerdi.
+  */
+  await kapsamKutusu.getByText('Yıldız Kır Bahçesi', { exact: true }).click();
+  await expect(page.getByText('Tek işletme raporlanıyor.')).toBeVisible();
+  await expect(panel.getByRole('cell', { name: 'Yıldız Kır Bahçesi' })).toHaveCount(0);
+  await expect(panel.getByRole('cell', { name: 'Grand Sahra Düğün ve Davet Salonu' }))
+    .toBeVisible();
+
+  // Diğer raporlarda varsayılan değişmedi: seçim yokken yalnızca etkin işletme.
+  await page.getByRole('button', { name: 'Yalnızca etkin işletme' }).click();
+  await page.getByRole('tab', { name: 'İl bazlı rezervasyon', exact: true }).click();
+  await expect(page.getByText('Tek işletme raporlanıyor.')).toBeVisible();
+});
+
 test('Günlük rezervasyonlar seçilen günü gösterir', async ({ page }) => {
   await login(page);
   await page.goto('/panel/rezervasyonlar/yeni');
