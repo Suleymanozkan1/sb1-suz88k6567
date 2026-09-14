@@ -9,7 +9,9 @@ import { ekKayitlar } from './demo/ekler';
 import { URETILMIS_GUNLER } from './demo/uretilmis-gunler';
 import { clearAll, KEYS, read, write } from './storage';
 import { addDays, toIso, todayIso } from './format';
-import { DEFAULT_COLOR_SETTINGS, ORG_TO_COLOR_KEY, OWNER_PERMISSIONS } from '../data/constants';
+import {
+  DEFAULT_COLOR_SETTINGS, EXPENSE_CATEGORIES, ORG_TO_COLOR_KEY, OWNER_PERMISSIONS,
+} from '../data/constants';
 import type {
   Business, CashFlowEntry, Hall, Invoice, LeadChannel, Menu, Payment, Reservation,
   CustomerLead, SpecialDay, User, Vendor,
@@ -541,7 +543,14 @@ export function seedIfEmpty(): void {
       id: `cf_seed_${i}`, businessId,
       kind: i % 3 === 0 ? 'Gider' : 'Gelir',
       date: toIso(d),
-      category: i % 3 === 0 ? ['Personel Maaş', 'Elektrik', 'Yemek / Catering'][i % 3] : 'Rezervasyon Tahsilatı',
+      /*
+        `[...][i % 3]` dizisi i % 3 === 0 dalında HER ZAMAN 0. indisi
+        veriyordu: üç kategori yazılmış ama yalnızca "Personel Maaş"
+        kullanılıyordu. Kategori artık tanımlı listeden dönüyor.
+      */
+      category: i % 3 === 0
+        ? EXPENSE_CATEGORIES[(i / 3) % EXPENSE_CATEGORIES.length]
+        : 'Rezervasyon Tahsilatı',
       amount: i % 3 === 0 ? 12000 + i * 900 : 35000 + i * 2500,
       description: i % 3 === 0 ? 'Aylık sabit gider' : 'Organizasyon tahsilatı',
       createdAt: now,

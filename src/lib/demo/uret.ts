@@ -20,6 +20,17 @@ import type {
   CashFlowEntry, CustomerLead, OrganizationType, Payment, PaymentMethod,
   Reservation, ReservationExpense, ReservationStatus, SessionSlot,
 } from '../../types';
+import { VARSAYILAN_LEAD_DURUMLARI } from '../../types';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../data/constants';
+
+/**
+ * Tanıtım adaylarının durum kodları.
+ *
+ * Tek gerçek kaynak `VARSAYILAN_LEAD_DURUMLARI`: kodlar burada elle
+ * yazılsaydı liste değiştiğinde tohum sessizce eskir ve ürettiği adaylar
+ * hiçbir durum kutusuna düşmezdi -- tam olarak bir kez yaşanan hata bu.
+ */
+const LEAD_DURUM_KODLARI = VARSAYILAN_LEAD_DURUMLARI.map((d) => d.code);
 
 /** Tekrarlanabilir sözde rastgele üreteç (mulberry32). */
 export function uretec(tohum: number): () => number {
@@ -302,12 +313,26 @@ export function demoUret(ayar: UretimAyari = {}): DemoVeri {
     ödendiği gün deftere girer, ileri tarihli kasa satırı olmaz.
   */
   for (let i = 0; i < 160; i += 1) {
+    /*
+      KATEGORİ, SATIRIN TÜRÜNDEN GELİYOR.
+
+      Önce tek bir elle yazılmış liste vardı ve türe bakılmadan
+      seçiliyordu: gelir satırlarına "Elektrik", "Kira", "Personel Maaş"
+      yazılıyordu. Üstelik adlar da tutmuyordu -- "Doğalgaz" (tanımlı ad
+      "Doğal gaz"), "Bakım" ("Bakım Onarım"), "Diğer" ("Diğer Gider").
+
+      Sonuç sessizdi: Kasa ekranının kategori süzgeci bu adları hiç
+      göstermiyor, gelir/gider raporu kalemi yanlış tarafa topluyordu.
+      Artık liste tek gerçek kaynaktan geliyor ve tür değişirse kategori
+      de kendiliğinden doğru taraftan seçiliyor.
+    */
+    const kind: CashFlowEntry['kind'] = i % 3 === 0 ? 'Gelir' : 'Gider';
     cashFlow.push({
       id: `kasa_${i}`,
       businessId,
-      kind: i % 3 === 0 ? 'Gelir' : 'Gider',
+      kind,
       date: gunEkle(bugunIso, -tam(0, 730)),
-      category: sec(['Personel Maaş', 'Elektrik', 'Doğalgaz', 'Bakım', 'Kira', 'Diğer']),
+      category: sec(kind === 'Gelir' ? [...INCOME_CATEGORIES] : [...EXPENSE_CATEGORIES]),
       amount: tam(1, 60) * 1000,
       method: sec(ODEME_TIPLERI),
       description: 'Demo kaydı',
@@ -337,7 +362,16 @@ export function demoUret(ayar: UretimAyari = {}): DemoVeri {
       organizationType: sec(ORGANIZASYONLAR),
       source: 'WhatsApp',
       sourceDetail: '',
-      status: sec(['yeni', 'gorusuldu', 'teklif', 'kazanildi', 'kaybedildi']),
+      /*
+        Durum kodları TANIMLI LİSTEDEN seçiliyor, elle yazılmıyor.
+
+        Burada `gorusuldu`, `teklif`, `kazanildi`, `kaybedildi` yazılıydı;
+        hiçbiri `VARSAYILAN_LEAD_DURUMLARI` içinde yok. Sonuç: 93 adayın
+        74'ü hiçbir durum kutusuna düşmüyor, özet ekranı "Toplam 93" deyip
+        kutularda 19 gösteriyordu. Liste tek yerden geldiği için kod
+        değişirse tohum da kendiliğinden uyuyor.
+      */
+      status: sec(LEAD_DURUM_KODLARI),
       nextFollowupAt: '',
       lastContactAt: acilis,
       requestText: '',

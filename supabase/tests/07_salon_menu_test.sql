@@ -1,5 +1,10 @@
 -- =====================================================================
--- Salon, menü ve masa düzeni testleri
+-- Salon ve menü testleri
+--
+-- Masa düzeni bölümleri KALDIRILDI: `seating_tables` 0042 göcüyle
+-- düşürüldü. Testler bütün göçler uygulandıktan sonra çalıştığı için
+-- düşen bir tabloya yazan bölüm burada hata verirdi. Aynısı 0013'te de
+-- yapılmıştı: düşen tabloların testi paketten çıkarılmıştı.
 -- =====================================================================
 \set ON_ERROR_STOP on
 \pset pager off
@@ -108,50 +113,11 @@ exception
     raise notice 'BEKLENEN: reddedildi (%)', sqlerrm;
 end $$;
 
-\echo '=== 7) Masa duzeni: ayni masa numarasi iki kez yazilamamali ==='
-insert into public.seating_tables (reservation_id, table_no, seats, label)
-select id, 1, 10, 'Gelin tarafı' from public.reservations where code = 'SA-A-0001';
-insert into public.seating_tables (reservation_id, table_no, seats, label)
-select id, 2, 8, 'Damat tarafı' from public.reservations where code = 'SA-A-0001';
-do $$
-declare rid uuid;
-begin
-  select id into rid from public.reservations where code = 'SA-A-0001';
-  insert into public.seating_tables (reservation_id, table_no, seats) values (rid, 1, 6);
-  raise exception 'BASARISIZ: mukerrer masa numarasi kabul edildi';
-exception
-  when unique_violation then raise notice 'BEKLENEN: mukerrer masa numarasi reddedildi';
-  when others then
-    if sqlerrm like 'BASARISIZ%' then raise; end if;
-    raise notice 'BEKLENEN: reddedildi (%)', sqlerrm;
-end $$;
-select count(*) as masa_sayisi, sum(seats) as toplam_koltuk
-from public.seating_tables st
-join public.reservations r on r.id = st.reservation_id where r.code = 'SA-A-0001';
-
-\echo '=== 8) Gecersiz koltuk sayisi reddedilmeli ==='
-do $$
-declare rid uuid;
-begin
-  select id into rid from public.reservations where code = 'SA-A-0001';
-  insert into public.seating_tables (reservation_id, table_no, seats) values (rid, 9, 0);
-  raise exception 'BASARISIZ: sifir koltuk kabul edildi';
-exception
-  when check_violation then raise notice 'BEKLENEN: sifir koltuk reddedildi';
-  when others then
-    if sqlerrm like 'BASARISIZ%' then raise; end if;
-    raise notice 'BEKLENEN: reddedildi (%)', sqlerrm;
-end $$;
-
-\echo '=== 9) Rezervasyon silinince masa duzeni de silinmeli ==='
-delete from public.reservations where code = 'SA-A-0002';
-select count(*) as kalan_rezervasyon from public.reservations where code = 'SA-A-0002';
-
 -- Supabase, public şemadaki tablolara bu izinleri varsayılan olarak verir.
 grant usage on schema public to authenticated;
-grant select on public.reservations, public.halls, public.menus, public.seating_tables to authenticated;
+grant select on public.reservations, public.halls, public.menus to authenticated;
 
-\echo '=== 10) B isletmesi A nin salon ve menulerini GOREMEMELI ==='
+\echo '=== 7) B isletmesi A nin salon ve menulerini GOREMEMELI ==='
 set role authenticated;
 select set_config('request.jwt.claim.sub', :b_id, false);
 select
@@ -159,7 +125,7 @@ select
   (select count(*) from public.menus) as B_gordugu_menu_BIR_OLMALI;
 reset role;
 
-\echo '=== 11) A isletmesi kendi salon ve menulerini gormeli ==='
+\echo '=== 8) A isletmesi kendi salon ve menulerini gormeli ==='
 set role authenticated;
 select set_config('request.jwt.claim.sub', :a_id, false);
 select
@@ -167,13 +133,7 @@ select
   (select count(*) from public.menus) as A_gordugu_menu_BIR_OLMALI;
 reset role;
 
-\echo '=== 12) B, A nin masa duzenini GOREMEMELI ==='
-set role authenticated;
-select set_config('request.jwt.claim.sub', :b_id, false);
-select count(*) as B_gordugu_masa_SIFIR_OLMALI from public.seating_tables;
-reset role;
-
-\echo '=== 13) Salon ve menu degisiklikleri denetim kaydina yazilmali ==='
+\echo '=== 9) Salon ve menu degisiklikleri denetim kaydina yazilmali ==='
 select count(*) > 0 as salon_denetim_kaydi_var
 from public.audit_log where table_name = 'halls';
 select count(*) > 0 as menu_denetim_kaydi_var

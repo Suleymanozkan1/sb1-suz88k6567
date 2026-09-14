@@ -23,7 +23,7 @@ import type { CustomerLead, LeadSource, LeadStatus } from '../../types';
  * Liste telefonda kart, geniş ekranda tablo: personelin çoğu bu ekranı
  * telefondan açıyor ve yatay kaydırılan bir tablo orada kullanılamıyor.
  */
-type Suzgec = 'hepsi' | 'bugun' | 'geciken' | 'acik';
+type Suzgec = 'hepsi' | 'bugun' | 'geciken' | 'acik' | 'tanimsiz';
 
 export default function MusteriAdaylari() {
   const { data, isLoading, error } = useLeads();
@@ -52,7 +52,8 @@ export default function MusteriAdaylari() {
   const [etkBit, setEtkBit] = useState('');
   const [suzgec, setSuzgec] = useState<Suzgec>(() => {
     const istenen = param.get('suzgec');
-    return istenen === 'bugun' || istenen === 'geciken' || istenen === 'acik' ? istenen : 'hepsi';
+    return istenen === 'bugun' || istenen === 'geciken' || istenen === 'acik'
+      || istenen === 'tanimsiz' ? istenen : 'hepsi';
   });
 
   const adaylar = useMemo(() => data ?? [], [data]);
@@ -67,6 +68,12 @@ export default function MusteriAdaylari() {
       if (suzgec === 'bugun' && !bugunAranacakMi(harita, l)) return false;
       if (suzgec === 'geciken' && !gecikmisMi(harita, l)) return false;
       if (suzgec === 'acik' && (harita.get(l.status)?.isClosed ?? false)) return false;
+      /*
+        Durumu tanımlı listede olmayan adaylar. Özet ekranındaki kutu
+        buraya geliyor: kayıtlar görünmez kalmasın, sahibi onları
+        toplu hâlde bulup yeni bir duruma taşıyabilsin.
+      */
+      if (suzgec === 'tanimsiz' && harita.has(l.status)) return false;
 
       // Kayıt tarihi ISO damga; ilk on karakter gün demek.
       const kayitGunu = l.createdAt.slice(0, 10);

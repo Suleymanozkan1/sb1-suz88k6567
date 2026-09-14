@@ -224,26 +224,33 @@ export interface ReservationVendor {
   note: string;
 }
 
-export const VENDOR_CATEGORIES = [
-  'Orkestra / Müzik', 'Fotoğraf / Video', 'Çiçek / Süsleme', 'Pasta',
-  'Gelin Arabası', 'Ses ve Işık', 'İkram / Catering', 'Diğer',
-] as const;
-
 /**
  * Hizmet kalemlerinin kategorileri.
  *
  * Tedarikçi kategorileri dış firmaları anlatıyordu; salonun kendi
  * personeli (garson, vale) o listeye girmiyordu. İkisi ayrı listeler,
  * tek listede toplanınca hiçbiri işe yaramıyordu.
+ *
+ * BU LİSTE FORMUN AÇILIR KUTUSUDUR. Tedarikçinin kategorisi burada
+ * yoksa, kayıt düzenlemek için açıldığında kutu eşleşen seçeneği
+ * bulamıyor ve ilkini gösteriyor; kaydedildiğinde kategori sessizce
+ * değişmiş oluyor. Gelinlik, kuaför, davetiye ve şov kalemleri tanıtım
+ * verisinde vardı ama listede yoktu -- tam olarak bu yüzden eklendiler.
+ *
+ * Bir önceki `VENDOR_CATEGORIES` listesi KALDIRILDI: tanımlıydı ama
+ * hiçbir yerde kullanılmıyordu ve hangi listenin geçerli olduğu
+ * sorusunu bulanıklaştırıyordu.
  */
 export const HIZMET_KATEGORILERI = [
   'Personel', 'Orkestra / Müzik', 'Fotoğraf / Video', 'Çiçek / Süsleme',
-  'Pasta', 'Gelin Arabası', 'Ses ve Işık', 'İkram / Catering', 'Diğer',
+  'Süsleme / Balon', 'Pasta', 'Gelin Arabası', 'Gelinlik', 'Kuaför / Makyaj',
+  'Ses ve Işık', 'Şov / Animasyon', 'İkram / Catering', 'Servis / Ulaşım',
+  'Davetiye / Matbaa', 'Diğer',
 ] as const;
 
 /** Fiziksel ürün kategorileri. */
 export const URUN_KATEGORILERI = [
-  'İçecek', 'Gıda', 'Temizlik', 'Sarf Malzeme', 'Diğer',
+  'İçecek', 'Gıda', 'Temizlik', 'Sarf Malzeme', 'Süsleme', 'Diğer',
 ] as const;
 
 export type CashFlowKind = 'Gelir' | 'Gider';

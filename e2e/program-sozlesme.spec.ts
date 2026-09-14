@@ -450,11 +450,26 @@ test.describe('Müşteri adayı durumları', () => {
 
     // "Yeni" hem başlangıç durumu hem de demo adayında kullanımda.
     const yeniSatir = page.locator('table tbody tr').first();
-    await expect(yeniSatir.getByRole('button', { name: 'Sil' })).toBeDisabled();
+    await expect(yeniSatir.getByRole('button', { name: 'Sil', exact: true })).toBeDisabled();
 
-    // Hiç kullanılmayan bir durum silinebilir.
-    const iptalSatir = page.locator('table tbody tr', { hasText: 'kod: iptal' });
-    await expect(iptalSatir.getByRole('button', { name: 'Sil' })).toBeEnabled();
+    /*
+      Kullanılmayan bir durum silinebilmeli. Durum BURADA AÇILIYOR,
+      tohumdan seçilmiyor: önce `iptal` kullanılıyordu ve "hiç aday bu
+      durumda değil" varsayımına dayanıyordu. Tohum artık tanımlı
+      durumların HEPSİNİ kullanıyor -- olması gereken de bu, çünkü boş
+      duran bir durum kutusu tanıtımda anlamsız -- ve o varsayım bozuldu.
+      Testin kendi açtığı durumu kimse kullanmıyor, yani kural doğrudan
+      sınanıyor.
+    */
+    await page.getByLabel('Durum adı').fill('Silinecek Durum');
+    await page.getByRole('button', { name: 'Ekle' }).click();
+
+    const yeniSatirEklendi = page.locator('table tbody tr', { hasText: 'Silinecek Durum' });
+    await expect(yeniSatirEklendi).toBeVisible();
+    // `name: 'Sil'` alt dize eşleşmesi yapıyor ve satırdaki ↑ / ↓
+    // düğmelerinin etiketlerine de uyuyordu; tam eşleşme şart.
+    await expect(yeniSatirEklendi.getByRole('button', { name: 'Sil', exact: true }))
+      .toBeEnabled();
   });
 
   test('dashboard kutuları tanımlı durumlardan üretilir', async ({ page }) => {

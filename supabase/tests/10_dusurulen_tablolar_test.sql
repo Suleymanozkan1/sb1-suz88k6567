@@ -48,11 +48,15 @@ end $$;
 
 \echo '=== 4) Kullanilan tablolarin HICBIRI silinmemis olmali ==='
 -- Bir CASCADE kazasi en kolay burada yakalanir.
+--
+-- `seating_tables` bu listeden CIKARILDI: 0042 gocu onu bilerek dusurdu.
+-- Listede birakilsaydi bu test, dogru calisan bir gocu hata sanardi.
+-- O gocun kendi testi 31_masa_duzeni_dusurme_test.sql.
 select ad, to_regclass('public.' || ad) is not null as var_OLMALI
 from unnest(array[
   'profiles', 'businesses', 'reservations', 'payments', 'cash_flow',
   'sms_log', 'sms_queue', 'sms_consents', 'invoices', 'invoice_lines',
-  'halls', 'menus', 'seating_tables', 'event_tasks', 'vendors',
+  'halls', 'menus', 'event_tasks', 'vendors',
   'reservation_vendors', 'message_templates', 'reminder_rules',
   'reminder_log', 'audit_log', 'backup_runs'
 ]) as ad
@@ -66,7 +70,7 @@ begin
   from unnest(array[
     'profiles', 'businesses', 'reservations', 'payments', 'cash_flow',
     'sms_log', 'sms_queue', 'sms_consents', 'invoices', 'invoice_lines',
-    'halls', 'menus', 'seating_tables', 'event_tasks', 'vendors',
+    'halls', 'menus', 'event_tasks', 'vendors',
     'reservation_vendors', 'message_templates', 'reminder_rules',
     'reminder_log', 'audit_log', 'backup_runs'
   ]) as ad
