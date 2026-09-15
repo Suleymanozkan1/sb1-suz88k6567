@@ -8,7 +8,7 @@
  */
 import {
   ANKET_EN_DUSUK, ANKET_EN_YUKSEK, ANKET_SORULARI, type Survey,
-} from '../types';
+} from '../types/index.js';
 
 /**
  * Gelen puanları süzer.

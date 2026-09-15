@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build && npm run build:sunucu",
     "preview": "vite preview",
     "lint": "eslint .",
-    "typecheck": "tsc -b --force --pretty",
+    "typecheck": "tsc -b --force --pretty && tsc -p tsconfig.vercel.json",
     "test": "vitest run && npm run test:mobil",
     "test:web": "vitest run",
     "test:mobil": "npm --prefix mobil test",
