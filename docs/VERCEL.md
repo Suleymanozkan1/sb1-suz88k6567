@@ -244,10 +244,14 @@ dönüyorsa `vercel.json` dağıtılmamış demektir.
 uygulamanın kendi koduyla üretiliyor.
 
 ```bash
-JWT_SECRET='<JWT_SECRET>' npx tsx -e "
+npx tsx -e "
 import('./api/_kimlik.ts').then(m => m.sifreyiKarmala('<ILK_SIFRE>')).then(console.log)
 "
 ```
+
+`scrypt$16384$8$1$...` ile başlayan bir dize veriyor. Karma kendi
+tuzunu üretiyor; `JWT_SECRET` bu adımda GEREKMİYOR (o yalnızca oturum
+jetonlarını imzalıyor).
 
 Çıkan karmayla kullanıcıyı açın:
 
@@ -255,8 +259,8 @@ import('./api/_kimlik.ts').then(m => m.sifreyiKarmala('<ILK_SIFRE>')).then(conso
 psql "$DATABASE_URL" -c "select public.kullanici_ac('siz@ornek.com', '<URETILEN_KARMA>')"
 ```
 
-`profiles` satırı tetikleyiciyle kendiliğinden açılıyor. Panele girip
-**Firmalarım** ekranından işletmenizi ekleyin.
+`profiles` satırı tetikleyiciyle kendiliğinden açılıyor ve rolü `owner`
+oluyor. Panele girip **Firmalarım** ekranından işletmenizi ekleyin.
 
 ---
 

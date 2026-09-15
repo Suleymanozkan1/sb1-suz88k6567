@@ -308,10 +308,12 @@ uygulamanın kendi koduyla üretilir. Önce karmayı alın:
 ```bash
 cd /opt/sahra
 node -e "
-process.env.JWT_SECRET='<JWT_SECRET>';
 require('./sunucu-dist/api/_kimlik.js').sifreyiKarmala('<ILK_SIFRE>').then(console.log);
 "
 ```
+
+Karma kendi tuzunu üretiyor; bu adımda `JWT_SECRET` gerekmiyor (o
+yalnızca oturum jetonlarını imzalıyor).
 
 Çıkan karmayla kullanıcıyı açın:
 
