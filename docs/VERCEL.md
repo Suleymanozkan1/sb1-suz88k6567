@@ -53,37 +53,64 @@ ekran görüntüsüne, Git'e girmesin.
 
 ## 2. Şemayı kurun
 
-Göçler sırayla uygulanıyor; atlanan bir dosya sonrakini bozar.
+46 göç sırayla uygulanıyor; atlanan bir dosya sonrakini bozar.
 
 ```bash
 git clone <depo> sahra && cd sahra
-export DATABASE_URL='<Neon adresi>'
+npm install
 
+DATABASE_URL='<Neon adresi>' npm run goc
+```
+
+Betik her dosyayı tek tek yazıyor ve **ilk hatada duruyor** — kalan
+göçleri de koşturmak yarım bir şema bırakır, üstelik asıl hata ekranda
+yukarıda kaybolurdu. Sonunda rolleri ve tablo sayısını kendisi
+denetliyor:
+
+```
+[46/46] 0045_kanal_kaynak_dogrulama.sql ... tamam
+
+Tablo     : 43
+Fonksiyon : 100
+Roller    : anon, authenticated, service_role — hepsi var
+```
+
+**Roller satırı en önemlisi.** Göçler `anon`, `authenticated` ve
+`service_role` rollerini kendisi açıyor ve RLS politikalarının tamamı
+bu rollere yazılı. Barındırılan bir veritabanında rol açma yetkisi
+kısıtlı olabiliyor; roller açılmazsa panel açılır ama **hiçbir ekran
+veri gösteremez.** Betik bu durumda hata verip duruyor, "tamam" demiyor.
+
+Betik tekrar çalıştırılabilir: göçler `if not exists` /
+`create or replace` ile yazıldı, uygulanmış bir veritabanında yeniden
+koşturmak zarar vermiyor. Yarıda kalan bir kurulumu düzeltip aynı komutu
+tekrar vermeniz yeterli.
+
+`DATABASE_URL` parola taşıyor. Komut geçmişine düşmesini istemiyorsanız
+`.env.local` dosyasına koyup kabuktan okutun; betik ekrana bastığı
+hiçbir mesajda parolayı göstermiyor.
+
+<details>
+<summary>psql tercih ederseniz</summary>
+
+```bash
 for f in supabase/migrations/*.sql; do
   echo "--- $f"
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f" || break
 done
-```
 
-`ON_ERROR_STOP=1` önemli: hata çıktığında durup nerede kaldığını
-söylüyor. Olmasaydı kalan göçler de koşar ve yarım bir şema elde
-edilirdi.
-
-Bittiğinde rollerin açıldığını doğrulayın:
-
-```bash
 psql "$DATABASE_URL" -c "\du" | grep -E 'anon|authenticated|service_role'
 ```
 
-Üçü de görünmüyorsa göçler tamamlanmamıştır; üstteki döngünün çıktısına
-bakın.
+`ON_ERROR_STOP=1` şart: olmasaydı hatalı bir göçün ardından kalanlar da
+koşardı.
+</details>
 
-> Bu adımların tamamı yerel bir PostgreSQL 16 kurulumunda baştan sona
-> denendi; **Neon'un kendi örneğinde denenmedi.** Beklenen tek fark rol
-> açma yetkisinde: göçler `anon`, `authenticated` ve `service_role`
-> rollerini kendisi açıyor, barındırılan bir veritabanında bu yetki
-> kısıtlı olabiliyor. Üstteki `\du` denetimi tam olarak bunun için var;
-> roller çıkmazsa takıldığınız yer burasıdır.
+> Bu adım boş bir PostgreSQL 16 veritabanında baştan sona denendi: 46
+> göç uygulandı, ardından veri katmanının veritabanına bağlanan 51 testi
+> — giriş, jeton, `/veri` okuma ve kiracı izolasyonu dahil — bu şemaya
+> karşı koştu. **Neon'un kendi örneğinde denenmedi;** beklenen tek fark
+> rol açma yetkisinde ve betiğin son satırı tam olarak onu denetliyor.
 
 ---
 
@@ -269,14 +296,12 @@ geldiyse veritabanına ayrıca uygulamak gerekiyor:
 
 ```bash
 git pull
-for f in supabase/migrations/*.sql; do
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
-done
+DATABASE_URL='<Neon adresi>' npm run goc
 ```
 
-Göçler tekrar çalıştırılmaya dayanıklı yazıldı; uygulanmış olanlar
-atlanıyor. Yine de büyük bir güncellemeden önce Neon panelinden bir
-yedek (branch) alın.
+Göçler tekrar çalıştırılmaya dayanıklı yazıldı; uygulanmış olanlar zarar
+vermeden tekrar geçiyor. Yine de büyük bir güncellemeden önce Neon
+panelinden bir yedek (branch) alın.
 
 ---
 
