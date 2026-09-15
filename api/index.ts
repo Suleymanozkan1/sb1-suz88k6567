@@ -83,6 +83,39 @@ function ilkCerceve(e: unknown): string | undefined {
   return e.stack.split('\n').slice(1, 4).map((s) => s.trim()).join(' | ') || undefined;
 }
 
+/**
+ * Kurulumun DURUMU: hangi değişken tanımlı, hangi sürüm yayında.
+ *
+ * DEĞER DÖNDÜRMÜYOR, yalnızca "var/yok" diyor. Sırların kendisi buradan
+ * hiçbir şekilde çıkmıyor; `JWT_SECRET` için uzunluk bile verilmiyor,
+ * yalnızca 32 karakter eşiğini geçip geçmediği söyleniyor.
+ *
+ * NEDEN GEREKLİ. Ortam değişkeni Vercel panosunda "eklendi" görünüp
+ * fonksiyona ulaşmayabiliyor: yanlış ortam (Preview/Production), yanlış
+ * proje, ya da dağıtımın yenilenmemiş olması. Dışarıdan bakınca üçü de
+ * aynı görünüyor -- site "demo kipinde" diyor, sebebini söylemiyor.
+ * `surum` alanı hangi işlemenin yayında olduğunu yazıyor: yeniden
+ * dağıtımın gerçekten gerçekleşip gerçekleşmediği buradan anlaşılıyor.
+ */
+function tani(): Record<string, unknown> {
+  const jwt = process.env.JWT_SECRET ?? '';
+  return {
+    tamam: true,
+    dugum: process.version,
+    calisma: 'node',
+    surum: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'bilinmiyor',
+    ortam: process.env.VERCEL_ENV ?? 'bilinmiyor',
+    ayar: {
+      DATABASE_URL: process.env.DATABASE_URL ? 'var' : 'yok',
+      JWT_SECRET: jwt === '' ? 'yok' : (jwt.length >= 32 ? 'var' : 'kisa'),
+      VITE_SUNUCU_MODU: process.env.VITE_SUNUCU_MODU ?? 'yok',
+      PGRST_URL: process.env.PGRST_URL ? 'var (KALDIRIN)' : 'yok',
+      CRON_SECRET: process.env.CRON_SECRET ? 'var' : 'yok',
+      OTP_SECRET: process.env.OTP_SECRET ? 'var' : 'yok',
+    },
+  };
+}
+
 /** Asıl dağıtıcı. Web standardı girer, Web standardı çıkar. */
 export async function dagit(request: Request): Promise<Response> {
   const gelen = new URL(request.url);
@@ -95,9 +128,7 @@ export async function dagit(request: Request): Promise<Response> {
     500 geliyorsa sorun fonksiyonun açılmasında değil, uç nokta
     modüllerinde demektir -- teşhisi tek istekle ikiye bölüyor.
   */
-  if (yol === TANI_YOLU) {
-    return json({ tamam: true, dugum: process.version, calisma: 'node' }, 200);
-  }
+  if (yol === TANI_YOLU) return json(tani(), 200);
 
   /*
     İstek asıl yoluyla yeniden kuruluyor. Gövde bir kez okunabildiği için

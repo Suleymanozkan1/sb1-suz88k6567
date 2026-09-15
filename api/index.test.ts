@@ -225,4 +225,37 @@ describe('Node imzası', () => {
     expect(JSON.parse(yanit.govde) as { tamam: boolean }).toMatchObject({ tamam: true });
     expect(cagrilar).toHaveLength(0);
   });
+
+  /*
+    Tanı yolu kurulumun durumunu yazıyor ama DEĞERLERİ yazmıyor. Bu ayrım
+    testle korunuyor: bir gün "hata ayıklaması kolay olsun" diye değer
+    eklenirse sır herkese açık bir adrese düşerdi.
+  */
+  it('tanı yolu sır DEĞERİ sızdırmaz, yalnızca var/yok der', async () => {
+    const sir = 'x'.repeat(40);
+    vi.stubEnv('JWT_SECRET', sir);
+    vi.stubEnv('DATABASE_URL', 'postgres://kullanici:parola@sunucu/veritabani');
+    try {
+      const yanit = await cagirNode('/api/index.ts?__yol=%2Fapi%2Ftani');
+      expect(yanit.govde).not.toContain(sir);
+      expect(yanit.govde).not.toContain('parola');
+      expect(yanit.govde).not.toContain('sunucu/veritabani');
+      const govde = JSON.parse(yanit.govde) as { ayar: Record<string, string> };
+      expect(govde.ayar.JWT_SECRET).toBe('var');
+      expect(govde.ayar.DATABASE_URL).toBe('var');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('kısa JWT_SECRET "var" demez', async () => {
+    vi.stubEnv('JWT_SECRET', 'kisa');
+    try {
+      const yanit = await cagirNode('/api/index.ts?__yol=%2Fapi%2Ftani');
+      const govde = JSON.parse(yanit.govde) as { ayar: Record<string, string> };
+      expect(govde.ayar.JWT_SECRET).toBe('kisa');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });
