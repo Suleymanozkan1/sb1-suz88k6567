@@ -32,8 +32,20 @@ function yanitla(govde: unknown, ok = true) {
 }
 
 describe('gunleriTazele', () => {
-  beforeEach(() => { clearAll(); });
-  afterEach(() => { vi.unstubAllGlobals(); });
+  /*
+    SAAT SABİTLENİYOR. Örnek yanıt 13-14 Eylül 2026 tahminini taşıyor ve
+    kod, bugünün satırı tahminde yoksa anlık gözlemden BİR SATIR DAHA
+    ekliyor (MGM'nin günlük tahmini gün içinde yarından başlıyor). Gerçek
+    takvime bakıldığında test 14 Eylül'e kadar geçiyor, 15'inde beklenen
+    iki satır üç oluyordu: kodun değil, testin tarihe bağlı olması.
+    Yalnızca `Date` sahteleniyor; zamanlayıcılar sahtelenirse `await`
+    edilen sözler ilerlemez.
+  */
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-09-13T08:00:00Z') });
+    clearAll();
+  });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
   it('hava tahminini depoya yazar ve depo katmanı okur', async () => {
     yanitla(HAVA_YANITI);

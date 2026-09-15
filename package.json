@@ -18,7 +18,8 @@
     "build:sunucu": "tsc -p tsconfig.sunucu.json && node -e \"require('fs').copyFileSync('sunucu/derleme-paketi.json','sunucu-dist/package.json')\"",
     "baslat": "node sunucu-dist/sunucu/baslat.js",
     "vercel-build": "tsc -b && vite build",
-    "demo:veri": "tsx scripts/demo-veri-uret.ts"
+    "demo:veri": "tsx scripts/demo-veri-uret.ts",
+    "goc": "tsx scripts/goc-uygula.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
