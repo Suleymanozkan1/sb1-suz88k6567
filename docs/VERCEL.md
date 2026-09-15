@@ -379,3 +379,13 @@ sonra yeniden dağıtım yapılmamış.
 **Fonksiyon "PGRST_FATURA_URL doğrudan kipte kullanılamaz" hatası
 veriyor.**
 Fatura bölmesi bu kipte yok (bölüm 0). Değişkeni kaldırın.
+
+**Bütün uç noktalar 500 / `FUNCTION_INVOCATION_FAILED` veriyor.**
+Önce `curl https://<siteniz>/api/tani` deneyin. Bu yol hiçbir modül
+yüklemiyor, veritabanına dokunmuyor:
+
+- `{"tamam":true,...}` dönüyorsa fonksiyon ayakta, arıza bir uç nokta
+  modülünde. O zaman `curl https://<siteniz>/api/health` çıktısındaki
+  `detay` alanı hangi modülün yüklenemediğini yazıyor.
+- Bu yol da 500 dönüyorsa fonksiyon hiç açılmıyor: sorun kodda değil
+  dağıtımda (`vercel.json`, derleme çıktısı, çalışma zamanı sürümü).
