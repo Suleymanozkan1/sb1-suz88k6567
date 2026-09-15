@@ -43,8 +43,42 @@ geçmek gerekiyor. Neon'un ücretsiz planında böyle bir kısıt yok.
 1. <https://neon.tech> üzerinde hesap açın, bir proje oluşturun.
    Bölge olarak `aws-eu-central-1` (Frankfurt) seçin: Türkiye'ye en
    yakın olanı, her sorguda gidip gelen gecikmeyi bu belirliyor.
-2. **Connection string**'i kopyalayın. `postgres://...` ile başlayan,
-   `sslmode=require` ile biten uzun bir adres.
+2. Proje panosunda (Dashboard) **Connect** düğmesine basın.
+   Açılan pencerede branch (`main`), veritabanı ve rol seçili gelir;
+   altta bağlantı adresi ve yanında kopyalama düğmesi var.
+
+### İKİ AYRI ADRES KOPYALAYIN
+
+Pencerede **Connection pooling** anahtarı var ve iki farklı adres
+üretiyor. İkisi de lazım, ama ayrı işler için:
+
+| Anahtar | Adreste | Nerede kullanılacak |
+| --- | --- | --- |
+| Açık (varsayılan) | `...-pooler.eu-central-1.aws.neon.tech` | **Vercel'deki `DATABASE_URL`** (bölüm 4) |
+| Kapalı | `-pooler` yok | **Göçler** (bölüm 2) |
+
+Neden ayrı: Vercel her istek için yeni bir fonksiyon örneği açabiliyor
+ve her örnek kendi bağlantısını kuruyor; havuzsuz adres veritabanının
+bağlantı sınırını yoğun bir günde doldurur. Göçler ise tersini istiyor
+-- Neon'un kendi belgesi şema göçlerinde **doğrudan** (havuzsuz) adresi
+öneriyor, çünkü havuz işlem kipinde bazı yönetim ifadeleri beklendiği
+gibi çalışmıyor.
+
+Uygulamanın havuzla sorunu yok: `api/_pg.ts` rolü ve kimliği `set local`
+ile ve her zaman bir işlemin İÇİNDE ayarlıyor (`begin` ... `commit`).
+İşlem kipindeki havuz, işlem boyunca aynı sunucu bağlantısını ayırıyor
+ve `set local` işlem bitince geri alınıyor -- yani ayar ne kaybolur ne
+de sonraki isteğe sızar. Havuza uygun olmayan şey, işlem dışında
+yapılan kalıcı `set` çağrılarıydı; bu kodda öyle bir çağrı yok.
+
+Adres şuna benziyor (parola dahil):
+
+```
+postgresql://<rol>:<parola>@ep-xxxx-yyyy.eu-central-1.aws.neon.tech/neondb?sslmode=require
+```
+
+Parolayı kaybederseniz geri getirilemiyor; Neon panosundan rolün
+parolasını sıfırlayıp yeni adresi almanız gerekiyor.
 
 Bu adres veritabanının kullanıcı adını ve parolasını taşıyor. Sohbete,
 ekran görüntüsüne, Git'e girmesin.
@@ -59,8 +93,19 @@ ekran görüntüsüne, Git'e girmesin.
 git clone <depo> sahra && cd sahra
 npm install
 
-DATABASE_URL='<Neon adresi>' npm run goc
+# DOĞRUDAN adres: içinde `-pooler` GEÇMEYEN olan (bölüm 1).
+DATABASE_URL='<Neon doğrudan adresi>' npm run goc
 ```
+
+Komut zaman aşımına düşüyorsa ağınız PostgreSQL'in 5432 portunu
+kapatıyordur; kurumsal ağların ve bazı bulut ortamlarının çoğu
+kapatıyor. Neon aynı protokolü 443 üzerinden de konuşuyor:
+
+```bash
+DATABASE_URL='<Neon doğrudan adresi>' npm run goc -- --ws
+```
+
+Aynı SQL, aynı sıra, aynı denetimler; yalnızca taşıma değişiyor.
 
 Betik her dosyayı tek tek yazıyor ve **ilk hatada duruyor** — kalan
 göçleri de koşturmak yarım bir şema bırakır, üstelik asıl hata ekranda
@@ -106,11 +151,16 @@ psql "$DATABASE_URL" -c "\du" | grep -E 'anon|authenticated|service_role'
 koşardı.
 </details>
 
-> Bu adım boş bir PostgreSQL 16 veritabanında baştan sona denendi: 46
-> göç uygulandı, ardından veri katmanının veritabanına bağlanan 51 testi
-> — giriş, jeton, `/veri` okuma ve kiracı izolasyonu dahil — bu şemaya
-> karşı koştu. **Neon'un kendi örneğinde denenmedi;** beklenen tek fark
-> rol açma yetkisinde ve betiğin son satırı tam olarak onu denetliyor.
+> Bu adım iki yerde denendi. Boş bir **PostgreSQL 16** veritabanında 46
+> göç uygulandı ve ardından veri katmanının veritabanına bağlanan 51
+> testi — giriş, jeton, `/veri` okuma ve kiracı izolasyonu dahil — bu
+> şemaya karşı koştu. Sonra gerçek bir **Neon** örneğinde (PostgreSQL
+> 18.6, Frankfurt) aynı 46 göç uygulandı: 43 tablo, 100 fonksiyon, üç
+> rol — yerel kurulumla birebir aynı. Neon'da fazladan görünen tek
+> fonksiyon `fips_mode()`, o da pgcrypto'nun kendi fonksiyonu.
+> İzolasyon da orada ayrıca sınandı: kullanıcı kendi işletmesini
+> görüyor, başkasınınkini ne okuyabiliyor ne güncelleyebiliyor ne de
+> ona satır ekleyebiliyor.
 
 ---
 
@@ -137,7 +187,7 @@ Production (ve isterseniz Preview) için ekleyin.
 
 | Ad | Değer | Nerede okunuyor |
 | --- | --- | --- |
-| `DATABASE_URL` | Neon adresi | Sunucu |
+| `DATABASE_URL` | Neon **havuzlu** adresi (`-pooler` geçen) | Sunucu |
 | `JWT_SECRET` | 32+ karakter rastgele | Sunucu |
 | `VITE_SUNUCU_MODU` | `1` | **Derleme sırasında** |
 
@@ -194,10 +244,14 @@ dönüyorsa `vercel.json` dağıtılmamış demektir.
 uygulamanın kendi koduyla üretiliyor.
 
 ```bash
-JWT_SECRET='<JWT_SECRET>' npx tsx -e "
+npx tsx -e "
 import('./api/_kimlik.ts').then(m => m.sifreyiKarmala('<ILK_SIFRE>')).then(console.log)
 "
 ```
+
+`scrypt$16384$8$1$...` ile başlayan bir dize veriyor. Karma kendi
+tuzunu üretiyor; `JWT_SECRET` bu adımda GEREKMİYOR (o yalnızca oturum
+jetonlarını imzalıyor).
 
 Çıkan karmayla kullanıcıyı açın:
 
@@ -205,8 +259,8 @@ import('./api/_kimlik.ts').then(m => m.sifreyiKarmala('<ILK_SIFRE>')).then(conso
 psql "$DATABASE_URL" -c "select public.kullanici_ac('siz@ornek.com', '<URETILEN_KARMA>')"
 ```
 
-`profiles` satırı tetikleyiciyle kendiliğinden açılıyor. Panele girip
-**Firmalarım** ekranından işletmenizi ekleyin.
+`profiles` satırı tetikleyiciyle kendiliğinden açılıyor ve rolü `owner`
+oluyor. Panele girip **Firmalarım** ekranından işletmenizi ekleyin.
 
 ---
 
