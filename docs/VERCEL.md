@@ -43,8 +43,42 @@ geçmek gerekiyor. Neon'un ücretsiz planında böyle bir kısıt yok.
 1. <https://neon.tech> üzerinde hesap açın, bir proje oluşturun.
    Bölge olarak `aws-eu-central-1` (Frankfurt) seçin: Türkiye'ye en
    yakın olanı, her sorguda gidip gelen gecikmeyi bu belirliyor.
-2. **Connection string**'i kopyalayın. `postgres://...` ile başlayan,
-   `sslmode=require` ile biten uzun bir adres.
+2. Proje panosunda (Dashboard) **Connect** düğmesine basın.
+   Açılan pencerede branch (`main`), veritabanı ve rol seçili gelir;
+   altta bağlantı adresi ve yanında kopyalama düğmesi var.
+
+### İKİ AYRI ADRES KOPYALAYIN
+
+Pencerede **Connection pooling** anahtarı var ve iki farklı adres
+üretiyor. İkisi de lazım, ama ayrı işler için:
+
+| Anahtar | Adreste | Nerede kullanılacak |
+| --- | --- | --- |
+| Açık (varsayılan) | `...-pooler.eu-central-1.aws.neon.tech` | **Vercel'deki `DATABASE_URL`** (bölüm 4) |
+| Kapalı | `-pooler` yok | **Göçler** (bölüm 2) |
+
+Neden ayrı: Vercel her istek için yeni bir fonksiyon örneği açabiliyor
+ve her örnek kendi bağlantısını kuruyor; havuzsuz adres veritabanının
+bağlantı sınırını yoğun bir günde doldurur. Göçler ise tersini istiyor
+-- Neon'un kendi belgesi şema göçlerinde **doğrudan** (havuzsuz) adresi
+öneriyor, çünkü havuz işlem kipinde bazı yönetim ifadeleri beklendiği
+gibi çalışmıyor.
+
+Uygulamanın havuzla sorunu yok: `api/_pg.ts` rolü ve kimliği `set local`
+ile ve her zaman bir işlemin İÇİNDE ayarlıyor (`begin` ... `commit`).
+İşlem kipindeki havuz, işlem boyunca aynı sunucu bağlantısını ayırıyor
+ve `set local` işlem bitince geri alınıyor -- yani ayar ne kaybolur ne
+de sonraki isteğe sızar. Havuza uygun olmayan şey, işlem dışında
+yapılan kalıcı `set` çağrılarıydı; bu kodda öyle bir çağrı yok.
+
+Adres şuna benziyor (parola dahil):
+
+```
+postgresql://<rol>:<parola>@ep-xxxx-yyyy.eu-central-1.aws.neon.tech/neondb?sslmode=require
+```
+
+Parolayı kaybederseniz geri getirilemiyor; Neon panosundan rolün
+parolasını sıfırlayıp yeni adresi almanız gerekiyor.
 
 Bu adres veritabanının kullanıcı adını ve parolasını taşıyor. Sohbete,
 ekran görüntüsüne, Git'e girmesin.
@@ -59,7 +93,8 @@ ekran görüntüsüne, Git'e girmesin.
 git clone <depo> sahra && cd sahra
 npm install
 
-DATABASE_URL='<Neon adresi>' npm run goc
+# DOĞRUDAN adres: içinde `-pooler` GEÇMEYEN olan (bölüm 1).
+DATABASE_URL='<Neon doğrudan adresi>' npm run goc
 ```
 
 Betik her dosyayı tek tek yazıyor ve **ilk hatada duruyor** — kalan
@@ -137,7 +172,7 @@ Production (ve isterseniz Preview) için ekleyin.
 
 | Ad | Değer | Nerede okunuyor |
 | --- | --- | --- |
-| `DATABASE_URL` | Neon adresi | Sunucu |
+| `DATABASE_URL` | Neon **havuzlu** adresi (`-pooler` geçen) | Sunucu |
 | `JWT_SECRET` | 32+ karakter rastgele | Sunucu |
 | `VITE_SUNUCU_MODU` | `1` | **Derleme sırasında** |
 
