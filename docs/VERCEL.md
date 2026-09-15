@@ -97,6 +97,16 @@ npm install
 DATABASE_URL='<Neon doğrudan adresi>' npm run goc
 ```
 
+Komut zaman aşımına düşüyorsa ağınız PostgreSQL'in 5432 portunu
+kapatıyordur; kurumsal ağların ve bazı bulut ortamlarının çoğu
+kapatıyor. Neon aynı protokolü 443 üzerinden de konuşuyor:
+
+```bash
+DATABASE_URL='<Neon doğrudan adresi>' npm run goc -- --ws
+```
+
+Aynı SQL, aynı sıra, aynı denetimler; yalnızca taşıma değişiyor.
+
 Betik her dosyayı tek tek yazıyor ve **ilk hatada duruyor** — kalan
 göçleri de koşturmak yarım bir şema bırakır, üstelik asıl hata ekranda
 yukarıda kaybolurdu. Sonunda rolleri ve tablo sayısını kendisi
@@ -141,11 +151,16 @@ psql "$DATABASE_URL" -c "\du" | grep -E 'anon|authenticated|service_role'
 koşardı.
 </details>
 
-> Bu adım boş bir PostgreSQL 16 veritabanında baştan sona denendi: 46
-> göç uygulandı, ardından veri katmanının veritabanına bağlanan 51 testi
-> — giriş, jeton, `/veri` okuma ve kiracı izolasyonu dahil — bu şemaya
-> karşı koştu. **Neon'un kendi örneğinde denenmedi;** beklenen tek fark
-> rol açma yetkisinde ve betiğin son satırı tam olarak onu denetliyor.
+> Bu adım iki yerde denendi. Boş bir **PostgreSQL 16** veritabanında 46
+> göç uygulandı ve ardından veri katmanının veritabanına bağlanan 51
+> testi — giriş, jeton, `/veri` okuma ve kiracı izolasyonu dahil — bu
+> şemaya karşı koştu. Sonra gerçek bir **Neon** örneğinde (PostgreSQL
+> 18.6, Frankfurt) aynı 46 göç uygulandı: 43 tablo, 100 fonksiyon, üç
+> rol — yerel kurulumla birebir aynı. Neon'da fazladan görünen tek
+> fonksiyon `fips_mode()`, o da pgcrypto'nun kendi fonksiyonu.
+> İzolasyon da orada ayrıca sınandı: kullanıcı kendi işletmesini
+> görüyor, başkasınınkini ne okuyabiliyor ne güncelleyebiliyor ne de
+> ona satır ekleyebiliyor.
 
 ---
 

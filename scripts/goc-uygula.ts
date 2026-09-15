@@ -21,6 +21,14 @@
  *
  * Kullanım:
  *   DATABASE_URL='postgres://...' npm run goc
+ *   DATABASE_URL='postgres://...' npm run goc -- --ws
+ *
+ * `--ws`: bağlantıyı 5432 yerine WEBSOCKET (443) üzerinden kurar.
+ * Kurumsal ağların ve bazı bulut ortamlarının çoğu 5432'yi kapatıyor;
+ * o durumda normal sürücü sessizce zaman aşımına düşüyor. Neon aynı
+ * Postgres protokolünü 443'ten de konuşuyor ve sürücü (`Client`) `pg`
+ * ile aynı arayüzü sunduğu için betiğin geri kalanı değişmiyor.
+ * Yalnızca Neon'da çalışır.
  *
  * DATABASE_URL veritabanının kullanıcı adını ve parolasını taşıyor;
  * komut geçmişine düşmesini istemiyorsanız `.env.local` dosyasına
@@ -29,13 +37,50 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Client } from 'pg';
+import { Client as PgClient } from 'pg';
 
 const KOK = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIZIN = join(KOK, 'supabase', 'migrations');
 
 /** Kurulumun tamamlandığını gösteren asgari işaretler. */
 const BEKLENEN_ROLLER = ['anon', 'authenticated', 'service_role'];
+
+/** `--ws` verildi mi? */
+const websocket = process.argv.includes('--ws');
+
+/**
+ * Bağlantıyı kuracak istemci.
+ *
+ * İki sürücü de `pg` arayüzünü sunuyor (`connect`, `query`, `end`), o
+ * yüzden seçim yalnızca burada yapılıyor; çağıran taraf farkı
+ * görmüyor.
+ */
+async function istemciAc(url: string): Promise<{
+  query: PgClient['query']; end: () => Promise<void>;
+}> {
+  if (!websocket) {
+    const istemci = new PgClient({ connectionString: url, ssl: tls(url) });
+    await istemci.connect();
+    return istemci;
+  }
+  const { Client, neonConfig } = await import('@neondatabase/serverless');
+  // Node 22'den beri WebSocket yerleşik; ayrı bir paket gerekmiyor.
+  neonConfig.webSocketConstructor = WebSocket as never;
+  const istemci = new Client(url);
+  await istemci.connect();
+  return istemci as unknown as { query: PgClient['query']; end: () => Promise<void> };
+}
+
+/**
+ * Neon ve Vercel Postgres TLS zorunlu tutuyor. Adresin kendisi karar
+ * veriyor; elle bayrak yok ki yanlışlıkla üretimde kapatılmasın
+ * (api/_pg.ts ile aynı kural).
+ */
+function tls(url: string): { rejectUnauthorized: boolean } | undefined {
+  return /\bsslmode=require\b|neon\.tech|vercel-storage\.com/.test(url)
+    ? { rejectUnauthorized: true }
+    : undefined;
+}
 
 function adres(): string {
   const deger = process.env.DATABASE_URL?.trim();
@@ -70,22 +115,19 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const istemci = new Client({
-    connectionString: url,
-    /*
-      Neon ve Vercel Postgres TLS zorunlu tutuyor. Adresin kendisi karar
-      veriyor; elle bayrak yok ki yanlışlıkla üretimde kapatılmasın
-      (api/_pg.ts ile aynı kural).
-    */
-    ssl: /\bsslmode=require\b|neon\.tech|vercel-storage\.com/.test(url)
-      ? { rejectUnauthorized: true }
-      : undefined,
-  });
-
+  let istemci: Awaited<ReturnType<typeof istemciAc>>;
   try {
-    await istemci.connect();
+    istemci = await istemciAc(url);
   } catch (e) {
     console.error(`Bağlanılamadı: ${gizle(String(e))}`);
+    if (!websocket) {
+      console.error(
+        '\nBağlantı zaman aşımına düştüyse ağınız 5432 portunu kapatıyor'
+        + ' olabilir. Neon kullanıyorsanız aynı komutu `-- --ws` ekleyerek'
+        + ' deneyin; bağlantı 443 üzerinden kurulur:\n'
+        + "  DATABASE_URL='...' npm run goc -- --ws",
+      );
+    }
     process.exit(1);
   }
 
