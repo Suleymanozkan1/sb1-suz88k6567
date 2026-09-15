@@ -1,0 +1,32 @@
+{
+  /*
+    Vercel fonksiyonlarının tip denetimi.
+
+    NEDEN AYRI BİR PROJE. `@vercel/node` her uç noktayı KENDİ ayarlarıyla
+    derliyor ve modül çözümlemesi node16: uzantısız göreli içe aktarım
+    kabul edilmiyor. Depodaki öteki projeler `bundler` çözümlemesi
+    kullandığı için aynı dosya orada sorunsuz derleniyor. Bu fark bir kez
+    üretim dağıtımını düşürdü: `src/lib/anket.ts` içindeki `'../types'`
+    yerelde geçti, Vercel'de geçmedi.
+
+    `api/` klasörü `src/` içinden birkaç saf modül kullanıyor (anket
+    puanlaması, WhatsApp çözümleyicisi). Kural bu yüzden `src`'in
+    tamamına değil, yalnızca API'den ERİŞİLEBİLEN dosyalara uygulanıyor;
+    derleyici bağımlılıkları kendisi izliyor.
+
+    `npm run typecheck` bunu da çalıştırıyor.
+  */
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "node16",
+    "moduleResolution": "node16",
+    "target": "es2022",
+    "lib": ["es2023", "dom"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  },
+  "include": ["api/**/*.ts"],
+  "exclude": ["api/**/*.test.ts"]
+}

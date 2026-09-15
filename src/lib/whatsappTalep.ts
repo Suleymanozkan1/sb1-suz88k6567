@@ -20,7 +20,7 @@
  * Çözümleyici hiçbir alanı uydurmuyor: emin olamadığını boş bırakıp ham
  * metni not olarak taşıyor. Kaydı açan kişi eksiği görüp tamamlıyor.
  */
-import type { OrganizationType } from '../types';
+import type { OrganizationType } from '../types/index.js';
 
 export interface WhatsappTalep {
   name: string;
