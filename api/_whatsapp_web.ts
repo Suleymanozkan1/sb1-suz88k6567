@@ -97,9 +97,19 @@ export async function baglan(qrGeldi?: (qr: string) => void): Promise<Durum> {
     Baileys çalışma anında yükleniyor: WhatsApp yolu kapalıysa 61 MB'lık
     bağımlılık hiç belleğe alınmasın ve kurulmamışsa sunucu açılışı
     bundan etkilenmesin.
+
+    PAKET ADI DEĞİŞKENDEN OKUNUYOR, düz metin değil. Düz metin yazıldığında
+    paketleyiciler çağrıyı İZLİYOR ve bağımlılığı çalıştırılmasa bile
+    pakete gömüyor: Vercel'in fonksiyon derleyicisi 61 MB'ı `sms-queue`
+    fonksiyonunun içine koyuyordu. Oysa WhatsApp Web sunucusuz ortamda
+    hiç çalışmıyor -- sürekli açık bir süreç ve kalıcı oturum klasörü
+    istiyor (docs/VERCEL.md bölüm 0). Değişken kullanılınca paketleyici
+    adı çözemiyor, modül yalnızca gerçekten çalıştığı yerde -- kendi
+    sunucumuzda, `require` ile -- yükleniyor.
   */
+  const PAKET = '@whiskeysockets/baileys';
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const baileys = require('@whiskeysockets/baileys') as {
+  const baileys = require(PAKET) as {
     default: (ayar: Record<string, unknown>) => Soket;
     useMultiFileAuthState: (dizin: string) => Promise<{ state: unknown; saveCreds: () => Promise<void> }>;
     DisconnectReason: { loggedOut: number };

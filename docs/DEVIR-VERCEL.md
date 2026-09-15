@@ -17,55 +17,36 @@ Son güncelleme: 15 Eylül 2026.
 | İlk panel kullanıcısı | **Açıldı.** Giriş yolu (`kimlik_bul` + şifre doğrulama) sınandı |
 | Kod, testler | **Temiz.** 85 dosya / 1807 test, `tsc -b`, eslint, `vercel-build` |
 | Vercel ortam değişkenleri | Kullanıcı panelden girdi (doğrulanmadı) |
-| **Vercel dağıtımı** | **BOZUK.** 21 saattir her dağıtım Error |
+| **Vercel dağıtımı** | Üç sebep de kapatıldı; son dağıtım bekleniyor |
 
 ---
 
-## Asıl sorun
+## Çözülen sorun (15 Eylül)
 
-`vercel.json`, PR #55 ile `api/` klasöründeki **27 uç noktayı**
-`@vercel/node` ile yayımlamaya başladı. O commit'ten (`9dc06c0`) itibaren
-**hiçbir dağıtım geçmedi.** Canlı site hâlâ ondan önceki derleme.
+Dağıtım `9dc06c0`'dan itibaren 21 saat boyunca düştü. Üç ayrı sebep
+vardı; üçü de kapatıldı:
 
-Derlemeler 7-10 dakika sürüp Error veriyor. Bu süre tip hatasına
-benzemiyor (o bir dakikada düşer); 27 fonksiyonun ayrı ayrı
-paketlenmesinden geliyor.
+1. **`'../types'` uzantısız içe aktarımı** (PR #58). `@vercel/node`
+   node16 çözümlemesi kullanıyor, klasör kısayolunu kabul etmiyor.
+2. **`.at(-1)` çağrısı** (PR #60). ES2022 eki; Vercel'in fonksiyon
+   derleyicisi tanımıyor. Bu ikisini `tsconfig.vercel.json` koruyor
+   (`npm run typecheck` çalıştırıyor).
+3. **ASIL SEBEP: fonksiyon sayısı.** Ücretsiz plan bir dağıtımda en
+   fazla **12 sunucusuz fonksiyon** kabul ediyor; her uç nokta ayrı
+   yayımlandığı için 27 tane vardı. Hata derleme günlüğünde GÖRÜNMÜYOR,
+   Vercel onu ayrıca bildiriyor: "No more than 12 Serverless Functions
+   can be added to a Deployment on the Hobby plan."
 
-### Bilinen ve kapatılan bir sebep
+Çözüm: `api/index.ts` tek dağıtıcı. `sunucu/rotalar.ts` tablosunu okuyup
+isteği doğru işleyiciye götürüyor; asıl yol `vercel.json` kuralının
+koyduğu `__yol` parametresinden geliyor ve istek o yolla yeniden
+kuruluyor, böylece işleyiciler kendi sunucumuzdakiyle aynı isteği
+görüyor. Fonksiyon sayısı 27'den 4'e indi (dağıtıcı + üç tanıtım ucu).
 
-`src/lib/anket.ts` ve `src/lib/whatsappTalep.ts` içindeki `'../types'`
-uzantısız içe aktarımı. `@vercel/node` node16 çözümlemesi kullanıyor ve
-klasör kısayolunu kabul etmiyor. PR #58 ile düzeltildi ve
-`tsconfig.vercel.json` + `npm run typecheck` ile korumaya alındı.
-
-**Ama bu tek sebep değildi:** düzeltmeyi taşıyan `95127f3` de Error
-verdi. Geriye en az bir sebep daha kaldı ve NE OLDUĞU BİLİNMİYOR.
-
-### İlk bakılacak yer
-
-Başarısız bir dağıtımın **Build Logs** çıktısının sonu. Bu görülmeden
-atılacak her adım tahmindir.
-
-```bash
-vercel inspect --logs <dağıtım-url>
-# ya da
-vercel logs <dağıtım-url>
-```
-
-### Güçlü şüpheliler (doğrulanmadı)
-
-1. **Fonksiyon boyutu.** `api/sms-queue.ts` → `api/_whatsapp_web.ts` →
-   `@whiskeysockets/baileys` (14 MB + bağımlılıkları) çekiyor. Vercel'in
-   fonksiyon boyut sınırı aşılıyor olabilir. Not: WhatsApp Web zaten
-   Vercel'de ÇALIŞMIYOR (sürekli açık süreç ve oturum klasörü istiyor,
-   bkz. `docs/VERCEL.md` bölüm 0) -- yani o bağımlılığı Vercel
-   paketinden çıkarmak işlevsel bir kayıp değil.
-2. **27 ayrı `builds` girdisi.** Bu eski (legacy) biçim. Vercel'in
-   güncel yolu dosya sistemi yönlendirmesi ya da tek bir `functions`
-   ayarı. Yeniden yazmak derlemeyi hem hızlandırır hem sadeleştirir.
-3. **Derleme süresi/bellek sınırı.**
-
----
+Ayrıca WhatsApp Web (Baileys, 61 MB) paketten çıkarıldı: paket adı
+değişkenden okunuyor, paketleyici izleyemiyor. Vercel'de zaten
+çalışmayan bir bağımlılık `sms-queue` fonksiyonunu 7,5 MB'a
+çıkarıyordu; şimdi 0,18 MB.
 
 ## Değiştirilirken dikkat edilecekler
 
