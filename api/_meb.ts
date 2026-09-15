@@ -224,7 +224,13 @@ export function takvimiCoz(metin: string): OkulGunu[] {
     return k.includes('tamamlanacak') || k.includes('sona erecek');
   });
   const bitisTarihleri = bitisAdaylari.flatMap((c) => tarihleriAyikla(c, yil));
-  const enGec = bitisTarihleri.sort().at(-1);
+  /*
+    `.at(-1)` yerine dizin: `at` ES2022 ve Vercel'in fonksiyon
+    derleyicisi daha eski bir `lib` ile çalışıyor. Boş dizide ikisi de
+    `undefined` veriyor, davranış aynı.
+  */
+  const sirali = bitisTarihleri.sort();
+  const enGec = sirali[sirali.length - 1];
   /*
     Mayıs-Ağustos sınırı bir güvenlik ağı: çözümleme kayarsa ocak ayındaki
     bir tarih "okullar kapanıyor" diye yazılmasın.
