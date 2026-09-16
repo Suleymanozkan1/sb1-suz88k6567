@@ -19,6 +19,7 @@
     "baslat": "node sunucu-dist/sunucu/baslat.js",
     "vercel-build": "tsc -b && vite build",
     "demo:veri": "tsx scripts/demo-veri-uret.ts",
+    "demo-hesap": "tsx scripts/demo-hesap.ts",
     "goc": "tsx scripts/goc-uygula.ts"
   },
   "dependencies": {

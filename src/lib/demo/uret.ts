@@ -17,11 +17,13 @@
  * hata çıktığında yeniden üretilebiliyor.
  */
 import type {
-  CashFlowEntry, CustomerLead, OrganizationType, Payment, PaymentMethod,
+  CashFlowEntry, CustomerLead, LeadChannel, OrganizationType, Payment, PaymentMethod,
   Reservation, ReservationExpense, ReservationStatus, SessionSlot,
 } from '../../types';
 import { VARSAYILAN_LEAD_DURUMLARI } from '../../types';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../data/constants';
+import {
+  ESKI_LEAD_CHANNELS, EXPENSE_CATEGORIES, INCOME_CATEGORIES, LEAD_CHANNELS,
+} from '../../data/constants';
 
 /**
  * Tanıtım adaylarının durum kodları.
@@ -58,7 +60,23 @@ const ILLER: [string, string][] = [
   ['Konya', 'Meram'], ['Konya', 'Selçuklu'], ['Ankara', 'Çankaya'],
   ['İstanbul', 'Kadıköy'], ['İzmir', 'Bornova'], ['Antalya', 'Muratpaşa'],
 ];
-const KANALLAR = ['Instagram', 'Referans', 'Tabela', 'Google', 'WhatsApp', 'Diğer'];
+/*
+  KANALLAR TANIMLI LİSTEDEN GELİYOR, elle yazılmıyor.
+
+  Burada düz bir dizi vardı ve içinde 'Tabela' geçiyordu -- ne
+  `LEAD_CHANNELS` listesinde ne de veritabanındaki `lead_channel`
+  türünde böyle bir değer var. Dizi `string[]` olduğu için derleyici de
+  susuyordu. Tarayıcı deposu doğrulama yapmadığından tanıtım kipinde
+  yıllarca sorun çıkarmadı; aynı veri veritabanına yazılmak istendiğinde
+  "invalid input value for enum lead_channel" ile durdu.
+
+  Artık tip `LeadChannel[]`: listede olmayan bir değer yazıldığında
+  derleme düşüyor. Eski kanallar da katılıyor, çünkü tanıtım verisi
+  gerçek bir kayıt havuzunu taklit ediyor ve orada eski kayıtlar da var.
+*/
+const KANALLAR: LeadChannel[] = [...LEAD_CHANNELS, ...ESKI_LEAD_CHANNELS];
+/** "Diğer" kanalının açıklaması; kısıt boş bırakılmasına izin vermiyor. */
+const DIGER_KANAL_ACIKLAMALARI = ['Tabela', 'Fuar', 'Tanıdık esnaf', 'Gazete ilanı'];
 const ADLAR = [
   'Ahmet', 'Elif', 'Mehmet', 'Zeynep', 'Burak', 'Selin', 'Emre', 'Hatice',
   'Yusuf', 'Merve', 'Kerem', 'Ayşe', 'Volkan', 'Fatma', 'Ali', 'Ceren',
@@ -205,6 +223,7 @@ export function demoUret(ayar: UretimAyari = {}): DemoVeri {
     const ilVar = i % 11 !== 0;
     const [city, district] = ilVar ? sec(ILLER) : ['', ''];
     const kanalVar = i % 9 !== 0;
+    const kanal = kanalVar ? sec(KANALLAR) : undefined;
 
     const ad = `${sec(ADLAR)} ${sec(SOYADLAR)}`;
     const id = `rez_${i}`;
@@ -240,7 +259,16 @@ export function demoUret(ayar: UretimAyari = {}): DemoVeri {
       services: [],
       city: city || undefined,
       district: district || undefined,
-      sourceChannel: kanalVar ? sec(KANALLAR) : undefined,
+      /*
+        "Diğer" seçildiğinde AÇIKLAMA DA yazılıyor. Veritabanı bunu
+        kısıtla şart koşuyor (`reservations_source_detail_required`) ve
+        sebebi haklı: raporda "Diğer 23 kayıt" satırını görüp içine
+        bakamamak, alanı hiç tutmamakla aynı kapıya çıkıyor. Tanıtım
+        verisi bu kuralı çiğniyordu; tarayıcı deposu kısıt uygulamadığı
+        için fark edilmemişti.
+      */
+      sourceChannel: kanal,
+      sourceDetail: kanal === 'Diğer' ? sec(DIGER_KANAL_ACIKLAMALARI) : undefined,
       createdAt: `${sozlesmeGunu}T09:00:00.000Z`,
       updatedAt: `${sozlesmeGunu}T09:00:00.000Z`,
     } as Reservation);

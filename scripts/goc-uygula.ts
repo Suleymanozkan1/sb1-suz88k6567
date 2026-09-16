@@ -37,7 +37,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Client as PgClient } from 'pg';
+import { istemciAc as baglantiAc, type Baglanti } from './_baglanti.js';
 
 const KOK = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIZIN = join(KOK, 'supabase', 'migrations');
@@ -47,40 +47,6 @@ const BEKLENEN_ROLLER = ['anon', 'authenticated', 'service_role'];
 
 /** `--ws` verildi mi? */
 const websocket = process.argv.includes('--ws');
-
-/**
- * Bağlantıyı kuracak istemci.
- *
- * İki sürücü de `pg` arayüzünü sunuyor (`connect`, `query`, `end`), o
- * yüzden seçim yalnızca burada yapılıyor; çağıran taraf farkı
- * görmüyor.
- */
-async function istemciAc(url: string): Promise<{
-  query: PgClient['query']; end: () => Promise<void>;
-}> {
-  if (!websocket) {
-    const istemci = new PgClient({ connectionString: url, ssl: tls(url) });
-    await istemci.connect();
-    return istemci;
-  }
-  const { Client, neonConfig } = await import('@neondatabase/serverless');
-  // Node 22'den beri WebSocket yerleşik; ayrı bir paket gerekmiyor.
-  neonConfig.webSocketConstructor = WebSocket as never;
-  const istemci = new Client(url);
-  await istemci.connect();
-  return istemci as unknown as { query: PgClient['query']; end: () => Promise<void> };
-}
-
-/**
- * Neon ve Vercel Postgres TLS zorunlu tutuyor. Adresin kendisi karar
- * veriyor; elle bayrak yok ki yanlışlıkla üretimde kapatılmasın
- * (api/_pg.ts ile aynı kural).
- */
-function tls(url: string): { rejectUnauthorized: boolean } | undefined {
-  return /\bsslmode=require\b|neon\.tech|vercel-storage\.com/.test(url)
-    ? { rejectUnauthorized: true }
-    : undefined;
-}
 
 function adres(): string {
   const deger = process.env.DATABASE_URL?.trim();
@@ -92,6 +58,11 @@ function adres(): string {
     process.exit(1);
   }
   return deger;
+}
+
+/** Bağlantı ortak modülden; TLS ve WebSocket kararı orada. */
+async function istemciAc(url: string): Promise<Baglanti> {
+  return baglantiAc(url, websocket);
 }
 
 /**

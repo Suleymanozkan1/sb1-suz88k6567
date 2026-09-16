@@ -164,7 +164,18 @@ export function ekKayitlar(ayar: EkAyari): EkKayitlar {
     Tedarikçi atamaları. Yalnızca HİZMET kalemleri atanabilir; ürün
     (su, gazoz) stoktan düşer, organizasyona atanmaz.
   */
-  const hizmetler = vendors.filter((v) => v.kind === 'hizmet' && v.isActive);
+  /*
+    Tedarikçi AYNI İŞLETMENİN olmak zorunda.
+
+    Süzgeçte işletme yoktu: tanıtım verisinde iki işletme var ve atama
+    bir işletmenin rezervasyonuna öteki işletmenin tedarikçisini
+    bağlayabiliyordu. Tarayıcı deposu buna ses çıkarmıyor, veritabanı
+    çıkarıyor ("Tedarikçi bu işletmeye ait değil") -- ve haklı: iş
+    emrinde başka firmanın tedarikçisini görmek veriye güveni bitirir.
+  */
+  const hizmetler = vendors.filter(
+    (v) => v.kind === 'hizmet' && v.isActive && v.businessId === businessId,
+  );
   if (hizmetler.length > 0) {
     duzenlenecek.forEach((r, i) => {
       const kac = tam(1, Math.min(3, hizmetler.length));

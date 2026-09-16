@@ -264,6 +264,37 @@ oluyor. Panele girip **Firmalarım** ekranından işletmenizi ekleyin.
 
 ---
 
+## 6b. Demo hesabı
+
+Giriş ekranı demo hesabının e-postasını ve şifresini HERKESE gösteriyor.
+Hesabın veritabanındaki karşılığını bu komut kuruyor:
+
+```bash
+DATABASE_URL='postgres://...' npm run demo-hesap -- --ws
+```
+
+Veri `src/lib/seed.ts` içindeki `demoVeriSeti()` fonksiyonundan geliyor
+-- tarayıcı tanıtım kipinin kullandığı veri setinin ta kendisi. İki ayrı
+set tutulsaydı zamanla ayrışır, "demoda vardı canlıda yok" denen ekranlar
+çıkardı.
+
+**Komut aynı zamanda SIFIRLAMADIR.** Demo herkese açık ve herkes
+yazabiliyor; bozulması an meselesi. Komut önce demo kullanıcısını silip
+(şema `on delete cascade` ile bağlı) sıfırdan yazıyor. Ayda bir
+çalıştırmak yeterli.
+
+Yazılan kayıtlar: 2 işletme, 3 salon, 10 menü, 36 tedarikçi, 417
+rezervasyon, 602 tahsilat, 93 müşteri adayı, 90 fatura, 149 özel gün ve
+SMS/kuyruk/izin kayıtları.
+
+**Demo verisi gerçek müşteri verisiyle AYNI veritabanında.** Aradaki tek
+sınır satır güvenliği (RLS): demo hesabı ayrı bir kullanıcı ve ayrı
+işletmeler altında duruyor, politikalar da sahibe göre yazılı. Şifresi
+sitede açıkça yazan bir hesap olduğu için, RLS politikalarında açılacak
+bir boşluk doğrudan müşteri verisine erişim demek olur.
+
+---
+
 ## 7. Zamanlanmış görevler
 
 Sistemde 12 zamanlanmış görev var (`sunucu/rotalar.ts`). En sık çalışanı
