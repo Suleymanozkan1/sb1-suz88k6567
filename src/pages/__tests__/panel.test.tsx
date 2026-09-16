@@ -338,8 +338,18 @@ describe('Yeni rezervasyon formu', () => {
 
     await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Ödeme Tipi Testi');
     await user.type(screen.getByLabelText(/^Telefon/), '5321119988');
+    /*
+      TARİH TOHUMUN ARALIĞININ DIŞINDA.
+
+      Önce +400/+401 gün yazılıyordu. Tanıtım verisi 2025-03 ile 2028-03
+      arasına rezervasyon üretiyor ve üretim rastgele; o aralıktaki bir
+      güne aynı salon ve seansla düşen bir kayıt çıktığında form
+      "çakışma" diyerek kaydetmiyor, test de sebebi görünmeden düşüyordu.
+      Üretim aralığının ötesinde bir gün seçmek çakışmayı imkânsız
+      kılıyor.
+    */
     await user.clear(screen.getByLabelText(/^Tarih/));
-    await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 400));
+    await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 1200));
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '250');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '200000');
     await user.type(screen.getByLabelText('Kapora'), '50000');
@@ -359,8 +369,9 @@ describe('Yeni rezervasyon formu', () => {
 
     await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Kaporasız Kayıt');
     await user.type(screen.getByLabelText(/^Telefon/), '5321119977');
+    // Tohumun ürettiği aralığın dışında; gerekçe yukarıdaki testte.
     await user.clear(screen.getByLabelText(/^Tarih/));
-    await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 401));
+    await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 1201));
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '100');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '80000');
     await user.click(screen.getByRole('button', { name: /Kaydet/ }));

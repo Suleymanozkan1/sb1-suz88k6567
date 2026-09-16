@@ -173,11 +173,22 @@ export default function UyeGirisi() {
           </div>
 
           <aside className="md:col-span-2">
-            {isDemoMode && (
-              <div className="card p-6">
+            {/*
+              DEMO KARTI HER İKİ KİPTE DE GÖRÜNÜYOR.
+
+              Önce yalnızca `isDemoMode` iken çiziliyordu. Veritabanı
+              bağlanınca kart sessizce kayboldu: sistemi denemek isteyen
+              ziyaretçinin elinde hiçbir giriş bilgisi kalmadı. Demo
+              hesabı artık gerçek veritabanında da duruyor
+              (`scripts/demo-hesap.ts`), dolayısıyla kartın kaybolması
+              için bir sebep yok -- yalnızca ANLATTIĞI ŞEY değişiyor.
+            */}
+            <div className="card p-6">
                 <h2 className="font-heading text-base font-bold text-brand">Demo hesabı</h2>
                 <p className="mt-2 text-sm leading-relaxed">
-                  Veritabanı bağlı değil. Sistemi örnek verilerle incelemek için demo hesabını kullanabilirsiniz.
+                  {isDemoMode
+                    ? 'Veritabanı bağlı değil. Sistemi örnek verilerle incelemek için demo hesabını kullanabilirsiniz.'
+                    : 'Sistemi kendi verinizi girmeden incelemek için örnek verilerle dolu demo hesabını kullanabilirsiniz.'}
                 </p>
                 <dl className="mt-3 space-y-1 text-sm">
                   <div className="flex justify-between gap-2">
@@ -199,10 +210,9 @@ export default function UyeGirisi() {
                 >
                   Demo bilgilerini doldur
                 </button>
-              </div>
-            )}
+            </div>
 
-            <div className={`card p-6 ${isDemoMode ? 'mt-4' : ''}`}>
+            <div className="card p-6 mt-4">
               <h2 className="flex items-center gap-2 font-heading text-base font-bold text-brand">
                 <IconShield size={18} className="text-accent-ink" /> Güvenlik
               </h2>

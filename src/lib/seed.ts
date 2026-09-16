@@ -96,6 +96,26 @@ export function seedIfEmpty(): void {
   // Bayrağı olmayan ama verisi olan kurulum: dokunulmuyor.
   if (hasData && mevcut === 0) return;
 
+  for (const [anahtar, deger] of demoVeriSeti()) write(anahtar, deger);
+}
+
+/**
+ * Tanıtım veri setini ÜRETİR, hiçbir yere yazmaz.
+ *
+ * NEDEN AYRILDI. Aynı veri iki yere gidiyor: tanıtım kipinde tarayıcı
+ * belleğine (`seedIfEmpty`), gerçek kurulumda ise veritabanındaki demo
+ * hesabına (`scripts/demo-hesap.ts`). İkinci bir veri seti yazılsaydı
+ * demo hesabı ile tarayıcı demosu zamanla birbirinden ayrışır ve
+ * "demoda vardı, canlıda yok" denen ekranlar çıkardı.
+ *
+ * Saf: okuma yapmıyor, depoya dokunmuyor, yalnızca üretiyor. Anahtar
+ * sırası ÖNEMLİ -- veritabanına yazarken yabancı anahtar sırası buna
+ * dayanıyor (işletme salondan, salon rezervasyondan önce).
+ */
+export function demoVeriSeti(): [string, unknown][] {
+  const cikti: [string, unknown][] = [];
+  const koy = (anahtar: string, deger: unknown): void => { cikti.push([anahtar, deger]); };
+
   const now = new Date().toISOString();
   const ownerId = 'user_demo';
   const businessId = 'biz_demo';
@@ -132,9 +152,9 @@ export function seedIfEmpty(): void {
     instagram: undefined,
   };
 
-  write(KEYS.users, [owner, staff]);
+  koy(KEYS.users, [owner, staff]);
 
-  write(KEYS.businesses, [
+  koy(KEYS.businesses, [
     {
       id: businessId, ownerId, name: 'Grand Sahra Düğün ve Davet Salonu', category: 'Düğün Salonu',
       city: 'İstanbul', district: 'Beylikdüzü', phone: '5320001122', capacity: 600, currency: 'TL',
@@ -159,7 +179,7 @@ export function seedIfEmpty(): void {
     { id: 'hall_demo3', businessId: 'biz_demo2', name: 'Bahçe', capacity: 350,
       note: 'Havuz başı açık alan.', isActive: true, createdAt: now },
   ];
-  write(KEYS.halls, [
+  koy(KEYS.halls, [
     ...read<Hall[]>(KEYS.halls, []).filter((h) => !demoHalls.some((d) => d.id === h.id)),
     ...demoHalls,
   ]);
@@ -228,7 +248,7 @@ export function seedIfEmpty(): void {
       description: 'Geçmiş sezon fiyatı. Yeni sözleşmelerde kullanılmıyor.',
       isActive: false, createdAt: now },
   ];
-  write(KEYS.menus, [
+  koy(KEYS.menus, [
     ...read<Menu[]>(KEYS.menus, []).filter((m) => !demoMenus.some((d) => d.id === m.id)),
     ...demoMenus,
   ]);
@@ -316,7 +336,7 @@ export function seedIfEmpty(): void {
     urun('urun_demo17', businessId, 'Balon (100 lü)', 'Süsleme', 5, 10, 2, 20, 85),
     urun('urun_demo18', businessId, 'Konfeti', 'Süsleme', 1, 12, 0, 10, 40),
   ];
-  write(KEYS.vendors, [
+  koy(KEYS.vendors, [
     ...read<Vendor[]>(KEYS.vendors, []).filter((v) => !demoVendors.some((d) => d.id === v.id)),
     ...demoVendors,
   ]);
@@ -538,9 +558,9 @@ export function seedIfEmpty(): void {
   });
   paid.push(...hacim.payments);
 
-  write(KEYS.reservations, list);
-  write(KEYS.payments, paid);
-  write(KEYS.reservationExpenses, hacim.expenses);
+  koy(KEYS.reservations, list);
+  koy(KEYS.payments, paid);
+  koy(KEYS.reservationExpenses, hacim.expenses);
 
   const flow: CashFlowEntry[] = [...hacim.cashFlow];
   for (let i = 0; i < 14; i += 1) {
@@ -564,7 +584,7 @@ export function seedIfEmpty(): void {
       createdAt: now,
     });
   }
-  write(KEYS.cashflow, flow);
+  koy(KEYS.cashflow, flow);
 
   /*
     ÖZEL GÜNLER.
@@ -578,7 +598,7 @@ export function seedIfEmpty(): void {
     veriyi yazıyor (src/lib/demo/gunleriTazele.ts). Gömülü veri, ağ
     gelene kadar takvimin boş görünmemesi için.
   */
-  write(KEYS.specialDays, URETILMIS_GUNLER.map((g, i): SpecialDay => ({
+  koy(KEYS.specialDays, URETILMIS_GUNLER.map((g, i): SpecialDay => ({
     id: `ozelgun_demo_${i}`,
     day: g.day,
     label: g.label,
@@ -627,7 +647,7 @@ export function seedIfEmpty(): void {
       updatedAt: now,
     } as Invoice;
   });
-  write(KEYS.invoices, faturalar);
+  koy(KEYS.invoices, faturalar);
 
 
   /*
@@ -672,9 +692,9 @@ export function seedIfEmpty(): void {
     üç kayıtla bir şey anlatmıyor -- kazanılan/kaybedilen oranı ancak
     yüzlerce kayıtta anlamlı.
   */
-  write(KEYS.leads, [...adaylar, ...hacim.leads]);
+  koy(KEYS.leads, [...adaylar, ...hacim.leads]);
 
-  write(KEYS.leadMessages, adaylar.flatMap((a) => ([
+  koy(KEYS.leadMessages, adaylar.flatMap((a) => ([
     {
       id: `${a.id}_m1`, businessId, leadId: a.id, direction: 'gelen' as const,
       channel: 'whatsapp' as const,
@@ -690,7 +710,7 @@ export function seedIfEmpty(): void {
     },
   ])));
 
-  write(KEYS.leadStatusHistory, adaylar.map((a) => ({
+  koy(KEYS.leadStatusHistory, adaylar.map((a) => ({
     id: `${a.id}_d1`, leadId: a.id, fromStatus: null,
     toStatus: a.status, actorEmail: '', createdAt: now,
   })));
@@ -711,7 +731,7 @@ export function seedIfEmpty(): void {
     actorEmail: DEMO_CREDENTIALS.email,
   });
 
-  write(KEYS.sms, [
+  koy(KEYS.sms, [
     {
       id: 'sms_seed_0', businessId, to: '5321234567',
       body: 'Sayin Ahmet & Elif Yilmaz, rezervasyonunuz kayit edilmistir. Kod: 2026-1',
@@ -719,13 +739,15 @@ export function seedIfEmpty(): void {
     },
     ...ek.sms,
   ]);
-  write(KEYS.consents, ek.consents);
-  write(KEYS.queue, ek.queue);
-  write(KEYS.tasks, ek.tasks);
-  write(KEYS.resVendors, ek.resVendors);
-  write(KEYS.paymentEvents, ek.paymentEvents);
-  write(KEYS.paymentAlertRecipients, ek.recipients);
-  write(KEYS.quickReplies, ek.quickReplies);
-  write(KEYS.errorReports, ek.errorReports);
-  write(KEYS.whatsappAccounts, ek.whatsappAccounts);
+  koy(KEYS.consents, ek.consents);
+  koy(KEYS.queue, ek.queue);
+  koy(KEYS.tasks, ek.tasks);
+  koy(KEYS.resVendors, ek.resVendors);
+  koy(KEYS.paymentEvents, ek.paymentEvents);
+  koy(KEYS.paymentAlertRecipients, ek.recipients);
+  koy(KEYS.quickReplies, ek.quickReplies);
+  koy(KEYS.errorReports, ek.errorReports);
+  koy(KEYS.whatsappAccounts, ek.whatsappAccounts);
+
+  return cikti;
 }
