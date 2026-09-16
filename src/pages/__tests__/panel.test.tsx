@@ -1265,6 +1265,70 @@ describe('Rezervasyon tarafları', () => {
   });
 });
 
+describe('Rezervasyon menü ve ekler', () => {
+  it('birden fazla menü seçilebilir ve hepsi kaydedilir', async () => {
+    /*
+      Sözleşmeye çoğu zaman tek paket girmiyor: kına ayrı, düğün ayrı
+      anlaşılıyor. Tek seçim olduğunda ikincisi not alanına yazılıyor,
+      oradan da fiyata, programa ve sözleşmeye hiç yansımıyordu.
+    */
+    const user = userEvent.setup();
+    seedIfEmpty();
+    const before = (await getReservations(BIZ)).length;
+    renderPanel('/panel/rezervasyonlar/yeni');
+
+    await user.type(await screen.findByLabelText(/Ad Soyad \(sözleşmeyi imzalayan\)/), 'Çift Menü');
+    await user.type(screen.getByLabelText(/^Cep Telefonu/), '5321234577');
+    await user.type(screen.getByLabelText(/Davetli Sayısı/), '150');
+    await user.type(screen.getByLabelText(/Toplam Tutar/), '100000');
+
+    const kutular = screen.getAllByRole('checkbox', { name: /·/ });
+    expect(kutular.length).toBeGreaterThan(1);
+    await user.click(kutular[0]);
+    await user.click(kutular[1]);
+    // İkincisi işaretlenince birincisi DÜŞMEMELİ.
+    expect((kutular[0] as HTMLInputElement).checked).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    await waitFor(
+      async () => expect(await getReservations(BIZ)).toHaveLength(before + 1),
+      { timeout: 4000 },
+    );
+    const kayit = (await getReservations(BIZ)).find(
+      (r: Reservation) => r.customerName === 'Çift Menü',
+    )!;
+    expect(kayit.menuIds).toHaveLength(2);
+  });
+
+  it('bir hizmet işaretlenince genel toplam artar', async () => {
+    /*
+      `fiyatHesapla` çağrısı `ekler: 0` ile sabitlenmişti: kullanıcı
+      orkestrayı işaretliyor, genel toplam hiç değişmiyordu. Sözleşme
+      fiyatı bu kalemi içerdiği için öneri sistematik olarak düşük
+      çıkıyordu.
+    */
+    const user = userEvent.setup();
+    seedIfEmpty();
+    renderPanel('/panel/rezervasyonlar/yeni');
+
+    await user.type(await screen.findByLabelText(/Davetli Sayısı/), '100');
+    await user.type(screen.getByLabelText(/Fiyat Kişibaşı/), '1000');
+
+    const ozet = await screen.findByText('Genel Toplam');
+    const oncesi = ozet.parentElement?.textContent ?? '';
+
+    const hizmetKutulari = screen.getAllByRole('checkbox', { name: /^\+?[^·]+$/ })
+      .filter((k) => k.closest('fieldset')?.textContent?.includes('Pakete dahil hizmetler'));
+    expect(hizmetKutulari.length).toBeGreaterThan(0);
+    await user.click(hizmetKutulari[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Genel Toplam').parentElement?.textContent).not.toBe(oncesi);
+    });
+  });
+});
+
 /*
   PASİF ÜRÜN ÇIKTIYA GİRMEMELİ.
 

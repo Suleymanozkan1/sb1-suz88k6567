@@ -798,14 +798,11 @@ export default function RezervasyonForm() {
           </div>
 
           {/*
-            "Extralar" (hizmet kutucukları) kaldırıldı (madde 8). Sabit bir
-            liste her salona uymuyordu ve seçilen kutucuk hiçbir tutara
-            dönüşmüyordu; hizmetler artık Ürün ve Hizmet ekranında fiyatıyla
-            tanımlanıp Düğün İçi Giderler'e satır olarak giriyor.
-
-            Alanın kendisi kaldırılmadı: eski sözleşmelerde yazılı olan
-            hizmetler çıktıda görünmeye devam ediyor. Silinseydi imzalanmış
-            bir sözleşmenin içeriği sistemden kaybolurdu.
+            EXTRALAR BURADA DEĞİL. Sabit hizmet kutucukları (madde 8)
+            kaldırıldı; yerine formun altındaki "Pakete dahil hizmetler"
+            bölümü geldi ve seçenekler Ürün ve Hizmet listesinden,
+            fiyatlarıyla birlikte geliyor. Sabit liste her salona
+            uymuyordu ve seçilen kutucuk hiçbir tutara dönüşmüyordu.
           */}
         </fieldset>
 
@@ -823,8 +820,15 @@ export default function RezervasyonForm() {
               bunu bilmeyen kullanıcı ikinci menüyü seçtiğinde
               birincisi sessizce kayboluyor.
             */}
-            <Field id="menuIds" label="Menü / Paket (birden fazla seçilebilir)" className="md:col-span-2 lg:col-span-4">
-              <div id="menuIds" className="grid gap-2 rounded-md border border-line p-3 sm:grid-cols-2">
+            {/*
+              `Field` KULLANILMIYOR. O bileşen `label htmlFor` üretiyor;
+              bir etiket `div`'e bağlanamaz -- etikete tıklamak hiçbir
+              şey seçmez ve ekran okuyucu grubu duyurmaz. Kutucuk
+              listesinin doğru karşılığı `fieldset`/`legend`.
+            */}
+            <fieldset className="md:col-span-2 lg:col-span-4">
+              <legend className="field-label">Menü / Paket (birden fazla seçilebilir)</legend>
+              <div className="grid gap-2 rounded-md border border-line p-3 sm:grid-cols-2">
                 {menus.filter((m) => m.isActive || form.menuIds.includes(m.id)).map((m) => (
                   <label key={m.id} className="flex items-start gap-2 text-sm text-brand">
                     <input
@@ -848,7 +852,7 @@ export default function RezervasyonForm() {
                   <p className="text-sm text-brand-muted">Henüz menü tanımlanmamış.</p>
                 )}
               </div>
-            </Field>
+            </fieldset>
             {/*
               FİYAT GİRDİLERİ VE HESAPLANANLAR.
 
@@ -999,6 +1003,15 @@ export default function RezervasyonForm() {
                       )}
                     />
                     {h.name}
+                    {/*
+                      FİYAT YAZILIYOR. Bu kutucuklar artık genel toplamı
+                      değiştiriyor; tutarı görünmeseydi kullanıcı bir
+                      hizmeti işaretlediğinde toplamın neden değiştiğini
+                      anlayamazdı.
+                    */}
+                    {h.unitPrice > 0 && (
+                      <span className="ml-1 opacity-70">+{formatMoney(h.unitPrice, currency)}</span>
+                    )}
                   </label>
                 );
               })}
