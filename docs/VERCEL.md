@@ -389,3 +389,32 @@ yüklemiyor, veritabanına dokunmuyor:
   `detay` alanı hangi modülün yüklenemediğini yazıyor.
 - Bu yol da 500 dönüyorsa fonksiyon hiç açılmıyor: sorun kodda değil
   dağıtımda (`vercel.json`, derleme çıktısı, çalışma zamanı sürümü).
+
+**Değişkeni ekledim ama site hâlâ "Veritabanı yapılandırılmamış" diyor.**
+`curl https://<siteniz>/api/tani` çıktısına bakın; bu yol hangi
+değişkenin fonksiyona ULAŞTIĞINI söylüyor (değerleri değil, yalnızca
+var/yok):
+
+```json
+{"surum":"33dec3d","ortam":"production",
+ "ayar":{"DATABASE_URL":"var","JWT_SECRET":"yok","VITE_SUNUCU_MODU":"1"}}
+```
+
+Üç ayrı arıza aynı görünüyor, bu çıktı üçünü ayırıyor:
+
+- **`surum` beklediğiniz işleme değilse** yeniden dağıtım gerçekleşmemiş.
+  Panoda değişkeni değiştirmek YAYINDAKİ dağıtımı değiştirmiyor; değerler
+  dağıtım anında sabitleniyor. Yeni bir dağıtım şart -- `JWT_SECRET` gibi
+  çalışma anında okunan değerler için bile.
+- **`ortam` beklediğinizden başkaysa** değişkeni yanlış ortama (Preview /
+  Development) eklemişsiniz. Ekleme ekranındaki üç kutudan en azından
+  **Production** işaretli olmalı.
+- **Değer `"yok"` değil de BOŞ görünüyorsa** (`"VITE_SUNUCU_MODU": ""`)
+  değişken tanımlı ama değeri boş kalmış. Panoda adı görünür, dolu
+  sanırsınız; sistem `1` bekler, boş metin `1` değildir. Bu ikisi dışarıdan
+  ayırt edilemediği için tanı yolu `yok` ile boşu ayrı yazıyor.
+
+`VITE_SUNUCU_MODU` derleme sırasında pakete gömüldüğü için, düzelttikten
+sonra yeniden dağıtımda **"Use existing Build Cache" kutusunu
+işaretlemeyin**: önbellekle eski paket aynen geri gelir ve bayrak yine
+kapalı kalır.
