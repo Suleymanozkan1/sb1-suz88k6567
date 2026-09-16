@@ -33,6 +33,8 @@ import type { Reservation } from '../../types';
 
 const BIZ = 'biz_demo';
 const getReservations = (id: string) => localRepo.listReservations(id);
+const getMenus = (id: string) => localRepo.listMenus(id);
+const saveReservation = (r: Reservation) => localRepo.saveReservation(r);
 const getSmsLog = (id: string) => localRepo.listSms(id);
 const getColorSettings = (id: string) => localRepo.getColorSettings(id);
 
@@ -511,6 +513,29 @@ describe('Salon kiralama sözleşmesi', () => {
     expect(screen.getAllByText(target.customerName).length).toBeGreaterThan(0);
     expect(screen.getByText('Sözleşme No :')).toBeInTheDocument();
     expect(screen.getByText(target.code)).toBeInTheDocument();
+  });
+
+  it('seçilen menülerin HEPSİNİ sözleşmeye basar', async () => {
+    /*
+      Yalnızca ilki basılsaydı kınası ayrı, düğünü ayrı paketli bir
+      sözleşmenin yarısı kâğıda hiç girmezdi -- ve imzalanan kâğıt
+      eksik olurdu. Bu PR'ın tamamı çoklu menü için; sözleşme çıktısı
+      da onu izlemek zorunda.
+    */
+    seedIfEmpty();
+    const menuler = await getMenus(BIZ);
+    const ikisi = menuler.slice(0, 2);
+    expect(ikisi).toHaveLength(2);
+
+    const target = (await getReservations(BIZ))[0];
+    await saveReservation({ ...target, menuIds: ikisi.map((m) => m.id) });
+
+    renderPanel(`/panel/rezervasyonlar/${target.id}/sozlesme`);
+
+    await screen.findByRole('heading', { name: 'Grand Sahra Düğün ve Davet Salonu' });
+    for (const m of ikisi) {
+      expect(screen.getAllByText(m.name).length).toBeGreaterThan(0);
+    }
   });
 
   it('sözleşme şartlarının on altı maddesi çıktıda yer alır', async () => {

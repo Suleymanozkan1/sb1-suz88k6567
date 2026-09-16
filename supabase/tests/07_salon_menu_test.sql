@@ -121,8 +121,15 @@ values ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-0000000
               '11111111-cccc-0000-0000-000000000002'],
         'SA-A-0007', 'Iki Menu', '5321112299',
         '2027-07-04', 'Gece', 'Düğün', 100, 50000, 0);
-select array_length(menu_ids, 1) as iki_menu_IKI_OLMALI
-  from public.reservations where code = 'SA-A-0007';
+-- YAZDIRMAK DEĞİL, DENETLEMEK. Yalnızca select edilseydi psql 1 ya da
+-- NULL dönmesine aldırmaz, paket yine "GEÇTİ" derdi.
+do $$ begin
+  if (select array_length(menu_ids, 1)
+        from public.reservations
+       where code = 'SA-A-0007') is distinct from 2 then
+    raise exception 'BASARISIZ: iki menu saklanmadi';
+  end if;
+end $$;
 
 \echo '=== 5) Ayni isletmede ayni isimde iki salon olmamali ==='
 do $$ begin

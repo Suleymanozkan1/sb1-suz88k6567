@@ -130,12 +130,6 @@ export default function RezervasyonForm() {
     bir hizmet listesi tutulsaydı iki yerde iki farklı liste olurdu.
   */
   const { data: kalemler = [] } = useVendors();
-  // Yalnızca etkin HİZMET kalemleri: ürün (su, gazoz) stoktan düşer,
-  // sözleşmenin hizmet listesine girmez.
-  const hizmetler = useMemo(
-    () => kalemler.filter((k) => k.kind === 'hizmet' && k.isActive),
-    [kalemler],
-  );
   const saveMutation = useSaveReservation();
   const sendSmsMutation = useSendSms();
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -261,7 +255,7 @@ export default function RezervasyonForm() {
     const davetli = Number(form.guestCount) || 0;
     if (kisiBasi.length === selectedMenus.length) {
       const birimKurus = kisiBasi.reduce((t, m) => t + m.priceKurus, 0);
-      return `${formatMoney(kurusToLira(birimKurus), 'TL')} × ${davetli} kişi`;
+      return `${formatMoney(kurusToLira(birimKurus), currency)} × ${davetli} kişi`;
     }
     if (kisiBasi.length === 0) {
       return selectedMenus.length === 1 ? 'Sabit paket fiyatı' : `${selectedMenus.length} sabit paket toplamı`;
@@ -277,11 +271,27 @@ export default function RezervasyonForm() {
     fiyatı bu kalemleri içeriyor; hesabın içermemesi, önerilen tutarı
     sistematik olarak düşük gösteriyordu.
   */
+  /*
+    PASİFE ALINMIŞ AMA SEÇİLİ HİZMET DE SAYILIR. `hizmetler` yalnızca
+    etkin kalemleri taşıyor. Bir hizmet sonradan pasife alındığında adı
+    kayıtta kalıyor ama fiyatı toplamdan düşüyordu: imzalanmış bir
+    sözleşme açıldığında genel toplam kendiliğinden azalıyor, üstelik
+    kutucuk da listede görünmediği için kullanıcı nedenini bulamıyordu.
+  */
+  // Yalnızca HİZMET kalemleri: ürün (su, gazoz) stoktan düşer,
+  // sözleşmenin hizmet listesine girmez.
+  const secilebilirHizmetler = useMemo(
+    () => kalemler.filter(
+      (k) => k.kind === 'hizmet' && (k.isActive || form.services.includes(k.name)),
+    ),
+    [kalemler, form.services],
+  );
+
   const eklerToplami = useMemo(
-    () => hizmetler
+    () => secilebilirHizmetler
       .filter((h) => form.services.includes(h.name))
       .reduce((t, h) => t + h.unitPrice, 0),
-    [hizmetler, form.services],
+    [secilebilirHizmetler, form.services],
   );
 
   // Aynı tarih + seans için başka kayıt varsa uyar (veritabanında da kısıt vardır)
@@ -843,7 +853,7 @@ export default function RezervasyonForm() {
                       )}
                     />
                     <span>
-                      {m.name} · {formatMoney(kurusToLira(m.priceKurus), 'TL')}
+                      {m.name} · {formatMoney(kurusToLira(m.priceKurus), currency)}
                       {m.pricing === 'kisi_basi' ? ' / kişi' : ' sabit'}
                     </span>
                   </label>
@@ -932,7 +942,7 @@ export default function RezervasyonForm() {
                   onClick={() => update('totalAmount', String(suggestedTotal))}
                   className="btn-outline btn-sm"
                 >
-                  Menüye göre {formatMoney(suggestedTotal, 'TL')} uygula
+                  Menüye göre {formatMoney(suggestedTotal, currency)} uygula
                 </button>
                 <span className="ml-2 text-xs text-brand-muted">{oneriAciklamasi}</span>
               </div>
@@ -978,11 +988,11 @@ export default function RezervasyonForm() {
           burada ayrı bir liste tutulsaydı iki yerde iki farklı hizmet
           listesi olurdu.
         */}
-        {hizmetler.length > 0 && (
+        {secilebilirHizmetler.length > 0 && (
           <fieldset className="mt-6">
             <legend className="field-label">Pakete dahil hizmetler</legend>
             <div className="flex flex-wrap gap-2">
-              {hizmetler.map((h) => {
+              {secilebilirHizmetler.map((h) => {
                 const secili = form.services.includes(h.name);
                 return (
                   <label

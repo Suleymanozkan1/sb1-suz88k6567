@@ -102,6 +102,17 @@ export default function YeniRezervasyon() {
     return Number(metin.replace(/\./g, '').replace(',', '.'));
   }
 
+  /*
+    TL -> KURUŞ SINIRI. `fiyatHesapla` panelle birebir aynı sayıları
+    vermek için TL ile çalışıyor; `tutar` ise -- mobilin geri kalanı
+    gibi -- kuruş bekliyor ve girdisini 100'e bölüyor. Aradaki çevrim
+    atlandığında 300.000 ₺ ekrana "3.000 ₺" diye basılıyordu: yanlış
+    olduğu belli olmayan, sözleşme konuşulurken okunan bir rakam.
+  */
+  function tutarTl(deger: number): string {
+    return tutar(Math.round(deger * 100));
+  }
+
   async function kaydet() {
     setHata('');
     if (!musteri.trim()) { setHata('Müşteri adı giriniz.'); return; }
@@ -129,6 +140,23 @@ export default function YeniRezervasyon() {
     const kaporaKurus = kapora.trim() ? Math.round(sayi(kapora) * 100) : 0;
     if (!Number.isFinite(kaporaKurus) || kaporaKurus < 0) { setHata('Geçerli bir kapora giriniz.'); return; }
     if (kaporaKurus > tutarKurus) { setHata('Kapora toplam tutarı aşamaz.'); return; }
+    /*
+      FİYAT ALANLARI BURADA DOĞRULANIYOR. `fiyatHesapla` negatifi sıfıra
+      çekiyor, yani ekrandaki hesap DÜZGÜN görünüyor; ama kaydederken
+      girilen negatif değer olduğu gibi gönderiliyor ve veritabanındaki
+      `price_per_person >= 0` / `discount >= 0` kısıtları kaydı
+      reddediyor. Kullanıcı doğru görünen bir ekranla karşılaşıp
+      "Kayıt oluşturulamadı" hatası alıyordu -- nedenini gösteren
+      hiçbir şey olmadan.
+    */
+    const kisiBasiKurus = kisiBasiFiyat.trim() ? Math.round(sayi(kisiBasiFiyat) * 100) : undefined;
+    if (kisiBasiKurus !== undefined && (!Number.isFinite(kisiBasiKurus) || kisiBasiKurus < 0)) {
+      setHata('Kişi başı fiyat negatif olamaz.'); return;
+    }
+    const iskontoKurus = iskonto.trim() ? Math.round(sayi(iskonto) * 100) : undefined;
+    if (iskontoKurus !== undefined && (!Number.isFinite(iskontoKurus) || iskontoKurus < 0)) {
+      setHata('İskonto negatif olamaz.'); return;
+    }
     // "Diğer 23 kayıt" satırını raporda görüp içine bakamamak, alanı hiç
     // tutmamakla aynı kapıya çıkar.
     if (kanal === 'Diğer' && !kanalDetay.trim()) {
@@ -145,8 +173,8 @@ export default function YeniRezervasyon() {
         gelin, gelinTelefon: gelinTel, gelinMemleket,
         sozlesmeTarihi: sozlesmeTarihi || undefined,
         evTelefonu: evTelefonu || undefined,
-        kisiBasiFiyat: kisiBasiFiyat.trim() ? Math.round(sayi(kisiBasiFiyat) * 100) : undefined,
-        iskonto: iskonto.trim() ? Math.round(sayi(iskonto) * 100) : undefined,
+        kisiBasiFiyat: kisiBasiKurus,
+        iskonto: iskontoKurus,
         iskontoYuzdeMi,
         kdvOrani: Number(kdvOrani) || 0,
       });
@@ -277,8 +305,8 @@ export default function YeniRezervasyon() {
         */}
         <View style={{ marginTop: aralik.m }}>
           <Yazi tur="kucuk" renkli={renk.metinSolgun}>
-            Hesaplanan: {tutar(hesap.kisiBasiToplam)} · iskonto {tutar(hesap.iskontoTutari)}
-            {' '}· KDV {tutar(hesap.kdvTutari)} · genel toplam {tutar(hesap.genelToplam)}
+            Hesaplanan: {tutarTl(hesap.kisiBasiToplam)} · iskonto {tutarTl(hesap.iskontoTutari)}
+            {' '}· KDV {tutarTl(hesap.kdvTutari)} · genel toplam {tutarTl(hesap.genelToplam)}
           </Yazi>
         </View>
 
