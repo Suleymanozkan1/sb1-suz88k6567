@@ -82,7 +82,15 @@ export default function EkranKilidi() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-brand/95 p-4"
+      /*
+        PERDE TAM MAT.
+
+        Önce `bg-brand/95` idi: arkadaki ekranın %5'i görünüyordu.
+        Kilidin amacı masadan kalkıldığında ekranı KAPATMAK; soluk da
+        olsa müşteri adı, tutar ve telefon seçilebiliyorsa iş görmüyor.
+        Saydamlık estetikti, işlevi zayıflatıyordu.
+      */
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-brand p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="kilit-baslik"
