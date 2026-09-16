@@ -189,6 +189,29 @@ describe('otp uç noktası, kod üretimi', () => {
     expect(cagrilar.some((c) => c.adres.endsWith('/api/sms'))).toBe(false);
   });
 
+  /*
+    YENİ KURULUMUN NORMAL HÂLİ: ne SMS sağlayıcısı ne OTP_SECRET var.
+
+    Üstteki test sağlayıcıyı kaldırıyor ama OTP_SECRET'i bırakıyor, bu
+    yüzden gerçek arızayı göremiyordu. Kod, sağlayıcıyı kontrol etmeden
+    önce jetonu imzalıyordu; `sign()` OTP_SECRET okuduğu için uç nokta
+    500 dönüyordu. Giriş ekranı bu ucu çağırdığından sonuç ağırdı:
+    `/api/login` 200 dönmesine rağmen KİMSE panele giremiyordu. Canlıda
+    tam olarak bu yaşandı ve tarayıcıda gezerken yakalandı.
+  */
+  it('ne sağlayıcı ne OTP_SECRET varken 500 değil, nazik cevap döner', async () => {
+    const handler = await handlerYukle({
+      NETGSM_USER: undefined, NETGSM_PASS: undefined, OTP_SECRET: undefined,
+    });
+    fetchTakli();
+
+    const yanit = await handler(istek({ action: 'issue', phone: '5321234567' }));
+
+    expect(yanit.status).toBe(200);
+    await expect(yanit.json()).resolves
+      .toEqual({ issued: false, reason: 'provider_not_configured' });
+  });
+
   it('SMS gönderilemezse 502 ve sağlayıcı hatasını döndürür', async () => {
     const handler = await handlerYukle();
     fetchTakli({ sms: { sent: false, error: 'Kontör yetersiz.' } });
