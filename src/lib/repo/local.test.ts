@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { localRepo } from './local';
 import { KEYS, clearAll, write } from '../storage';
 import { seedIfEmpty, DEMO_CREDENTIALS, DEFAULT_COLOR_SETTINGS } from '../seed';
@@ -54,7 +54,29 @@ function testHall() {
   }]);
 }
 
-beforeEach(() => { clearAll(); testHall(); });
+/*
+  SAAT SABİTLENİYOR.
+
+  `seedIfEmpty()` örnek rezervasyonları BUGÜNE GÖRE üretiyor
+  (`src/lib/seed.ts`: `base.getMonth() - 4 + i`). Aşağıdaki testler ise
+  sabit tarihler kullanıyor. Takvim ilerledikçe üretilen örnek kayıtlar
+  kayıyor ve bir gün o sabit tarihlerin üstüne düşüyor: aynı salon, aynı
+  tarih, aynı seans. O gün testler "zaten bir rezervasyon var" diyerek
+  düşüyor -- kodda hiçbir şey bozulmadan, yalnızca tarih değiştiği için.
+  16 Eylül 2026'da tam olarak bu oldu.
+
+  Sabit bir "bugün" ile tohumlama her çalıştırmada aynı kayıtları
+  üretiyor ve çakışma tarihe bağlı olmaktan çıkıyor.
+
+  Yalnızca `Date` sahteleniyor; zamanlayıcılar da sahtelenirse `await`
+  edilen sözler ilerlemiyor ve depo çağrıları asılı kalıyor.
+*/
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-15T09:00:00Z') });
+  clearAll();
+  testHall();
+});
+afterEach(() => { vi.useRealTimers(); });
 
 describe('tohumlama', () => {
   it('demo hesabı ve örnek verileri oluşturur', async () => {
