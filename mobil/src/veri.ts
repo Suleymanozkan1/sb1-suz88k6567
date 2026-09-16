@@ -31,9 +31,6 @@ function gunEkle(gun: number): string {
 /** Sunucu yapılandırılmışsa sorguyu çalıştırır, değilse tanıtım verisini verir. */
 async function sorgu<T>(ornek: T, calistir: () => Promise<T>): Promise<T> {
   if (tanitim) return ornek;
-  // Her sorgudan önce jeton tazeleniyor; süresi dolmuş bir jetonla
-  // gönderilen istek 401 dönerdi.
-  sonJeton = await gecerliJeton();
   return calistir();
 }
 
@@ -44,15 +41,23 @@ function denetle<T>(veri: T | null, hata: { message: string } | null, mesaj: str
 }
 
 /*
-  Jeton her istekte yeniden okunuyor ve gerekiyorsa yenileniyor; eski
-  jetonla devam edilirse istekler 401 döner ve kullanıcı sebepsiz yere
-  giriş ekranına düşer.
+  JETON İSTEMCİNİN KENDİSİNDEN TAZELENİYOR.
 
-  `gecerliJeton()` eşzamansız olduğu için burada son okunan değer
-  kullanılıyor; tazeleme `sorgu()` içinde, istekten ÖNCE yapılıyor.
+  Önceden burada son okunan jeton bir değişkende tutuluyordu ve onu
+  dolduran tek yer `sorgu()` idi. Ama `db()` çağıranların YARIDAN
+  FAZLASI `sorgu()` üzerinden geçmiyor -- `profilOku` da geçmiyordu.
+  Sonuç: temiz kurulumda ilk girişte jeton boş gidiyor, PostgREST 401
+  "Oturum gerekli." dönüyor, profil okunamıyor ve kullanıcı girişi
+  başarılı olmasına rağmen "Hesabınıza ait profil bulunamadı." hatası
+  alıyordu. Yani uygulamaya hiç girilemiyordu.
+
+  Tazelemeyi çağırana bırakmak, tek bir unutmanın bütün oturumu
+  kırdığı bir kurulumdu. `gecerliJeton` doğrudan sağlayıcı olarak
+  veriliyor: istemci her istekte onu bekliyor, hiçbir çağıranın
+  hatırlaması gerekmiyor. `gecerliJeton` zaten önbellekli, yalnızca
+  süre dolmaya yakınken ağa çıkıyor.
 */
-let sonJeton: string | null = null;
-const db = () => postgrestIstemci(`${API_KOK}/veri`, () => sonJeton);
+const db = () => postgrestIstemci(`${API_KOK}/veri`, gecerliJeton);
 
 /**
  * Oturumdaki kullanıcının profili.
