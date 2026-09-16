@@ -5,6 +5,7 @@ import { Alan, Secim } from '../../src/bilesenler/duzen';
 import { BolumBasligi, Dugme, Kart, Yazi } from '../../src/bilesenler/temel';
 import { bugunIso, tutar } from '../../src/bicim';
 import { aralik, renk } from '../../src/tema';
+import { fiyatHesapla } from '../../src/fiyat';
 import {
   menuler, rezervasyonEkle, salonlar, tanitim, tarafEtiketleri, ULASIM_KANALLARI,
   type Menu, type Salon, type UlasimKanali,
@@ -38,6 +39,12 @@ export default function YeniRezervasyon() {
   const [gelin, setGelin] = useState('');
   const [gelinTelefon, setGelinTelefon] = useState('');
   const [gelinMemleket, setGelinMemleket] = useState('');
+  const [sozlesmeTarihi, setSozlesmeTarihi] = useState('');
+  const [evTelefonu, setEvTelefonu] = useState('');
+  const [kisiBasiFiyat, setKisiBasiFiyat] = useState('');
+  const [iskonto, setIskonto] = useState('');
+  const [iskontoYuzdeMi, setIskontoYuzdeMi] = useState(false);
+  const [kdvOrani, setKdvOrani] = useState('0');
   const [tarih, setTarih] = useState(bugunIso());
   const [seans, setSeans] = useState('Gece');
   const [tur, setTur] = useState('Düğün');
@@ -79,8 +86,31 @@ export default function YeniRezervasyon() {
   // Tür değiştiğinde alan başlıkları da değişiyor.
   const etiket = tarafEtiketleri(tur);
 
+  // Panelle AYNI hesap fonksiyonu kullanılsaydı iyi olurdu ama mobil
+  // ayrı bir paket; formül burada tekrarlanmıyor, kuruş cinsinden
+  // çalışan küçük bir sarmalayıcı `fiyatHesapla`yı çağırıyor.
+  const hesap = fiyatHesapla({
+    kisiBasi: sayi(kisiBasiFiyat) || 0,
+    davetli: Number(davetli) || 0,
+    ekler: 0,
+    iskonto: sayi(iskonto) || 0,
+    yuzdeMi: iskontoYuzdeMi,
+    kdvOrani: Number(kdvOrani) || 0,
+  });
+
   function sayi(metin: string): number {
     return Number(metin.replace(/\./g, '').replace(',', '.'));
+  }
+
+  /*
+    TL -> KURUŞ SINIRI. `fiyatHesapla` panelle birebir aynı sayıları
+    vermek için TL ile çalışıyor; `tutar` ise -- mobilin geri kalanı
+    gibi -- kuruş bekliyor ve girdisini 100'e bölüyor. Aradaki çevrim
+    atlandığında 300.000 ₺ ekrana "3.000 ₺" diye basılıyordu: yanlış
+    olduğu belli olmayan, sözleşme konuşulurken okunan bir rakam.
+  */
+  function tutarTl(deger: number): string {
+    return tutar(Math.round(deger * 100));
   }
 
   async function kaydet() {
@@ -110,6 +140,23 @@ export default function YeniRezervasyon() {
     const kaporaKurus = kapora.trim() ? Math.round(sayi(kapora) * 100) : 0;
     if (!Number.isFinite(kaporaKurus) || kaporaKurus < 0) { setHata('Geçerli bir kapora giriniz.'); return; }
     if (kaporaKurus > tutarKurus) { setHata('Kapora toplam tutarı aşamaz.'); return; }
+    /*
+      FİYAT ALANLARI BURADA DOĞRULANIYOR. `fiyatHesapla` negatifi sıfıra
+      çekiyor, yani ekrandaki hesap DÜZGÜN görünüyor; ama kaydederken
+      girilen negatif değer olduğu gibi gönderiliyor ve veritabanındaki
+      `price_per_person >= 0` / `discount >= 0` kısıtları kaydı
+      reddediyor. Kullanıcı doğru görünen bir ekranla karşılaşıp
+      "Kayıt oluşturulamadı" hatası alıyordu -- nedenini gösteren
+      hiçbir şey olmadan.
+    */
+    const kisiBasiKurus = kisiBasiFiyat.trim() ? Math.round(sayi(kisiBasiFiyat) * 100) : undefined;
+    if (kisiBasiKurus !== undefined && (!Number.isFinite(kisiBasiKurus) || kisiBasiKurus < 0)) {
+      setHata('Kişi başı fiyat negatif olamaz.'); return;
+    }
+    const iskontoKurus = iskonto.trim() ? Math.round(sayi(iskonto) * 100) : undefined;
+    if (iskontoKurus !== undefined && (!Number.isFinite(iskontoKurus) || iskontoKurus < 0)) {
+      setHata('İskonto negatif olamaz.'); return;
+    }
     // "Diğer 23 kayıt" satırını raporda görüp içine bakamamak, alanı hiç
     // tutmamakla aynı kapıya çıkar.
     if (kanal === 'Diğer' && !kanalDetay.trim()) {
@@ -124,6 +171,12 @@ export default function YeniRezervasyon() {
         kanal, kanalDetay,
         damat, damatTelefon: damatTel, damatMemleket,
         gelin, gelinTelefon: gelinTel, gelinMemleket,
+        sozlesmeTarihi: sozlesmeTarihi || undefined,
+        evTelefonu: evTelefonu || undefined,
+        kisiBasiFiyat: kisiBasiKurus,
+        iskonto: iskontoKurus,
+        iskontoYuzdeMi,
+        kdvOrani: Number(kdvOrani) || 0,
       });
       yonlendir.replace(id ? `/rezervasyon/${id}` : '/kayitlar');
     } catch (e) {
@@ -155,7 +208,9 @@ export default function YeniRezervasyon() {
           yetkilisi. İmzalayanın adı damadın yerine yazılırsa damadın
           adı kayda hiç girmiyor ve bu sonradan telafi edilemiyor.
         */}
+        <Alan etiket="Sözleşme tarihi (YYYY-AA-GG)" deger={sozlesmeTarihi} degistir={setSozlesmeTarihi} ipucu="2026-09-16" />
         <Alan etiket="Ad soyad (sözleşmeyi imzalayan)" deger={musteri} degistir={setMusteri} ipucu="Ahmet Arslan" />
+        <Alan etiket="Ev telefonu" deger={evTelefonu} degistir={setEvTelefonu} ipucu="312 333 44 55" klavye="phone-pad" />
         <Alan etiket="Cep telefonu" deger={telefon} degistir={setTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
         <Alan etiket={`${etiket.birinci} ad soyad`} deger={damat} degistir={setDamat} ipucu="Can Arslan" />
         <Alan etiket={`${etiket.birinci} cep`} deger={damatTelefon} degistir={setDamatTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
@@ -221,6 +276,40 @@ export default function YeniRezervasyon() {
         ) : null}
 
         <Alan etiket="Toplam tutar (₺)" deger={toplam} degistir={setToplam} ipucu="210.000" klavye="decimal-pad" />
+        <Alan etiket="Kişi başı fiyat (₺)" deger={kisiBasiFiyat} degistir={setKisiBasiFiyat} ipucu="1.000" klavye="decimal-pad" />
+        <Alan etiket="İskonto" deger={iskonto} degistir={setIskonto} ipucu="0" klavye="decimal-pad" />
+
+        <View style={{ marginTop: aralik.m }}>
+          <Yazi tur="minik" renkli={renk.metinSolgun}>İSKONTO TÜRÜ</Yazi>
+          <Secim
+            secenekler={['Tutar', 'Yüzde']}
+            secili={iskontoYuzdeMi ? 'Yüzde' : 'Tutar'}
+            sec={(d) => setIskontoYuzdeMi(d === 'Yüzde')}
+          />
+        </View>
+
+        <View style={{ marginTop: aralik.m }}>
+          <Yazi tur="minik" renkli={renk.metinSolgun}>KDV ORANI</Yazi>
+          <Secim
+            secenekler={['0', '1', '10', '20']}
+            secili={kdvOrani}
+            sec={setKdvOrani}
+          />
+        </View>
+
+        {/*
+          HESAP EKRANDA, KAYITTA DEĞİL. Panelle aynı kural: kişibaşı
+          toplam ve KDV tutarı saklanmıyor, her açılışta hesaplanıyor.
+          Toplam tutar elle giriliyor -- pazarlık sonucu tutar
+          neredeyse her zaman hesaptan farklı oluyor.
+        */}
+        <View style={{ marginTop: aralik.m }}>
+          <Yazi tur="kucuk" renkli={renk.metinSolgun}>
+            Hesaplanan: {tutarTl(hesap.kisiBasiToplam)} · iskonto {tutarTl(hesap.iskontoTutari)}
+            {' '}· KDV {tutarTl(hesap.kdvTutari)} · genel toplam {tutarTl(hesap.genelToplam)}
+          </Yazi>
+        </View>
+
         <Alan etiket="Kapora (₺)" deger={kapora} degistir={setKapora} ipucu="60.000" klavye="decimal-pad" />
 
         {Number.isFinite(kalan) && kalan > 0 ? (

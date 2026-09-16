@@ -99,6 +99,34 @@ select * from jsonb_populate_recordset(null::public.businesses,
 update public.businesses b set owner_id = m.yeni
 from _eslesme m where b.owner_id = m.eski;
 
+-- 0049 ÖNCESİ YEDEKLERDE BİR ADIM DAHA VAR.
+--
+-- O göçe kadar rezervasyonun menüsü `menu_id` adlı tek bir sütundaydı;
+-- artık `menu_ids` adlı bir dizi. `jsonb_populate_recordset`, tabloda
+-- KARŞILIĞI OLMAYAN anahtarları sessizce atar -- hata vermez. Yani eski
+-- bir yedek olduğu gibi geri yüklenirse kayıtlar geri gelir ama
+-- hepsinin menüsü boş çıkar ve bunu kimse fark etmez.
+--
+-- Aşağıdaki satır eski anahtarı yeni biçime çevirir. Yedek zaten
+-- `menu_ids` taşıyorsa ona dokunmaz.
+--
+-- Menüsüz kayıtlara BOŞ DİZİ yazılıyor, anahtar atlanmıyor:
+-- `jsonb_populate_recordset` olmayan anahtar için NULL üretir,
+-- `menu_ids` ise `not null` -- yani anahtarı atlamak geri yüklemeyi
+-- "null value in column menu_ids" ile tamamen durdururdu.
+update _yedek set veri = jsonb_set(veri, '{rezervasyonlar}', (
+  select coalesce(jsonb_agg(
+    (r - 'menu_id') || jsonb_build_object('menu_ids',
+      case
+        when r ? 'menu_ids' and r -> 'menu_ids' <> 'null'::jsonb then r -> 'menu_ids'
+        when r ? 'menu_id'  and r -> 'menu_id'  <> 'null'::jsonb then jsonb_build_array(r ->> 'menu_id')
+        else '[]'::jsonb
+      end)
+  ), '[]'::jsonb)
+  from jsonb_array_elements(veri -> 'rezervasyonlar') as r
+))
+where veri -> 'rezervasyonlar' <> '[]'::jsonb;
+
 insert into public.reservations
 select * from jsonb_populate_recordset(null::public.reservations,
   (select veri -> 'rezervasyonlar' from _yedek));

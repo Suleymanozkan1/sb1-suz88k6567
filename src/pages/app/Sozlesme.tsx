@@ -33,8 +33,9 @@ export default function Sozlesme() {
     () => businesses.find((b) => b.id === reservation?.businessId),
     [businesses, reservation],
   );
-  const menu = useMemo(
-    () => menus.find((m) => m.id === reservation?.menuId),
+  // Sözleşmeye birden fazla menü girebiliyor; hepsi yazılıyor.
+  const secilenMenuler = useMemo(
+    () => menus.filter((m) => (reservation?.menuIds ?? []).includes(m.id)),
     [menus, reservation],
   );
 
@@ -145,13 +146,20 @@ export default function Sozlesme() {
             yazılan satırlar (ANA YEMEK, TATLI…) başlık sayılıp kalın çıkar.
           */}
           <div className="border-black pl-4 sm:border-l">
-            {menu ? (
-              <>
-                <p className="mb-1 font-bold">{menu.name}</p>
-                {menu.description.split('\n').map((satir, i) => (
-                  <p key={i} className={basliksaMi(satir) ? 'font-semibold' : ''}>{satir}</p>
-                ))}
-              </>
+            {/*
+              HEPSİ BASILIYOR. Yalnızca ilki yazılsaydı kınası ayrı,
+              düğünü ayrı paketli bir sözleşmenin yarısı kâğıda hiç
+              girmezdi -- ve imzalanan kâğıt eksik olurdu.
+            */}
+            {secilenMenuler.length > 0 ? (
+              secilenMenuler.map((m, sira) => (
+                <div key={m.id} className={sira > 0 ? 'mt-2' : ''}>
+                  <p className="mb-1 font-bold">{m.name}</p>
+                  {m.description.split('\n').map((satir, i) => (
+                    <p key={i} className={basliksaMi(satir) ? 'font-semibold' : ''}>{satir}</p>
+                  ))}
+                </div>
+              ))
             ) : (
               <p className="text-black/60">Menü seçilmemiştir.</p>
             )}

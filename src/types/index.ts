@@ -69,7 +69,15 @@ export interface Reservation {
   id: string;
   businessId: string;
   hallId: string;
-  menuId?: string;
+  /**
+   * Sözleşmeye dahil menü/paketler.
+   *
+   * ÇOKLU, çünkü sözleşmeye çoğu zaman tek menü girmiyor: kına için
+   * ayrı, düğün için ayrı paket anlaşılıyor. Tek alan olduğunda
+   * gerisi not alanına yazılıyor, yani fiyat önerisine ve sözleşmeye
+   * hiç yansımıyordu.
+   */
+  menuIds?: string[];
   code: string; // Kod doğrulama ekranında sorgulanan rezervasyon kodu
   customerName: string;
   customerPhone: string;
@@ -115,7 +123,7 @@ export interface Reservation {
   contractDate?: string;
   /** Cebe ulaşılamadığında aranan sabit hat. */
   homePhone?: string;
-  /** Paket dışında konuşulanlar. `menuId` tanımlı paketi gösterir. */
+  /** Paket dışında konuşulanlar. `menuIds` tanımlı paketleri gösterir. */
   menuNote?: string;
   /**
    * FİYAT GİRDİLERİ.

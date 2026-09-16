@@ -32,14 +32,14 @@ insert into public.menus (id, business_id, name, pricing, price_kurus) values
 
 \echo '=== 1) Ayni gun ve seansta FARKLI salonlara rezervasyon acilabilmeli ==='
 insert into public.reservations
-  (business_id, hall_id, menu_id, code, customer_name, customer_phone, date, slot,
+  (business_id, hall_id, menu_ids, code, customer_name, customer_phone, date, slot,
    organization_type, guest_count, total_amount, deposit)
 values
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-000000000001',
-   '11111111-cccc-0000-0000-000000000001', 'SA-A-0001', 'Kristal Müşterisi', '5321112233',
+   array['11111111-cccc-0000-0000-000000000001'], 'SA-A-0001', 'Kristal Müşterisi', '5321112233',
    '2027-06-12', 'Gece', 'Düğün', 300, 135000, 20000),
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-000000000002',
-   null, 'SA-A-0002', 'Bahçe Müşterisi', '5321112244',
+   '{}'::text[], 'SA-A-0002', 'Bahçe Müşterisi', '5321112244',
    '2027-06-12', 'Gece', 'Nişan', 200, 90000, 10000);
 select count(*) as ayni_gun_iki_salon_IKI_OLMALI from public.reservations where date = '2027-06-12';
 
@@ -76,10 +76,10 @@ end $$;
 \echo '=== 4) BASKA isletmenin menusu secilememeli ==='
 do $$ begin
   insert into public.reservations
-    (business_id, hall_id, menu_id, code, customer_name, customer_phone, date, slot,
+    (business_id, hall_id, menu_ids, code, customer_name, customer_phone, date, slot,
      organization_type, guest_count, total_amount, deposit)
   values ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-000000000001',
-          '22222222-cccc-0000-0000-000000000001', 'SA-A-0005', 'Yabancı Menü', '5321112277',
+          array['22222222-cccc-0000-0000-000000000001'], 'SA-A-0005', 'Yabancı Menü', '5321112277',
           '2027-07-02', 'Gece', 'Düğün', 100, 50000, 0);
   raise exception 'BASARISIZ: yabanci menu kabul edildi';
 exception
@@ -87,6 +87,48 @@ exception
   when others then
     if sqlerrm like 'BASARISIZ%' then raise; end if;
     raise notice 'BEKLENEN: yabanci menu reddedildi (%)', sqlerrm;
+end $$;
+
+\echo '=== 4b) Dizinin IKINCI sirasindaki yabanci menu de reddedilmeli ==='
+-- Yalnizca ilk eleman denetlenseydi, ikinci siraya konan yabanci
+-- paket veritabanina sizardi.
+do $$ begin
+  insert into public.reservations
+    (business_id, hall_id, menu_ids, code, customer_name, customer_phone, date, slot,
+     organization_type, guest_count, total_amount, deposit)
+  values ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-000000000001',
+          array['11111111-cccc-0000-0000-000000000001',
+                '22222222-cccc-0000-0000-000000000001'],
+          'SA-A-0006', 'Ikinci Sirada Yabanci', '5321112288',
+          '2027-07-03', 'Gece', 'Düğün', 100, 50000, 0);
+  raise exception 'BASARISIZ: ikinci siradaki yabanci menu kabul edildi';
+exception
+  when check_violation then raise notice 'BEKLENEN: ikinci siradaki yabanci menu reddedildi';
+  when others then
+    if sqlerrm like 'BASARISIZ%' then raise; end if;
+    raise notice 'BEKLENEN: ikinci siradaki yabanci menu reddedildi (%)', sqlerrm;
+end $$;
+
+\echo '=== 4c) Ayni isletmenin IKI menusu birlikte kabul edilmeli ==='
+insert into public.menus (id, business_id, name, pricing, price_kurus) values
+  ('11111111-cccc-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001',
+   'Kokteyl Menü', 'kisi_basi', 5000);
+insert into public.reservations
+  (business_id, hall_id, menu_ids, code, customer_name, customer_phone, date, slot,
+   organization_type, guest_count, total_amount, deposit)
+values ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-aaaa-0000-0000-000000000001',
+        array['11111111-cccc-0000-0000-000000000001',
+              '11111111-cccc-0000-0000-000000000002'],
+        'SA-A-0007', 'Iki Menu', '5321112299',
+        '2027-07-04', 'Gece', 'Düğün', 100, 50000, 0);
+-- YAZDIRMAK DEĞİL, DENETLEMEK. Yalnızca select edilseydi psql 1 ya da
+-- NULL dönmesine aldırmaz, paket yine "GEÇTİ" derdi.
+do $$ begin
+  if (select array_length(menu_ids, 1)
+        from public.reservations
+       where code = 'SA-A-0007') is distinct from 2 then
+    raise exception 'BASARISIZ: iki menu saklanmadi';
+  end if;
 end $$;
 
 \echo '=== 5) Ayni isletmede ayni isimde iki salon olmamali ==='

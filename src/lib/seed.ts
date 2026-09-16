@@ -386,7 +386,7 @@ export function demoVeriSeti(): [string, unknown][] {
       id: `res_seed_${i}`,
       businessId: i % 5 === 4 ? 'biz_demo2' : businessId,
       hallId: i % 5 === 4 ? 'hall_demo3' : i % 3 === 1 ? 'hall_demo2' : 'hall_demo1',
-      menuId: i % 5 === 4 ? 'menu_demo4' : i % 4 === 3 ? 'menu_demo3' : 'menu_demo1',
+      menuIds: [i % 5 === 4 ? 'menu_demo4' : i % 4 === 3 ? 'menu_demo3' : 'menu_demo1'],
       code: `${d.getFullYear()}-${siraAl(d.getFullYear())}`,
       // Kanal dağılımı tanıtımda da anlamlı olsun: rapor boş bir tabloyla
       // açılırsa özelliğin ne işe yaradığı anlaşılmıyor. Bir kısmı bilerek
@@ -484,7 +484,7 @@ export function demoVeriSeti(): [string, unknown][] {
       id: `res_hafta_${i}`,
       businessId,
       hallId: h.hall,
-      menuId: h.menu,
+      menuIds: h.menu ? [h.menu] : [],
       code: `${new Date().getFullYear()}-${siraAl(new Date().getFullYear())}`,
       customerName: h.ad,
       customerPhone: h.tel,
@@ -553,7 +553,7 @@ export function demoVeriSeti(): [string, unknown][] {
     list.push({
       ...r,
       code: `${yil}-${siraAl(yil)}`,
-      menuId: 'menu_demo1',
+      menuIds: ['menu_demo1'],
       startTime: SEANS_SAATI[r.slot].start,
       endTime: SEANS_SAATI[r.slot].end,
       colorKey: ORG_TO_COLOR_KEY[r.organizationType] ?? 'diger',

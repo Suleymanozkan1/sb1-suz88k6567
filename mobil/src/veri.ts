@@ -77,6 +77,19 @@ export async function profilOku(
 }
 
 /** Etkin işletme; tanıtımda sabit. Panelde olduğu gibi tek işletme seçilidir. */
+/**
+ * Demo hesabının giriş bilgileri.
+ *
+ * Panelle AYNI değerler (`src/lib/seed.ts` içindeki DEMO_CREDENTIALS).
+ * İki yerde ayrı yazılsaydı biri değiştiğinde öteki unutulur ve
+ * mobildeki düğme sessizce çalışmayı bırakırdı.
+ *
+ * Bu bir sır DEĞİL: hesap zaten herkese açık tanıtım hesabı ve aynı
+ * bilgiler web giriş ekranında da yazıyor. Gerçek müşteri verisi
+ * içermiyor.
+ */
+export const DEMO_GIRIS = { eposta: 'demo@sahratakip.com', sifre: 'demo1234' };
+
 export const ISLETME = { id: 'demo', ad: 'Grand Sahra Düğün ve Davet Salonu' };
 
 let isletmeBellek: string | null = null;
@@ -451,6 +464,21 @@ export interface YeniRezervasyon {
    */
   damatMemleket?: string;
   gelinMemleket?: string;
+  /** Sözleşmenin imzalandığı gün; rezervasyon gününden farklı olabilir. */
+  sozlesmeTarihi?: string;
+  /** Cebe ulaşılamadığında aranan sabit hat. */
+  evTelefonu?: string;
+  /**
+   * FİYAT GİRDİLERİ. Panelle aynı kural: kişi başı fiyat, iskonto ve
+   * KDV oranı saklanır; kişibaşı toplam ve KDV tutarı HESAPLANIR,
+   * saklanmaz -- yoksa fiyat düzeltildiğinde birbirini tutmayan
+   * sayılar kalır ve yanlış olan faturaya giderdi.
+   */
+  /** Kuruş cinsinden; `tlye` ile çevrilerek kaydedilir. */
+  kisiBasiFiyat?: number;
+  iskonto?: number;
+  iskontoYuzdeMi?: boolean;
+  kdvOrani?: number;
 }
 
 /**
@@ -492,6 +520,14 @@ export async function rezervasyonEkle(girdi: YeniRezervasyon): Promise<string | 
     bride_name: girdi.gelin?.trim() || null,
     bride_phone: girdi.gelinTelefon?.replace(/\D/g, '') || null,
     bride_hometown: girdi.gelinMemleket?.trim() || null,
+    contract_date: girdi.sozlesmeTarihi || null,
+    home_phone: girdi.evTelefonu?.replace(/\D/g, '') || null,
+    // Mobil tutarları KURUŞ taşıyor; `tlye` veritabanının beklediği
+    // TL değerine çeviriyor. Ham gönderilseydi fiyat 100 kat çıkardı.
+    price_per_person: tlye(girdi.kisiBasiFiyat),
+    discount: tlye(girdi.iskonto),
+    discount_is_percent: girdi.iskontoYuzdeMi ?? false,
+    vat_rate: girdi.kdvOrani ?? 0,
   }).select('id').single();
 
   if (error) throw new Error(error.message);

@@ -592,14 +592,14 @@ describe('rezervasyonlar', () => {
       slot: 'Gece', organizationType: 'Düğün', guestCount: 300,
       totalAmount: 250000, deposit: 60000, currency: 'TL',
       status: 'Kesin Rezervasyon', colorKey: 'dugun', services: [],
-      createdAt: '', updatedAt: '', menuId: '', customerEmail: '', note: '',
+      createdAt: '', updatedAt: '', menuIds: [], customerEmail: '', note: '',
     });
 
     const govde = islem(cagri('reservations'), 'upsert')?.arg[0] as Record<string, unknown>;
     expect(govde).toMatchObject({
       business_id: 'b1', hall_id: 'h1', customer_name: 'Ayşe',
       total_amount: 250000, deposit: 60000, organization_type: 'Düğün',
-      menu_id: null, customer_email: null, note: null,
+      menu_ids: [], customer_email: null, note: null,
     });
   });
 

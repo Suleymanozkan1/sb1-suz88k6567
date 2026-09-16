@@ -83,8 +83,14 @@ export function dateRange(from: string, to: string): string[] {
  * hizmetler yazılır; ikisi de yoksa satır hiç görünmez.
  */
 export function menuLineOf(reservation: Reservation, menus: Menu[]): string {
-  const menu = menus.find((m) => m.id === reservation.menuId);
-  const parcalar = [menu?.name, ...reservation.services].filter((p): p is string => Boolean(p && p.trim()));
+  // Birden fazla menü seçilebiliyor; hepsi satıra giriyor. Yalnızca
+  // ilki yazılsaydı kınası ayrı, düğünü ayrı paketli bir sözleşmenin
+  // yarısı program kâğıdında görünmezdi.
+  const secilen = (reservation.menuIds ?? [])
+    .map((kimlik) => menus.find((m) => m.id === kimlik)?.name)
+    .filter((ad): ad is string => Boolean(ad && ad.trim()));
+  const parcalar = [...secilen, ...reservation.services]
+    .filter((p): p is string => Boolean(p && p.trim()));
   return parcalar.join('+').toLocaleUpperCase('tr-TR');
 }
 
