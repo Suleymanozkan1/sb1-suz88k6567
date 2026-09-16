@@ -207,7 +207,7 @@ describe('buildProgramDocx', () => {
 
   it('çizelgedeki bilgileri belgeye yazar', () => {
     const x = metin(buildProgramDocx(
-      cizelge([rez({ menuId: 'm1', groomName: 'Can Arslan', brideName: 'Zeynep Arslan', startTime: '19:00', endTime: '23:00' })]),
+      cizelge([rez({ menuIds: ['m1'], groomName: 'Can Arslan', brideName: 'Zeynep Arslan', startTime: '19:00', endTime: '23:00' })]),
       meta,
     ));
     expect(x).toContain('12.09.2026 CUMARTESİ DÜĞÜN');

@@ -540,8 +540,11 @@ export const localRepo: Repository = {
     if (!hall || hall.businessId !== reservation.businessId) {
       throw new RepoError('Salon bu işletmeye ait değil.');
     }
-    if (reservation.menuId) {
-      const menu = menus().find((m) => m.id === reservation.menuId);
+    // Seçilen menülerin HEPSİ bu işletmenin olmalı. Yalnızca ilki
+    // denetlenseydi, çoklu seçimle başka işletmenin paketi kayda
+    // sızabilirdi.
+    for (const kimlik of reservation.menuIds ?? []) {
+      const menu = menus().find((m) => m.id === kimlik);
       if (!menu || menu.businessId !== reservation.businessId) {
         throw new RepoError('Menü bu işletmeye ait değil.');
       }
@@ -1220,7 +1223,9 @@ export const localRepo: Repository = {
     write(KEYS.menus, menus().filter((m) => m.id !== id));
     // Menüsü silinen rezervasyonlar bağlantısız kalır (on delete set null karşılığı)
     write(KEYS.reservations, reservations().map(
-      (r) => (r.menuId === id ? { ...r, menuId: undefined } : r),
+      (r) => ((r.menuIds ?? []).includes(id)
+        ? { ...r, menuIds: (r.menuIds ?? []).filter((m) => m !== id) }
+        : r),
     ));
     return wait(undefined);
   },

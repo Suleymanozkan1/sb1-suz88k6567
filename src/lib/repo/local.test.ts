@@ -544,7 +544,7 @@ describe('menüler', () => {
   it('başka işletmenin menüsü seçilemez', async () => {
     seedIfEmpty();
     await expect(localRepo.saveReservation(makeReservation({
-      businessId: 'biz_demo', hallId: 'hall_demo1', menuId: 'menu_demo4',
+      businessId: 'biz_demo', hallId: 'hall_demo1', menuIds: ['menu_demo4'],
       code: 'E1', date: '2027-06-15',
     }))).rejects.toThrow(/Menü bu işletmeye ait değil/);
   });
@@ -560,13 +560,40 @@ describe('menüler', () => {
   it('menü silinince rezervasyonun menü bağlantısı kalkar, tutarı değişmez', async () => {
     seedIfEmpty();
     const kayit = await localRepo.saveReservation(makeReservation({
-      businessId: 'biz_demo', hallId: 'hall_demo1', menuId: 'menu_demo1',
+      businessId: 'biz_demo', hallId: 'hall_demo1', menuIds: ['menu_demo1'],
       code: 'F1', date: '2027-06-16', totalAmount: 250000,
     }));
     await localRepo.deleteMenu('menu_demo1');
     const sonra = await localRepo.getReservation(kayit.id);
-    expect(sonra?.menuId).toBeUndefined();
+    expect(sonra?.menuIds).toEqual([]);
     expect(sonra?.totalAmount).toBe(250000);
+  });
+
+  it('bir menü silinince ÖTEKİ menü kayıtta kalır', async () => {
+    /*
+      Temizlik diziyi boşaltsaydı, kınası ayrı düğünü ayrı paketli bir
+      sözleşmede tek paket silindiğinde ötekinin bağlantısı da sessizce
+      giderdi -- ve bunu kimse fark etmezdi.
+    */
+    seedIfEmpty();
+    const kayit = await localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1',
+      menuIds: ['menu_demo1', 'menu_demo2'],
+      code: 'F2', date: '2027-06-17', totalAmount: 250000,
+    }));
+    await localRepo.deleteMenu('menu_demo1');
+    const sonra = await localRepo.getReservation(kayit.id);
+    expect(sonra?.menuIds).toEqual(['menu_demo2']);
+  });
+
+  it('menülerden BİRİ başka işletmenin ise kayıt reddedilir', async () => {
+    // Yalnızca ilki denetlenseydi, ikinci sıraya konan yabancı paket sızardı.
+    seedIfEmpty();
+    await expect(localRepo.saveReservation(makeReservation({
+      businessId: 'biz_demo', hallId: 'hall_demo1',
+      menuIds: ['menu_demo1', 'menu_demo4'],
+      code: 'F3', date: '2027-06-18',
+    }))).rejects.toThrow(/Menü bu işletmeye ait değil/);
   });
 });
 

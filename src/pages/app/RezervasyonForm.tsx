@@ -48,7 +48,8 @@ interface FormState {
   vatRate: string;
   identityNo: string;
   hallId: string;
-  menuId: string;
+  /** Seçilen menü/paket kimlikleri. Birden fazla olabilir. */
+  menuIds: string[];
   date: string;
   startTime: string;
   endTime: string;
@@ -94,7 +95,7 @@ const EMPTY: FormState = {
   vatRate: '0',
   identityNo: '',
   hallId: '',
-  menuId: '',
+  menuIds: [],
   date: todayIso(),
   startTime: '',
   endTime: '',
@@ -207,7 +208,7 @@ export default function RezervasyonForm() {
       vatRate: String(existing.vatRate ?? 0),
       identityNo: existing.identityNo ?? '',
       hallId: existing.hallId,
-      menuId: existing.menuId ?? '',
+      menuIds: existing.menuIds ?? [],
       date: existing.date,
       startTime: existing.startTime ?? '',
       endTime: existing.endTime ?? '',
@@ -236,10 +237,52 @@ export default function RezervasyonForm() {
   }, [id, form.hallId, halls]);
 
   // Menü ve davetli sayısı değişince tutarı öneririz; kullanıcı elle değiştirebilir.
-  const selectedMenu = menus.find((m) => m.id === form.menuId);
-  const suggestedTotal = selectedMenu
-    ? kurusToLira(menuTotalKurus(selectedMenu, Number(form.guestCount) || 0))
+  const selectedMenus = menus.filter((m) => form.menuIds.includes(m.id));
+  /*
+    Öneri, seçilen MENÜLERİN TOPLAMI. Yalnızca ilki hesaplansaydı
+    kınası ayrı, düğünü ayrı paketli bir sözleşmede öneri gerçek
+    tutarın yarısı çıkar ve kullanıcı farkı elle bulmak zorunda kalırdı.
+  */
+  const suggestedTotal = selectedMenus.length > 0
+    ? kurusToLira(selectedMenus.reduce(
+      (t, m) => t + menuTotalKurus(m, Number(form.guestCount) || 0), 0,
+    ))
     : null;
+
+  /*
+    ÖNERİNİN NEREDEN ÇIKTIĞI. Tek menü varken "1.500 TL x 300 kişi"
+    yazmak yetiyordu. Birden fazla menü seçilebildiğinden artık tek bir
+    çarpım yok: kınası kişi başı, düğünü sabit paket olabiliyor.
+    Açıklama bu yüzden seçime göre değişiyor; yanlış bir çarpım
+    göstermektense hiç göstermemek yeğdir.
+  */
+  const oneriAciklamasi = (() => {
+    const kisiBasi = selectedMenus.filter((m) => m.pricing === 'kisi_basi');
+    const davetli = Number(form.guestCount) || 0;
+    if (kisiBasi.length === selectedMenus.length) {
+      const birimKurus = kisiBasi.reduce((t, m) => t + m.priceKurus, 0);
+      return `${formatMoney(kurusToLira(birimKurus), 'TL')} × ${davetli} kişi`;
+    }
+    if (kisiBasi.length === 0) {
+      return selectedMenus.length === 1 ? 'Sabit paket fiyatı' : `${selectedMenus.length} sabit paket toplamı`;
+    }
+    return `${selectedMenus.length} menü toplamı`;
+  })();
+
+  /*
+    EKLER (Extralar): pakete dahil edilen hizmetlerin ücretleri.
+
+    Önceden hesaba hiç girmiyordu (`ekler: 0`): kullanıcı orkestra ve
+    fotoğrafçıyı işaretliyor, genel toplam değişmiyordu. Sözleşme
+    fiyatı bu kalemleri içeriyor; hesabın içermemesi, önerilen tutarı
+    sistematik olarak düşük gösteriyordu.
+  */
+  const eklerToplami = useMemo(
+    () => hizmetler
+      .filter((h) => form.services.includes(h.name))
+      .reduce((t, h) => t + h.unitPrice, 0),
+    [hizmetler, form.services],
+  );
 
   // Aynı tarih + seans için başka kayıt varsa uyar (veritabanında da kısıt vardır)
   useEffect(() => {
@@ -401,7 +444,7 @@ export default function RezervasyonForm() {
       startTime: form.startTime || undefined,
       endTime: form.endTime || undefined,
       hallId: form.hallId,
-      menuId: form.menuId || undefined,
+      menuIds: form.menuIds,
       slot: form.slot,
       organizationType: form.organizationType,
       guestCount: Number(form.guestCount),
@@ -494,7 +537,7 @@ export default function RezervasyonForm() {
   const fiyat = fiyatHesapla({
     kisiBasi: Number(form.pricePerPerson) || 0,
     davetli: Number(form.guestCount) || 0,
-    ekler: 0,
+    ekler: eklerToplami,
     iskonto: Number(form.discount) || 0,
     yuzdeMi: form.discountIsPercent,
     kdvOrani: Number(form.vatRate) || 0,
@@ -769,17 +812,42 @@ export default function RezervasyonForm() {
         <fieldset className="mb-8">
           <legend className="mb-4 font-heading text-lg font-bold text-brand">Ödeme Bilgileri</legend>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Field id="menuId" label="Menü / Paket" className="md:col-span-2">
-              <select id="menuId" className="field-input" value={form.menuId}
-                onChange={(e) => update('menuId', e.target.value)}>
-                <option value="">Menü seçilmedi</option>
-                {menus.filter((m) => m.isActive || m.id === form.menuId).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} · {formatMoney(kurusToLira(m.priceKurus), 'TL')}
-                    {m.pricing === 'kisi_basi' ? ' / kişi' : ' sabit'}
-                  </option>
+            {/*
+              ÇOKLU SEÇİM. Sözleşmeye çoğu zaman tek menü girmiyor:
+              kına için ayrı, düğün için ayrı paket anlaşılıyor. Tek
+              seçim olduğunda gerisi not alanına yazılıyor, yani fiyat
+              önerisine ve sözleşmeye hiç yansımıyordu.
+
+              Kutucuk listesi kullanıldı, `<select multiple>` değil:
+              çoklu select'te seçim Ctrl basılı tutmayı gerektiriyor,
+              bunu bilmeyen kullanıcı ikinci menüyü seçtiğinde
+              birincisi sessizce kayboluyor.
+            */}
+            <Field id="menuIds" label="Menü / Paket (birden fazla seçilebilir)" className="md:col-span-2 lg:col-span-4">
+              <div id="menuIds" className="grid gap-2 rounded-md border border-line p-3 sm:grid-cols-2">
+                {menus.filter((m) => m.isActive || form.menuIds.includes(m.id)).map((m) => (
+                  <label key={m.id} className="flex items-start gap-2 text-sm text-brand">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={form.menuIds.includes(m.id)}
+                      onChange={(e) => update(
+                        'menuIds',
+                        e.target.checked
+                          ? [...form.menuIds, m.id]
+                          : form.menuIds.filter((k) => k !== m.id),
+                      )}
+                    />
+                    <span>
+                      {m.name} · {formatMoney(kurusToLira(m.priceKurus), 'TL')}
+                      {m.pricing === 'kisi_basi' ? ' / kişi' : ' sabit'}
+                    </span>
+                  </label>
                 ))}
-              </select>
+                {menus.length === 0 && (
+                  <p className="text-sm text-brand-muted">Henüz menü tanımlanmamış.</p>
+                )}
+              </div>
             </Field>
             {/*
               FİYAT GİRDİLERİ VE HESAPLANANLAR.
@@ -862,11 +930,7 @@ export default function RezervasyonForm() {
                 >
                   Menüye göre {formatMoney(suggestedTotal, 'TL')} uygula
                 </button>
-                <span className="ml-2 text-xs text-brand-muted">
-                  {selectedMenu?.pricing === 'kisi_basi'
-                    ? `${formatMoney(kurusToLira(selectedMenu.priceKurus), 'TL')} × ${Number(form.guestCount) || 0} kişi`
-                    : 'Sabit paket fiyatı'}
-                </span>
+                <span className="ml-2 text-xs text-brand-muted">{oneriAciklamasi}</span>
               </div>
             )}
             <Field id="deposit" label="Kapora" error={errors.deposit}>

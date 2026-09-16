@@ -33,10 +33,12 @@ export default function Sozlesme() {
     () => businesses.find((b) => b.id === reservation?.businessId),
     [businesses, reservation],
   );
-  const menu = useMemo(
-    () => menus.find((m) => m.id === reservation?.menuId),
+  // Sözleşmeye birden fazla menü girebiliyor; hepsi yazılıyor.
+  const secilenMenuler = useMemo(
+    () => menus.filter((m) => (reservation?.menuIds ?? []).includes(m.id)),
     [menus, reservation],
   );
+  const menu = secilenMenuler[0];
 
   if (reservationQuery.isLoading || listLoading) {
     return <QueryBoundary isLoading error={null}>{null}</QueryBoundary>;

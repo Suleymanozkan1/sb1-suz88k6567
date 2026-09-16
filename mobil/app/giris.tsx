@@ -5,15 +5,43 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Dugme, Yazi } from '../src/bilesenler/temel';
 import { useOturum } from '../src/oturum';
+import { DEMO_GIRIS } from '../src/veri';
 import { aralik, renk, yazi, yuvarlak } from '../src/tema';
 
 export default function Giris() {
   const { girisYap, tanitimModu } = useOturum();
   const kenar = useSafeAreaInsets();
-  const [eposta, setEposta] = useState(tanitimModu ? 'demo@sahratakip.com' : '');
-  const [sifre, setSifre] = useState(tanitimModu ? 'demo1234' : '');
+  const [eposta, setEposta] = useState(tanitimModu ? DEMO_GIRIS.eposta : '');
+  const [sifre, setSifre] = useState(tanitimModu ? DEMO_GIRIS.sifre : '');
   const [hata, setHata] = useState('');
   const [bekliyor, setBekliyor] = useState(false);
+
+  /**
+   * Demo hesabıyla tek dokunuşta girer.
+   *
+   * NEDEN ALANLARI DOLDURMAKLA YETİNMİYOR. Panelde düğme yalnızca
+   * alanları dolduruyor; orada klavye ve "Giriş Yap" düğmesi aynı
+   * ekranda. Telefonda alanlar dolduktan sonra klavye açılıyor,
+   * düğmeyi bulmak için kaydırmak gerekiyor. Tek dokunuş, sistemi
+   * denemek isteyen kişinin önündeki tek engeli kaldırıyor.
+   *
+   * Girdiği değerler `gonder`e değil doğrudan `girisYap`a veriliyor:
+   * `setEposta` eşzamansız, hemen ardından `gonder()` çağrılsaydı
+   * durum henüz güncellenmemiş olur ve boş alanla giriş denenirdi.
+   */
+  async function demoyaGir() {
+    setHata('');
+    setEposta(DEMO_GIRIS.eposta);
+    setSifre(DEMO_GIRIS.sifre);
+    setBekliyor(true);
+    try {
+      await girisYap(DEMO_GIRIS.eposta, DEMO_GIRIS.sifre);
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : 'Demo hesabına girilemedi.');
+    } finally {
+      setBekliyor(false);
+    }
+  }
 
   async function gonder() {
     setHata('');
@@ -88,6 +116,24 @@ export default function Giris() {
             tam
             style={{ marginTop: aralik.xl }}
           />
+
+          {/*
+            DEMO DÜĞMESİ HER İKİ KİPTE DE. Önce yalnızca tanıtım
+            kipinde alanlar dolduruluyordu; sunucuya bağlı APK'da ekran
+            boş açılıyor ve elinde bilgi olmayan kişi hiç giremiyordu.
+            Web giriş ekranı da demo kartını iki kipte de gösteriyor.
+          */}
+          <Dugme
+            metin="Demo Hesabıyla Gir"
+            ikincil
+            tam
+            onPress={() => void demoyaGir()}
+            disabled={bekliyor}
+            style={{ marginTop: aralik.m }}
+          />
+          <Yazi tur="kucuk" renkli={renk.metinSolgun} style={{ marginTop: aralik.s, textAlign: 'center' }}>
+            {DEMO_GIRIS.eposta} · {DEMO_GIRIS.sifre}
+          </Yazi>
 
           {tanitimModu ? (
             <Yazi tur="kucuk" renkli={renk.metinSolgun} style={{ marginTop: aralik.m, textAlign: 'center' }}>

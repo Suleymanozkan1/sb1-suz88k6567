@@ -149,7 +149,7 @@ function toReservation(row: Row): Reservation {
     id: String(row.id),
     businessId: String(row.business_id),
     hallId: String(row.hall_id ?? ''),
-    menuId: (row.menu_id as string) ?? undefined,
+    menuIds: Array.isArray(row.menu_ids) ? (row.menu_ids as string[]) : [],
     code: (row.code as string) ?? '',
     customerName: (row.customer_name as string) ?? '',
     customerPhone: (row.customer_phone as string) ?? '',
@@ -202,7 +202,7 @@ function fromReservation(r: Reservation) {
   return {
     ...kimlikAlani(r.id), business_id: r.businessId, hall_id: r.hallId,
     // Kod boşsa veritabanı tetikleyicisi sıradaki numarayı yazar.
-    menu_id: r.menuId || null, code: r.code || null,
+    menu_ids: r.menuIds ?? [], code: r.code || null,
     customer_name: r.customerName, customer_phone: r.customerPhone,
     customer_email: r.customerEmail || null, bride_name: r.brideName || null,
     bride_phone: r.bridePhone || null, identity_no: r.identityNo || null,

@@ -16,6 +16,8 @@ const SALONLAR: Hall[] = [
 
 const MENULER: Menu[] = [
   { id: 'm1', businessId: 'b1', name: 'Menü-2', pricing: 'kisi_basi', priceKurus: 1000, description: '', isActive: true, createdAt: '' },
+  // İkinci paket: bir sözleşmeye birden fazla menü girebildiğini sınamak için.
+  { id: 'm2', businessId: 'b1', name: 'Menü-1', pricing: 'sabit', priceKurus: 500000, description: '', isActive: true, createdAt: '' },
 ];
 
 const RENKLER: ColorSetting[] = [
@@ -88,22 +90,37 @@ describe('dateRange', () => {
 
 describe('menuLineOf', () => {
   it('menü ve hizmetleri artı ile birleştirir', () => {
-    const r = rez({ menuId: 'm1', services: ['Su Böreği', 'Salata'] });
+    const r = rez({ menuIds: ['m1'], services: ['Su Böreği', 'Salata'] });
     expect(menuLineOf(r, MENULER)).toBe('MENÜ-2+SU BÖREĞİ+SALATA');
   });
 
   it('menü yoksa yalnızca hizmetleri yazar', () => {
-    expect(menuLineOf(rez({ menuId: undefined, services: ['Orkestra'] }), MENULER)).toBe('ORKESTRA');
+    expect(menuLineOf(rez({ menuIds: [], services: ['Orkestra'] }), MENULER)).toBe('ORKESTRA');
   });
 
   it('ikisi de yoksa boş döner', () => {
-    expect(menuLineOf(rez({ menuId: undefined, services: [] }), MENULER)).toBe('');
+    expect(menuLineOf(rez({ menuIds: [], services: [] }), MENULER)).toBe('');
+  });
+
+  it('seçilen menülerin HEPSİNİ yazar', () => {
+    /*
+      Kınası ayrı, düğünü ayrı paketli bir sözleşmede yalnızca ilk menü
+      yazılsaydı, program kâğıdını okuyan mutfak ikinci menüyü hiç
+      görmezdi -- ve o menü o gün hazırlanmazdı.
+    */
+    const r = rez({ menuIds: ['m1', 'm2'], services: ['Orkestra'] });
+    expect(menuLineOf(r, MENULER)).toBe('MENÜ-2+MENÜ-1+ORKESTRA');
+  });
+
+  it('silinmiş menü kimliğini atlar, kalanı yazar', () => {
+    // Menü silindiğinde kimlik dizide kalabiliyor; satır "undefined" yazmamalı.
+    expect(menuLineOf(rez({ menuIds: ['yok', 'm1'], services: [] }), MENULER)).toBe('MENÜ-2');
   });
 
   it('Türkçe büyük harfi doğru yapar', () => {
     const menu: Menu[] = [{ ...MENULER[0], name: 'İçli Köfteli Ziyafet' }];
     // Locale'siz toUpperCase "i" harfini "I" yapar; "İÇLİ" beklenir.
-    expect(menuLineOf(rez({ menuId: 'm1' }), menu)).toBe('İÇLİ KÖFTELİ ZİYAFET');
+    expect(menuLineOf(rez({ menuIds: ['m1'] }), menu)).toBe('İÇLİ KÖFTELİ ZİYAFET');
   });
 });
 
