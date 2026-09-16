@@ -41,13 +41,28 @@ function fetchTakli(senaryo: Senaryo = {}) {
     if (adres.endsWith('/rpc/check_rate_limit')) {
       return new Response(String(!senaryo.sinirAsildi));
     }
-    if (adres.endsWith('/api/sms')) {
-      return new Response(JSON.stringify(senaryo.sms ?? { sent: true }));
+    /*
+      SAĞLAYICI DOĞRUDAN ÇAĞRILIYOR.
+
+      Uç nokta önce kendi `/api/sms` ucuna HTTP isteği atıyordu; o uç
+      artık yetki istediği ve giriş anında ortada oturum olmadığı için
+      sağlayıcı (Netgsm) doğrudan çağrılıyor. Taklit de oraya kaydı.
+    */
+    if (adres.includes('netgsm.com.tr')) {
+      const ok = senaryo.sms?.sent ?? true;
+      return new Response(ok ? '00 123456' : '30');
     }
     return new Response('{}');
   }));
   return cagrilar;
 }
+
+/** Sağlayıcıya giden çağrının parametresi (Netgsm sorgu dizesiyle alıyor). */
+function saglayicidan(cagrilar: { adres: string }[], alan: string): string | undefined {
+  const c = cagrilar.find((x) => x.adres.includes('netgsm.com.tr'));
+  return c ? (new URL(c.adres).searchParams.get(alan) ?? undefined) : undefined;
+}
+const saglayicidanMetin = (c: { adres: string }[]) => saglayicidan(c, 'message');
 
 function istek(govde: unknown, method = 'POST'): Request {
   return new Request('https://ornek.test/api/otp', {
@@ -121,8 +136,7 @@ describe('otp uç noktası, telefon normalleştirme', () => {
       const cagrilar = fetchTakli();
       const yanit = await handler(istek({ action: 'issue', phone: girdi }));
       expect(yanit.status).toBe(200);
-      const sms = cagrilar.find((c) => c.adres.endsWith('/api/sms'));
-      expect((sms?.govde as { to: string }).to).toBe('5321234567');
+      expect(saglayicidan(cagrilar, 'gsmno')).toBe('5321234567');
     });
   }
 
@@ -151,8 +165,7 @@ describe('otp uç noktası, kod üretimi', () => {
     expect(govde.token).toMatch(/^[0-9a-f]{64}$/);
 
     // SMS'e giden kod yanıt gövdesinde geçmemeli.
-    const sms = cagrilar.find((c) => c.adres.endsWith('/api/sms'))!;
-    const kod = /(\d{6})/.exec((sms.govde as { body: string }).body)![1];
+        const kod = /(\d{6})/.exec(saglayicidanMetin(cagrilar)!)![1];
     expect(JSON.stringify(govde)).not.toContain(kod);
 
     // Belirteç, gerçekten o kodun imzası olmalı.
@@ -163,8 +176,7 @@ describe('otp uç noktası, kod üretimi', () => {
     const handler = await handlerYukle();
     const cagrilar = fetchTakli();
     await handler(istek({ action: 'issue', phone: '5321234567' }));
-    const sms = cagrilar.find((c) => c.adres.endsWith('/api/sms'))!;
-    expect((sms.govde as { body: string }).body).toMatch(/kodunuz: \d{6}$/);
+        expect(saglayicidanMetin(cagrilar)!).toMatch(/kodunuz: \d{6}$/);
   });
 
   it('geçerlilik süresi 5 dakikadır', async () => {
@@ -186,7 +198,7 @@ describe('otp uç noktası, kod üretimi', () => {
     expect(yanit.status).toBe(200);
     await expect(yanit.json()).resolves
       .toEqual({ issued: false, reason: 'provider_not_configured' });
-    expect(cagrilar.some((c) => c.adres.endsWith('/api/sms'))).toBe(false);
+    expect(cagrilar.some((c) => c.adres.includes('netgsm.com.tr'))).toBe(false);
   });
 
   /*
@@ -214,10 +226,13 @@ describe('otp uç noktası, kod üretimi', () => {
 
   it('SMS gönderilemezse 502 ve sağlayıcı hatasını döndürür', async () => {
     const handler = await handlerYukle();
-    fetchTakli({ sms: { sent: false, error: 'Kontör yetersiz.' } });
+    // Netgsm hata kodu döndürüyor; uç nokta onu okunur metne çeviriyor.
+    fetchTakli({ sms: { sent: false } });
     const yanit = await handler(istek({ action: 'issue', phone: '5321234567' }));
     expect(yanit.status).toBe(502);
-    await expect(yanit.json()).resolves.toEqual({ issued: false, error: 'Kontör yetersiz.' });
+    const govde = await yanit.json() as { issued: boolean; error: string };
+    expect(govde.issued).toBe(false);
+    expect(govde.error).toMatch(/şifre|erişim|Sağlayıcı/i);
   });
 
   it('numara başına kod isteme sınırı uygulanır', async () => {
@@ -232,7 +247,7 @@ describe('otp uç noktası, kod üretimi', () => {
     expect(sinir?.govde).toEqual({
       p_bucket: 'otp-issue', p_identifier: '5321234567', p_limit: 5, p_window_seconds: 900,
     });
-    expect(cagrilar.some((c) => c.adres.endsWith('/api/sms'))).toBe(false);
+    expect(cagrilar.some((c) => c.adres.includes('netgsm.com.tr'))).toBe(false);
   });
 });
 

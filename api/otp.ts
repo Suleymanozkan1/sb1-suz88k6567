@@ -9,8 +9,8 @@
  *   OTP_SECRET  Rastgele, en az 32 karakterlik gizli anahtar
  */
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
-import { isProviderConfigured } from './sms.js';
-import { clientIp, enforceRateLimit, JSON_HEADERS, json, tooManyRequests } from './_guard.js';
+import { isProviderConfigured, sendOne } from './sms.js';
+import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard.js';
 
 const TTL_MS = 5 * 60 * 1000; // 5 dakika
 
@@ -87,17 +87,18 @@ export default async function handler(request: Request): Promise<Response> {
       const expiresAt = Date.now() + TTL_MS;
       const token = sign(phone, code, expiresAt);
 
-      const origin = new URL(request.url).origin;
-      const smsResponse = await fetch(`${origin}/api/sms`, {
-        method: 'POST',
-        headers: JSON_HEADERS,
-        body: JSON.stringify({
-          to: phone,
-          body: `sahratakip.com giris dogrulama kodunuz: ${code}`,
-        }),
-      });
-      const smsResult = (await smsResponse.json()) as { sent?: boolean; error?: string };
-      if (!smsResult.sent) {
+      /*
+        SAĞLAYICI DOĞRUDAN ÇAĞRILIYOR, /api/sms üzerinden DEĞİL.
+
+        Önce kendi sunucusuna HTTP isteği atıyordu. O uç artık yetki
+        istiyor ve buradaki çağrıda oturum yok -- kullanıcı henüz giriş
+        yapmadı, doğrulama kodunu bekliyor. Araya bir sır koyup kendi
+        kendine kimlik kanıtlamak yerine, kuyruk işleyicisinin yaptığını
+        yapıyor: sağlayıcıyı doğrudan çağırıyor. Hem ağ turu hem de
+        taşınacak bir sır ortadan kalkıyor.
+      */
+      const smsResult = await sendOne(phone, `sahratakip.com giris dogrulama kodunuz: ${code}`);
+      if (!smsResult.ok) {
         return json({ issued: false, error: smsResult.error ?? 'Doğrulama kodu gönderilemedi.' }, 502);
       }
 
