@@ -21,6 +21,7 @@ import SmsKayitlari from '../app/SmsKayitlari';
 import MusteriAdaylari from '../app/MusteriAdaylari';
 import MusteriAdayiYeni from '../app/MusteriAdayiYeni';
 import MusteriAdayiDetay from '../app/MusteriAdayiDetay';
+import UrunHizmet from '../app/UrunHizmet';
 import UyeGirisi from '../UyeGirisi';
 
 import { clearAll, KEYS, read, write } from '../../lib/storage';
@@ -64,6 +65,7 @@ function renderPanel(path: string) {
             <Route path="musteri-adaylari" element={<MusteriAdaylari />} />
             <Route path="musteri-adaylari/yeni" element={<MusteriAdayiYeni />} />
             <Route path="musteri-adaylari/:id" element={<MusteriAdayiDetay />} />
+            <Route path="urun-hizmet" element={<UrunHizmet />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -979,5 +981,190 @@ describe('Ulaşım kanalı ve WhatsApp talepleri', () => {
     expect(await screen.findByRole('heading', { name: 'Müşteri takip' })).toBeInTheDocument();
     expect(screen.getByText('Bugün aranacak')).toBeInTheDocument();
     expect(screen.getByText('Geciken takip')).toBeInTheDocument();
+  });
+});
+
+/*
+  ÜRÜN VE HİZMET: SAYIM ÇIKTISI.
+
+  Ekran en çok stok saymak için açılıyor. Sayım kâğıdı depoya
+  götürülüp elle dolduruluyor; belirli bir grubu sayarken tüm listeyi
+  bastırmak gerekmesin diye satırlar tek tek seçilebiliyor.
+*/
+describe('Ürün ve Hizmet ekranı', () => {
+  it('doğrudan stok sekmesiyle açılır', async () => {
+    /*
+      Hizmet tanımı bir kez girilip nadiren değişiyor; stok her hafta
+      sayılıyor. Hizmetle açıldığında kullanıcı her gelişinde fazladan
+      bir tık yapıyordu.
+    */
+    renderPanel('/panel/urun-hizmet');
+
+    const urunSekmesi = await screen.findByRole('tab', { name: 'Ürünler ve Stok' });
+    expect(urunSekmesi).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Hizmetler' })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('stoğun TL karşılığını toplam satırında gösterir', async () => {
+    renderPanel('/panel/urun-hizmet');
+
+    // "Elimizdeki stoğun TL karşılığı": her ürünün toplam adedi x birim fiyatı.
+    expect(await screen.findByText('Stok Değeri')).toBeInTheDocument();
+  });
+
+  it('seçim yapılınca toplam yalnızca seçileni sayar', async () => {
+    const user = userEvent.setup();
+    renderPanel('/panel/urun-hizmet');
+
+    expect(await screen.findByText(/Seçim yapılmadı/)).toBeInTheDocument();
+
+    // Su (0,5 lt): 10 koli x 24 + 6 = 246 adet, adedi 4 TL -> 984,00 ₺
+    await user.click(screen.getByLabelText('Su (0,5 lt) ürününü çıktıya ekle'));
+
+    expect(await screen.findByText(/1 ürün seçili/)).toBeInTheDocument();
+
+    const ekranTablosu = screen.getByRole('table', { name: 'Ürün stokları' });
+    expect(within(ekranTablosu).getByText('984,00 ₺')).toBeInTheDocument();
+
+    /*
+      Kâğıt da aynı rakamı vermeli. İkisi ayrı hesaplansaydı ekranda
+      doğru görünen toplam kâğıda yanlış basılabilirdi -- sayım biteli
+      çok sonra, kimse fark etmeden.
+    */
+    const kagit = screen.getByRole('table', { name: 'Stok sayım listesi' });
+    /*
+      Kâğıtta iki kez geçiyor ve geçmeli: satırın kendi tutarı ve alttaki
+      toplam. Tek ürün seçiliyken bu ikisi zaten eşit -- eşit değillerse
+      toplam satırı yanlış hesaplıyor demektir.
+    */
+    expect(within(kagit).getAllByText('984,00 ₺')).toHaveLength(2);
+    // Seçilmeyen ürün kâğıtta hiç yer almamalı.
+    expect(within(kagit).queryByText('Kola (330 ml)')).not.toBeInTheDocument();
+  });
+
+  it('seçim temizlenince liste tamamına döner', async () => {
+    const user = userEvent.setup();
+    renderPanel('/panel/urun-hizmet');
+
+    await user.click(await screen.findByLabelText('Su (0,5 lt) ürününü çıktıya ekle'));
+    await user.click(screen.getByRole('button', { name: 'Seçimi temizle' }));
+
+    expect(await screen.findByText(/Seçim yapılmadı/)).toBeInTheDocument();
+  });
+
+  it('sekme değişince seçim taşınmaz', async () => {
+    /*
+      Kalsaydı hizmet sekmesinde yapılan seçim ürün sekmesine taşınır,
+      kullanıcının görmediği satırlar çıktıya girerdi.
+    */
+    const user = userEvent.setup();
+    renderPanel('/panel/urun-hizmet');
+
+    await user.click(await screen.findByLabelText('Su (0,5 lt) ürününü çıktıya ekle'));
+    expect(await screen.findByText(/1 ürün seçili/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Hizmetler' }));
+    await user.click(screen.getByRole('tab', { name: 'Ürünler ve Stok' }));
+
+    expect(await screen.findByText(/Seçim yapılmadı/)).toBeInTheDocument();
+  });
+
+  it('Excel ve A4 çıktısı düğmeleri stok sekmesinde durur', async () => {
+    const user = userEvent.setup();
+    renderPanel('/panel/urun-hizmet');
+
+    expect(await screen.findByRole('button', { name: /Excel'e Aktar/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sayım Çıktısı/ })).toBeInTheDocument();
+
+    // Hizmetin sayılacak adedi yok; kâğıt orada anlamsız.
+    await user.click(screen.getByRole('tab', { name: 'Hizmetler' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /Sayım Çıktısı/ })).not.toBeInTheDocument();
+    });
+  });
+
+  it('A4 sayım kâğıdında elle doldurulacak boş sütun bulunur', async () => {
+    renderPanel('/panel/urun-hizmet');
+
+    const kagit = await screen.findByRole('table', { name: 'Stok sayım listesi' });
+    expect(within(kagit).getByRole('columnheader', { name: 'Sayım' })).toBeInTheDocument();
+    // Sistemdeki adet yanında dursun ki fark depoda görülebilsin.
+    expect(within(kagit).getByRole('columnheader', { name: 'Toplam Adet' })).toBeInTheDocument();
+  });
+});
+
+/*
+  DÜĞÜN İÇİ GİDER: TÜR SEÇİMİ.
+
+  Alan serbest metin olarak kalıyor -- her salonun kalemi farklı ve
+  buraya bir kerelik kalemler de yazılıyor. Tanımlı ürün ve hizmetler
+  ÖNERİ olarak sunuluyor: garson, konfeti gibi kalemler tek tıkla
+  seçiliyor, gerisi elle yazılabiliyor.
+*/
+describe('Düğün içi gider türü', () => {
+  async function gelecekRezervasyon() {
+    seedIfEmpty();
+    return (await getReservations(BIZ)).find(
+      (r: Reservation) => r.date >= todayIso() && r.status !== 'İptal',
+    )!;
+  }
+
+  it('ürün ve hizmet kayıtlarını öneri olarak sunar', async () => {
+    const target = await gelecekRezervasyon();
+    renderPanel(`/panel/rezervasyonlar/${target.id}`);
+
+    const tur = await screen.findByLabelText('Tür');
+    const listeId = tur.getAttribute('list');
+    expect(listeId).toBeTruthy();
+
+    const liste = document.getElementById(listeId!)!;
+    const secenekleriOku = () =>
+      Array.from(liste.querySelectorAll('option')).map((o) => o.getAttribute('value'));
+
+    // Hizmet de ürün de önerilmeli: gider ikisinden de olabiliyor.
+    await waitFor(() => expect(secenekleriOku()).toContain('Garson'));
+    expect(secenekleriOku()).toContain('Su (0,5 lt)');
+  });
+
+  it('alan serbest metin olarak kalır', async () => {
+    /*
+      Açılır listeye çevrilseydi "Jeneratör kirası" gibi bir kerelik bir
+      kalem için önce Ürün/Hizmet ekranında kayıt açmak gerekirdi.
+      Ayrıca eski kayıtların türü listede olmayan metinler.
+    */
+    const user = userEvent.setup();
+    const target = await gelecekRezervasyon();
+    renderPanel(`/panel/rezervasyonlar/${target.id}`);
+
+    const tur = await screen.findByLabelText('Tür');
+    expect(tur.tagName).toBe('INPUT');
+
+    await user.type(tur, 'Jeneratör kirası');
+    expect(tur).toHaveValue('Jeneratör kirası');
+  });
+
+  it('tanımlı kalem seçilince birim fiyatı doldurur', async () => {
+    const user = userEvent.setup();
+    const target = await gelecekRezervasyon();
+    renderPanel(`/panel/rezervasyonlar/${target.id}`);
+
+    // Garson kişi başı 2000 TL olarak tanımlı.
+    await user.type(await screen.findByLabelText('Tür'), 'Garson');
+    await waitFor(() => expect(screen.getByLabelText('Birim fiyat')).toHaveValue('2000'));
+  });
+
+  it('kullanıcının yazdığı fiyatın üzerine yazmaz', async () => {
+    /*
+      Yazsaydı, anlaşılan farklı bir ücret kullanıcı türe dokunduğu an
+      sessizce tanımlı fiyata dönerdi.
+    */
+    const user = userEvent.setup();
+    const target = await gelecekRezervasyon();
+    renderPanel(`/panel/rezervasyonlar/${target.id}`);
+
+    await user.type(await screen.findByLabelText('Birim fiyat'), '3500');
+    await user.type(screen.getByLabelText('Tür'), 'Garson');
+
+    expect(screen.getByLabelText('Birim fiyat')).toHaveValue('3500');
   });
 });
