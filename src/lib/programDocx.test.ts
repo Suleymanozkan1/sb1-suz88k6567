@@ -207,11 +207,11 @@ describe('buildProgramDocx', () => {
 
   it('çizelgedeki bilgileri belgeye yazar', () => {
     const x = metin(buildProgramDocx(
-      cizelge([rez({ menuId: 'm1', secondPersonName: 'Mustafa Sezgin', startTime: '19:00', endTime: '23:00' })]),
+      cizelge([rez({ menuId: 'm1', groomName: 'Can Arslan', brideName: 'Zeynep Arslan', startTime: '19:00', endTime: '23:00' })]),
       meta,
     ));
     expect(x).toContain('12.09.2026 CUMARTESİ DÜĞÜN');
-    expect(x).toContain('ZUHAL RANA / MUSTAFA SEZGİN');
+    expect(x).toContain('CAN ARSLAN / ZEYNEP ARSLAN');
     expect(x).toContain('300 KİŞİ');
     expect(x).toContain('MENÜ-2');
     expect(x).toContain('Sahne erken kurulacak.');

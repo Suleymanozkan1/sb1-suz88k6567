@@ -222,9 +222,22 @@ describe('buildProgram', () => {
     expect(programIsEmpty(t)).toBe(true);
   });
 
-  it('ikinci kişi varsa iki adı birlikte yazar', () => {
-    const t = cizelge([rez({ customerName: 'Zuhal Rana', secondPersonName: 'Mustafa Sezgin' })]);
-    expect(t.rows[0].cells[0].events[0].parties).toBe('ZUHAL RANA / MUSTAFA SEZGİN');
+  it('çiftin adını yazar, sözleşmeyi imzalayanınkini değil', () => {
+    /*
+      Program kâğıdı salon şefinin elinde; o akşam kimi karşılayacağını
+      anlatması gerekiyor. Sözleşmeyi imzalayan çoğu zaman üçüncü bir
+      kişi (gelinin babası) ve kâğıtta onun adının işi yok.
+    */
+    const t = cizelge([rez({
+      customerName: 'Zuhal Rana', groomName: 'Can Arslan', brideName: 'Zeynep Arslan',
+    })]);
+    expect(t.rows[0].cells[0].events[0].parties).toBe('CAN ARSLAN / ZEYNEP ARSLAN');
+  });
+
+  it('damat ve gelin boşsa imzalayana düşer', () => {
+    // Eski kayıtlarda bu alanlar boş; kâğıt boş satır göstermemeli.
+    const t = cizelge([rez({ customerName: 'Zuhal Rana', groomName: undefined, brideName: undefined })]);
+    expect(t.rows[0].cells[0].events[0].parties).toBe('ZUHAL RANA');
   });
 
   it('rezervasyon notunu hücreye taşır', () => {

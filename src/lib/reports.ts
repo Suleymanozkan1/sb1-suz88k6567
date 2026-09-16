@@ -327,10 +327,25 @@ export interface ReservationIncomeRow {
 }
 
 /** Sözleşmedeki taraflar: ikinci kişi varsa iki isim birlikte yazılır. */
+/**
+ * "Kimin düğünü" -- program raporunda ve kasa satırlarında görünen ad.
+ *
+ * ÇİFTİN ADI, İMZALAYANIN DEĞİL. Damat ve gelin artık ayrı alanlarda
+ * duruyor ve sözleşmeyi imzalayan çoğu zaman üçüncü bir kişi (gelinin
+ * babası, bir şirket yetkilisi). İmzalayanın adı kullanılsaydı program
+ * kâğıdında "Ahmet Yılmaz / Zeynep Arslan" gibi, salon şefinin o akşam
+ * kimi karşılayacağını anlatmayan bir satır çıkardı.
+ *
+ * Damat ve gelin girilmemişse imzalayana düşülüyor: eski kayıtlarda bu
+ * alanlar boş ve rapor boş satır göstermemeli.
+ */
 export function contractParties(reservation: Reservation): string {
-  const ikinci = reservation.secondPersonName?.trim();
-  if (!ikinci || ikinci === reservation.customerName.trim()) return reservation.customerName;
-  return `${reservation.customerName} / ${ikinci}`;
+  const damat = reservation.groomName?.trim();
+  const gelin = reservation.brideName?.trim();
+
+  if (damat && gelin && damat !== gelin) return `${damat} / ${gelin}`;
+  if (damat || gelin) return (damat || gelin)!;
+  return reservation.customerName;
 }
 
 /**

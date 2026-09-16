@@ -76,6 +76,17 @@ function semayiOku(): Map<string, Set<string>> {
       for (let e = ekleme.exec(govde); e; e = ekleme.exec(govde)) sutunlar.add(e[1]);
       const silme = /drop\s+column\s+(?:if\s+exists\s+)?(\w+)/gi;
       for (let e = silme.exec(govde); e; e = silme.exec(govde)) sutunlar.delete(e[1]);
+      /*
+        YENİDEN ADLANDIRMA. `rename column eski to yeni` tanınmazsa
+        şema eski adı taşımaya devam eder: mobil yeni adı istediğinde
+        test "şemada yok" der, eski adı isteyen bir kod ise yakalanmaz.
+        İkisi de yanlış yönde hata.
+      */
+      const adDegisimi = /rename\s+column\s+(\w+)\s+to\s+(\w+)/gi;
+      for (let e = adDegisimi.exec(govde); e; e = adDegisimi.exec(govde)) {
+        sutunlar.delete(e[1]);
+        sutunlar.add(e[2]);
+      }
       if (sutunlar.size > 0) sema.set(tablo, sutunlar);
     }
   }

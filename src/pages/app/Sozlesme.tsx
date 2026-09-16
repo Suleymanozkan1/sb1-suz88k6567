@@ -6,7 +6,6 @@ import { useBusinesses, useMenus, useReservation, useReservationsWithBalances } 
 import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
 import { formatDate, formatDateLong, formatMoney, formatPhone, formatTimeRange, todayIso } from '../../lib/format';
-import { contractParties } from '../../lib/reports';
 import { memleketOzeti } from '../../lib/taraflar';
 import { sozlesmeSartlari } from '../../data/sozlesme';
 import { IconPrint } from '../../components/Icons';
@@ -104,11 +103,14 @@ export default function Sozlesme() {
             <Satir label="Ad Soyad" value={reservation.customerName} />
             <Satir label="TC" value={reservation.identityNo ?? ''} mono />
             <Satir label="Cep Telefonu" value={formatPhone(reservation.customerPhone)} />
-            <Satir
-              label="Gelin ve Damat"
-              value={reservation.secondPersonName ? contractParties(reservation) : ''}
-            />
-            <Satir label="Gelin Cep" value={reservation.secondPhone ? formatPhone(reservation.secondPhone) : ''} />
+            {/*
+              Damat ve gelin artık AYRI alanlarda; sözleşmede de ayrı
+              satırlar. Tek satırda birleştirilseydi hangisinin damat
+              hangisinin gelin olduğu kâğıttan okunamazdı.
+            */}
+            <Satir label="Damat" value={reservation.groomName ?? ''} />
+            <Satir label="Gelin" value={reservation.brideName ?? ''} />
+            <Satir label="Gelin Cep" value={reservation.bridePhone ? formatPhone(reservation.bridePhone) : ''} />
             {/*
               MEMLEKET SÖZLEŞMEDE DE. Salon, düğünün hangi memleketten
               geldiğini biliyorsa karşılama, ikram ve müzik ona göre
@@ -120,8 +122,8 @@ export default function Sozlesme() {
               label="Memleket"
               value={memleketOzeti(
                 reservation.organizationType,
-                reservation.customerHometown,
-                reservation.secondPersonHometown,
+                reservation.groomHometown,
+                reservation.brideHometown,
               )}
             />
             <Satir label="Adres" value={reservation.address ?? ''} />

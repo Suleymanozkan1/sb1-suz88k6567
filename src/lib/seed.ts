@@ -398,8 +398,8 @@ export function demoVeriSeti(): [string, unknown][] {
       customerName: name, customerPhone: phone, customerEmail: '',
       // Çift isimli kayıtlarda ikinci kişi sözleşmede "Gelin ve Damat"
       // satırında görünür.
-      secondPersonName: name.includes('&') ? name.split('&').map((p) => p.trim()).join(' / ') : undefined,
-      secondPhone: name.includes('&') ? `533${String(1000000 + i * 4321).slice(0, 7)}` : undefined,
+      brideName: name.includes('&') ? name.split('&').map((p) => p.trim()).join(' / ') : undefined,
+      bridePhone: name.includes('&') ? `533${String(1000000 + i * 4321).slice(0, 7)}` : undefined,
       date,
       startTime: SEANS_SAATI[slot].start,
       endTime: SEANS_SAATI[slot].end,
@@ -482,8 +482,8 @@ export function demoVeriSeti(): [string, unknown][] {
       code: `${new Date().getFullYear()}-${siraAl(new Date().getFullYear())}`,
       customerName: h.ad,
       customerPhone: h.tel,
-      secondPersonName: h.ikinci,
-      secondPhone: h.ikinci ? `533200${String(1000 + i).slice(-4)}` : undefined,
+      brideName: h.ikinci,
+      bridePhone: h.ikinci ? `533200${String(1000 + i).slice(-4)}` : undefined,
       // Tanıtım verisi: gerçek bir kimlik numarası değil, 11 haneli örnek.
       identityNo: `1${String(10000000000 + i * 137).slice(1)}`,
       date: tarih,

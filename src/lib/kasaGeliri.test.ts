@@ -28,20 +28,48 @@ function odeme(over: Partial<Payment>): Payment {
   };
 }
 
+/*
+  "KİMİN DÜĞÜNÜ" -- program kâğıdında ve kasa satırında görünen ad.
+
+  ÇİFTİN ADI, İMZALAYANIN DEĞİL. Sözleşmeyi imzalayan çoğu zaman
+  üçüncü bir kişi: gelinin babası, bir şirket yetkilisi. İmzalayanın
+  adı yazılsaydı program kâğıdı, salon şefinin o akşam kimi
+  karşılayacağını anlatmazdı.
+*/
 describe('contractParties', () => {
-  it('ikinci kişi varsa iki adı birleştirir', () => {
-    expect(contractParties(rez({ customerName: 'Zuhal Rana', secondPersonName: 'Mustafa Sezgin' })))
-      .toBe('Zuhal Rana / Mustafa Sezgin');
+  it('damat ve gelini birleştirir', () => {
+    expect(contractParties(rez({ groomName: 'Can Arslan', brideName: 'Zeynep Arslan' })))
+      .toBe('Can Arslan / Zeynep Arslan');
   });
 
-  it('ikinci kişi yoksa tek ad döner', () => {
-    expect(contractParties(rez({ secondPersonName: undefined }))).toBe('Zuhal Rana');
-    expect(contractParties(rez({ secondPersonName: '   ' }))).toBe('Zuhal Rana');
+  it('sözleşmeyi imzalayanın adını KULLANMAZ', () => {
+    // İmzalayan gelinin babası; program kâğıdında onun adı işe yaramaz.
+    expect(contractParties(rez({
+      customerName: 'Ahmet Arslan', groomName: 'Can Arslan', brideName: 'Zeynep Arslan',
+    }))).toBe('Can Arslan / Zeynep Arslan');
   });
 
-  it('ikinci kişi birinciyle aynıysa adı iki kez yazmaz', () => {
-    expect(contractParties(rez({ customerName: 'Zuhal Rana', secondPersonName: 'Zuhal Rana' })))
+  it('yalnızca biri girilmişse onu yazar', () => {
+    expect(contractParties(rez({ groomName: 'Can Arslan', brideName: undefined })))
+      .toBe('Can Arslan');
+    expect(contractParties(rez({ groomName: '  ', brideName: 'Zeynep Arslan' })))
+      .toBe('Zeynep Arslan');
+  });
+
+  it('ikisi de boşsa imzalayana düşer', () => {
+    /*
+      Eski kayıtlarda damat ve gelin alanları boş; rapor boş satır
+      göstermemeli. İmzalayan orada tek bilinen isim.
+    */
+    expect(contractParties(rez({ customerName: 'Zuhal Rana', groomName: undefined, brideName: undefined })))
       .toBe('Zuhal Rana');
+    expect(contractParties(rez({ customerName: 'Zuhal Rana', groomName: '  ', brideName: '   ' })))
+      .toBe('Zuhal Rana');
+  });
+
+  it('aynı ad iki kez yazılmaz', () => {
+    expect(contractParties(rez({ groomName: 'Can Arslan', brideName: 'Can Arslan' })))
+      .toBe('Can Arslan');
   });
 });
 
@@ -60,12 +88,13 @@ describe('reservationIncome', () => {
 
   it('tahsilatları sözleşme numarası ve taraflarla yazar', () => {
     const satirlar = reservationIncome(
-      [rez({ code: '2026-12', secondPersonName: 'Mustafa Sezgin' })],
+      [rez({ code: '2026-12', groomName: 'Can Arslan', brideName: 'Zeynep Arslan' })],
       [odeme({})],
     );
     const tahsilat = satirlar.find((s) => s.category === 'Tahsilat')!;
     expect(tahsilat.contractNo).toBe('2026-12');
-    expect(tahsilat.parties).toBe('Zuhal Rana / Mustafa Sezgin');
+    // "Taraflar" çiftin adı; "müşteri" sözleşmeyi imzalayan.
+    expect(tahsilat.parties).toBe('Can Arslan / Zeynep Arslan');
     expect(tahsilat.customerName).toBe('Zuhal Rana');
     expect(tahsilat.method).toBe('Nakit');
     expect(tahsilat.amount).toBe(70000);

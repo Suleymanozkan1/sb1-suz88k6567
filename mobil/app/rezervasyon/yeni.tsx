@@ -88,7 +88,7 @@ export default function YeniRezervasyon() {
     if (!/^5\d{9}$/.test(tel)) { setHata('Geçerli bir cep telefonu giriniz (5XX XXX XX XX).'); return; }
     /*
       İKİNCİ TELEFON DA DOĞRULANIYOR. Alan isteğe bağlı ama BOŞ
-      DEĞİLSE numara olmalı: `second_phone` sütununda kısıt yok, yani
+      DEĞİLSE numara olmalı: `bride_phone` sütununda kısıt yok, yani
       "123" olduğu gibi kaydediliyordu. Sonradan o numaraya hatırlatma
       göndermeye çalışıldığında sessizce düşerdi.
     */

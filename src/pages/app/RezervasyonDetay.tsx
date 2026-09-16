@@ -236,12 +236,28 @@ export default function RezervasyonDetay() {
           <h2 className="mb-4 font-heading text-lg font-bold text-brand">Rezervasyon Bilgileri</h2>
           <dl className="grid gap-4 sm:grid-cols-2">
             {/* Etiketler organizasyon türüne göre: düğünde damat/gelin, toplantıda müşteri. */}
-            <Info label={etiket.birinci} value={reservation.customerName} />
-            <Info label={etiket.ikinci} value={reservation.secondPersonName || '-'} />
-            <Info label={`${etiket.birinci} Telefonu`} value={formatPhone(reservation.customerPhone)} />
-            <Info label={`${etiket.ikinci} Telefonu`} value={reservation.secondPhone ? formatPhone(reservation.secondPhone) : '-'} />
-            <Info label={`${etiket.birinci} Memleketi`} value={reservation.customerHometown || '-'} />
-            <Info label={`${etiket.ikinci} Memleketi`} value={reservation.secondPersonHometown || '-'} />
+            {/*
+              ÜÇ AYRI KİŞİ: sözleşmeyi imzalayan, damat ve gelin.
+              İmzalayan çoğu zaman üçüncü bir kişi -- gelinin babası,
+              bir şirket yetkilisi. Tek satırda gösterilseydi salonun
+              kiminle sözleşme yaptığı kayıttan okunamazdı.
+            */}
+            <Info label="Ad Soyad (sözleşme)" value={reservation.customerName} />
+            <Info label="Cep Telefonu" value={formatPhone(reservation.customerPhone)} />
+            <Info label="Ev Telefonu" value={reservation.homePhone ? formatPhone(reservation.homePhone) : '-'} />
+            <Info label="Sözleşme Tarihi" value={reservation.contractDate ? formatDateLong(reservation.contractDate) : '-'} />
+            <Info label={`${etiket.birinci} Ad Soyad`} value={reservation.groomName || '-'} />
+            <Info label={`${etiket.ikinci} Ad Soyad`} value={reservation.brideName || '-'} />
+            <Info label={`${etiket.birinci} Cep`} value={reservation.groomPhone ? formatPhone(reservation.groomPhone) : '-'} />
+            <Info label={`${etiket.ikinci} Cep`} value={reservation.bridePhone ? formatPhone(reservation.bridePhone) : '-'} />
+            <Info
+              label={`${etiket.birinci} Memleket`}
+              value={[reservation.groomHometown, reservation.groomDistrict].filter(Boolean).join(' / ') || '-'}
+            />
+            <Info
+              label={`${etiket.ikinci} Memleket`}
+              value={[reservation.brideHometown, reservation.brideDistrict].filter(Boolean).join(' / ') || '-'}
+            />
             <Info label="E-Posta" value={reservation.customerEmail || '-'} />
             <Info label="TC Kimlik No" value={reservation.identityNo || '-'} />
             <Info label="Tarih / Seans" value={`${formatDateLong(reservation.date)} · ${reservation.slot}`} />

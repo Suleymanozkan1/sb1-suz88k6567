@@ -102,8 +102,8 @@ function islem(c: Cagri, ad: string) {
 const REZ_SATIRI = {
   id: 'r1', code: '2026-1', customer_name: 'Ayşe Yılmaz',
   customer_phone: '5321112233', date: '2026-09-12',
-  second_person_name: 'Mehmet Yılmaz', second_phone: '5334445566',
-  customer_hometown: 'Sivas', second_person_hometown: 'Konya',
+  bride_name: 'Mehmet Yılmaz', bride_phone: '5334445566',
+  groom_hometown: 'Sivas', bride_hometown: 'Konya',
   start_time: '19:00:00', end_time: '23:00:00', slot: 'Gece',
   organization_type: 'Düğün', guest_count: 300, total_amount: 250_000,
   deposit: 60_000, status: 'Kesin Rezervasyon', halls: { name: 'Kristal Salon' },
@@ -139,8 +139,8 @@ describe('rezervasyon eşlemesi', () => {
     */
     durum.satirlar.reservations = [{
       ...REZ_SATIRI,
-      second_person_name: null, second_phone: null,
-      customer_hometown: null, second_person_hometown: null,
+      bride_name: null, bride_phone: null,
+      groom_hometown: null, bride_hometown: null,
     }];
 
     const [r] = await veri.tumKayitlar();
@@ -160,9 +160,9 @@ describe('rezervasyon eşlemesi', () => {
     await veri.tumKayitlar();
 
     const secim = cagri('reservations', 0)?.islemler.find((i) => i.ad === 'select');
-    expect(String(secim?.arg)).toContain('second_person_name');
-    expect(String(secim?.arg)).toContain('customer_hometown');
-    expect(String(secim?.arg)).toContain('second_person_hometown');
+    expect(String(secim?.arg)).toContain('bride_name');
+    expect(String(secim?.arg)).toContain('groom_hometown');
+    expect(String(secim?.arg)).toContain('bride_hometown');
   });
 
   it('tahsilat kaporayı ve ödemeleri birlikte toplar', async () => {

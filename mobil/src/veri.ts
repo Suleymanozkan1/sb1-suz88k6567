@@ -260,14 +260,14 @@ const ORNEK_IS: IsSatiri[] = [
 ];
 
 const REZ_ALAN =
-  'id, code, customer_name, customer_phone, second_person_name, second_phone, '
-  + 'customer_hometown, second_person_hometown, date, start_time, end_time, slot, '
+  'id, code, customer_name, customer_phone, bride_name, bride_phone, '
+  + 'groom_hometown, bride_hometown, date, start_time, end_time, slot, '
   + 'organization_type, guest_count, total_amount, deposit, status, halls(name)';
 
 interface SatirDb {
   id: string; code: string; customer_name: string; customer_phone: string;
-  second_person_name?: string | null; second_phone?: string | null;
-  customer_hometown?: string | null; second_person_hometown?: string | null;
+  bride_name?: string | null; bride_phone?: string | null;
+  groom_hometown?: string | null; bride_hometown?: string | null;
   date: string; start_time?: string | null; end_time?: string | null;
   slot: Seans; organization_type: string; guest_count: number;
   total_amount: number; deposit: number; status: string;
@@ -301,8 +301,8 @@ function esle(r: SatirDb, tahsilat: number): Rezervasyon {
     salon: r.halls?.name ?? '-', davetli: r.guest_count ?? 0,
     toplam: kurusa(r.total_amount), kapora: kurusa(r.deposit),
     tahsilat: kurusa(r.deposit) + tahsilat, durum: r.status,
-    ikinciKisi: r.second_person_name ?? '', ikinciTelefon: r.second_phone ?? '',
-    memleket: r.customer_hometown ?? '', ikinciMemleket: r.second_person_hometown ?? '',
+    ikinciKisi: r.bride_name ?? '', ikinciTelefon: r.bride_phone ?? '',
+    memleket: r.groom_hometown ?? '', ikinciMemleket: r.bride_hometown ?? '',
   };
 }
 
@@ -474,10 +474,10 @@ export async function rezervasyonEkle(girdi: YeniRezervasyon): Promise<string | 
     status: girdi.durum,
     source_channel: girdi.kanal || null,
     source_detail: girdi.kanalDetay?.trim() || null,
-    second_person_name: girdi.ikinciKisi?.trim() || null,
-    second_phone: girdi.ikinciTelefon?.replace(/\D/g, '') || null,
-    customer_hometown: girdi.memleket?.trim() || null,
-    second_person_hometown: girdi.ikinciMemleket?.trim() || null,
+    bride_name: girdi.ikinciKisi?.trim() || null,
+    bride_phone: girdi.ikinciTelefon?.replace(/\D/g, '') || null,
+    groom_hometown: girdi.memleket?.trim() || null,
+    bride_hometown: girdi.ikinciMemleket?.trim() || null,
   }).select('id').single();
 
   if (error) throw new Error(error.message);

@@ -7,7 +7,7 @@
  * kişi kendi müşterisini damat diye kaydetmek zorunda kalırdı.
  *
  * NEDEN YENİ ALAN AÇILMADI. Kayıtta zaten iki taraf var:
- * `customerName` (sözleşmeyi imzalayan) ve `secondPersonName`
+ * `customerName` (sözleşmeyi imzalayan) ve `brideName`
  * (sözleşmedeki "Gelin ve Damat" satırının ikinci yarısı). Ayrıca
  * `groomName`/`brideName` açılsaydı aynı kişi iki alanda dururdu ve
  * hangisinin doğru olduğu -- özellikle biri güncellenip öteki
