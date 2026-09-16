@@ -115,3 +115,44 @@ export async function recordLoginAttempt(
 ): Promise<void> {
   await rpc('record_login_attempt', { p_email: email, p_ip: ip, p_succeeded: succeeded });
 }
+
+/**
+ * İsteği yapan kullanıcının belirtilen YETKİSİ var mı?
+ *
+ * NEDEN GEREKLİ. Satır güvenliği (RLS) `/veri` yolundan gelen sorguları
+ * koruyor, ama `api/` altındaki uç noktalar veritabanına `service_role`
+ * ile gidiyor -- RLS orada devrede DEĞİL. Yetki kontrolü yapmayan bir uç
+ * nokta, RLS ne kadar sıkı olursa olsun onu baypas eder.
+ *
+ * Denetimde çıkan somut örnek: `/api/sms` hiçbir kimlik doğrulaması
+ * yapmıyordu. Sağlayıcı kurulu olmadığı için zararsız görünüyordu, ama
+ * NETGSM tanımlandığı gün internetteki herkesin işletmenin hesabından,
+ * işletmenin başlığıyla SMS attırabileceği açık bir kapı oluyordu.
+ *
+ * Sahip (owner) her yetkiye sahip; personel yalnızca listesindekine --
+ * veritabanındaki `has_permission()` ile aynı kural.
+ */
+export async function yetkisiVarMi(request: Request, yetki: string): Promise<boolean> {
+  const { jetonuCoz } = await import('./_kimlik.js');
+  const { selectRows } = await import('./_db.js');
+
+  const baslik = request.headers.get('authorization') ?? '';
+  const jeton = baslik.startsWith('Bearer ') ? baslik.slice(7).trim() : '';
+  if (!jeton) return false;
+  const kimlik = jetonuCoz(jeton)?.sub;
+  if (!kimlik) return false;
+
+  try {
+    const satirlar = await selectRows<{ owner_id: string | null; permissions: string[] }>(
+      `profiles?id=eq.${encodeURIComponent(kimlik)}&select=owner_id,permissions`,
+    );
+    const profil = satirlar[0];
+    if (!profil) return false;
+    // Sahibin `owner_id` alanı boş; her yetkiye sahip sayılıyor.
+    if (profil.owner_id === null) return true;
+    return (profil.permissions ?? []).includes(yetki);
+  } catch {
+    // Veritabanına ulaşılamıyorsa yetki VERİLMEZ; kapalı tarafta kal.
+    return false;
+  }
+}

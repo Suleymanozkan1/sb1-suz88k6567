@@ -18,6 +18,7 @@ async function moduluYukle(env: Record<string, string | undefined> = {}) {
     NETGSM_HEADER: 'SAHRATAKIP',
     PGRST_URL: 'http://veri.yerel',
         JWT_SECRET: 'test-icin-en-az-otuz-iki-karakterlik-sir',
+    CRON_SECRET: 'gorev-sirri',
     ...env,
   };
   vi.resetModules();
@@ -50,10 +51,21 @@ function fetchTakli(senaryo: Senaryo = {}) {
   return cagrilar;
 }
 
-function istek(govde: unknown, method = 'POST'): Request {
+/*
+  İSTEKLER VARSAYILAN OLARAK GÖREV SIRRINI TAŞIYOR.
+
+  Uç nokta artık yetki istiyor; aşağıdaki testler yetkiyi değil
+  doğrulama, hız sınırı ve gönderim davranışını ölçüyor. Yetkinin
+  kendisi "yetki" başlıklı testlerde ayrıca sınanıyor.
+*/
+function istek(govde: unknown, method = 'POST', yetkiBasligi = 'Bearer gorev-sirri'): Request {
   return new Request('https://ornek.test/api/sms', {
     method,
-    headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.7' },
+    headers: {
+      'content-type': 'application/json',
+      'cf-connecting-ip': '203.0.113.7',
+      ...(yetkiBasligi ? { authorization: yetkiBasligi } : {}),
+    },
     body: method === 'POST' ? JSON.stringify(govde) : undefined,
   });
 }
@@ -148,7 +160,12 @@ describe('sms uç noktası, istek doğrulaması', () => {
   it('bozuk JSON gövdesini reddeder', async () => {
     const sms = await moduluYukle();
     fetchTakli();
-    const bozuk = new Request('https://ornek.test/api/sms', { method: 'POST', body: 'değil-json' });
+    // Yetki kontrolü gövdeden ÖNCE geliyor; başlıksız istek 401 alır,
+    // bu test ise gövde doğrulamasını ölçüyor.
+    const bozuk = new Request('https://ornek.test/api/sms', {
+      method: 'POST', body: 'değil-json',
+      headers: { authorization: 'Bearer gorev-sirri' },
+    });
     expect((await sms.default(bozuk)).status).toBe(400);
   });
 
@@ -274,5 +291,41 @@ describe('sms uç noktası, gönderim', () => {
       expect(metin).not.toContain('gizli-sifre');
       expect(metin).not.toContain('abone');
     }
+  });
+});
+
+
+/*
+  YETKİ.
+
+  Denetimde çıktı: bu uç HİÇBİR kimlik doğrulaması yapmıyordu.
+  Sağlayıcı kurulu olmadığı için zararsız görünüyordu, ama NETGSM
+  tanımlandığı gün internetteki herkes işletmenin hesabından,
+  işletmenin başlığıyla SMS attırabilirdi -- hem fatura hem marka hem
+  de 6563/İYS sorumluluğu işletmeye kalırdı.
+*/
+describe('sms uç noktası, yetki', () => {
+  it('kimliksiz isteği reddeder', async () => {
+    const sms = await moduluYukle();
+    fetchTakli();
+    const yanit = await sms.default(istek({ to: '5321234567', body: 'metin' }, 'POST', ''));
+    expect(yanit.status).toBe(401);
+    await expect(yanit.json()).resolves.toEqual({ error: 'Yetkisiz.' });
+  });
+
+  it('yanlış görev sırrını reddeder', async () => {
+    const sms = await moduluYukle();
+    fetchTakli();
+    const yanit = await sms.default(
+      istek({ to: '5321234567', body: 'metin' }, 'POST', 'Bearer yanlis'),
+    );
+    expect(yanit.status).toBe(401);
+  });
+
+  it('doğru görev sırrını kabul eder', async () => {
+    const sms = await moduluYukle();
+    fetchTakli();
+    const yanit = await sms.default(istek({ to: '5321234567', body: 'metin' }));
+    expect(yanit.status).not.toBe(401);
   });
 });

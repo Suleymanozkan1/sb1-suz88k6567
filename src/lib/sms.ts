@@ -6,6 +6,8 @@
  * yapılmaz ve bu durum çağırana bildirilir, "gönderildi" denmez.
  */
 
+import { erisimJetonu } from './oturum';
+
 export interface SendResult {
   sent: boolean;
   /** Sağlayıcı tanımlı olmadığı için gönderilmediyse true */
@@ -19,9 +21,21 @@ class ApiUnavailable extends Error {}
 async function post<T>(path: string, body: unknown): Promise<T> {
   let response: Response;
   try {
+    /*
+      OTURUM JETONU EKLENİYOR.
+
+      `/api/sms` artık `mesaj.duzenle` yetkisi istiyor: uç nokta
+      kimliksizken internetteki herkes işletmenin hesabından SMS
+      attırabiliyordu. Jeton gönderilmezse panelden "mesaj gönder"
+      diyen kullanıcı da 401 alırdı.
+    */
+    const jeton = erisimJetonu();
     response = await fetch(path, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(jeton ? { authorization: `Bearer ${jeton}` } : {}),
+      },
       body: JSON.stringify(body),
     });
   } catch {

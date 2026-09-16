@@ -11,7 +11,10 @@
  *   NETGSM_HEADER  Onaylı marka başlığı (gönderici adı)
  */
 
-import { clientIp, enforceRateLimit, json, tooManyRequests } from './_guard.js';
+import { isAuthorizedCron } from './_db.js';
+import {
+  clientIp, enforceRateLimit, json, tooManyRequests, yetkisiVarMi,
+} from './_guard.js';
 
 interface SendRequest {
   to: string;
@@ -71,6 +74,24 @@ export async function sendOne(to: string, body: string): Promise<ProviderResult>
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return json({ error: 'Yalnızca POST desteklenir.' }, 405);
+  }
+
+  /*
+    YETKİ ŞARTI.
+
+    Bu uç hiçbir kimlik doğrulaması yapmıyordu: internetteki herkes
+    POST edip işletmenin NETGSM hesabından, işletmenin başlığıyla SMS
+    attırabilirdi. Sağlayıcı kurulu olmadığı için zararsız görünüyordu;
+    NETGSM tanımlandığı gün hem para hem marka sorunu olurdu (ayrıca
+    6563 ve İYS açısından işletmeyi sorumlu bırakırdı).
+
+    İki meşru çağıran var: zamanlanmış görev (kuyruk) ve panelden
+    "mesaj gönder" diyen kullanıcı. Kuyruk `sendOne`'ı doğrudan
+    çağırıyor, yani buraya yalnızca kullanıcı geliyor -- ondan da
+    `mesaj.duzenle` yetkisi isteniyor.
+  */
+  if (!isAuthorizedCron(request) && !(await yetkisiVarMi(request, 'mesaj.duzenle'))) {
+    return json({ error: 'Yetkisiz.' }, 401);
   }
 
   let payload: SendRequest;
