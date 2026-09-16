@@ -44,7 +44,7 @@ end $$;
 select column_name, is_nullable, data_type
 from information_schema.columns
 where table_schema = 'public' and table_name = 'reservations'
-  and column_name in ('start_time', 'end_time', 'identity_no', 'second_phone')
+  and column_name in ('start_time', 'end_time', 'identity_no', 'bride_phone')
 order by column_name;
 
 do $$
@@ -53,7 +53,7 @@ begin
   select count(*) into v_adet
   from information_schema.columns
   where table_schema = 'public' and table_name = 'reservations'
-    and column_name in ('start_time', 'end_time', 'identity_no', 'second_phone')
+    and column_name in ('start_time', 'end_time', 'identity_no', 'bride_phone')
     and is_nullable = 'YES';
   if v_adet <> 4 then
     raise exception 'BASARISIZ: dort sutunun hepsi istege bagli degil (%)', v_adet;
@@ -89,7 +89,7 @@ declare
 begin
   insert into public.reservations
     (business_id, hall_id, code, customer_name, customer_phone, date, slot,
-     organization_type, guest_count, total_amount, identity_no, second_phone,
+     organization_type, guest_count, total_amount, identity_no, bride_phone,
      start_time, end_time)
   values (current_setting('test.biz')::uuid, current_setting('test.hall')::uuid,
           null, 'Birinci Kayit', '5330000001', date '2030-01-05', 'Gece',

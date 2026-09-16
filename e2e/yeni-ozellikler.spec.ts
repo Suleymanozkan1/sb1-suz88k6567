@@ -55,7 +55,10 @@ test('Rezervasyonda menü seçilince tutar önerilir', async ({ page }) => {
   await page.locator('#customerPhone').fill('5321119911');
   await page.locator('#date').fill('2027-10-10');
   await page.locator('#guestCount').fill('200');
-  await page.locator('#menuId').selectOption('menu_demo1');
+  // Menü artık açılır liste değil, kutucuk listesi: çoklu seçim
+  // `select multiple` ile yapılsaydı Ctrl basılmadan tıklayan
+  // kullanıcı önceki seçimini sessizce kaybederdi.
+  await page.getByRole('checkbox', { name: /Açık Büfe Ziyafet/ }).check();
   // 450 × 200 = 90.000 ₺
   const oneri = page.getByRole('button', { name: /Menüye göre .*90\.000.* uygula/ });
   await expect(oneri).toBeVisible();

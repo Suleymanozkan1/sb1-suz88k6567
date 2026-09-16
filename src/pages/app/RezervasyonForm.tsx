@@ -913,7 +913,7 @@ export default function RezervasyonForm() {
             </div>
 
             {/*
-              Paket dışında ne konuşulduğu. `menuId` tanımlı paketi ve
+              Paket dışında ne konuşulduğu. `menuIds` tanımlı paketleri ve
               fiyatı besliyor; bu not beslemiyor -- ikisi ayrı olmalı,
               yoksa serbest yazılan bir satır fiyatı değiştirir sanılır.
             */}
