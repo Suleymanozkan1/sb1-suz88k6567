@@ -23,7 +23,7 @@
  *   WHATSAPP_PHONE_NUMBER_ID  Gönderen numaranın kimliği
  */
 import { insertRow, isDbConfigured, selectRows } from './_db.js';
-import { json } from './_guard.js';
+import { cagiran, json } from './_guard.js';
 
 const TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -72,6 +72,34 @@ interface MesajSatiri { created_at: string }
 
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') return json({ error: 'Yöntem desteklenmiyor.' }, 405);
+
+  /*
+    YETKİ VE KİRACI ŞARTI.
+
+    Bu uç hiçbir kimlik doğrulaması yapmıyordu; `/api/sms` ile aynı
+    açık, ama iki yönden daha ağırı:
+
+      1. Gönderim ücretli. İnternetteki herkes işletmenin Meta
+         hesabından, işletmenin numarasıyla mesaj attırabilirdi --
+         faturası da marka sorumluluğu da işletmeye kalırdı.
+      2. Uç, `leadId` alıp o adayın TELEFONUNU veritabanından
+         service_role ile okuyordu. Kiracı kontrolü olmadığı için
+         bu aynı zamanda bir sorgulama penceresiydi: elindeki
+         kimlikle HANGİ işletmenin adayı olursa olsun mesaj
+         gönderilebilir, 404/409 ayrımından kaydın varlığı
+         öğrenilebilirdi.
+
+    Bu yüzden iki AYRI soru soruluyor: "bu işlemi yapabilir mi"
+    (`mesaj.duzenle`) ve "bu kayıt onun mu" (aşağıdaki kapsam
+    kontrolü). Yetki tek başına yetmez; `mesaj.duzenle` yetkisi olan
+    bir personel, o yetkiyle başka işletmenin müşterisine yazmamalı.
+  */
+  const kisi = await cagiran(request);
+  if (!kisi) return json({ error: 'Yetkisiz.' }, 401);
+  if (!kisi.sahipMi && !kisi.yetkiler.includes('mesaj.duzenle')) {
+    return json({ error: 'Bu işlem için yetkiniz yok.' }, 403);
+  }
+
   if (!isSendConfigured() || !isDbConfigured()) {
     return json({ error: 'WhatsApp gönderimi yapılandırılmamış.' }, 503);
   }
@@ -86,11 +114,44 @@ export default async function handler(request: Request): Promise<Response> {
     return json({ error: 'Müşteri adayı ve mesaj metni gerekiyor.' }, 400);
   }
 
+  /*
+    KİRACI KONTROLÜ, ADAY SORGUSUNUN İÇİNDE.
+
+    Önce çağıranın işletmeleri alınıyor, sonra aday YALNIZCA o
+    işletmelerle sınırlı sorgulanıyor. Kapsam, veritabanındaki
+    `owner_scope()` ile aynı kural: yönetici kendi kimliği, personel
+    bağlı olduğu yöneticinin kimliği.
+
+    NEDEN TEK SORGU. Önce aday çekilip sonra ayrı bir `businesses`
+    sorgusuyla kapsam denetlense, iki durum FARKLI sayıda veritabanı
+    turu yapardı: var olmayan aday tek sorgudan sonra döner, kapsam
+    dışı aday ikinci sorguyu da çalıştırırdı. Yanıtların metni aynı
+    olsa bile bu süre farkı, yeterli tekrarla "bu kimlikte başka bir
+    işletmede gerçek bir aday var" bilgisini verirdi. İki durum artık
+    aynı boş sonuçtan, aynı yoldan üretiliyor.
+
+    Kapsam dışı aday için 403 DEĞİL "yok" yanıtı veriliyor: "yetkin
+    yok" demek de o kaydın VAR olduğunu doğrulardı.
+
+    İşletmesi olmayan çağıranda liste boş kalır; `in.()` hiçbir satır
+    eşleştirmez, sonuç yine "yok" olur.
+  */
+  const isletmeler = await selectRows<{ id: string }>(
+    `businesses?owner_id=eq.${encodeURIComponent(kisi.kapsam)}&select=id`,
+  );
+  const kapsamListesi = isletmeler
+    .map((b) => encodeURIComponent(`"${b.id}"`))
+    .join(',');
+
   const adaylar = await selectRows<AdaySatiri>(
-    `customer_leads?id=eq.${encodeURIComponent(govde.leadId)}&select=id,business_id,phone&limit=1`,
+    `customer_leads?id=eq.${encodeURIComponent(govde.leadId)}`
+    + `&business_id=in.(${kapsamListesi})&select=id,business_id,phone&limit=1`,
   );
   const aday = adaylar[0];
-  if (!aday?.phone) return json({ error: 'Adayın telefon numarası yok.' }, 404);
+  if (!aday) return json({ error: 'Müşteri adayı bulunamadı.' }, 404);
+
+  // Buradan sonrası çağıranın KENDİ adayı; eksik telefonu söylemek sızıntı değil.
+  if (!aday.phone) return json({ error: 'Adayın telefon numarası yok.' }, 404);
 
   // Son GELEN mesaj penceresi belirler; giden mesaj pencereyi açmaz.
   const sonGelen = await selectRows<MesajSatiri>(

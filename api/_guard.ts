@@ -117,7 +117,7 @@ export async function recordLoginAttempt(
 }
 
 /**
- * İsteği yapan kullanıcının belirtilen YETKİSİ var mı?
+ * İsteği yapan kullanıcı kim?
  *
  * NEDEN GEREKLİ. Satır güvenliği (RLS) `/veri` yolundan gelen sorguları
  * koruyor, ama `api/` altındaki uç noktalar veritabanına `service_role`
@@ -129,30 +129,64 @@ export async function recordLoginAttempt(
  * NETGSM tanımlandığı gün internetteki herkesin işletmenin hesabından,
  * işletmenin başlığıyla SMS attırabileceği açık bir kapı oluyordu.
  *
- * Sahip (owner) her yetkiye sahip; personel yalnızca listesindekine --
- * veritabanındaki `has_permission()` ile aynı kural.
+ * `kapsam`, veritabanındaki `owner_scope()` ile AYNI kuralı uygular:
+ * yönetici ise kendi kimliği, personel ise bağlı olduğu yöneticinin
+ * kimliği. Belirli bir kaydın üzerinde işlem yapan uç noktalar, kaydın
+ * bu kapsama ait olduğunu ayrıca doğrulamak zorunda -- yetki ile
+ * kiracı ayrımı iki AYRI sorudur. `mesaj.duzenle` yetkisi olan bir
+ * personel, o yetkiyle BAŞKA işletmenin müşterisine yazamamalı.
  */
-export async function yetkisiVarMi(request: Request, yetki: string): Promise<boolean> {
+export interface Cagiran {
+  id: string;
+  /** Yönetici mi? Yöneticinin `owner_id` alanı boştur ve her yetkiye sahiptir. */
+  sahipMi: boolean;
+  /** Verinin sahibi olan yönetici kimliği (`owner_scope()` karşılığı). */
+  kapsam: string;
+  yetkiler: string[];
+}
+
+/** Bearer jetonundan çağıranı çözer. Jeton yoksa ya da geçersizse null. */
+export async function cagiran(request: Request): Promise<Cagiran | null> {
   const { jetonuCoz } = await import('./_kimlik.js');
   const { selectRows } = await import('./_db.js');
 
   const baslik = request.headers.get('authorization') ?? '';
   const jeton = baslik.startsWith('Bearer ') ? baslik.slice(7).trim() : '';
-  if (!jeton) return false;
+  if (!jeton) return null;
   const kimlik = jetonuCoz(jeton)?.sub;
-  if (!kimlik) return false;
+  if (!kimlik) return null;
 
   try {
     const satirlar = await selectRows<{ owner_id: string | null; permissions: string[] }>(
       `profiles?id=eq.${encodeURIComponent(kimlik)}&select=owner_id,permissions`,
     );
     const profil = satirlar[0];
-    if (!profil) return false;
-    // Sahibin `owner_id` alanı boş; her yetkiye sahip sayılıyor.
-    if (profil.owner_id === null) return true;
-    return (profil.permissions ?? []).includes(yetki);
+    if (!profil) return null;
+    return {
+      id: kimlik,
+      sahipMi: profil.owner_id === null,
+      kapsam: profil.owner_id ?? kimlik,
+      yetkiler: profil.permissions ?? [],
+    };
   } catch {
-    // Veritabanına ulaşılamıyorsa yetki VERİLMEZ; kapalı tarafta kal.
-    return false;
+    // Veritabanına ulaşılamıyorsa kimlik DOĞRULANMAZ; kapalı tarafta kal.
+    return null;
   }
+}
+
+/**
+ * İsteği yapan kullanıcının belirtilen YETKİSİ var mı?
+ *
+ * Sahip (owner) her yetkiye sahip; personel yalnızca listesindekine --
+ * veritabanındaki `has_permission()` ile aynı kural.
+ *
+ * DİKKAT: bu yalnızca "bu işlemi yapabilir mi" sorusunu yanıtlar.
+ * Belirli bir kayda dokunan uç noktalarda "bu kayıt onun mu" sorusu
+ * AYRICA sorulmalı; onun için `cagiran()` kullanılır.
+ */
+export async function yetkisiVarMi(request: Request, yetki: string): Promise<boolean> {
+  const kisi = await cagiran(request);
+  if (!kisi) return false;
+  if (kisi.sahipMi) return true;
+  return kisi.yetkiler.includes(yetki);
 }
