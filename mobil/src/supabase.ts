@@ -83,7 +83,18 @@ function metin(...adaylar: unknown[]): string {
 }
 
 /** Sunucu kökü: hem /api/* uçları hem de /veri (PostgREST) buradan geçer. */
-export const API_KOK = metin(process.env.EXPO_PUBLIC_API_KOK, ekstra.apiKok, 'https://sahratakip.com');
+/*
+  VARSAYILAN ADRES YAYINDAKİ DAĞITIM.
+
+  Önce `https://sahratakip.com` yazılıydı; sistem orada değil, Vercel
+  dağıtımında çalışıyor. Bu hâliyle derlenen bir APK hiçbir veriye
+  ulaşamaz, kullanıcı da sebebini göremez -- uygulama sessizce tanıtım
+  verisine düşer. Kendi alan adınıza geçtiğinizde burayı (ya da
+  `EXPO_PUBLIC_API_KOK` değişkenini) güncelleyin.
+*/
+export const API_KOK = metin(
+  process.env.EXPO_PUBLIC_API_KOK, ekstra.apiKok, 'https://sahratakip.vercel.app',
+);
 
 /**
  * Yapılandırma yoksa uygulama tanıtım verisiyle açılır, çökmez.
