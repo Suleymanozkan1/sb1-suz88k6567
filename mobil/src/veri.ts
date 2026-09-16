@@ -279,10 +279,22 @@ const ORNEK_IS: IsSatiri[] = [
   { id: 'i6', saat: '22:00', is: 'Pasta ve tatlı servisi', sorumlu: 'Servis', tamam: false },
 ];
 
+/*
+  GÖMÜLÜ İLİŞKİ YOK. Burada `halls(name)` yazıyordu; sunucunun `/veri`
+  katmanı gömülü ilişkiyi desteklemiyor ve isteğe 400 ile
+  "Tanımsız ilişki: reservations.halls" dönüyor. Sonuç: rezervasyona
+  dayanan BÜTÜN ekranlar (Yaklaşanlar, Kayıtlar, Takvim, Müşteriler,
+  aylık ciro, tür dağılımı) hata alıp boş kalıyordu. Kasa ve SMS
+  çalışıyordu, çünkü onlar salona bağlanmıyor.
+
+  Salon adı ayrı bir sorguyla alınıp eşleniyor -- tahsilat toplamları
+  için zaten kullanılan kalıbın aynısı. Rezervasyon sayısı ne olursa
+  olsun tek ek istek yapılıyor.
+*/
 const REZ_ALAN =
   'id, code, customer_name, customer_phone, groom_name, groom_phone, bride_name, bride_phone, '
   + 'groom_hometown, bride_hometown, date, start_time, end_time, slot, '
-  + 'organization_type, guest_count, total_amount, deposit, status, halls(name)';
+  + 'organization_type, guest_count, total_amount, deposit, status, hall_id';
 
 interface SatirDb {
   id: string; code: string; customer_name: string; customer_phone: string;
@@ -292,7 +304,7 @@ interface SatirDb {
   date: string; start_time?: string | null; end_time?: string | null;
   slot: Seans; organization_type: string; guest_count: number;
   total_amount: number; deposit: number; status: string;
-  halls?: { name: string } | null;
+  hall_id?: string | null;
 }
 
 /**
@@ -313,13 +325,13 @@ function saatAraligi(bas?: string | null, bit?: string | null): string {
   return s ? `${b}-${s}` : b;
 }
 
-function esle(r: SatirDb, tahsilat: number): Rezervasyon {
+function esle(r: SatirDb, tahsilat: number, salonAdi = '-'): Rezervasyon {
   return {
     id: r.id, kod: r.code, musteri: r.customer_name, telefon: r.customer_phone ?? '',
     tarih: r.date, seans: r.slot, saat: saatAraligi(r.start_time, r.end_time),
     tur: r.organization_type,
     renk: TUR_RENK[r.organization_type] ?? '#47b2e4',
-    salon: r.halls?.name ?? '-', davetli: r.guest_count ?? 0,
+    salon: salonAdi, davetli: r.guest_count ?? 0,
     toplam: kurusa(r.total_amount), kapora: kurusa(r.deposit),
     tahsilat: kurusa(r.deposit) + tahsilat, durum: r.status,
     damat: r.groom_name ?? '', damatTelefon: r.groom_phone ?? '',
@@ -340,13 +352,29 @@ async function tahsilatToplamlari(kimlikler: string[]): Promise<Record<string, n
   return toplam;
 }
 
+/** Salon kimliği -> adı. Tek istekte, yalnızca geçen salonlar için. */
+async function salonAdlari(kimlikler: string[]): Promise<Record<string, string>> {
+  const tekil = [...new Set(kimlikler.filter(Boolean))];
+  if (tanitim || tekil.length === 0) return {};
+  const { data } = await db().from('halls').select('id, name').in('id', tekil);
+  const ad: Record<string, string> = {};
+  for (const s of data ?? []) {
+    const satir = s as unknown as { id: string; name: string | null };
+    if (satir.name) ad[satir.id] = satir.name;
+  }
+  return ad;
+}
+
 async function rezervasyonlariGetir(
   kur: (q: ReturnType<typeof db>) => unknown,
 ): Promise<Rezervasyon[]> {
   const { data, error } = await (kur(db()) as Promise<{ data: unknown[] | null; error: { message: string } | null }>);
   const satirlar = denetle(data, error, 'Rezervasyonlar okunamadı.') as unknown as SatirDb[];
-  const toplamlar = await tahsilatToplamlari(satirlar.map((r) => r.id));
-  return satirlar.map((r) => esle(r, toplamlar[r.id] ?? 0));
+  const [toplamlar, adlar] = await Promise.all([
+    tahsilatToplamlari(satirlar.map((r) => r.id)),
+    salonAdlari(satirlar.map((r) => r.hall_id ?? '')),
+  ]);
+  return satirlar.map((r) => esle(r, toplamlar[r.id] ?? 0, adlar[r.hall_id ?? ''] ?? '-'));
 }
 
 /** Bugünden itibaren yaklaşan rezervasyonlar. */
