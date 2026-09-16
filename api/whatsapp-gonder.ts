@@ -23,7 +23,7 @@
  *   WHATSAPP_PHONE_NUMBER_ID  Gönderen numaranın kimliği
  */
 import { insertRow, isDbConfigured, selectRows } from './_db.js';
-import { json } from './_guard.js';
+import { cagiran, json } from './_guard.js';
 
 const TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -72,6 +72,34 @@ interface MesajSatiri { created_at: string }
 
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') return json({ error: 'Yöntem desteklenmiyor.' }, 405);
+
+  /*
+    YETKİ VE KİRACI ŞARTI.
+
+    Bu uç hiçbir kimlik doğrulaması yapmıyordu; `/api/sms` ile aynı
+    açık, ama iki yönden daha ağırı:
+
+      1. Gönderim ücretli. İnternetteki herkes işletmenin Meta
+         hesabından, işletmenin numarasıyla mesaj attırabilirdi --
+         faturası da marka sorumluluğu da işletmeye kalırdı.
+      2. Uç, `leadId` alıp o adayın TELEFONUNU veritabanından
+         service_role ile okuyordu. Kiracı kontrolü olmadığı için
+         bu aynı zamanda bir sorgulama penceresiydi: elindeki
+         kimlikle HANGİ işletmenin adayı olursa olsun mesaj
+         gönderilebilir, 404/409 ayrımından kaydın varlığı
+         öğrenilebilirdi.
+
+    Bu yüzden iki AYRI soru soruluyor: "bu işlemi yapabilir mi"
+    (`mesaj.duzenle`) ve "bu kayıt onun mu" (aşağıdaki kapsam
+    kontrolü). Yetki tek başına yetmez; `mesaj.duzenle` yetkisi olan
+    bir personel, o yetkiyle başka işletmenin müşterisine yazmamalı.
+  */
+  const kisi = await cagiran(request);
+  if (!kisi) return json({ error: 'Yetkisiz.' }, 401);
+  if (!kisi.sahipMi && !kisi.yetkiler.includes('mesaj.duzenle')) {
+    return json({ error: 'Bu işlem için yetkiniz yok.' }, 403);
+  }
+
   if (!isSendConfigured() || !isDbConfigured()) {
     return json({ error: 'WhatsApp gönderimi yapılandırılmamış.' }, 503);
   }
@@ -90,7 +118,35 @@ export default async function handler(request: Request): Promise<Response> {
     `customer_leads?id=eq.${encodeURIComponent(govde.leadId)}&select=id,business_id,phone&limit=1`,
   );
   const aday = adaylar[0];
-  if (!aday?.phone) return json({ error: 'Adayın telefon numarası yok.' }, 404);
+
+  /*
+    KİRACI KONTROLÜ, TELEFON KONTROLÜNDEN ÖNCE.
+
+    Adayın işletmesi çağıranın kapsamında mı? `owner_scope()` ile
+    aynı kural: yönetici kendi kimliği, personel bağlı olduğu
+    yöneticinin kimliği.
+
+    Kapsam dışı aday için 403 DEĞİL "yok" yanıtı veriliyor: "yetkin
+    yok" demek, o kimlikte bir kaydın VAR olduğunu doğrulardı.
+
+    Sıra önemli. Telefon kontrolü önce yapılsaydı iki durum FARKLI
+    metin döndürürdü -- ikisi de 404 olsa bile, "telefon numarası
+    yok" ile "aday bulunamadı" arasındaki fark, elindeki kimliğin
+    başka bir işletmede gerçek bir adaya karşılık geldiğini ele
+    verirdi. Var olmayan aday ile kapsam dışı aday AYNI yanıtı
+    vermeli.
+  */
+  const YOK = json({ error: 'Müşteri adayı bulunamadı.' }, 404);
+  if (!aday) return YOK;
+
+  const isletmeler = await selectRows<{ id: string }>(
+    `businesses?id=eq.${encodeURIComponent(aday.business_id)}`
+    + `&owner_id=eq.${encodeURIComponent(kisi.kapsam)}&select=id&limit=1`,
+  );
+  if (!isletmeler[0]) return YOK;
+
+  // Buradan sonrası çağıranın KENDİ adayı; eksik telefonu söylemek sızıntı değil.
+  if (!aday.phone) return json({ error: 'Adayın telefon numarası yok.' }, 404);
 
   // Son GELEN mesaj penceresi belirler; giden mesaj pencereyi açmaz.
   const sonGelen = await selectRows<MesajSatiri>(
