@@ -31,6 +31,8 @@ let metaGovde: Record<string, unknown> | null = null;
 let profil: { owner_id: string | null; permissions: string[] } | null = null;
 /** Adayın işletmesinin sahibi. Çağıranın kapsamıyla eşleşmezse aday görünmez. */
 let isletmeSahibi: string | null = null;
+/** Yapılan veritabanı çağrılarının adresleri; tur sayısını ölçmek için. */
+let sorgular: string[] = [];
 
 beforeEach(() => {
   aday = { id: 'lead-1', business_id: 'biz-1', phone: '5332642537' };
@@ -41,20 +43,32 @@ beforeEach(() => {
   // Varsayılan çağıran: işletmenin sahibi (owner_id boş).
   profil = { owner_id: null, permissions: [] };
   isletmeSahibi = SAHIP;
+  sorgular = [];
 
   vi.stubGlobal('fetch', vi.fn(async (girdi: string | URL, init?: RequestInit) => {
     const adres = String(girdi);
+    sorgular.push(adres);
     if (adres.includes('profiles')) {
       return new Response(JSON.stringify(profil ? [profil] : []), { status: 200 });
     }
     if (adres.includes('businesses')) {
-      // Uç nokta `owner_id=eq.<kapsam>` ile sorguluyor; kapsam tutmuyorsa boş döner.
+      // `biz-1` işletmesinin sahibi `isletmeSahibi`; çağıranın kapsamı
+      // tutmuyorsa bu sorgu hiçbir işletme döndürmez.
       const kapsamUyuyor = isletmeSahibi !== null
         && adres.includes(`owner_id=eq.${encodeURIComponent(isletmeSahibi)}`);
       return new Response(JSON.stringify(kapsamUyuyor ? [{ id: 'biz-1' }] : []), { status: 200 });
     }
-    if (adres.includes('customer_leads')) {
-      return new Response(JSON.stringify(aday ? [aday] : []), { status: 200 });
+    if (adres.includes('customer_leads') && (init?.method ?? 'GET') === 'GET'
+      && adres.includes('business_id=in.')) {
+      /*
+        Aday sorgusu artık kapsamla SINIRLI geliyor. Taklit de bunu
+        uygulamalı: aday'ın işletmesi listede değilse satır dönmemeli --
+        yoksa test, kapsam süzgecinin çalıştığını değil sadece sorgunun
+        atıldığını ölçerdi.
+      */
+      const listede = aday !== null
+        && adres.includes(encodeURIComponent(`"${aday.business_id}"`));
+      return new Response(JSON.stringify(listede ? [aday] : []), { status: 200 });
     }
     if (adres.includes('customer_lead_messages') && (init?.method ?? 'GET') === 'GET') {
       return new Response(JSON.stringify(sonGelen ? [{ created_at: sonGelen }] : []), { status: 200 });
@@ -273,5 +287,51 @@ describe('whatsapp-gonder, yetki ve kiracı', () => {
     );
 
     expect(yanit.status).toBe(200);
+  });
+});
+
+/*
+  ZAMANLAMA SIZINTISI.
+
+  Yanıtların metnini aynı yapmak yetmiyor. Önce aday çekilip sonra
+  ayrı bir sorguyla kapsam denetlenseydi, var olmayan aday TEK
+  veritabanı turundan sonra dönerdi; kapsam dışı aday ise İKİ tur
+  yapardı. Metin aynı olsa bile bu süre farkı, yeterli tekrarla
+  "bu kimlikte başka bir işletmede gerçek bir aday var" bilgisini
+  verirdi (CWE-208).
+
+  Bu yüzden iki durumun aynı sayıda ve aynı biçimde sorgu yapması
+  sınanıyor.
+*/
+describe('whatsapp-gonder, kapsam sızıntısı zamanlamadan da olmamalı', () => {
+  it('var olmayan aday ile kapsam dışı aday aynı sorguları yapar', async () => {
+    const { default: handler } = await moduluYukle();
+
+    isletmeSahibi = '22222222-2222-4222-8222-222222222222';
+    await handler(await istek({ leadId: 'lead-1', body: 'x' }));
+    const kapsamDisiSorgular = [...sorgular];
+
+    sorgular = [];
+    isletmeSahibi = SAHIP;
+    aday = null;
+    await handler(await istek({ leadId: 'lead-1', body: 'x' }));
+    const hicYokSorgular = [...sorgular];
+
+    // Tur sayısı eşit olmalı: biri erken dönüp ötekinden az sorgu yapmamalı.
+    expect(kapsamDisiSorgular).toHaveLength(hicYokSorgular.length);
+
+    // Sorgulanan tablolar da aynı sırada olmalı.
+    const tablolar = (liste: string[]) => liste.map((a) => a.split('?')[0]);
+    expect(tablolar(kapsamDisiSorgular)).toEqual(tablolar(hicYokSorgular));
+  });
+
+  it('aday sorgusu kapsamla sınırlı gidiyor', async () => {
+    // Kapsam süzgeci sorgunun İÇİNDE olmalı; sonradan elde ayıklanmamalı.
+    const { default: handler } = await moduluYukle();
+    await handler(await istek({ leadId: 'lead-1', body: 'Merhaba' }));
+
+    const adaySorgusu = sorgular.find((a) => a.includes('customer_leads') && a.includes('id=eq.'));
+    expect(adaySorgusu).toBeDefined();
+    expect(adaySorgusu).toContain('business_id=in.');
   });
 });

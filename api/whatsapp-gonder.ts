@@ -114,36 +114,41 @@ export default async function handler(request: Request): Promise<Response> {
     return json({ error: 'Müşteri adayı ve mesaj metni gerekiyor.' }, 400);
   }
 
-  const adaylar = await selectRows<AdaySatiri>(
-    `customer_leads?id=eq.${encodeURIComponent(govde.leadId)}&select=id,business_id,phone&limit=1`,
-  );
-  const aday = adaylar[0];
-
   /*
-    KİRACI KONTROLÜ, TELEFON KONTROLÜNDEN ÖNCE.
+    KİRACI KONTROLÜ, ADAY SORGUSUNUN İÇİNDE.
 
-    Adayın işletmesi çağıranın kapsamında mı? `owner_scope()` ile
-    aynı kural: yönetici kendi kimliği, personel bağlı olduğu
-    yöneticinin kimliği.
+    Önce çağıranın işletmeleri alınıyor, sonra aday YALNIZCA o
+    işletmelerle sınırlı sorgulanıyor. Kapsam, veritabanındaki
+    `owner_scope()` ile aynı kural: yönetici kendi kimliği, personel
+    bağlı olduğu yöneticinin kimliği.
+
+    NEDEN TEK SORGU. Önce aday çekilip sonra ayrı bir `businesses`
+    sorgusuyla kapsam denetlense, iki durum FARKLI sayıda veritabanı
+    turu yapardı: var olmayan aday tek sorgudan sonra döner, kapsam
+    dışı aday ikinci sorguyu da çalıştırırdı. Yanıtların metni aynı
+    olsa bile bu süre farkı, yeterli tekrarla "bu kimlikte başka bir
+    işletmede gerçek bir aday var" bilgisini verirdi. İki durum artık
+    aynı boş sonuçtan, aynı yoldan üretiliyor.
 
     Kapsam dışı aday için 403 DEĞİL "yok" yanıtı veriliyor: "yetkin
-    yok" demek, o kimlikte bir kaydın VAR olduğunu doğrulardı.
+    yok" demek de o kaydın VAR olduğunu doğrulardı.
 
-    Sıra önemli. Telefon kontrolü önce yapılsaydı iki durum FARKLI
-    metin döndürürdü -- ikisi de 404 olsa bile, "telefon numarası
-    yok" ile "aday bulunamadı" arasındaki fark, elindeki kimliğin
-    başka bir işletmede gerçek bir adaya karşılık geldiğini ele
-    verirdi. Var olmayan aday ile kapsam dışı aday AYNI yanıtı
-    vermeli.
+    İşletmesi olmayan çağıranda liste boş kalır; `in.()` hiçbir satır
+    eşleştirmez, sonuç yine "yok" olur.
   */
-  const YOK = json({ error: 'Müşteri adayı bulunamadı.' }, 404);
-  if (!aday) return YOK;
-
   const isletmeler = await selectRows<{ id: string }>(
-    `businesses?id=eq.${encodeURIComponent(aday.business_id)}`
-    + `&owner_id=eq.${encodeURIComponent(kisi.kapsam)}&select=id&limit=1`,
+    `businesses?owner_id=eq.${encodeURIComponent(kisi.kapsam)}&select=id`,
   );
-  if (!isletmeler[0]) return YOK;
+  const kapsamListesi = isletmeler
+    .map((b) => encodeURIComponent(`"${b.id}"`))
+    .join(',');
+
+  const adaylar = await selectRows<AdaySatiri>(
+    `customer_leads?id=eq.${encodeURIComponent(govde.leadId)}`
+    + `&business_id=in.(${kapsamListesi})&select=id,business_id,phone&limit=1`,
+  );
+  const aday = adaylar[0];
+  if (!aday) return json({ error: 'Müşteri adayı bulunamadı.' }, 404);
 
   // Buradan sonrası çağıranın KENDİ adayı; eksik telefonu söylemek sızıntı değil.
   if (!aday.phone) return json({ error: 'Adayın telefon numarası yok.' }, 404);
