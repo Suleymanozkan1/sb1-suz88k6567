@@ -64,15 +64,28 @@ export default async function handler(request: Request): Promise<Response> {
       const phoneLimit = await enforceRateLimit(phone, { bucket: 'otp-issue', limit: 5, windowSeconds: 900 });
       if (!phoneLimit.allowed) return tooManyRequests(900);
 
-      const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-      const expiresAt = Date.now() + TTL_MS;
-      const token = sign(phone, code, expiresAt);
+      /*
+        SAĞLAYICI KONTROLÜ İMZADAN ÖNCE.
 
+        Önce kod üretilip `sign()` ile imzalanıyordu; `sign` OTP_SECRET
+        okuyor ve tanımlı değilse hata fırlatıyor. SMS sağlayıcısı da
+        OTP_SECRET de kurulmamış bir sistemde (ki yeni kurulumun normal
+        hâli bu) bu satır alttaki nazik cevaba SIRA GELMEDEN patlıyor ve
+        uç nokta 500 dönüyordu. Sonuç ağır: giriş ekranı bu ucu çağırdığı
+        için KİMSE panele giremiyordu -- `/api/login` 200 dönse bile.
+        Canlıda tam olarak bu yaşandı.
+
+        Sağlayıcı yoksa imzalanacak bir şey de yok; kontrol başa alındı.
+      */
       if (!isProviderConfigured()) {
         // Sağlayıcı yok: doğrulama kurulmadan giriş engellenmemeli, ancak
         // kodun gittiği iddia edilmemeli. Durum açıkça bildirilir.
         return json({ issued: false, reason: 'provider_not_configured' });
       }
+
+      const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+      const expiresAt = Date.now() + TTL_MS;
+      const token = sign(phone, code, expiresAt);
 
       const origin = new URL(request.url).origin;
       const smsResponse = await fetch(`${origin}/api/sms`, {
