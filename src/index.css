@@ -81,6 +81,13 @@
 
 /* Yazdırma görünümü (sözleşme / rapor çıktısı) */
 @media print {
+  /*
+    A4 DİKEY. Sayım kâğıdı, fatura ve sözleşme kâğıda basılıyor;
+    tarayıcı varsayılanı ülkeye göre Letter olabiliyor ve o zaman
+    sayfanın sağı kesiliyor. Kenar boşluğu ciltlemeye değil okumaya
+    göre: 14 mm, yazıcıların basılamayan kenarının dışında kalır.
+  */
+  @page { size: A4 portrait; margin: 14mm; }
   .no-print { display: none !important; }
   /* Ekranda düzenleme alanı, kâğıtta düz metin: ikisi aynı anda görünmez. */
   .print-only { display: block !important; }

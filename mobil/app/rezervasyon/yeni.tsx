@@ -6,7 +6,7 @@ import { BolumBasligi, Dugme, Kart, Yazi } from '../../src/bilesenler/temel';
 import { bugunIso, tutar } from '../../src/bicim';
 import { aralik, renk } from '../../src/tema';
 import {
-  menuler, rezervasyonEkle, salonlar, tanitim, ULASIM_KANALLARI,
+  menuler, rezervasyonEkle, salonlar, tanitim, tarafEtiketleri, ULASIM_KANALLARI,
   type Menu, type Salon, type UlasimKanali,
 } from '../../src/veri';
 
@@ -32,6 +32,10 @@ export default function YeniRezervasyon() {
 
   const [musteri, setMusteri] = useState('');
   const [telefon, setTelefon] = useState('');
+  const [ikinciKisi, setIkinciKisi] = useState('');
+  const [ikinciTelefon, setIkinciTelefon] = useState('');
+  const [memleket, setMemleket] = useState('');
+  const [ikinciMemleket, setIkinciMemleket] = useState('');
   const [tarih, setTarih] = useState(bugunIso());
   const [seans, setSeans] = useState('Gece');
   const [tur, setTur] = useState('Düğün');
@@ -70,6 +74,9 @@ export default function YeniRezervasyon() {
     if (oneri > 0) setToplam(String(oneri / 100));
   }
 
+  // Tür değiştiğinde alan başlıkları da değişiyor.
+  const etiket = tarafEtiketleri(tur);
+
   function sayi(metin: string): number {
     return Number(metin.replace(/\./g, '').replace(',', '.'));
   }
@@ -79,6 +86,16 @@ export default function YeniRezervasyon() {
     if (!musteri.trim()) { setHata('Müşteri adı giriniz.'); return; }
     const tel = telefon.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
     if (!/^5\d{9}$/.test(tel)) { setHata('Geçerli bir cep telefonu giriniz (5XX XXX XX XX).'); return; }
+    /*
+      İKİNCİ TELEFON DA DOĞRULANIYOR. Alan isteğe bağlı ama BOŞ
+      DEĞİLSE numara olmalı: `second_phone` sütununda kısıt yok, yani
+      "123" olduğu gibi kaydediliyordu. Sonradan o numaraya hatırlatma
+      göndermeye çalışıldığında sessizce düşerdi.
+    */
+    const ikinciTel = ikinciTelefon.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
+    if (ikinciTelefon.trim() && !/^5\d{9}$/.test(ikinciTel)) {
+      setHata('İkinci kişinin cep telefonu geçersiz (5XX XXX XX XX).'); return;
+    }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(tarih)) { setHata('Tarihi YYYY-AA-GG biçiminde giriniz.'); return; }
     const kisi = Number(davetli);
     if (!Number.isFinite(kisi) || kisi <= 0) { setHata('Davetli sayısı giriniz.'); return; }
@@ -99,6 +116,7 @@ export default function YeniRezervasyon() {
         musteri: musteri.trim(), telefon: tel, tarih, seans, tur,
         salon, davetli: kisi, toplam: tutarKurus, kapora: kaporaKurus, durum,
         kanal, kanalDetay,
+        ikinciKisi, ikinciTelefon: ikinciTel, memleket, ikinciMemleket,
       });
       yonlendir.replace(id ? `/rezervasyon/${id}` : '/kayitlar');
     } catch (e) {
@@ -118,8 +136,23 @@ export default function YeniRezervasyon() {
     >
       <BolumBasligi>Müşteri</BolumBasligi>
       <Kart>
-        <Alan etiket="Ad soyad" deger={musteri} degistir={setMusteri} ipucu="Zeynep & Can Arslan" />
-        <Alan etiket="Cep telefonu" deger={telefon} degistir={setTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
+        {/*
+          TARAF ETİKETLERİ TÜRE GÖRE, PANELLE AYNI KURAL. Düğün, nişan,
+          kına ve nikâhta "Damat / Gelin"; toplantı ya da konferansta
+          "Müşteri / İkinci kişi". Sabit "Damat" olsaydı bir toplantı
+          kaydı girerken kullanıcı müşterisini damat diye kaydederdi.
+        */}
+        <Alan etiket={`${etiket.birinci} ad soyad`} deger={musteri} degistir={setMusteri} ipucu="Can Arslan" />
+        <Alan etiket={`${etiket.birinci} cep telefonu`} deger={telefon} degistir={setTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
+        <Alan etiket={`${etiket.ikinci} ad soyad`} deger={ikinciKisi} degistir={setIkinciKisi} ipucu="Zeynep Arslan" />
+        <Alan etiket={`${etiket.ikinci} cep telefonu`} deger={ikinciTelefon} degistir={setIkinciTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
+        {/*
+          Memleket, yaşanan ilden AYRI tutuluyor: İstanbul'da oturan bir
+          Sivaslı için ikisi farklıdır. Salon karşılamayı, ikramı ve
+          müziği buna göre planlıyor.
+        */}
+        <Alan etiket={`${etiket.birinci} memleketi`} deger={memleket} degistir={setMemleket} ipucu="Sivas" />
+        <Alan etiket={`${etiket.ikinci} memleketi`} deger={ikinciMemleket} degistir={setIkinciMemleket} ipucu="Konya" />
       </Kart>
 
       <BolumBasligi>Organizasyon</BolumBasligi>

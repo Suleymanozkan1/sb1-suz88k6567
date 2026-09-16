@@ -7,6 +7,7 @@ import IsEmri from '../../components/IsEmri';
 import TedarikciAtama from '../../components/TedarikciAtama';
 import HatirlatmaGonder from '../../components/HatirlatmaGonder';
 import DugunGiderleri from '../../components/DugunGiderleri';
+import { tarafEtiketleri } from '../../lib/taraflar';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import {
@@ -70,6 +71,7 @@ export default function RezervasyonDetay() {
     );
   }
 
+  const etiket = tarafEtiketleri(reservation.organizationType);
   const paid = totalPaid(reservation, payments);
   const remaining = remainingBalance(reservation, payments);
   const isPast = reservation.date < todayIso();
@@ -233,10 +235,13 @@ export default function RezervasyonDetay() {
         <section className="card p-5 lg:col-span-2">
           <h2 className="mb-4 font-heading text-lg font-bold text-brand">Rezervasyon Bilgileri</h2>
           <dl className="grid gap-4 sm:grid-cols-2">
-            <Info label="Müşteri" value={reservation.customerName} />
-            <Info label="İkinci Kişi" value={reservation.secondPersonName || '-'} />
-            <Info label="Telefon" value={formatPhone(reservation.customerPhone)} />
-            <Info label="İkinci Kişi Telefonu" value={reservation.secondPhone ? formatPhone(reservation.secondPhone) : '-'} />
+            {/* Etiketler organizasyon türüne göre: düğünde damat/gelin, toplantıda müşteri. */}
+            <Info label={etiket.birinci} value={reservation.customerName} />
+            <Info label={etiket.ikinci} value={reservation.secondPersonName || '-'} />
+            <Info label={`${etiket.birinci} Telefonu`} value={formatPhone(reservation.customerPhone)} />
+            <Info label={`${etiket.ikinci} Telefonu`} value={reservation.secondPhone ? formatPhone(reservation.secondPhone) : '-'} />
+            <Info label={`${etiket.birinci} Memleketi`} value={reservation.customerHometown || '-'} />
+            <Info label={`${etiket.ikinci} Memleketi`} value={reservation.secondPersonHometown || '-'} />
             <Info label="E-Posta" value={reservation.customerEmail || '-'} />
             <Info label="TC Kimlik No" value={reservation.identityNo || '-'} />
             <Info label="Tarih / Seans" value={`${formatDateLong(reservation.date)} · ${reservation.slot}`} />

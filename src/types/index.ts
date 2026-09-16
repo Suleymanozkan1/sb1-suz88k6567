@@ -78,6 +78,19 @@ export interface Reservation {
   /** İkinci kişinin telefonu; sözleşmedeki "Gelin Cep" satırı. */
   secondPhone?: string;
   /**
+   * Tarafların memleketi (düğünde damat ve gelin).
+   *
+   * `city`/`district` ile karıştırılmamalı: onlar müşterinin ŞU AN
+   * yaşadığı yer ve il bazlı rapor oradan besleniyor. Memleket nereli
+   * olduğu -- İstanbul'da oturan bir Sivaslı için ikisi farklıdır.
+   *
+   * İki ayrı alan, çünkü taraflar çoğu zaman farklı memleketten
+   * geliyor; tek alanda tutulsaydı hangisinin kime ait olduğu
+   * kaybolurdu. Eski kayıtlarda boş: o bilgi hiç sorulmamıştı.
+   */
+  customerHometown?: string;
+  secondPersonHometown?: string;
+  /**
    * Sözleşmeyi imzalayanın TC kimlik numarası (11 hane).
    * KVKK: yalnızca sözleşme düzenlemek için tutulur, kod doğrulama
    * ekranına hiçbir koşulda çıkmaz.

@@ -6,7 +6,7 @@ import { formatMoney } from '../lib/format';
 import { errorMessage } from '../lib/authHelpers';
 import { uid } from '../lib/ids';
 import {
-  useDeleteReservationExpense, useDugunGiderleri, useSaveReservationExpense,
+  useDeleteReservationExpense, useDugunGiderleri, useSaveReservationExpense, useVendors,
 } from '../lib/queries';
 import { giderToplami, netHesap, tedarikcidenMi } from '../lib/dugunGideri';
 import type { Payment, Reservation, ReservationExpense } from '../types';
@@ -30,6 +30,7 @@ export default function DugunGiderleri({
   duzenlenebilir: boolean;
 }) {
   const { data: hepsi = [] } = useDugunGiderleri();
+  const { data: kalemler = [] } = useVendors();
   const kaydet = useSaveReservationExpense();
   const sil = useDeleteReservationExpense();
 
@@ -41,6 +42,66 @@ export default function DugunGiderleri({
     () => hepsi.filter((g) => g.reservationId === reservation.id),
     [hepsi, reservation.id],
   );
+
+  /*
+    TÜR ÖNERİLERİ: ÜRÜN VE HİZMET KAYITLARI.
+
+    Alan serbest metin olarak kalıyor, açılır listeye çevrilmedi. Her
+    salonun kalemi farklı ve buraya "Jeneratör kirası" gibi bir kerelik
+    bir şey de yazılıyor; listeye kapatılsaydı önce Ürün/Hizmet ekranına
+    gidip kayıt açmak gerekirdi. Ayrıca eski kayıtların türü listede
+    olmayan metinler -- kapalı liste onları da bozardı.
+
+    Öneri olarak sunuluyor (`datalist`): garson, konfeti gibi tanımlı
+    kalemler tek tıkla seçiliyor, gerisi elle yazılabiliyor. Aynı kalem
+    her düğünde farklı yazıldığında (Garson / garson / Garsonlar)
+    raporlar bölünüyordu; öneri bunu da toparlıyor.
+
+    Pasif kayıtlar dışarıda: artık kullanılmayan kalemi önermek,
+    kullanıcıyı kaldırdığı bir şeye geri döndürür.
+  */
+  const oneriler = useMemo(
+    () => kalemler
+      .filter((v) => v.isActive)
+      .map((v) => ({ ad: v.name, fiyat: v.unitPrice }))
+      .sort((a, b) => a.ad.localeCompare(b.ad, 'tr')),
+    [kalemler],
+  );
+
+  /**
+   * Tür seçilince birim fiyatı doldurur.
+   *
+   * YALNIZCA ALAN BOŞKEN. Kullanıcının yazdığı fiyatın üzerine
+   * yazılsaydı, tanımlı fiyattan farklı anlaşılan bir ücret sessizce
+   * geri alınırdı -- hem de kullanıcı türü düzeltmek için dokunduğu an.
+   */
+  function turSecildi(ad: string) {
+    setForm((f) => {
+      if (f.unitPrice.trim() !== '') return { ...f, kind: ad };
+
+      /*
+        BİRDEN FAZLA EŞLEŞME VARSA FİYAT DOLDURULMUYOR.
+
+        Veritabanındaki teklik kısıtı `unique (business_id, name)` ve
+        Postgres'te büyük/küçük harf duyarlı: "Garson" ile "garson"
+        AYRI iki kayıt olabiliyor ve fiyatları farklı olabilir. (Yerel
+        depo adaptörü bunu reddediyor, Supabase reddetmiyor -- iki
+        adaptör bu noktada aynı kuralı uygulamıyor.)
+
+        Böyle bir durumda listeden ilkini almak, kullanıcının
+        görmediği bir seçim yapmak olurdu: ekranda tek bir "Garson"
+        yazıyor, fiyat ise hangisinden geldiği belirsiz. Kararsızsa
+        doldurmuyor; kullanıcı fiyatı kendisi yazıyor.
+      */
+      const aranan = ad.toLocaleLowerCase('tr');
+      const eslesenler = oneriler.filter((o) => o.ad.toLocaleLowerCase('tr') === aranan);
+      const tek = eslesenler.length === 1 ? eslesenler[0] : undefined;
+      return {
+        ...f, kind: ad,
+        unitPrice: tek && tek.fiyat > 0 ? String(tek.fiyat) : f.unitPrice,
+      };
+    });
+  }
 
   const hesap = useMemo(
     () => netHesap(reservation, payments, giderler, kalanBakiye),
@@ -173,8 +234,15 @@ export default function DugunGiderleri({
           className="mt-4 grid gap-3 sm:grid-cols-[1fr_6rem_8rem_auto]">
           <div>
             <label htmlFor="gd-kind" className="field-label">Tür</label>
-            <input id="gd-kind" className="field-input" placeholder="Garson, DJ, Vale..."
-              value={form.kind} onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value }))} />
+            <input id="gd-kind" className="field-input" list="gd-kind-oneriler"
+              placeholder="Garson, DJ, Konfeti..."
+              value={form.kind} onChange={(e) => turSecildi(e.target.value)} />
+            <datalist id="gd-kind-oneriler">
+              {oneriler.map((o) => <option key={o.ad} value={o.ad} />)}
+            </datalist>
+            <p className="mt-1 text-xs text-brand-muted">
+              Ürün ve Hizmet kayıtlarından seçebilir ya da elle yazabilirsiniz.
+            </p>
           </div>
           <div>
             <label htmlFor="gd-count" className="field-label">Birim</label>

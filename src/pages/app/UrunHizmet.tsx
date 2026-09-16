@@ -9,8 +9,14 @@ import { errorMessage } from '../../lib/authHelpers';
 import { useDeleteVendor, useSaveVendor, useVendors } from '../../lib/queries';
 import { uid } from '../../lib/ids';
 import { formatMoney, formatNumber, formatPhone } from '../../lib/format';
-import { stokToplami } from '../../lib/stok';
-import { IconEdit, IconPlus, IconTrash, IconUsers } from '../../components/Icons';
+import {
+  SAYIM_BASLIKLARI, sayimCsvSatirlari, stokDegeri, stokToplami,
+} from '../../lib/stok';
+import { downloadCsv, toCsv } from '../../lib/reports';
+import StokSayimCiktisi from '../../components/StokSayimCiktisi';
+import {
+  IconDownload, IconEdit, IconPlus, IconPrint, IconTrash, IconUsers,
+} from '../../components/Icons';
 import {
   HIZMET_KATEGORILERI, URUN_KATEGORILERI, type Vendor, type VendorKind,
 } from '../../types';
@@ -46,7 +52,22 @@ export default function UrunHizmet() {
   const [form, setForm] = useState(BOS);
   const [error, setError] = useState('');
   const [toDelete, setToDelete] = useState<Vendor | null>(null);
-  const [sekme, setSekme] = useState<VendorKind>('hizmet');
+  /*
+    VARSAYILAN SEKME STOK. Ekran en çok stok saymak için açılıyor;
+    hizmet tanımı bir kez girilip nadiren değişiyor. Hizmetle
+    açıldığında kullanıcı her gelişinde bir tık fazla yapıyordu.
+  */
+  const [sekme, setSekme] = useState<VendorKind>('urun');
+
+  /*
+    SEÇİM. Belirli bir ürün grubunu saymak için tüm listeyi
+    bastırmak gerekmesin diye satırlar tek tek seçilebiliyor.
+
+    Kimlikle tutuluyor, sayfa numarasıyla değil: sayfa değiştirince ya
+    da süzgeç dönünce seçim kaybolsaydı, iki sayfaya yayılan bir grup
+    hiç seçilemezdi.
+  */
+  const [secili, setSecili] = useState<Set<string>>(new Set());
 
   const gorunen = useMemo(
     () => kayitlar.filter((v) => v.kind === sekme),
@@ -62,12 +83,90 @@ export default function UrunHizmet() {
   const [boyut, setBoyut] = useSayfaBoyutu();
   const [sayfa, setSayfa] = useState(1);
   const [sonImza, setSonImza] = useState('');
-  const imza = `${gorunen.length}`;
-  if (imza !== sonImza) { setSonImza(imza); setSayfa(1); }
+  /*
+    Sekme ya da liste değişince seçim de sıfırlanıyor. Kalsaydı hizmet
+    sekmesinde yapılan seçim ürün sekmesine taşınır, kullanıcının
+    görmediği satırlar çıktıya girerdi.
+  */
+  const imza = `${sekme}:${gorunen.length}`;
+  if (imza !== sonImza) { setSonImza(imza); setSayfa(1); setSecili(new Set()); }
 
   const toplamSayfa = Math.max(1, Math.ceil(gorunen.length / boyut));
   const gecerliSayfa = Math.min(sayfa, toplamSayfa);
   const sayfalanan = gorunen.slice((gecerliSayfa - 1) * boyut, gecerliSayfa * boyut);
+
+  /*
+    ÇIKTIYA GİDEN LİSTE.
+
+    Seçim varsa seçilenler, yoksa o sekmedeki TÜM kayıtlar. "Hiçbir şey
+    seçilmediyse hiçbir şey çıkar" davranışı teknik olarak tutarlı
+    olurdu ama kullanıcıyı, listenin tamamını istediğinde önce hepsini
+    seçmeye zorlardı; en sık istenen çıktı da zaten tam liste.
+
+    Sayfalanan değil `gorunen` kullanılıyor: çıktı ekrandaki 50 satırla
+    sınırlı kalsaydı ikinci sayfadaki ürünler sessizce eksik çıkardı.
+  */
+  const cikacaklar = useMemo(() => {
+    /*
+      PASİF KAYITLAR ÇIKTIYA GİRMİYOR. Formdaki tanım açık: "Aktif
+      (organizasyonlara atanabilir, stok listesinde görünür)". Pasife
+      alınan bir ürün artık stok listesinin parçası değil; sayım
+      kâğıdına basılırsa depoda aranır, stok değerine katılırsa
+      "elimizdeki stoğun TL karşılığı" olduğundan fazla çıkar.
+
+      Listede GÖRÜNMEYE devam ediyorlar (yanlarında "Pasif" rozetiyle):
+      ekran yönetim ekranı, kullanıcı pasif kaydı görüp tekrar
+      açabilmeli. Süzgeç görüntüde değil, çıktı sınırında.
+    */
+    const aktifler = gorunen.filter((v) => v.isActive);
+    return secili.size > 0 ? aktifler.filter((v) => secili.has(v.id)) : aktifler;
+  }, [gorunen, secili]);
+  const toplamDeger = useMemo(() => stokDegeri(cikacaklar), [cikacaklar]);
+
+  /** Sayfadaki satırların tamamı seçili mi? Başlıktaki kutucuk bunu gösteriyor. */
+  const sayfadakiAktifler = sayfalanan.filter((v) => v.isActive);
+  const sayfaTumSecili = sayfadakiAktifler.length > 0
+    && sayfadakiAktifler.every((v) => secili.has(v.id));
+
+  function satirSec(id: string, isaretli: boolean) {
+    setSecili((onceki) => {
+      const yeni = new Set(onceki);
+      if (isaretli) yeni.add(id); else yeni.delete(id);
+      return yeni;
+    });
+  }
+
+  /** Pasif kayıt seçilemiyor: çıktıya zaten girmeyecek. */
+  function secilebilirMi(v: Vendor): boolean {
+    return v.isActive;
+  }
+
+  /** Başlıktaki kutucuk: yalnızca GÖRÜNEN sayfayı seçer/bırakır. */
+  function sayfaSec(isaretli: boolean) {
+    setSecili((onceki) => {
+      const yeni = new Set(onceki);
+      sayfalanan.forEach((v) => {
+        if (!secilebilirMi(v)) return;
+        if (isaretli) yeni.add(v.id); else yeni.delete(v.id);
+      });
+      return yeni;
+    });
+  }
+
+  function excelIndir() {
+    /*
+      YEREL TARİH. `toISOString()` UTC veriyor; Türkiye'de gece
+      yarısından sonraki saatlerde dosya adı bir önceki günü
+      gösteriyordu -- kâğıdın üstündeki tarihle tutmuyordu.
+    */
+    const g = new Date();
+    const iki = (n: number) => String(n).padStart(2, '0');
+    const tarih = `${g.getFullYear()}-${iki(g.getMonth() + 1)}-${iki(g.getDate())}`;
+    downloadCsv(
+      `stok-sayim-${tarih}.csv`,
+      toCsv([...SAYIM_BASLIKLARI], sayimCsvSatirlari(cikacaklar)),
+    );
+  }
 
   const kategoriler = form.kind === 'urun' ? URUN_KATEGORILERI : HIZMET_KATEGORILERI;
 
@@ -154,20 +253,20 @@ export default function UrunHizmet() {
     <QueryBoundary isLoading={isLoading} error={loadError}>
       <Seo title="Ürün ve Hizmet - Sahra Takip Panel" noindex />
 
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+      <div className="no-print mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold text-brand">Ürün ve Hizmet</h1>
         <button type="button" onClick={openNew} className="btn-primary btn-sm text-white hover:text-white">
           <IconPlus size={16} /> {sekme === 'urun' ? 'Yeni Ürün' : 'Yeni Hizmet'}
         </button>
       </div>
-      <p className="mb-5 max-w-3xl text-sm text-brand-muted">
+      <p className="no-print mb-5 max-w-3xl text-sm text-brand-muted">
         Garson, DJ, vale, fotoğraf gibi hizmetler ve su, kola, tuvalet kâğıdı gibi ürünler
         burada tanımlanır. Hizmetler organizasyonlara atanır ve düğün içi gidere girer;
         ürünlerin stoğu takip edilir.
       </p>
 
-      <div className="mb-5 flex gap-2" role="tablist" aria-label="Kalem türü">
-        {(['hizmet', 'urun'] as VendorKind[]).map((t) => (
+      <div className="no-print mb-5 flex gap-2" role="tablist" aria-label="Kalem türü">
+        {(['urun', 'hizmet'] as VendorKind[]).map((t) => (
           <button
             key={t} type="button" role="tab" aria-selected={sekme === t}
             onClick={() => setSekme(t)}
@@ -180,10 +279,36 @@ export default function UrunHizmet() {
         ))}
       </div>
 
+      {/*
+        ÇIKTI DÜĞMELERİ YALNIZCA ÜRÜN SEKMESİNDE. Sayım kâğıdı stok
+        içindir; hizmetin sayılacak adedi yok.
+      */}
+      {sekme === 'urun' && gorunen.length > 0 && (
+        <div className="no-print mb-5 flex flex-wrap items-center gap-2">
+          <button type="button" onClick={excelIndir} className="btn-outline btn-sm">
+            <IconDownload size={15} /> Excel'e Aktar
+          </button>
+          <button type="button" onClick={() => window.print()} className="btn-outline btn-sm">
+            <IconPrint size={15} /> Sayım Çıktısı (A4)
+          </button>
+          <span className="text-sm text-brand-muted">
+            {secili.size > 0
+              ? `${secili.size} ürün seçili — çıktıya yalnızca bunlar girer.`
+              : 'Seçim yapılmadı — çıktıya listenin tamamı girer.'}
+          </span>
+          {secili.size > 0 && (
+            <button type="button" onClick={() => setSecili(new Set())}
+              className="text-sm text-brand underline">
+              Seçimi temizle
+            </button>
+          )}
+        </div>
+      )}
+
       {error && <Alert kind="error" className="mb-4">{error}</Alert>}
 
       {showForm && (
-        <form onSubmit={(e) => { void submit(e); }} noValidate className="card mb-6 p-5">
+        <form onSubmit={(e) => { void submit(e); }} noValidate className="no-print card mb-6 p-5">
           <h2 className="mb-4 font-heading text-lg font-bold text-brand">
             {editing ? 'Kaydı Düzenle' : (form.kind === 'urun' ? 'Yeni Ürün' : 'Yeni Hizmet')}
           </h2>
@@ -293,18 +418,26 @@ export default function UrunHizmet() {
       )}
 
       {gorunen.length === 0 ? (
-        <div className="card p-10 text-center">
+        <div className="no-print card p-10 text-center">
           <IconUsers size={32} className="mx-auto mb-3 text-brand-muted" />
           <p className="text-brand-muted">
             {sekme === 'urun' ? 'Henüz ürün tanımlanmamış.' : 'Henüz hizmet tanımlanmamış.'}
           </p>
         </div>
       ) : sekme === 'urun' ? (
-        <div className="card overflow-x-auto p-0">
+        <div className="no-print card overflow-x-auto p-0">
           <table className="w-full min-w-[720px] text-sm">
             <caption className="sr-only">Ürün stokları</caption>
             <thead>
               <tr className="border-b border-line bg-surface text-left text-xs uppercase text-brand-muted">
+                <th className="w-10 px-4 py-2.5 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={sayfaTumSecili}
+                    onChange={(e) => sayfaSec(e.target.checked)}
+                    aria-label="Bu sayfadaki ürünlerin tamamını seç"
+                  />
+                </th>
                 <th className="px-4 py-2.5 font-medium">Ürün</th>
                 <th className="px-4 py-2.5 font-medium">Kategori</th>
                 <th className="px-4 py-2.5 text-right font-medium">Koli</th>
@@ -321,6 +454,19 @@ export default function UrunHizmet() {
                 const kritik = v.minCount > 0 && toplam <= v.minCount;
                 return (
                   <tr key={v.id} className="border-b border-line/60 last:border-0">
+                    <td className="px-4 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={secili.has(v.id)}
+                        disabled={!secilebilirMi(v)}
+                        onChange={(e) => satirSec(v.id, e.target.checked)}
+                        aria-label={
+                          secilebilirMi(v)
+                            ? `${v.name} ürününü çıktıya ekle`
+                            : `${v.name} pasif; çıktıya eklenemez`
+                        }
+                      />
+                    </td>
                     <td className="px-4 py-2.5 text-brand">
                       {v.name}
                       {!v.isActive && (
@@ -356,10 +502,30 @@ export default function UrunHizmet() {
                 );
               })}
             </tbody>
+            {/*
+              TOPLAM SATIRI. "Elimizdeki stoğun TL karşılığı" sorusunun
+              cevabı: her ürünün toplam adedi x birim fiyatı.
+
+              Sayfalanan değil, listenin TAMAMI toplanıyor (seçim varsa
+              seçilenler). Yalnızca ekrandaki 50 satır toplansaydı
+              rakam sayfa değiştikçe değişir, hiçbir zaman "elimizdeki
+              stok" olmazdı.
+            */}
+            <tfoot>
+              <tr className="border-t-2 border-line bg-surface font-medium text-brand">
+                <td className="px-4 py-3" colSpan={6}>
+                  {secili.size > 0 ? `Seçili ${cikacaklar.length} ürün` : `Toplam ${cikacaklar.length} ürün`}
+                </td>
+                <td className="px-4 py-3 text-right">Stok Değeri</td>
+                <td className="px-4 py-3 text-right" colSpan={2}>
+                  {formatMoney(toplamDeger, currency)}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="no-print grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sayfalanan.map((v) => (
             <div key={v.id} className="card p-5">
               <div className="mb-1 flex items-start justify-between gap-2">
@@ -394,6 +560,20 @@ export default function UrunHizmet() {
         </div>
       )}
 
+      {/*
+        A4 SAYIM KÂĞIDI. Ekranda görünmez, yalnızca yazdırmada çıkar;
+        veriyi ekranda zaten düzenlenebilir hâlde gösteriyoruz.
+      */}
+      {sekme === 'urun' && (
+        <StokSayimCiktisi
+          urunler={cikacaklar}
+          currency={currency}
+          isletmeAdi={user?.companyName ?? ''}
+          secimVarMi={secili.size > 0}
+        />
+      )}
+
+      <div className="no-print">
       <Sayfalama
         toplam={gorunen.length}
         sayfa={gecerliSayfa}
@@ -404,6 +584,7 @@ export default function UrunHizmet() {
         kimlik="uh-boyut"
         birim="kayıt"
       />
+      </div>
 
       <ConfirmDialog
         open={Boolean(toDelete)}

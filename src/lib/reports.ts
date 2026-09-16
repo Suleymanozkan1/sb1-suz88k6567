@@ -387,10 +387,28 @@ export function reservationIncome(
   return satirlar.sort((a, b) => b.date.localeCompare(a.date));
 }
 
-/** CSV dışa aktarım (Excel uyumlu, noktalı virgül ayraçlı) */
+/**
+ * CSV dışa aktarım (Excel uyumlu, noktalı virgül ayraçlı).
+ *
+ * FORMÜL ÖNEKLERİ ETKİSİZLEŞTİRİLİYOR. Hücreler kullanıcının girdiği
+ * metinden geliyor: ürün adı, müşteri adı, not. Excel `=`, `+`, `-` ya
+ * da `@` ile başlayan bir hücreyi FORMÜL sayıp çalıştırır; `=1+1`
+ * masum, ama `=HYPERLINK(...)` ya da bir DDE çağrısı dosyayı açan
+ * kişinin makinesinde iş yaptırabilir (CWE-1236). Saldırı CSV'yi
+ * üreten sistemde değil, onu açan kişide patlıyor -- yani müşterinin
+ * muhasebecisinde.
+ *
+ * Önüne tek tırnak konuyor: Excel tırnağı göstermez, hücreyi metin
+ * sayar. Sayılara dokunulmuyor; onların toplanabilmesi gerekiyor.
+ */
+function formuluEtkisizlestir(deger: string): string {
+  return /^[=+\-@\t\r]/.test(deger) ? `'${deger}` : deger;
+}
+
 export function toCsv(headers: string[], rows: (string | number)[][]): string {
   const escape = (v: string | number) => {
-    const s = String(v ?? '');
+    const ham = String(v ?? '');
+    const s = typeof v === 'number' ? ham : formuluEtkisizlestir(ham);
     return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return [headers.map(escape).join(';'), ...rows.map((r) => r.map(escape).join(';'))].join('\r\n');

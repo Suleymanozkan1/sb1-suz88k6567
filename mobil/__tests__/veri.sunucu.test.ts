@@ -102,6 +102,8 @@ function islem(c: Cagri, ad: string) {
 const REZ_SATIRI = {
   id: 'r1', code: '2026-1', customer_name: 'Ayşe Yılmaz',
   customer_phone: '5321112233', date: '2026-09-12',
+  second_person_name: 'Mehmet Yılmaz', second_phone: '5334445566',
+  customer_hometown: 'Sivas', second_person_hometown: 'Konya',
   start_time: '19:00:00', end_time: '23:00:00', slot: 'Gece',
   organization_type: 'Düğün', guest_count: 300, total_amount: 250_000,
   deposit: 60_000, status: 'Kesin Rezervasyon', halls: { name: 'Kristal Salon' },
@@ -124,7 +126,43 @@ describe('rezervasyon eşlemesi', () => {
       tarih: '2026-09-12', seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: '#47b2e4',
       salon: 'Kristal Salon', davetli: 300, toplam: 25_000_000,
       kapora: 6_000_000, tahsilat: 6_000_000, durum: 'Kesin Rezervasyon',
+      ikinciKisi: 'Mehmet Yılmaz', ikinciTelefon: '5334445566',
+      memleket: 'Sivas', ikinciMemleket: 'Konya',
     });
+  });
+
+  it('ikinci taraf ve memleket girilmemişse boş metne çevirir', async () => {
+    /*
+      null geçseydi ekranda "null" yazardı. Eski kayıtların hepsinde bu
+      alanlar boş -- o bilgi hiç sorulmamıştı -- yani bu istisna değil,
+      normal durum.
+    */
+    durum.satirlar.reservations = [{
+      ...REZ_SATIRI,
+      second_person_name: null, second_phone: null,
+      customer_hometown: null, second_person_hometown: null,
+    }];
+
+    const [r] = await veri.tumKayitlar();
+
+    expect(r.ikinciKisi).toBe('');
+    expect(r.ikinciTelefon).toBe('');
+    expect(r.memleket).toBe('');
+    expect(r.ikinciMemleket).toBe('');
+  });
+
+  it('yeni alanları sunucudan ISTIYOR', async () => {
+    /*
+      Sütunlar select listesinde yoksa sorgu yine çalışır ama alanlar
+      hep boş döner: ekran sessizce eksik gösterir, kimse hata görmez.
+    */
+    durum.satirlar.reservations = [REZ_SATIRI];
+    await veri.tumKayitlar();
+
+    const secim = cagri('reservations', 0)?.islemler.find((i) => i.ad === 'select');
+    expect(String(secim?.arg)).toContain('second_person_name');
+    expect(String(secim?.arg)).toContain('customer_hometown');
+    expect(String(secim?.arg)).toContain('second_person_hometown');
   });
 
   it('tahsilat kaporayı ve ödemeleri birlikte toplar', async () => {
