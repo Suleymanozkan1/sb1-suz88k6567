@@ -504,14 +504,61 @@ describe('rezervasyonlar', () => {
 
     const [rez] = await repo.listReservations('b1');
 
-    expect(rez).toEqual({
-      id: 'r1', businessId: 'b1', hallId: 'h1', menuId: undefined, code: 'ABC12345',
-      customerName: 'Ayşe Yılmaz', customerPhone: '5321112233', customerEmail: undefined,
-      secondPersonName: undefined, date: '2026-09-12', slot: 'Gece',
+    expect(rez).toMatchObject({
+      id: 'r1', businessId: 'b1', hallId: 'h1', code: 'ABC12345',
+      customerName: 'Ayşe Yılmaz', customerPhone: '5321112233',
+      date: '2026-09-12', slot: 'Gece',
       organizationType: 'Düğün', guestCount: 300, totalAmount: 250000, deposit: 60000,
-      currency: 'TL', status: 'Kesin Rezervasyon', colorKey: 'dugun', note: undefined,
-      address: undefined, services: ['Orkestra'], createdAt: '2026-01-01', updatedAt: '2026-01-02',
+      currency: 'TL', status: 'Kesin Rezervasyon', colorKey: 'dugun',
+      services: ['Orkestra'], createdAt: '2026-01-01', updatedAt: '2026-01-02',
     });
+
+    /*
+      YENİ SÜTUNLAR DA EŞLENMELİ. Eşlenmezse ekran onları hiç görmez ve
+      kullanıcı girdiği bilginin kaybolduğunu ancak kaydı tekrar
+      açtığında anlar. Satırda değer yokken `undefined` bekleniyor:
+      `null` ekranda "null" yazardı.
+    */
+    expect(rez.groomName).toBeUndefined();
+    expect(rez.brideName).toBeUndefined();
+    expect(rez.groomHometown).toBeUndefined();
+    expect(rez.contractDate).toBeUndefined();
+    // Sayısal alanlar undefined değil SIFIR: hesaba giriyorlar.
+    expect(rez.pricePerPerson).toBe(0);
+    expect(rez.discount).toBe(0);
+    expect(rez.vatRate).toBe(0);
+    expect(rez.discountIsPercent).toBe(false);
+  });
+
+  it('yeni taraf ve fiyat sütunlarını okur', async () => {
+    yanitla('reservations', {
+      data: [{
+        ...SATIR,
+        groom_name: 'Can Arslan', groom_phone: '5321112244', groom_hometown: 'Sivas',
+        groom_district: 'Zara', groom_email: 'can@ornek.test',
+        bride_name: 'Zeynep Arslan', bride_phone: '5321112255', bride_hometown: 'Konya',
+        bride_district: 'Meram', bride_email: 'zeynep@ornek.test',
+        contract_date: '2026-09-01', home_phone: '3123334455',
+        staff_email: 'yetkili@ornek.test', menu_note: 'Tatlı ikramı ayrıca',
+        price_per_person: '1000', discount: '5000', discount_is_percent: true, vat_rate: '20',
+      }],
+    });
+
+    const [rez] = await repo.listReservations('b1');
+
+    expect(rez).toMatchObject({
+      groomName: 'Can Arslan', groomPhone: '5321112244', groomHometown: 'Sivas',
+      groomDistrict: 'Zara', groomEmail: 'can@ornek.test',
+      brideName: 'Zeynep Arslan', bridePhone: '5321112255', brideHometown: 'Konya',
+      brideDistrict: 'Meram', brideEmail: 'zeynep@ornek.test',
+      contractDate: '2026-09-01', homePhone: '3123334455',
+      staffEmail: 'yetkili@ornek.test', menuNote: 'Tatlı ikramı ayrıca',
+      discountIsPercent: true,
+    });
+    // Postgres numeric'i metin olarak döndürebiliyor; hesaba sayı girmeli.
+    expect(rez.pricePerPerson).toBe(1000);
+    expect(rez.discount).toBe(5000);
+    expect(rez.vatRate).toBe(20);
   });
 
   it('kaporayı sayı olarak taşır', async () => {

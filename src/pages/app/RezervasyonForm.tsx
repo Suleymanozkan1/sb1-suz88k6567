@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
 import { tarafEtiketleri } from '../../lib/taraflar';
+import { fiyatHesapla, KDV_ORANLARI } from '../../lib/rezervasyonFiyat';
+import { CITIES } from '../../data/constants';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import { kurusToLira, menuTotalKurus } from '../../lib/menuFiyat';
 import {
   useHalls, useMenus, useReservation, useReservations, useSaveReservation, useSendSms,
-  useVendors,
+  useStaff, useVendors,
   useLead, useLeadStatuses, useSaveLead,
 } from '../../lib/queries';
 import { kazanimDurumu } from '../../lib/lead';
@@ -25,10 +27,25 @@ interface FormState {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
-  secondPersonName: string;
-  secondPhone: string;
-  customerHometown: string;
-  secondPersonHometown: string;
+  homePhone: string;
+  contractDate: string;
+  staffId: string;
+  staffEmail: string;
+  groomName: string;
+  groomPhone: string;
+  groomEmail: string;
+  groomHometown: string;
+  groomDistrict: string;
+  brideName: string;
+  bridePhone: string;
+  brideEmail: string;
+  brideHometown: string;
+  brideDistrict: string;
+  menuNote: string;
+  pricePerPerson: string;
+  discount: string;
+  discountIsPercent: boolean;
+  vatRate: string;
   identityNo: string;
   hallId: string;
   menuId: string;
@@ -56,10 +73,25 @@ const EMPTY: FormState = {
   customerName: '',
   customerPhone: '',
   customerEmail: '',
-  secondPersonName: '',
-  secondPhone: '',
-  customerHometown: '',
-  secondPersonHometown: '',
+  homePhone: '',
+  contractDate: '',
+  staffId: '',
+  staffEmail: '',
+  groomName: '',
+  groomPhone: '',
+  groomEmail: '',
+  groomHometown: '',
+  groomDistrict: '',
+  brideName: '',
+  bridePhone: '',
+  brideEmail: '',
+  brideHometown: '',
+  brideDistrict: '',
+  menuNote: '',
+  pricePerPerson: '',
+  discount: '',
+  discountIsPercent: false,
+  vatRate: '0',
   identityNo: '',
   hallId: '',
   menuId: '',
@@ -113,6 +145,8 @@ export default function RezervasyonForm() {
     formun ondan damat ismi istemesi anlamsız olurdu.
   */
   const etiket = tarafEtiketleri(form.organizationType);
+  const { data: personeller = [] } = useStaff();
+  const currency = user?.currency ?? 'TL';
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [conflictWarning, setConflictWarning] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -152,10 +186,25 @@ export default function RezervasyonForm() {
       customerName: existing.customerName,
       customerPhone: existing.customerPhone,
       customerEmail: existing.customerEmail ?? '',
-      secondPersonName: existing.secondPersonName ?? '',
-      secondPhone: existing.secondPhone ?? '',
-      customerHometown: existing.customerHometown ?? '',
-      secondPersonHometown: existing.secondPersonHometown ?? '',
+      homePhone: existing.homePhone ?? '',
+      contractDate: existing.contractDate ?? '',
+      staffId: existing.staffId ?? '',
+      staffEmail: existing.staffEmail ?? '',
+      groomName: existing.groomName ?? '',
+      groomPhone: existing.groomPhone ?? '',
+      groomEmail: existing.groomEmail ?? '',
+      groomHometown: existing.groomHometown ?? '',
+      groomDistrict: existing.groomDistrict ?? '',
+      brideName: existing.brideName ?? '',
+      bridePhone: existing.bridePhone ?? '',
+      brideEmail: existing.brideEmail ?? '',
+      brideHometown: existing.brideHometown ?? '',
+      brideDistrict: existing.brideDistrict ?? '',
+      menuNote: existing.menuNote ?? '',
+      pricePerPerson: existing.pricePerPerson ? String(existing.pricePerPerson) : '',
+      discount: existing.discount ? String(existing.discount) : '',
+      discountIsPercent: existing.discountIsPercent ?? false,
+      vatRate: String(existing.vatRate ?? 0),
       identityNo: existing.identityNo ?? '',
       hallId: existing.hallId,
       menuId: existing.menuId ?? '',
@@ -235,9 +284,55 @@ export default function RezervasyonForm() {
     if (form.identityNo.trim() && kimlik.length !== 11)
       e.identityNo = 'TC kimlik numarası 11 haneli olmalıdır.';
 
-    const ikinciHane = form.secondPhone.replace(/\D/g, '');
-    if (form.secondPhone.trim() && ikinciHane.length < 10)
-      e.secondPhone = 'Telefon numarası en az 10 haneli olmalıdır.';
+    /*
+      İSTEĞE BAĞLI ALANLAR DA DOĞRULANIYOR.
+
+      Form `noValidate` ile gönderiliyor -- tarayıcının `type="email"`
+      denetimi devrede DEĞİL, `type="tel"` zaten hiç denetlemiyor.
+      Doğrulama yalnızca gelin telefonuna bakıyordu; ev telefonu, damat
+      telefonu ve iki e-posta bozuk hâliyle kaydediliyordu.
+
+      Sessiz sonucu şu: o numaraya hatırlatma gönderilmeye
+      çalışıldığında düşer, e-postaya yazıldığında geri döner -- ikisi
+      de kaydı açan kişiye değil, günler sonra kimsenin bakmadığı bir
+      kuyruğa yansır.
+
+      Boş geçmek serbest: bu alanların hiçbiri zorunlu değil.
+    */
+    const telefonDenetle = (alan: keyof FormState, deger: string, mesaj: string) => {
+      const haneler = deger.replace(/\D/g, '');
+      if (deger.trim() && haneler.length < 10) e[alan] = mesaj;
+    };
+    telefonDenetle('bridePhone', form.bridePhone, 'Telefon numarası en az 10 haneli olmalıdır.');
+    telefonDenetle('groomPhone', form.groomPhone, 'Telefon numarası en az 10 haneli olmalıdır.');
+    telefonDenetle('homePhone', form.homePhone, 'Ev telefonu en az 10 haneli olmalıdır.');
+
+    const epostaDenetle = (alan: keyof FormState, deger: string) => {
+      if (deger.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deger.trim()))
+        e[alan] = 'Geçerli bir e-posta adresi giriniz.';
+    };
+    epostaDenetle('groomEmail', form.groomEmail);
+    epostaDenetle('brideEmail', form.brideEmail);
+    epostaDenetle('staffEmail', form.staffEmail);
+
+    /*
+      FİYAT GİRDİLERİ.
+
+      Metin kutusuna "abc" yazıldığında `Number(...)` NaN veriyor,
+      `|| undefined` onu kayıttan düşürüyor ve depo katmanı boş değeri
+      0'a çeviriyordu: kullanıcı bir şey yazdı, sistem sessizce sıfır
+      kaydetti. Aynı `||` GEÇERLİ bir sıfırı da düşürüyordu.
+
+      Artık bozuk değer kaydı durduruyor, sıfır ise olduğu gibi
+      kaydediliyor.
+    */
+    const sayisalDenetle = (alan: keyof FormState, deger: string, mesaj: string) => {
+      if (!deger.trim()) return;
+      const sayi = Number(deger);
+      if (!Number.isFinite(sayi) || sayi < 0) e[alan] = mesaj;
+    };
+    sayisalDenetle('pricePerPerson', form.pricePerPerson, 'Geçerli bir kişi başı fiyat giriniz.');
+    sayisalDenetle('discount', form.discount, 'Geçerli bir iskonto giriniz.');
 
     // Bitiş saati gece yarısını aşabilir; yalnızca biri girilmişse uyarılır.
     if (form.endTime && !form.startTime) e.startTime = 'Bitiş saati girdiyseniz başlangıç saatini de giriniz.';
@@ -282,10 +377,25 @@ export default function RezervasyonForm() {
       customerName: form.customerName.trim(),
       customerPhone: phone,
       customerEmail: form.customerEmail.trim() || undefined,
-      secondPersonName: form.secondPersonName.trim() || undefined,
-      secondPhone: form.secondPhone.replace(/\D/g, '') || undefined,
-      customerHometown: form.customerHometown.trim() || undefined,
-      secondPersonHometown: form.secondPersonHometown.trim() || undefined,
+      brideName: form.brideName.trim() || undefined,
+      bridePhone: form.bridePhone.replace(/\D/g, '') || undefined,
+      groomHometown: form.groomHometown.trim() || undefined,
+      brideHometown: form.brideHometown.trim() || undefined,
+      homePhone: form.homePhone.replace(/\D/g, '') || undefined,
+      contractDate: form.contractDate || undefined,
+      staffId: form.staffId || undefined,
+      staffEmail: form.staffEmail.trim() || undefined,
+      groomName: form.groomName.trim() || undefined,
+      groomPhone: form.groomPhone.replace(/\D/g, '') || undefined,
+      groomEmail: form.groomEmail.trim() || undefined,
+      groomDistrict: form.groomDistrict.trim() || undefined,
+      brideEmail: form.brideEmail.trim() || undefined,
+      brideDistrict: form.brideDistrict.trim() || undefined,
+      menuNote: form.menuNote.trim() || undefined,
+      pricePerPerson: form.pricePerPerson.trim() ? Number(form.pricePerPerson) : undefined,
+      discount: form.discount.trim() ? Number(form.discount) : undefined,
+      discountIsPercent: form.discountIsPercent,
+      vatRate: Number(form.vatRate) || 0,
       identityNo: form.identityNo.replace(/\D/g, '') || undefined,
       date: form.date,
       startTime: form.startTime || undefined,
@@ -372,6 +482,24 @@ export default function RezervasyonForm() {
   const isPastLocked = Boolean(existing) && existing!.date < todayIso() && form.status !== 'İptal';
   const balance = Math.max(0, (Number(form.totalAmount) || 0) - (Number(form.deposit) || 0));
 
+  /*
+    FİYAT HESABI EKRANDA CANLI. Kişibaşı toplam, iskonto tutarı ve KDV
+    hesaplanıyor, saklanmıyor: saklansaydı fiyat sonradan
+    düzeltildiğinde birbirini tutmayan sayılar kalırdı.
+
+    `totalAmount` (Fiyat) hâlâ elle giriliyor -- pazarlık sonucu tutar
+    neredeyse her zaman hesaptan farklı oluyor. Hesap ÖNERİ; altında
+    "hesaplanan" olarak gösteriliyor ki kullanıcı farkı görebilsin.
+  */
+  const fiyat = fiyatHesapla({
+    kisiBasi: Number(form.pricePerPerson) || 0,
+    davetli: Number(form.guestCount) || 0,
+    ekler: 0,
+    iskonto: Number(form.discount) || 0,
+    yuzdeMi: form.discountIsPercent,
+    kdvOrani: Number(form.vatRate) || 0,
+  });
+
   return (
     <QueryBoundary isLoading={Boolean(id) && existingQuery.isLoading} error={existingQuery.error}>
       <Seo title={`${existing ? 'Rezervasyon Düzenle' : 'Yeni Rezervasyon'} - Sahra Takip Panel`} noindex />
@@ -393,53 +521,72 @@ export default function RezervasyonForm() {
 
       <form onSubmit={(e) => { void onSubmit(e); }} noValidate className="card p-6">
         <fieldset className="mb-8">
+          <legend className="mb-4 font-heading text-lg font-bold text-brand">Sözleşme</legend>
+          <div className="grid gap-4 md:grid-cols-2">
+            {/*
+              SÖZLEŞME TARİHİ, REZERVASYON TARİHİNDEN AYRI. Sözleşme
+              bugün imzalanıp düğün iki yıl sonra olabiliyor; ikisi tek
+              alanda tutulsaydı "bu yıl kaç sözleşme yaptık" sorusunun
+              cevabı düğün tarihlerinden üretilir, yanlış çıkardı.
+            */}
+            <Field id="contractDate" label="Sözleşme Tarihi">
+              <input id="contractDate" type="date" className="field-input" value={form.contractDate} onChange={(e) => update('contractDate', e.target.value)} />
+            </Field>
+            <Field id="contractNo" label="Sözleşme No" hint={existing ? undefined : 'Kayıt açılınca sıradaki numara otomatik verilir.'}>
+              <input id="contractNo" className="field-input" value={existing?.code ?? ''} readOnly disabled />
+            </Field>
+            {/*
+              YETKİLİ: sözleşmeyi yapan personel. Kimin sattığı
+              kayıtta durmazsa prim de sorumluluk da konuşulamıyor.
+            */}
+            <Field id="staffId" label="Yetkili (isteğe bağlı)">
+              <select id="staffId" className="field-input" value={form.staffId} onChange={(e) => update('staffId', e.target.value)}>
+                <option value="">Seçiniz</option>
+                {personeller.map((p) => <option key={p.id} value={p.id}>{p.fullName || p.email}</option>)}
+              </select>
+            </Field>
+            <Field id="staffEmail" label="Yetkili E-Posta" error={errors.staffEmail}>
+              <input id="staffEmail" type="email" className="field-input" value={form.staffEmail} onChange={(e) => update('staffEmail', e.target.value)} />
+            </Field>
+          </div>
+        </fieldset>
+
+        <fieldset className="mb-8">
           <legend className="mb-4 font-heading text-lg font-bold text-brand">Müşteri Bilgileri</legend>
           <div className="grid gap-4 md:grid-cols-2">
             {/*
-              TARAF ETİKETLERİ TÜRE GÖRE. Düğün, nişan, kına ve nikâhta
-              alanlar "Damat" ve "Gelin" diye soruluyor; konferans ya da
-              toplantıda "Müşteri" ve "İkinci Kişi" olarak kalıyor.
+              ÜÇ AYRI KİŞİ VAR, İKİ DEĞİL.
 
-              Etiket sabit "Damat" olsaydı bir şirket toplantısını giren
-              kişi kendi müşterisini damat diye kaydetmek zorunda
-              kalırdı. Değişen yalnızca soru; veri aynı alanda duruyor,
-              bu yüzden eski kayıtlar ve sözleşme etkilenmiyor.
+              "Ad Soyad" sözleşmeyi İMZALAYAN kişi ve çoğu zaman damat
+              ya da gelin değil: gelinin babası, damadın amcası, bir
+              şirket yetkilisi. Salon parayı ondan alıyor, sözleşmeyi
+              onunla yapıyor -- ama düğün damat ve gelinin.
+
+              Önceden yalnızca iki isim tutuluyordu ve bu üçüncü kişi ya
+              damadın yerine yazılıyordu (damadın adı kayda hiç
+              girmiyordu) ya da hiç yazılmıyordu (imzası olan kişi
+              belirsiz kalıyordu).
             */}
-            <Field id="customerName" label={`${etiket.birinci} Adı Soyadı`} required error={errors.customerName}>
+            <Field id="customerName" label="Ad Soyad (sözleşmeyi imzalayan)" required error={errors.customerName}>
               <input id="customerName" className="field-input" value={form.customerName} onChange={(e) => update('customerName', e.target.value)} aria-invalid={Boolean(errors.customerName)} />
-            </Field>
-            <Field id="secondPersonName" label={`${etiket.ikinci} Adı Soyadı (varsa)`}>
-              <input id="secondPersonName" className="field-input" value={form.secondPersonName} onChange={(e) => update('secondPersonName', e.target.value)} />
-            </Field>
-            <Field id="customerPhone" label={`${etiket.birinci} Telefonu`} required error={errors.customerPhone}>
-              <input id="customerPhone" type="tel" className="field-input" placeholder="532xxxyyzz" value={form.customerPhone} onChange={(e) => update('customerPhone', e.target.value)} aria-invalid={Boolean(errors.customerPhone)} />
-            </Field>
-            <Field id="secondPhone" label={`${etiket.ikinci} Telefonu (varsa)`} error={errors.secondPhone}>
-              <input id="secondPhone" type="tel" className="field-input" placeholder="533xxxyyzz" value={form.secondPhone} onChange={(e) => update('secondPhone', e.target.value)} aria-invalid={Boolean(errors.secondPhone)} />
-            </Field>
-            {/*
-              MEMLEKET, İL/İLÇEDEN AYRI. Aşağıdaki "İl" müşterinin ŞU AN
-              yaşadığı yer ve il bazlı rapor oradan besleniyor. Memleket
-              nereli olduğu: İstanbul'da oturan bir Sivaslı için ikisi
-              farklı. Aynı alanda tutulsalardı rapor, salonun bulunduğu
-              ili değil gelinin doğduğu ili sayardı.
-            */}
-            <Field id="customerHometown" label={`${etiket.birinci} Memleketi`}>
-              <input id="customerHometown" className="field-input" placeholder="Sivas" value={form.customerHometown} onChange={(e) => update('customerHometown', e.target.value)} />
-            </Field>
-            <Field id="secondPersonHometown" label={`${etiket.ikinci} Memleketi`}>
-              <input id="secondPersonHometown" className="field-input" placeholder="Konya" value={form.secondPersonHometown} onChange={(e) => update('secondPersonHometown', e.target.value)} />
-            </Field>
-            <Field id="customerEmail" label="E-Posta" error={errors.customerEmail}>
-              <input id="customerEmail" type="email" className="field-input" value={form.customerEmail} onChange={(e) => update('customerEmail', e.target.value)} aria-invalid={Boolean(errors.customerEmail)} />
             </Field>
             <Field
               id="identityNo"
-              label="TC Kimlik No (sözleşme için)"
+              label="TC Kimlik No"
               error={errors.identityNo}
               hint="Yalnızca sözleşme düzenlemek için tutulur; kod doğrulama ekranında görünmez."
             >
               <input id="identityNo" inputMode="numeric" maxLength={11} className="field-input" value={form.identityNo} onChange={(e) => update('identityNo', e.target.value)} aria-describedby="identityNo-hint" aria-invalid={Boolean(errors.identityNo)} />
+            </Field>
+            {/* Cebe ulaşılamadığında aranan sabit hat. */}
+            <Field id="homePhone" label="Ev Telefonu" error={errors.homePhone}>
+              <input id="homePhone" type="tel" className="field-input" placeholder="3123334455" value={form.homePhone} onChange={(e) => update('homePhone', e.target.value)} />
+            </Field>
+            <Field id="customerPhone" label="Cep Telefonu" required error={errors.customerPhone}>
+              <input id="customerPhone" type="tel" className="field-input" placeholder="532xxxyyzz" value={form.customerPhone} onChange={(e) => update('customerPhone', e.target.value)} aria-invalid={Boolean(errors.customerPhone)} />
+            </Field>
+            <Field id="customerEmail" label="E-Posta" error={errors.customerEmail}>
+              <input id="customerEmail" type="email" className="field-input" value={form.customerEmail} onChange={(e) => update('customerEmail', e.target.value)} aria-invalid={Boolean(errors.customerEmail)} />
             </Field>
             {/*
               İl ve ilçe serbest metin adresten AYRI: "il bazlı rapor"
@@ -501,6 +648,69 @@ export default function RezervasyonForm() {
                 aria-describedby={form.sourceChannel === 'Diğer' ? 'sourceDetail-hint' : undefined}
                 aria-invalid={Boolean(errors.sourceDetail)}
               />
+            </Field>
+          </div>
+        </fieldset>
+
+        {/*
+          DAMAT VE GELİN, SÖZLEŞMEYİ İMZALAYANDAN AYRI.
+
+          Etiketler organizasyon türüne göre: düğün, nişan, kına ve
+          nikâhta "Damat / Gelin"; konferans ya da toplantıda "Müşteri /
+          İkinci Kişi". Sabit "Damat" olsaydı bir şirket toplantısını
+          giren kişi kendi müşterisini damat diye kaydetmek zorunda
+          kalırdı.
+        */}
+        <fieldset className="mb-8">
+          <legend className="mb-4 font-heading text-lg font-bold text-brand">
+            {etiket.birinci} ve {etiket.ikinci}
+          </legend>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field id="groomName" label={`${etiket.birinci} Ad Soyad`}>
+              <input id="groomName" className="field-input" value={form.groomName} onChange={(e) => update('groomName', e.target.value)} />
+            </Field>
+            <Field id="brideName" label={`${etiket.ikinci} Ad Soyad`}>
+              <input id="brideName" className="field-input" value={form.brideName} onChange={(e) => update('brideName', e.target.value)} />
+            </Field>
+            <Field id="groomPhone" label={`${etiket.birinci} Cep`} error={errors.groomPhone}>
+              <input id="groomPhone" type="tel" className="field-input" placeholder="532xxxyyzz" value={form.groomPhone} onChange={(e) => update('groomPhone', e.target.value)} aria-invalid={Boolean(errors.groomPhone)} />
+            </Field>
+            <Field id="bridePhone" label={`${etiket.ikinci} Cep`} error={errors.bridePhone}>
+              <input id="bridePhone" type="tel" className="field-input" placeholder="533xxxyyzz" value={form.bridePhone} onChange={(e) => update('bridePhone', e.target.value)} aria-invalid={Boolean(errors.bridePhone)} />
+            </Field>
+            {/*
+              MEMLEKET LİSTEDEN. Serbest metin olsaydı
+              "Kahramanmaraş", "K.maraş" ve "Maraş" üç ayrı memleket
+              sayılırdı; il bazlı bir sayım hiç yapılamazdı.
+
+              Aşağıdaki "İl" ile karıştırılmamalı: o, müşterinin ŞU AN
+              yaşadığı yer. İstanbul'da oturan bir Sivaslı için ikisi
+              farklıdır.
+            */}
+            <Field id="groomHometown" label={`${etiket.birinci} Memleket`}>
+              <select id="groomHometown" className="field-input" value={form.groomHometown} onChange={(e) => update('groomHometown', e.target.value)}>
+                <option value="">Seçiniz</option>
+                {CITIES.map((il) => <option key={il} value={il}>{il}</option>)}
+              </select>
+            </Field>
+            <Field id="brideHometown" label={`${etiket.ikinci} Memleket`}>
+              <select id="brideHometown" className="field-input" value={form.brideHometown} onChange={(e) => update('brideHometown', e.target.value)}>
+                <option value="">Seçiniz</option>
+                {CITIES.map((il) => <option key={il} value={il}>{il}</option>)}
+              </select>
+            </Field>
+            {/* Köy/ilçe serbest: listesi yok ve olmamalı. */}
+            <Field id="groomDistrict" label={`${etiket.birinci} Köy / İlçe`}>
+              <input id="groomDistrict" className="field-input" value={form.groomDistrict} onChange={(e) => update('groomDistrict', e.target.value)} />
+            </Field>
+            <Field id="brideDistrict" label={`${etiket.ikinci} Köy / İlçe`}>
+              <input id="brideDistrict" className="field-input" value={form.brideDistrict} onChange={(e) => update('brideDistrict', e.target.value)} />
+            </Field>
+            <Field id="groomEmail" label={`${etiket.birinci} E-Posta`} error={errors.groomEmail}>
+              <input id="groomEmail" type="email" className="field-input" value={form.groomEmail} onChange={(e) => update('groomEmail', e.target.value)} aria-invalid={Boolean(errors.groomEmail)} />
+            </Field>
+            <Field id="brideEmail" label={`${etiket.ikinci} E-Posta`} error={errors.brideEmail}>
+              <input id="brideEmail" type="email" className="field-input" value={form.brideEmail} onChange={(e) => update('brideEmail', e.target.value)} aria-invalid={Boolean(errors.brideEmail)} />
             </Field>
           </div>
         </fieldset>
@@ -571,6 +781,74 @@ export default function RezervasyonForm() {
                 ))}
               </select>
             </Field>
+            {/*
+              FİYAT GİRDİLERİ VE HESAPLANANLAR.
+
+              Kişi başı fiyat, iskonto ve KDV oranı SAKLANIYOR; bunlardan
+              çıkan kişibaşı toplam, iskonto tutarı ve KDV tutarı
+              SAKLANMIYOR, her açılışta hesaplanıyor. Hesaplanan değer
+              saklansaydı fiyat sonradan düzeltildiğinde birbirini
+              tutmayan sayılar kalır, hangisinin doğru olduğu
+              bilinemezdi -- üstelik yanlış olan, faturaya gidendi.
+            */}
+            <Field id="pricePerPerson" label="Fiyat Kişibaşı" error={errors.pricePerPerson}>
+              <input id="pricePerPerson" inputMode="decimal" className="field-input" value={form.pricePerPerson} onChange={(e) => update('pricePerPerson', e.target.value)} />
+            </Field>
+            <Field id="discount" label="İskonto" error={errors.discount}>
+              <input id="discount" inputMode="decimal" className="field-input" value={form.discount} onChange={(e) => update('discount', e.target.value)} />
+            </Field>
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 text-sm text-brand">
+                <input
+                  type="checkbox"
+                  checked={form.discountIsPercent}
+                  onChange={(e) => update('discountIsPercent', e.target.checked)}
+                />
+                Yüzde olarak hesapla
+              </label>
+            </div>
+            <Field id="vatRate" label="KDV Oranı">
+              <select id="vatRate" className="field-input" value={form.vatRate} onChange={(e) => update('vatRate', e.target.value)}>
+                {KDV_ORANLARI.map((o) => <option key={o} value={String(o)}>%{o}</option>)}
+              </select>
+            </Field>
+
+            {/*
+              Hesap ÖNERİ olarak duruyor, dayatılmıyor: pazarlık sonucu
+              tutar neredeyse her zaman hesaptan farklı oluyor. "Toplam
+              Tutar" elle giriliyor, hesap altında görünüyor ki
+              kullanıcı farkı fark edebilsin.
+            */}
+            <div className="md:col-span-2 lg:col-span-4 rounded-md bg-surface p-3 text-sm">
+              <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="flex justify-between gap-2">
+                  <dt className="text-brand-muted">Kişibaşı Toplam</dt>
+                  <dd className="text-brand">{formatMoney(fiyat.kisiBasiToplam, currency)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-brand-muted">İskonto</dt>
+                  <dd className="text-brand">{formatMoney(fiyat.iskontoTutari, currency)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-brand-muted">KDV (%{Number(form.vatRate) || 0})</dt>
+                  <dd className="text-brand">{formatMoney(fiyat.kdvTutari, currency)}</dd>
+                </div>
+                <div className="flex justify-between gap-2 font-medium">
+                  <dt className="text-brand">Genel Toplam</dt>
+                  <dd className="text-brand">{formatMoney(fiyat.genelToplam, currency)}</dd>
+                </div>
+              </dl>
+            </div>
+
+            {/*
+              Paket dışında ne konuşulduğu. `menuId` tanımlı paketi ve
+              fiyatı besliyor; bu not beslemiyor -- ikisi ayrı olmalı,
+              yoksa serbest yazılan bir satır fiyatı değiştirir sanılır.
+            */}
+            <Field id="menuNote" label="Yemek Menüsü (varsa)" className="md:col-span-2 lg:col-span-4">
+              <textarea id="menuNote" rows={2} className="field-input" value={form.menuNote} onChange={(e) => update('menuNote', e.target.value)} />
+            </Field>
+
             <Field id="totalAmount" label="Toplam Tutar" required error={errors.totalAmount}>
               <input id="totalAmount" inputMode="decimal" className="field-input" value={form.totalAmount} onChange={(e) => update('totalAmount', e.target.value)} aria-invalid={Boolean(errors.totalAmount)} />
             </Field>

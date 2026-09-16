@@ -74,22 +74,63 @@ export interface Reservation {
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
-  secondPersonName?: string;
-  /** İkinci kişinin telefonu; sözleşmedeki "Gelin Cep" satırı. */
-  secondPhone?: string;
   /**
-   * Tarafların memleketi (düğünde damat ve gelin).
+   * SÖZLEŞMENİN ÜÇ TARAFI.
+   *
+   * `customerName` sözleşmeyi İMZALAYAN kişi ve çoğu zaman damat ya da
+   * gelin değil: gelinin babası, damadın amcası, bir şirket yetkilisi.
+   * Salon parayı ondan alıyor, sözleşmeyi onunla yapıyor -- ama düğün
+   * damat ve gelinin.
+   *
+   * Yalnızca iki isim tutulduğunda bu üçüncü kişi ya damadın yerine
+   * yazılıyor (damadın adı kayda hiç girmiyor) ya da hiç yazılmıyor
+   * (imzası olan kişi belirsiz kalıyor). İkisi de sonradan telafi
+   * edilemiyor.
+   */
+  groomName?: string;
+  groomPhone?: string;
+  groomEmail?: string;
+  brideName?: string;
+  bridePhone?: string;
+  brideEmail?: string;
+  /**
+   * Tarafların memleketi (il listesinden) ve köy/ilçesi.
    *
    * `city`/`district` ile karıştırılmamalı: onlar müşterinin ŞU AN
    * yaşadığı yer ve il bazlı rapor oradan besleniyor. Memleket nereli
    * olduğu -- İstanbul'da oturan bir Sivaslı için ikisi farklıdır.
    *
-   * İki ayrı alan, çünkü taraflar çoğu zaman farklı memleketten
-   * geliyor; tek alanda tutulsaydı hangisinin kime ait olduğu
-   * kaybolurdu. Eski kayıtlarda boş: o bilgi hiç sorulmamıştı.
+   * Memleket listeden seçiliyor: serbest metin olsaydı
+   * "Kahramanmaraş", "K.maraş" ve "Maraş" üç ayrı memleket sayılırdı.
+   * Köy/ilçe serbest kalıyor; listesi yok ve olmamalı.
    */
-  customerHometown?: string;
-  secondPersonHometown?: string;
+  groomHometown?: string;
+  groomDistrict?: string;
+  brideHometown?: string;
+  brideDistrict?: string;
+  /** Sözleşmeyi yapan personel; kimin sattığı ve sorumluluk için. */
+  staffId?: string;
+  staffEmail?: string;
+  /** Sözleşmenin imzalandığı gün. Rezervasyon gününden farklı olabilir. */
+  contractDate?: string;
+  /** Cebe ulaşılamadığında aranan sabit hat. */
+  homePhone?: string;
+  /** Paket dışında konuşulanlar. `menuId` tanımlı paketi gösterir. */
+  menuNote?: string;
+  /**
+   * FİYAT GİRDİLERİ.
+   *
+   * Kişi başı fiyat, iskonto ve KDV oranı saklanıyor; bunlardan
+   * hesaplanan kişibaşı toplam, iskonto tutarı ve KDV tutarı
+   * SAKLANMIYOR. Hesaplanan değer saklansaydı fiyat sonradan
+   * düzeltildiğinde birbirini tutmayan sayılar kalır, hangisinin doğru
+   * olduğu bilinemezdi -- üstelik yanlış olan faturaya gidendi.
+   */
+  pricePerPerson?: number;
+  discount?: number;
+  discountIsPercent?: boolean;
+  /** KDV oranı, yüzde. 0 geçerli bir orandır (istisna kapsamı). */
+  vatRate?: number;
   /**
    * Sözleşmeyi imzalayanın TC kimlik numarası (11 hane).
    * KVKK: yalnızca sözleşme düzenlemek için tutulur, kod doğrulama

@@ -32,10 +32,12 @@ export default function YeniRezervasyon() {
 
   const [musteri, setMusteri] = useState('');
   const [telefon, setTelefon] = useState('');
-  const [ikinciKisi, setIkinciKisi] = useState('');
-  const [ikinciTelefon, setIkinciTelefon] = useState('');
-  const [memleket, setMemleket] = useState('');
-  const [ikinciMemleket, setIkinciMemleket] = useState('');
+  const [damat, setDamat] = useState('');
+  const [damatTelefon, setDamatTelefon] = useState('');
+  const [damatMemleket, setDamatMemleket] = useState('');
+  const [gelin, setGelin] = useState('');
+  const [gelinTelefon, setGelinTelefon] = useState('');
+  const [gelinMemleket, setGelinMemleket] = useState('');
   const [tarih, setTarih] = useState(bugunIso());
   const [seans, setSeans] = useState('Gece');
   const [tur, setTur] = useState('Düğün');
@@ -88,13 +90,17 @@ export default function YeniRezervasyon() {
     if (!/^5\d{9}$/.test(tel)) { setHata('Geçerli bir cep telefonu giriniz (5XX XXX XX XX).'); return; }
     /*
       İKİNCİ TELEFON DA DOĞRULANIYOR. Alan isteğe bağlı ama BOŞ
-      DEĞİLSE numara olmalı: `second_phone` sütununda kısıt yok, yani
+      DEĞİLSE numara olmalı: `bride_phone` sütununda kısıt yok, yani
       "123" olduğu gibi kaydediliyordu. Sonradan o numaraya hatırlatma
       göndermeye çalışıldığında sessizce düşerdi.
     */
-    const ikinciTel = ikinciTelefon.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
-    if (ikinciTelefon.trim() && !/^5\d{9}$/.test(ikinciTel)) {
-      setHata('İkinci kişinin cep telefonu geçersiz (5XX XXX XX XX).'); return;
+    const damatTel = damatTelefon.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
+    if (damatTelefon.trim() && !/^5\d{9}$/.test(damatTel)) {
+      setHata(`${etiket.birinci} cep telefonu geçersiz (5XX XXX XX XX).`); return;
+    }
+    const gelinTel = gelinTelefon.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
+    if (gelinTelefon.trim() && !/^5\d{9}$/.test(gelinTel)) {
+      setHata(`${etiket.ikinci} cep telefonu geçersiz (5XX XXX XX XX).`); return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(tarih)) { setHata('Tarihi YYYY-AA-GG biçiminde giriniz.'); return; }
     const kisi = Number(davetli);
@@ -116,7 +122,8 @@ export default function YeniRezervasyon() {
         musteri: musteri.trim(), telefon: tel, tarih, seans, tur,
         salon, davetli: kisi, toplam: tutarKurus, kapora: kaporaKurus, durum,
         kanal, kanalDetay,
-        ikinciKisi, ikinciTelefon: ikinciTel, memleket, ikinciMemleket,
+        damat, damatTelefon: damatTel, damatMemleket,
+        gelin, gelinTelefon: gelinTel, gelinMemleket,
       });
       yonlendir.replace(id ? `/rezervasyon/${id}` : '/kayitlar');
     } catch (e) {
@@ -142,17 +149,25 @@ export default function YeniRezervasyon() {
           "Müşteri / İkinci kişi". Sabit "Damat" olsaydı bir toplantı
           kaydı girerken kullanıcı müşterisini damat diye kaydederdi.
         */}
-        <Alan etiket={`${etiket.birinci} ad soyad`} deger={musteri} degistir={setMusteri} ipucu="Can Arslan" />
-        <Alan etiket={`${etiket.birinci} cep telefonu`} deger={telefon} degistir={setTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
-        <Alan etiket={`${etiket.ikinci} ad soyad`} deger={ikinciKisi} degistir={setIkinciKisi} ipucu="Zeynep Arslan" />
-        <Alan etiket={`${etiket.ikinci} cep telefonu`} deger={ikinciTelefon} degistir={setIkinciTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
+        {/*
+          ÜÇ AYRI KİŞİ, PANELLE AYNI MODEL. Sözleşmeyi imzalayan çoğu
+          zaman damat ya da gelin değil: gelinin babası, bir şirket
+          yetkilisi. İmzalayanın adı damadın yerine yazılırsa damadın
+          adı kayda hiç girmiyor ve bu sonradan telafi edilemiyor.
+        */}
+        <Alan etiket="Ad soyad (sözleşmeyi imzalayan)" deger={musteri} degistir={setMusteri} ipucu="Ahmet Arslan" />
+        <Alan etiket="Cep telefonu" deger={telefon} degistir={setTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
+        <Alan etiket={`${etiket.birinci} ad soyad`} deger={damat} degistir={setDamat} ipucu="Can Arslan" />
+        <Alan etiket={`${etiket.birinci} cep`} deger={damatTelefon} degistir={setDamatTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
+        <Alan etiket={`${etiket.ikinci} ad soyad`} deger={gelin} degistir={setGelin} ipucu="Zeynep Arslan" />
+        <Alan etiket={`${etiket.ikinci} cep`} deger={gelinTelefon} degistir={setGelinTelefon} ipucu="5XX XXX XX XX" klavye="phone-pad" />
         {/*
           Memleket, yaşanan ilden AYRI tutuluyor: İstanbul'da oturan bir
           Sivaslı için ikisi farklıdır. Salon karşılamayı, ikramı ve
           müziği buna göre planlıyor.
         */}
-        <Alan etiket={`${etiket.birinci} memleketi`} deger={memleket} degistir={setMemleket} ipucu="Sivas" />
-        <Alan etiket={`${etiket.ikinci} memleketi`} deger={ikinciMemleket} degistir={setIkinciMemleket} ipucu="Konya" />
+        <Alan etiket={`${etiket.birinci} memleketi`} deger={damatMemleket} degistir={setDamatMemleket} ipucu="Sivas" />
+        <Alan etiket={`${etiket.ikinci} memleketi`} deger={gelinMemleket} degistir={setGelinMemleket} ipucu="Konya" />
       </Kart>
 
       <BolumBasligi>Organizasyon</BolumBasligi>

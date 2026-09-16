@@ -284,8 +284,8 @@ describe('Yeni rezervasyon formu', () => {
   it('kapora toplam tutardan büyük olamaz', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
-    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Deneme Çift');
-    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321234567');
+    await user.type(await screen.findByLabelText(/Ad Soyad \(sözleşmeyi imzalayan\)/), 'Deneme Çift');
+    await user.type(screen.getByLabelText(/^Cep Telefonu/), '5321234567');
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '300');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '50000');
     await user.type(screen.getByLabelText('Kapora'), '90000');
@@ -307,8 +307,8 @@ describe('Yeni rezervasyon formu', () => {
     const before = (await getReservations(BIZ)).length;
     const smsBefore = (await getSmsLog(BIZ)).length;
 
-    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Yeni Çift');
-    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5335554433');
+    await user.type(await screen.findByLabelText(/Ad Soyad \(sözleşmeyi imzalayan\)/), 'Yeni Çift');
+    await user.type(screen.getByLabelText(/^Cep Telefonu/), '5335554433');
     await user.clear(screen.getByLabelText(/^Tarih/));
     await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 90));
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '250');
@@ -338,8 +338,8 @@ describe('Yeni rezervasyon formu', () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
 
-    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Ödeme Tipi Testi');
-    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321119988');
+    await user.type(await screen.findByLabelText(/Ad Soyad \(sözleşmeyi imzalayan\)/), 'Ödeme Tipi Testi');
+    await user.type(screen.getByLabelText(/^Cep Telefonu/), '5321119988');
     /*
       TARİH TOHUMUN ARALIĞININ DIŞINDA.
 
@@ -369,8 +369,8 @@ describe('Yeni rezervasyon formu', () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
 
-    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Kaporasız Kayıt');
-    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321119977');
+    await user.type(await screen.findByLabelText(/Ad Soyad \(sözleşmeyi imzalayan\)/), 'Kaporasız Kayıt');
+    await user.type(screen.getByLabelText(/^Cep Telefonu/), '5321119977');
     // Tohumun ürettiği aralığın dışında; gerekçe yukarıdaki testte.
     await user.clear(screen.getByLabelText(/^Tarih/));
     await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 1201));
@@ -1172,7 +1172,7 @@ describe('Düğün içi gider türü', () => {
 /*
   DAMAT, GELİN VE MEMLEKET.
 
-  Kayıtta zaten iki taraf vardı (`customerName` / `secondPersonName`);
+  Kayıtta zaten iki taraf vardı (`customerName` / `brideName`);
   sözleşme bunları "Gelin ve Damat" diye basıyordu ama form genel
   isimlerle soruyordu. Yeni alan açılmadı -- aynı kişi iki yerde durur,
   biri güncellenip öteki unutulurdu. Değişen, verinin nasıl sorulduğu.
@@ -1184,12 +1184,17 @@ describe('Rezervasyon tarafları', () => {
   it('düğünde alanları damat ve gelin diye sorar', async () => {
     renderPanel('/panel/rezervasyonlar/yeni');
 
-    expect(await screen.findByLabelText(/Damat Adı Soyadı/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Gelin Adı Soyadı/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Damat Telefonu/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Gelin Telefonu/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Damat Memleketi')).toBeInTheDocument();
-    expect(screen.getByLabelText('Gelin Memleketi')).toBeInTheDocument();
+    // Sözleşmeyi imzalayan, damat ve gelin AYRI üç kişi.
+    expect(await screen.findByLabelText(/^Ad Soyad/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Damat Ad Soyad')).toBeInTheDocument();
+    expect(screen.getByLabelText('Gelin Ad Soyad')).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Cep Telefonu/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Damat Cep')).toBeInTheDocument();
+    expect(screen.getByLabelText('Gelin Cep')).toBeInTheDocument();
+    expect(screen.getByLabelText('Damat Memleket')).toBeInTheDocument();
+    expect(screen.getByLabelText('Gelin Memleket')).toBeInTheDocument();
+    expect(screen.getByLabelText('Damat Köy / İlçe')).toBeInTheDocument();
+    expect(screen.getByLabelText('Gelin E-Posta')).toBeInTheDocument();
   });
 
   it('organizasyon türü değişince etiketler de değişir', async () => {
@@ -1202,9 +1207,9 @@ describe('Rezervasyon tarafları', () => {
 
     await user.selectOptions(await screen.findByLabelText(/Organizasyon Türü/), 'Toplantı');
 
-    expect(screen.getByLabelText(/Müşteri Adı Soyadı/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Müşteri Memleketi')).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Damat Adı Soyadı/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Müşteri Ad Soyad')).toBeInTheDocument();
+    expect(screen.getByLabelText('Müşteri Memleket')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Damat Ad Soyad')).not.toBeInTheDocument();
   });
 
   it('memleketi kaydeder ve detayda gösterir', async () => {
@@ -1213,10 +1218,10 @@ describe('Rezervasyon tarafları', () => {
     const before = (await getReservations(BIZ)).length;
     renderPanel('/panel/rezervasyonlar/yeni');
 
-    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Memleket Testi');
-    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321234599');
-    await user.type(screen.getByLabelText('Damat Memleketi'), 'Sivas');
-    await user.type(screen.getByLabelText('Gelin Memleketi'), 'Konya');
+    await user.type(await screen.findByLabelText(/Ad Soyad \(sözleşmeyi imzalayan\)/), 'Memleket Testi');
+    await user.type(screen.getByLabelText(/^Cep Telefonu/), '5321234599');
+    await user.selectOptions(screen.getByLabelText('Damat Memleket'), 'Sivas');
+    await user.selectOptions(screen.getByLabelText('Gelin Memleket'), 'Konya');
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '150');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '100000');
     await user.click(screen.getByRole('button', { name: /Kaydet/ }));
@@ -1228,8 +1233,8 @@ describe('Rezervasyon tarafları', () => {
     const kayit = (await getReservations(BIZ)).find(
       (r: Reservation) => r.customerName === 'Memleket Testi',
     )!;
-    expect(kayit.customerHometown).toBe('Sivas');
-    expect(kayit.secondPersonHometown).toBe('Konya');
+    expect(kayit.groomHometown).toBe('Sivas');
+    expect(kayit.brideHometown).toBe('Konya');
   });
 
   it('memleket boş bırakılabilir', async () => {
@@ -1243,8 +1248,8 @@ describe('Rezervasyon tarafları', () => {
     const before = (await getReservations(BIZ)).length;
     renderPanel('/panel/rezervasyonlar/yeni');
 
-    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Memleketsiz Kayıt');
-    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321234588');
+    await user.type(await screen.findByLabelText(/Ad Soyad \(sözleşmeyi imzalayan\)/), 'Memleketsiz Kayıt');
+    await user.type(screen.getByLabelText(/^Cep Telefonu/), '5321234588');
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '100');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '50000');
     await user.click(screen.getByRole('button', { name: /Kaydet/ }));
@@ -1256,7 +1261,7 @@ describe('Rezervasyon tarafları', () => {
     const kayit = (await getReservations(BIZ)).find(
       (r: Reservation) => r.customerName === 'Memleketsiz Kayıt',
     )!;
-    expect(kayit.customerHometown).toBeUndefined();
+    expect(kayit.groomHometown).toBeUndefined();
   });
 });
 
@@ -1311,5 +1316,106 @@ describe('Ürün ve Hizmet, pasif kayıtlar', () => {
     const ekran = await screen.findByRole('table', { name: 'Ürün stokları' });
     await waitFor(() => expect(within(ekran).getByText('Kaldırılmış Bardak')).toBeInTheDocument());
     expect(within(ekran).queryByText('100.000,00 ₺')).not.toBeInTheDocument();
+  });
+});
+
+/*
+  İSTEĞE BAĞLI ALANLARIN DOĞRULANMASI.
+
+  Form `noValidate` ile gönderiliyor: tarayıcının type="email" denetimi
+  devrede değil, type="tel" zaten hiç denetlemiyor. Bozuk değer sessizce
+  kaydediliyordu ve sonucu ancak günler sonra, o numaraya hatırlatma
+  gönderilmeye çalışıldığında görülüyordu.
+*/
+describe('Rezervasyon formu, isteğe bağlı alan doğrulaması', () => {
+  async function formAc() {
+    seedIfEmpty();
+    renderPanel('/panel/rezervasyonlar/yeni');
+    await screen.findByLabelText(/^Ad Soyad/);
+  }
+
+  async function zorunlulariDoldur(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText(/^Ad Soyad/), 'Doğrulama Testi');
+    await user.type(screen.getByLabelText(/^Cep Telefonu/), '5321234577');
+    await user.type(screen.getByLabelText(/Davetli Sayısı/), '100');
+    await user.type(screen.getByLabelText(/Toplam Tutar/), '50000');
+  }
+
+  it('bozuk damat telefonunu reddeder', async () => {
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.type(screen.getByLabelText('Damat Cep'), '123');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    expect(await screen.findByText(/en az 10 haneli/)).toBeInTheDocument();
+    expect(await getReservations(BIZ)).toHaveLength(before);
+  });
+
+  it('bozuk e-postayı reddeder', async () => {
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.type(screen.getByLabelText('Gelin E-Posta'), 'zeynep-at-ornek');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    expect(await screen.findByText(/Geçerli bir e-posta/)).toBeInTheDocument();
+    expect(await getReservations(BIZ)).toHaveLength(before);
+  });
+
+  it('sayı olmayan kişi başı fiyatı reddeder', async () => {
+    /*
+      Önceden `Number('abc')` NaN veriyor, `|| undefined` onu kayıttan
+      düşürüyor ve depo katmanı 0 yazıyordu: kullanıcı bir şey yazdı,
+      sistem sessizce sıfır kaydetti.
+    */
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.type(screen.getByLabelText('Fiyat Kişibaşı'), 'abc');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    expect(await screen.findByText(/Geçerli bir kişi başı fiyat/)).toBeInTheDocument();
+    expect(await getReservations(BIZ)).toHaveLength(before);
+  });
+
+  it('sıfır iskontoyu geçerli sayar ve olduğu gibi kaydeder', async () => {
+    // Eski `|| undefined` geçerli bir sıfırı da düşürüyordu.
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.type(screen.getByLabelText('İskonto'), '0');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    await waitFor(
+      async () => expect(await getReservations(BIZ)).toHaveLength(before + 1),
+      { timeout: 4000 },
+    );
+    const kayit = (await getReservations(BIZ)).find(
+      (r: Reservation) => r.customerName === 'Doğrulama Testi',
+    )!;
+    expect(kayit.discount).toBe(0);
+  });
+
+  it('boş bırakılan isteğe bağlı alanlar kaydı engellemez', async () => {
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    await waitFor(
+      async () => expect(await getReservations(BIZ)).toHaveLength(before + 1),
+      { timeout: 4000 },
+    );
   });
 });
