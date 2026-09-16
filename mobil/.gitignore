@@ -3,3 +3,10 @@ node_modules
 dist-web
 dist-paket
 *.tsbuildinfo
+
+# `expo prebuild` ile ÜRETİLEN native projeler. Sürüm takibine girmezler:
+# yapılandırmanın tek kaynağı `app.json` ve her derlemede buradan yeniden
+# üretiliyorlar. Depoya konsalardı aynı ayar iki yerde durur, biri
+# güncellenip öteki unutulurdu (paket adı, sürüm, izinler).
+android
+ios

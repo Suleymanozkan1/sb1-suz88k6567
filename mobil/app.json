@@ -28,7 +28,7 @@
     "extra": {
       "supabaseUrl": null,
       "supabaseAnonKey": null,
-      "apiKok": "https://sahratakip.com"
+      "apiKok": "https://sahratakip.vercel.app"
     }
   }
 }
