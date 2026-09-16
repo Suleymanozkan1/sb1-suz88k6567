@@ -26,7 +26,30 @@
  * Ortam değişkeni (SUNUCUDA KALIR, tarayıcıya gitmez):
  *   DATABASE_URL   Vercel Postgres / Neon bağlantı adresi
  */
-import { Pool, type PoolClient } from 'pg';
+import { Pool, types, type PoolClient } from 'pg';
+
+/*
+  TARİH SÜTUNLARI METİN OLARAK OKUNUYOR.
+
+  `pg`, `date` sütununu kendiliğinden JavaScript `Date` nesnesine
+  çeviriyor; JSON'a dönüşünce "2026-05-05" yerine
+  "2026-05-05T00:00:00.000Z" çıkıyor. PostgREST ise günü olduğu gibi,
+  "2026-05-05" diye veriyor. Bütün uygulama PostgREST'in biçimine göre
+  yazılmış: ekranlar günü metin olarak karşılaştırıyor, `<input
+  type="date">` alanları bu biçimi bekliyor ve raporlar
+  `new Date(`${r.date}T00:00:00`)` kuruyor -- tam damga gelince bu ifade
+  "2026-05-05T00:00:00.000ZT00:00:00" oluyor ve Raporlar ekranı
+  "Invalid time value" ile çöküyordu.
+
+  İkinci ve daha sinsi sorun ZAMAN DİLİMİ: `Date` nesnesi sunucunun
+  saatine göre kuruluyor, dolayısıyla UTC'nin gerisindeki bir sunucuda
+  günün BİR GÜN KAYMASI mümkün. Düğün tarihi bir gün kayan bir sistem
+  kullanılamaz.
+
+  1082 = `date`. `timestamptz` (1184) dokunulmuyor: orada tam damga
+  zaten doğru karşılık.
+*/
+types.setTypeParser(1082, (deger) => deger);
 
 let havuz: Pool | null = null;
 

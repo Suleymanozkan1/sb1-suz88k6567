@@ -147,3 +147,30 @@ describe.skipIf(!varMi)('PostgreSQL erişimi', () => {
     await expect(sorgu('select 1', [], {})).rejects.toThrow(/Kimlik yok/);
   });
 });
+
+/*
+  TARİH BİÇİMİ.
+
+  `pg` `date` sütununu kendiliğinden `Date` nesnesine çeviriyor ve JSON'a
+  dönünce tam zaman damgası çıkıyor. Bütün uygulama PostgREST'in verdiği
+  "YYYY-MM-DD" biçimine göre yazılmış; tam damga gelince Raporlar ekranı
+  "Invalid time value" ile çöküyordu ve günler zaman dilimine göre
+  kayabiliyordu. Canlıda tam olarak bu yaşandı.
+*/
+describe.skipIf(!varMi)('tarih biçimi', () => {
+  it('date sütunu tam damga değil, gün olarak dönüyor', async () => {
+    const [satir] = await sorgu<{ gun: unknown }>(
+      "select '2026-05-05'::date as gun", [], { servis: true },
+    );
+    expect(satir!.gun).toBe('2026-05-05');
+    expect(String(satir!.gun)).not.toContain('T');
+  });
+
+  it('timestamptz tam damga olarak kalıyor', async () => {
+    // Zaman damgasında saat bilgisi ANLAMLI; ona dokunulmamalı.
+    const [satir] = await sorgu<{ an: unknown }>(
+      "select '2026-05-05T10:30:00Z'::timestamptz as an", [], { servis: true },
+    );
+    expect(satir!.an).toBeInstanceOf(Date);
+  });
+});
