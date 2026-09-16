@@ -183,12 +183,24 @@ export default function Ayrinti() {
           ) : null}
         </View>
         {/*
-          İKİNCİ TARAF VE MEMLEKET. Girilmemişse satır hiç çizilmiyor:
+          TARAFLAR VE MEMLEKET. Girilmemişse satır hiç çizilmiyor:
           "Gelin: -" gibi bir satır, bilginin sorulup boş bırakıldığı
           izlenimi verirdi; oysa eski kayıtlarda hiç sorulmamıştı.
         */}
-        {kayit.gelin ? (
+        {kayit.damat ? (
           <View style={[s.satir, { marginTop: aralik.m }]}>
+            <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.birinci}</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.damat}</Yazi>
+          </View>
+        ) : null}
+        {kayit.damatTelefon ? (
+          <View style={[s.satir, { marginTop: aralik.s }]}>
+            <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.birinci} telefonu</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{telefon(kayit.damatTelefon)}</Yazi>
+          </View>
+        ) : null}
+        {kayit.gelin ? (
+          <View style={[s.satir, { marginTop: aralik.s }]}>
             <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.ikinci}</Yazi>
             <Yazi tur="kucuk" renkli={renk.metin}>{kayit.gelin}</Yazi>
           </View>
