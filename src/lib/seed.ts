@@ -396,9 +396,15 @@ export function demoVeriSeti(): [string, unknown][] {
         ? 'Önceki müşteri tavsiyesi'
         : KANAL_DAGILIMI[i % KANAL_DAGILIMI.length] === 'Diğer' ? 'Tabela' : undefined,
       customerName: name, customerPhone: phone, customerEmail: '',
-      // Çift isimli kayıtlarda ikinci kişi sözleşmede "Gelin ve Damat"
-      // satırında görünür.
-      brideName: name.includes('&') ? name.split('&').map((p) => p.trim()).join(' / ') : undefined,
+      /*
+        DAMAT VE GELİN AYRI ALANLARDA. "Ahmet & Elif Yılmaz" gibi çift
+        isimli kayıtlarda iki adı tek alana yazmak, program kâğıdında
+        gelinin adını damat sütununda gösterirdi -- tam da ayrı
+        alanların önlemek için açıldığı şey.
+      */
+      groomName: name.includes('&') ? name.split('&')[0]!.trim() : undefined,
+      brideName: name.includes('&') ? name.split('&')[1]!.trim() : undefined,
+      groomPhone: name.includes('&') ? phone : undefined,
       bridePhone: name.includes('&') ? `533${String(1000000 + i * 4321).slice(0, 7)}` : undefined,
       date,
       startTime: SEANS_SAATI[slot].start,
@@ -482,6 +488,9 @@ export function demoVeriSeti(): [string, unknown][] {
       code: `${new Date().getFullYear()}-${siraAl(new Date().getFullYear())}`,
       customerName: h.ad,
       customerPhone: h.tel,
+      // `h.ad` çiftin ilk yarısı, `h.ikinci` öteki yarısı.
+      groomName: h.ikinci ? h.ad : undefined,
+      groomPhone: h.ikinci ? h.tel : undefined,
       brideName: h.ikinci,
       bridePhone: h.ikinci ? `533200${String(1000 + i).slice(-4)}` : undefined,
       // Tanıtım verisi: gerçek bir kimlik numarası değil, 11 haneli örnek.

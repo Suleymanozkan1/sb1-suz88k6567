@@ -284,9 +284,55 @@ export default function RezervasyonForm() {
     if (form.identityNo.trim() && kimlik.length !== 11)
       e.identityNo = 'TC kimlik numarası 11 haneli olmalıdır.';
 
-    const ikinciHane = form.bridePhone.replace(/\D/g, '');
-    if (form.bridePhone.trim() && ikinciHane.length < 10)
-      e.bridePhone = 'Telefon numarası en az 10 haneli olmalıdır.';
+    /*
+      İSTEĞE BAĞLI ALANLAR DA DOĞRULANIYOR.
+
+      Form `noValidate` ile gönderiliyor -- tarayıcının `type="email"`
+      denetimi devrede DEĞİL, `type="tel"` zaten hiç denetlemiyor.
+      Doğrulama yalnızca gelin telefonuna bakıyordu; ev telefonu, damat
+      telefonu ve iki e-posta bozuk hâliyle kaydediliyordu.
+
+      Sessiz sonucu şu: o numaraya hatırlatma gönderilmeye
+      çalışıldığında düşer, e-postaya yazıldığında geri döner -- ikisi
+      de kaydı açan kişiye değil, günler sonra kimsenin bakmadığı bir
+      kuyruğa yansır.
+
+      Boş geçmek serbest: bu alanların hiçbiri zorunlu değil.
+    */
+    const telefonDenetle = (alan: keyof FormState, deger: string, mesaj: string) => {
+      const haneler = deger.replace(/\D/g, '');
+      if (deger.trim() && haneler.length < 10) e[alan] = mesaj;
+    };
+    telefonDenetle('bridePhone', form.bridePhone, 'Telefon numarası en az 10 haneli olmalıdır.');
+    telefonDenetle('groomPhone', form.groomPhone, 'Telefon numarası en az 10 haneli olmalıdır.');
+    telefonDenetle('homePhone', form.homePhone, 'Ev telefonu en az 10 haneli olmalıdır.');
+
+    const epostaDenetle = (alan: keyof FormState, deger: string) => {
+      if (deger.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deger.trim()))
+        e[alan] = 'Geçerli bir e-posta adresi giriniz.';
+    };
+    epostaDenetle('groomEmail', form.groomEmail);
+    epostaDenetle('brideEmail', form.brideEmail);
+    epostaDenetle('staffEmail', form.staffEmail);
+
+    /*
+      FİYAT GİRDİLERİ.
+
+      Metin kutusuna "abc" yazıldığında `Number(...)` NaN veriyor,
+      `|| undefined` onu kayıttan düşürüyor ve depo katmanı boş değeri
+      0'a çeviriyordu: kullanıcı bir şey yazdı, sistem sessizce sıfır
+      kaydetti. Aynı `||` GEÇERLİ bir sıfırı da düşürüyordu.
+
+      Artık bozuk değer kaydı durduruyor, sıfır ise olduğu gibi
+      kaydediliyor.
+    */
+    const sayisalDenetle = (alan: keyof FormState, deger: string, mesaj: string) => {
+      if (!deger.trim()) return;
+      const sayi = Number(deger);
+      if (!Number.isFinite(sayi) || sayi < 0) e[alan] = mesaj;
+    };
+    sayisalDenetle('pricePerPerson', form.pricePerPerson, 'Geçerli bir kişi başı fiyat giriniz.');
+    sayisalDenetle('discount', form.discount, 'Geçerli bir iskonto giriniz.');
 
     // Bitiş saati gece yarısını aşabilir; yalnızca biri girilmişse uyarılır.
     if (form.endTime && !form.startTime) e.startTime = 'Bitiş saati girdiyseniz başlangıç saatini de giriniz.';
@@ -346,8 +392,8 @@ export default function RezervasyonForm() {
       brideEmail: form.brideEmail.trim() || undefined,
       brideDistrict: form.brideDistrict.trim() || undefined,
       menuNote: form.menuNote.trim() || undefined,
-      pricePerPerson: Number(form.pricePerPerson) || undefined,
-      discount: Number(form.discount) || undefined,
+      pricePerPerson: form.pricePerPerson.trim() ? Number(form.pricePerPerson) : undefined,
+      discount: form.discount.trim() ? Number(form.discount) : undefined,
       discountIsPercent: form.discountIsPercent,
       vatRate: Number(form.vatRate) || 0,
       identityNo: form.identityNo.replace(/\D/g, '') || undefined,
@@ -499,7 +545,7 @@ export default function RezervasyonForm() {
                 {personeller.map((p) => <option key={p.id} value={p.id}>{p.fullName || p.email}</option>)}
               </select>
             </Field>
-            <Field id="staffEmail" label="Yetkili E-Posta">
+            <Field id="staffEmail" label="Yetkili E-Posta" error={errors.staffEmail}>
               <input id="staffEmail" type="email" className="field-input" value={form.staffEmail} onChange={(e) => update('staffEmail', e.target.value)} />
             </Field>
           </div>
@@ -533,7 +579,7 @@ export default function RezervasyonForm() {
               <input id="identityNo" inputMode="numeric" maxLength={11} className="field-input" value={form.identityNo} onChange={(e) => update('identityNo', e.target.value)} aria-describedby="identityNo-hint" aria-invalid={Boolean(errors.identityNo)} />
             </Field>
             {/* Cebe ulaşılamadığında aranan sabit hat. */}
-            <Field id="homePhone" label="Ev Telefonu">
+            <Field id="homePhone" label="Ev Telefonu" error={errors.homePhone}>
               <input id="homePhone" type="tel" className="field-input" placeholder="3123334455" value={form.homePhone} onChange={(e) => update('homePhone', e.target.value)} />
             </Field>
             <Field id="customerPhone" label="Cep Telefonu" required error={errors.customerPhone}>
@@ -745,10 +791,10 @@ export default function RezervasyonForm() {
               tutmayan sayılar kalır, hangisinin doğru olduğu
               bilinemezdi -- üstelik yanlış olan, faturaya gidendi.
             */}
-            <Field id="pricePerPerson" label="Fiyat Kişibaşı">
+            <Field id="pricePerPerson" label="Fiyat Kişibaşı" error={errors.pricePerPerson}>
               <input id="pricePerPerson" inputMode="decimal" className="field-input" value={form.pricePerPerson} onChange={(e) => update('pricePerPerson', e.target.value)} />
             </Field>
-            <Field id="discount" label="İskonto">
+            <Field id="discount" label="İskonto" error={errors.discount}>
               <input id="discount" inputMode="decimal" className="field-input" value={form.discount} onChange={(e) => update('discount', e.target.value)} />
             </Field>
             <div className="flex items-end pb-2">

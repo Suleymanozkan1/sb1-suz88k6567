@@ -1318,3 +1318,104 @@ describe('Ürün ve Hizmet, pasif kayıtlar', () => {
     expect(within(ekran).queryByText('100.000,00 ₺')).not.toBeInTheDocument();
   });
 });
+
+/*
+  İSTEĞE BAĞLI ALANLARIN DOĞRULANMASI.
+
+  Form `noValidate` ile gönderiliyor: tarayıcının type="email" denetimi
+  devrede değil, type="tel" zaten hiç denetlemiyor. Bozuk değer sessizce
+  kaydediliyordu ve sonucu ancak günler sonra, o numaraya hatırlatma
+  gönderilmeye çalışıldığında görülüyordu.
+*/
+describe('Rezervasyon formu, isteğe bağlı alan doğrulaması', () => {
+  async function formAc() {
+    seedIfEmpty();
+    renderPanel('/panel/rezervasyonlar/yeni');
+    await screen.findByLabelText(/^Ad Soyad/);
+  }
+
+  async function zorunlulariDoldur(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText(/^Ad Soyad/), 'Doğrulama Testi');
+    await user.type(screen.getByLabelText(/^Cep Telefonu/), '5321234577');
+    await user.type(screen.getByLabelText(/Davetli Sayısı/), '100');
+    await user.type(screen.getByLabelText(/Toplam Tutar/), '50000');
+  }
+
+  it('bozuk damat telefonunu reddeder', async () => {
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.type(screen.getByLabelText('Damat Cep'), '123');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    expect(await screen.findByText(/en az 10 haneli/)).toBeInTheDocument();
+    expect(await getReservations(BIZ)).toHaveLength(before);
+  });
+
+  it('bozuk e-postayı reddeder', async () => {
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.type(screen.getByLabelText('Gelin E-Posta'), 'zeynep-at-ornek');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    expect(await screen.findByText(/Geçerli bir e-posta/)).toBeInTheDocument();
+    expect(await getReservations(BIZ)).toHaveLength(before);
+  });
+
+  it('sayı olmayan kişi başı fiyatı reddeder', async () => {
+    /*
+      Önceden `Number('abc')` NaN veriyor, `|| undefined` onu kayıttan
+      düşürüyor ve depo katmanı 0 yazıyordu: kullanıcı bir şey yazdı,
+      sistem sessizce sıfır kaydetti.
+    */
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.type(screen.getByLabelText('Fiyat Kişibaşı'), 'abc');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    expect(await screen.findByText(/Geçerli bir kişi başı fiyat/)).toBeInTheDocument();
+    expect(await getReservations(BIZ)).toHaveLength(before);
+  });
+
+  it('sıfır iskontoyu geçerli sayar ve olduğu gibi kaydeder', async () => {
+    // Eski `|| undefined` geçerli bir sıfırı da düşürüyordu.
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.type(screen.getByLabelText('İskonto'), '0');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    await waitFor(
+      async () => expect(await getReservations(BIZ)).toHaveLength(before + 1),
+      { timeout: 4000 },
+    );
+    const kayit = (await getReservations(BIZ)).find(
+      (r: Reservation) => r.customerName === 'Doğrulama Testi',
+    )!;
+    expect(kayit.discount).toBe(0);
+  });
+
+  it('boş bırakılan isteğe bağlı alanlar kaydı engellemez', async () => {
+    const user = userEvent.setup();
+    await formAc();
+    const before = (await getReservations(BIZ)).length;
+
+    await zorunlulariDoldur(user);
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    await waitFor(
+      async () => expect(await getReservations(BIZ)).toHaveLength(before + 1),
+      { timeout: 4000 },
+    );
+  });
+});

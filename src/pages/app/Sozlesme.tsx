@@ -109,6 +109,7 @@ export default function Sozlesme() {
               hangisinin gelin olduğu kâğıttan okunamazdı.
             */}
             <Satir label="Damat" value={reservation.groomName ?? ''} />
+            <Satir label="Damat Cep" value={reservation.groomPhone ? formatPhone(reservation.groomPhone) : ''} />
             <Satir label="Gelin" value={reservation.brideName ?? ''} />
             <Satir label="Gelin Cep" value={reservation.bridePhone ? formatPhone(reservation.bridePhone) : ''} />
             {/*

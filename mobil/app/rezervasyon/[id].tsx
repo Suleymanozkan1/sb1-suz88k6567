@@ -187,28 +187,28 @@ export default function Ayrinti() {
           "Gelin: -" gibi bir satır, bilginin sorulup boş bırakıldığı
           izlenimi verirdi; oysa eski kayıtlarda hiç sorulmamıştı.
         */}
-        {kayit.ikinciKisi ? (
+        {kayit.gelin ? (
           <View style={[s.satir, { marginTop: aralik.m }]}>
             <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.ikinci}</Yazi>
-            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.ikinciKisi}</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.gelin}</Yazi>
           </View>
         ) : null}
-        {kayit.ikinciTelefon ? (
+        {kayit.gelinTelefon ? (
           <View style={[s.satir, { marginTop: aralik.s }]}>
             <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.ikinci} telefonu</Yazi>
-            <Yazi tur="kucuk" renkli={renk.metin}>{telefon(kayit.ikinciTelefon)}</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{telefon(kayit.gelinTelefon)}</Yazi>
           </View>
         ) : null}
-        {kayit.memleket ? (
+        {kayit.damatMemleket ? (
           <View style={[s.satir, { marginTop: aralik.s }]}>
             <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.birinci} memleketi</Yazi>
-            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.memleket}</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.damatMemleket}</Yazi>
           </View>
         ) : null}
-        {kayit.ikinciMemleket ? (
+        {kayit.gelinMemleket ? (
           <View style={[s.satir, { marginTop: aralik.s }]}>
             <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.ikinci} memleketi</Yazi>
-            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.ikinciMemleket}</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.gelinMemleket}</Yazi>
           </View>
         ) : null}
         <View style={[s.satir, { marginTop: aralik.m }]}>
