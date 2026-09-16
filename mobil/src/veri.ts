@@ -421,7 +421,7 @@ const CIFT_TURLERI = ['Düğün', 'Nişan', 'Kına', 'Nikâh'];
 
 export function tarafEtiketleri(tur: string): { birinci: string; ikinci: string } {
   if (CIFT_TURLERI.includes(tur)) return { birinci: 'Damat', ikinci: 'Gelin' };
-  return { birinci: 'Müşteri', ikinci: 'İkinci kişi' };
+  return { birinci: 'Müşteri', ikinci: 'İkinci Kişi' };
 }
 
 export interface YeniRezervasyon {

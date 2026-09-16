@@ -106,14 +106,27 @@ export default function UrunHizmet() {
     Sayfalanan değil `gorunen` kullanılıyor: çıktı ekrandaki 50 satırla
     sınırlı kalsaydı ikinci sayfadaki ürünler sessizce eksik çıkardı.
   */
-  const cikacaklar = useMemo(
-    () => (secili.size > 0 ? gorunen.filter((v) => secili.has(v.id)) : gorunen),
-    [gorunen, secili],
-  );
+  const cikacaklar = useMemo(() => {
+    /*
+      PASİF KAYITLAR ÇIKTIYA GİRMİYOR. Formdaki tanım açık: "Aktif
+      (organizasyonlara atanabilir, stok listesinde görünür)". Pasife
+      alınan bir ürün artık stok listesinin parçası değil; sayım
+      kâğıdına basılırsa depoda aranır, stok değerine katılırsa
+      "elimizdeki stoğun TL karşılığı" olduğundan fazla çıkar.
+
+      Listede GÖRÜNMEYE devam ediyorlar (yanlarında "Pasif" rozetiyle):
+      ekran yönetim ekranı, kullanıcı pasif kaydı görüp tekrar
+      açabilmeli. Süzgeç görüntüde değil, çıktı sınırında.
+    */
+    const aktifler = gorunen.filter((v) => v.isActive);
+    return secili.size > 0 ? aktifler.filter((v) => secili.has(v.id)) : aktifler;
+  }, [gorunen, secili]);
   const toplamDeger = useMemo(() => stokDegeri(cikacaklar), [cikacaklar]);
 
   /** Sayfadaki satırların tamamı seçili mi? Başlıktaki kutucuk bunu gösteriyor. */
-  const sayfaTumSecili = sayfalanan.length > 0 && sayfalanan.every((v) => secili.has(v.id));
+  const sayfadakiAktifler = sayfalanan.filter((v) => v.isActive);
+  const sayfaTumSecili = sayfadakiAktifler.length > 0
+    && sayfadakiAktifler.every((v) => secili.has(v.id));
 
   function satirSec(id: string, isaretli: boolean) {
     setSecili((onceki) => {
@@ -123,17 +136,32 @@ export default function UrunHizmet() {
     });
   }
 
+  /** Pasif kayıt seçilemiyor: çıktıya zaten girmeyecek. */
+  function secilebilirMi(v: Vendor): boolean {
+    return v.isActive;
+  }
+
   /** Başlıktaki kutucuk: yalnızca GÖRÜNEN sayfayı seçer/bırakır. */
   function sayfaSec(isaretli: boolean) {
     setSecili((onceki) => {
       const yeni = new Set(onceki);
-      sayfalanan.forEach((v) => { if (isaretli) yeni.add(v.id); else yeni.delete(v.id); });
+      sayfalanan.forEach((v) => {
+        if (!secilebilirMi(v)) return;
+        if (isaretli) yeni.add(v.id); else yeni.delete(v.id);
+      });
       return yeni;
     });
   }
 
   function excelIndir() {
-    const tarih = new Date().toISOString().slice(0, 10);
+    /*
+      YEREL TARİH. `toISOString()` UTC veriyor; Türkiye'de gece
+      yarısından sonraki saatlerde dosya adı bir önceki günü
+      gösteriyordu -- kâğıdın üstündeki tarihle tutmuyordu.
+    */
+    const g = new Date();
+    const iki = (n: number) => String(n).padStart(2, '0');
+    const tarih = `${g.getFullYear()}-${iki(g.getMonth() + 1)}-${iki(g.getDate())}`;
     downloadCsv(
       `stok-sayim-${tarih}.csv`,
       toCsv([...SAYIM_BASLIKLARI], sayimCsvSatirlari(cikacaklar)),
@@ -430,8 +458,13 @@ export default function UrunHizmet() {
                       <input
                         type="checkbox"
                         checked={secili.has(v.id)}
+                        disabled={!secilebilirMi(v)}
                         onChange={(e) => satirSec(v.id, e.target.checked)}
-                        aria-label={`${v.name} ürününü çıktıya ekle`}
+                        aria-label={
+                          secilebilirMi(v)
+                            ? `${v.name} ürününü çıktıya ekle`
+                            : `${v.name} pasif; çıktıya eklenemez`
+                        }
                       />
                     </td>
                     <td className="px-4 py-2.5 text-brand">

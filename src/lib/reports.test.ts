@@ -560,3 +560,39 @@ describe('karRaporu', () => {
     expect(karRaporu([], NO_PAYMENTS, [], [])).toEqual([]);
   });
 });
+
+/*
+  CSV FORMÜL ENJEKSİYONU.
+
+  Hücreler kullanıcının girdiği metinden geliyor. Excel `=`, `+`, `-`
+  ya da `@` ile başlayan hücreyi formül sayıp çalıştırır; saldırı
+  dosyayı üreten sistemde değil, onu AÇAN kişide patlar.
+*/
+describe('toCsv formül öneklerini etkisizleştirir', () => {
+  it('eşittir ile başlayan metni tırnaklar', () => {
+    const csv = toCsv(['Ürün'], [['=HYPERLINK("http://kotu","tikla")']]);
+    expect(csv).toContain("'=HYPERLINK");
+  });
+
+  it('artı, eksi ve @ öneklerini de yakalar', () => {
+    for (const onek of ['+', '-', '@']) {
+      expect(toCsv(['A'], [[`${onek}cmd`]])).toContain(`'${onek}cmd`);
+    }
+  });
+
+  it('sayılara dokunmaz: hücre toplanabilir kalmalı', () => {
+    // Negatif sayı da sayıdır; tırnaklanırsa Excel onu metin sayardı.
+    const csv = toCsv(['Tutar'], [[-250]]);
+    expect(csv).toContain('-250');
+    expect(csv).not.toContain("'-250");
+  });
+
+  it('zararsız metni değiştirmez', () => {
+    expect(toCsv(['Ürün'], [['Su (0,5 lt)']])).toContain('Su (0,5 lt)');
+  });
+
+  it('ayraç ve tırnak kaçışı bozulmadı', () => {
+    const csv = toCsv(['A'], [['Yılmaz; Ali']]);
+    expect(csv).toContain('"Yılmaz; Ali"');
+  });
+});

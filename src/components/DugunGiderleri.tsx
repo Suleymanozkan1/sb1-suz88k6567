@@ -78,10 +78,27 @@ export default function DugunGiderleri({
   function turSecildi(ad: string) {
     setForm((f) => {
       if (f.unitPrice.trim() !== '') return { ...f, kind: ad };
-      const eslesen = oneriler.find((o) => o.ad.toLocaleLowerCase('tr') === ad.toLocaleLowerCase('tr'));
+
+      /*
+        BİRDEN FAZLA EŞLEŞME VARSA FİYAT DOLDURULMUYOR.
+
+        Veritabanındaki teklik kısıtı `unique (business_id, name)` ve
+        Postgres'te büyük/küçük harf duyarlı: "Garson" ile "garson"
+        AYRI iki kayıt olabiliyor ve fiyatları farklı olabilir. (Yerel
+        depo adaptörü bunu reddediyor, Supabase reddetmiyor -- iki
+        adaptör bu noktada aynı kuralı uygulamıyor.)
+
+        Böyle bir durumda listeden ilkini almak, kullanıcının
+        görmediği bir seçim yapmak olurdu: ekranda tek bir "Garson"
+        yazıyor, fiyat ise hangisinden geldiği belirsiz. Kararsızsa
+        doldurmuyor; kullanıcı fiyatı kendisi yazıyor.
+      */
+      const aranan = ad.toLocaleLowerCase('tr');
+      const eslesenler = oneriler.filter((o) => o.ad.toLocaleLowerCase('tr') === aranan);
+      const tek = eslesenler.length === 1 ? eslesenler[0] : undefined;
       return {
         ...f, kind: ad,
-        unitPrice: eslesen && eslesen.fiyat > 0 ? String(eslesen.fiyat) : f.unitPrice,
+        unitPrice: tek && tek.fiyat > 0 ? String(tek.fiyat) : f.unitPrice,
       };
     });
   }

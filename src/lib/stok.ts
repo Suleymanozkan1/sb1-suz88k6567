@@ -80,7 +80,14 @@ export function kritikStokSayisi(hepsi: Vendor[]): number {
  * listede durur.
  */
 export function stokSatirDegeri(v: Vendor): number {
-  return stokToplami(v) * v.unitPrice;
+  /*
+    KURUŞA YUVARLANIYOR. Kayan nokta çarpımı kuruşu tutturamıyor:
+    246 x 19,90 gibi sıradan bir hesap 4895,399999999999 çıkarıyor ve
+    bu değer Excel'e ham sayı olarak yazıldığı için hücrede aynen
+    görünüyordu. Birim fiyat zaten numeric(12,2); sonuç da iki hane.
+  */
+  const deger = stokToplami(v) * v.unitPrice;
+  return Math.round((deger + Number.EPSILON) * 100) / 100;
 }
 
 /**
@@ -96,9 +103,11 @@ export function stokSatirDegeri(v: Vendor): number {
  * kalemlerin toplamını görmeli.
  */
 export function stokDegeri(kalemler: Vendor[]): number {
-  return kalemler
+  const toplam = kalemler
     .filter((v) => v.kind === 'urun')
-    .reduce((toplam, v) => toplam + stokSatirDegeri(v), 0);
+    .reduce((t, v) => t + stokSatirDegeri(v), 0);
+  // Satırlar yuvarlansa da toplama sırasında kuruş altı birikebiliyor.
+  return Math.round((toplam + Number.EPSILON) * 100) / 100;
 }
 
 /**

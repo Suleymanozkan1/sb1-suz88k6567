@@ -226,3 +226,23 @@ describe('sayimCsvSatirlari', () => {
     satir.slice(2, 8).forEach((h) => expect(typeof h).toBe('number'));
   });
 });
+
+describe('stok değeri kuruşa yuvarlanır', () => {
+  it('kayan nokta artığını temizler', () => {
+    /*
+      246 x 19,90 kayan noktada 4895,399999999999 çıkıyor ve bu değer
+      Excel'e ham sayı olarak yazıldığı için hücrede aynen görünüyordu.
+    */
+    const deger = stokSatirDegeri(urun({ boxCount: 10, unitsPerBox: 24, looseCount: 6, unitPrice: 19.9 }));
+    expect(deger).toBe(4895.4);
+    expect(String(deger)).not.toContain('99999');
+  });
+
+  it('toplamda da kuruş altı birikmez', () => {
+    const liste = [
+      urun({ id: 'a', boxCount: 0, unitsPerBox: 0, looseCount: 3, unitPrice: 19.9 }),
+      urun({ id: 'b', boxCount: 0, unitsPerBox: 0, looseCount: 7, unitPrice: 0.1 }),
+    ];
+    expect(stokDegeri(liste)).toBe(60.4);
+  });
+});

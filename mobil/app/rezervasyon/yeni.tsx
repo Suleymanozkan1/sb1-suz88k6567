@@ -86,6 +86,16 @@ export default function YeniRezervasyon() {
     if (!musteri.trim()) { setHata('Müşteri adı giriniz.'); return; }
     const tel = telefon.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
     if (!/^5\d{9}$/.test(tel)) { setHata('Geçerli bir cep telefonu giriniz (5XX XXX XX XX).'); return; }
+    /*
+      İKİNCİ TELEFON DA DOĞRULANIYOR. Alan isteğe bağlı ama BOŞ
+      DEĞİLSE numara olmalı: `second_phone` sütununda kısıt yok, yani
+      "123" olduğu gibi kaydediliyordu. Sonradan o numaraya hatırlatma
+      göndermeye çalışıldığında sessizce düşerdi.
+    */
+    const ikinciTel = ikinciTelefon.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
+    if (ikinciTelefon.trim() && !/^5\d{9}$/.test(ikinciTel)) {
+      setHata('İkinci kişinin cep telefonu geçersiz (5XX XXX XX XX).'); return;
+    }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(tarih)) { setHata('Tarihi YYYY-AA-GG biçiminde giriniz.'); return; }
     const kisi = Number(davetli);
     if (!Number.isFinite(kisi) || kisi <= 0) { setHata('Davetli sayısı giriniz.'); return; }
@@ -106,7 +116,7 @@ export default function YeniRezervasyon() {
         musteri: musteri.trim(), telefon: tel, tarih, seans, tur,
         salon, davetli: kisi, toplam: tutarKurus, kapora: kaporaKurus, durum,
         kanal, kanalDetay,
-        ikinciKisi, ikinciTelefon, memleket, ikinciMemleket,
+        ikinciKisi, ikinciTelefon: ikinciTel, memleket, ikinciMemleket,
       });
       yonlendir.replace(id ? `/rezervasyon/${id}` : '/kayitlar');
     } catch (e) {

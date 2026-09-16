@@ -1259,3 +1259,57 @@ describe('Rezervasyon tarafları', () => {
     expect(kayit.customerHometown).toBeUndefined();
   });
 });
+
+/*
+  PASİF ÜRÜN ÇIKTIYA GİRMEMELİ.
+
+  Formdaki tanım açık: "Aktif (organizasyonlara atanabilir, stok
+  listesinde görünür)". Pasife alınan ürün artık stok listesinin
+  parçası değil; sayım kâğıdına basılırsa depoda aranır, stok
+  değerine katılırsa "elimizdeki stoğun TL karşılığı" fazla çıkar.
+*/
+describe('Ürün ve Hizmet, pasif kayıtlar', () => {
+  async function pasifUrunEkle() {
+    seedIfEmpty();
+    await localRepo.saveVendor({
+      id: 'urun_pasif', businessId: BIZ, name: 'Kaldırılmış Bardak',
+      category: 'Sarf Malzeme', kind: 'urun', phone: '', note: '',
+      unitPrice: 1000, boxCount: 1, unitsPerBox: 100, looseCount: 0, minCount: 0,
+      isActive: false,
+    });
+  }
+
+  it('listede görünür ama sayım kâğıdına girmez', async () => {
+    await pasifUrunEkle();
+    renderPanel('/panel/urun-hizmet');
+
+    // Yönetim ekranı: kullanıcı pasif kaydı görüp tekrar açabilmeli.
+    const ekran = await screen.findByRole('table', { name: 'Ürün stokları' });
+    await waitFor(() => expect(within(ekran).getByText('Kaldırılmış Bardak')).toBeInTheDocument());
+
+    // Çıktı sınırı: kâğıtta yok.
+    const kagit = screen.getByRole('table', { name: 'Stok sayım listesi' });
+    expect(within(kagit).queryByText('Kaldırılmış Bardak')).not.toBeInTheDocument();
+  });
+
+  it('pasif kayıt seçilemiyor', async () => {
+    await pasifUrunEkle();
+    renderPanel('/panel/urun-hizmet');
+
+    const kutu = await screen.findByLabelText('Kaldırılmış Bardak pasif; çıktıya eklenemez');
+    expect(kutu).toBeDisabled();
+  });
+
+  it('pasif ürünün değeri stok toplamına katılmaz', async () => {
+    /*
+      1 koli x 100 adet x 1000 TL = 100.000 TL. Toplama katılsaydı
+      rakam gözle görülür şekilde şişerdi.
+    */
+    await pasifUrunEkle();
+    renderPanel('/panel/urun-hizmet');
+
+    const ekran = await screen.findByRole('table', { name: 'Ürün stokları' });
+    await waitFor(() => expect(within(ekran).getByText('Kaldırılmış Bardak')).toBeInTheDocument());
+    expect(within(ekran).queryByText('100.000,00 ₺')).not.toBeInTheDocument();
+  });
+});
