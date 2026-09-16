@@ -73,8 +73,8 @@ test.describe('Üye paneli', () => {
     future.setDate(future.getDate() + 120);
     const iso = future.toISOString().slice(0, 10);
 
-    await page.getByLabel(/Müşteri Adı Soyadı/).fill('E2E Test Çifti');
-    await page.getByLabel(/^Telefon/).fill('5339998877');
+    await page.getByLabel(/Damat Adı Soyadı/).fill('E2E Test Çifti');
+    await page.getByLabel(/^Damat Telefonu/).fill('5339998877');
     await page.getByLabel(/^Tarih/).fill(iso);
     await page.getByLabel(/^Seans/).selectOption('Gündüz');
     await page.getByLabel(/Davetli Sayısı/).fill('400');

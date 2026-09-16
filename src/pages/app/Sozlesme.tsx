@@ -7,6 +7,7 @@ import { QueryBoundary } from '../../components/QueryState';
 import { remainingBalance, totalPaid } from '../../lib/money';
 import { formatDate, formatDateLong, formatMoney, formatPhone, formatTimeRange, todayIso } from '../../lib/format';
 import { contractParties } from '../../lib/reports';
+import { memleketOzeti } from '../../lib/taraflar';
 import { sozlesmeSartlari } from '../../data/sozlesme';
 import { IconPrint } from '../../components/Icons';
 
@@ -108,6 +109,21 @@ export default function Sozlesme() {
               value={reservation.secondPersonName ? contractParties(reservation) : ''}
             />
             <Satir label="Gelin Cep" value={reservation.secondPhone ? formatPhone(reservation.secondPhone) : ''} />
+            {/*
+              MEMLEKET SÖZLEŞMEDE DE. Salon, düğünün hangi memleketten
+              geldiğini biliyorsa karşılama, ikram ve müzik ona göre
+              planlanıyor; sözleşme de bu bilgiyi taşıyan tek kâğıt.
+              İki taraf tek satırda birleştirildi: ayrı satırlar çoğu
+              sözleşmede boş kalır, kâğıdı uzatır.
+            */}
+            <Satir
+              label="Memleket"
+              value={memleketOzeti(
+                reservation.organizationType,
+                reservation.customerHometown,
+                reservation.secondPersonHometown,
+              )}
+            />
             <Satir label="Adres" value={reservation.address ?? ''} />
             <Satir label="Rez. Türü" value={reservation.organizationType} />
             <Satir label="Davetli Sayısı" value={String(reservation.guestCount)} />

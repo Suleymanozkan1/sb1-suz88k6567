@@ -284,8 +284,8 @@ describe('Yeni rezervasyon formu', () => {
   it('kapora toplam tutardan büyük olamaz', async () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
-    await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Deneme Çift');
-    await user.type(screen.getByLabelText(/^Telefon/), '5321234567');
+    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Deneme Çift');
+    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321234567');
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '300');
     await user.type(screen.getByLabelText(/Toplam Tutar/), '50000');
     await user.type(screen.getByLabelText('Kapora'), '90000');
@@ -307,8 +307,8 @@ describe('Yeni rezervasyon formu', () => {
     const before = (await getReservations(BIZ)).length;
     const smsBefore = (await getSmsLog(BIZ)).length;
 
-    await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Yeni Çift');
-    await user.type(screen.getByLabelText(/^Telefon/), '5335554433');
+    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Yeni Çift');
+    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5335554433');
     await user.clear(screen.getByLabelText(/^Tarih/));
     await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 90));
     await user.type(screen.getByLabelText(/Davetli Sayısı/), '250');
@@ -338,8 +338,8 @@ describe('Yeni rezervasyon formu', () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
 
-    await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Ödeme Tipi Testi');
-    await user.type(screen.getByLabelText(/^Telefon/), '5321119988');
+    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Ödeme Tipi Testi');
+    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321119988');
     /*
       TARİH TOHUMUN ARALIĞININ DIŞINDA.
 
@@ -369,8 +369,8 @@ describe('Yeni rezervasyon formu', () => {
     const user = userEvent.setup();
     renderPanel('/panel/rezervasyonlar/yeni');
 
-    await user.type(await screen.findByLabelText(/Müşteri Adı Soyadı/), 'Kaporasız Kayıt');
-    await user.type(screen.getByLabelText(/^Telefon/), '5321119977');
+    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Kaporasız Kayıt');
+    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321119977');
     // Tohumun ürettiği aralığın dışında; gerekçe yukarıdaki testte.
     await user.clear(screen.getByLabelText(/^Tarih/));
     await user.type(screen.getByLabelText(/^Tarih/), addDays(todayIso(), 1201));
@@ -1166,5 +1166,96 @@ describe('Düğün içi gider türü', () => {
     await user.type(screen.getByLabelText('Tür'), 'Garson');
 
     expect(screen.getByLabelText('Birim fiyat')).toHaveValue('3500');
+  });
+});
+
+/*
+  DAMAT, GELİN VE MEMLEKET.
+
+  Kayıtta zaten iki taraf vardı (`customerName` / `secondPersonName`);
+  sözleşme bunları "Gelin ve Damat" diye basıyordu ama form genel
+  isimlerle soruyordu. Yeni alan açılmadı -- aynı kişi iki yerde durur,
+  biri güncellenip öteki unutulurdu. Değişen, verinin nasıl sorulduğu.
+
+  Memleket ise gerçekten yoktu: `note` alanına serbest metin olarak
+  yazılıyor, aranamıyor ve sözleşmeye basılamıyordu.
+*/
+describe('Rezervasyon tarafları', () => {
+  it('düğünde alanları damat ve gelin diye sorar', async () => {
+    renderPanel('/panel/rezervasyonlar/yeni');
+
+    expect(await screen.findByLabelText(/Damat Adı Soyadı/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Gelin Adı Soyadı/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Damat Telefonu/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Gelin Telefonu/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Damat Memleketi')).toBeInTheDocument();
+    expect(screen.getByLabelText('Gelin Memleketi')).toBeInTheDocument();
+  });
+
+  it('organizasyon türü değişince etiketler de değişir', async () => {
+    /*
+      Sabit "Damat" olsaydı bir şirket toplantısını giren kişi kendi
+      müşterisini damat diye kaydetmek zorunda kalırdı.
+    */
+    const user = userEvent.setup();
+    renderPanel('/panel/rezervasyonlar/yeni');
+
+    await user.selectOptions(await screen.findByLabelText(/Organizasyon Türü/), 'Toplantı');
+
+    expect(screen.getByLabelText(/Müşteri Adı Soyadı/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Müşteri Memleketi')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Damat Adı Soyadı/)).not.toBeInTheDocument();
+  });
+
+  it('memleketi kaydeder ve detayda gösterir', async () => {
+    const user = userEvent.setup();
+    seedIfEmpty();
+    const before = (await getReservations(BIZ)).length;
+    renderPanel('/panel/rezervasyonlar/yeni');
+
+    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Memleket Testi');
+    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321234599');
+    await user.type(screen.getByLabelText('Damat Memleketi'), 'Sivas');
+    await user.type(screen.getByLabelText('Gelin Memleketi'), 'Konya');
+    await user.type(screen.getByLabelText(/Davetli Sayısı/), '150');
+    await user.type(screen.getByLabelText(/Toplam Tutar/), '100000');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    await waitFor(
+      async () => expect(await getReservations(BIZ)).toHaveLength(before + 1),
+      { timeout: 4000 },
+    );
+    const kayit = (await getReservations(BIZ)).find(
+      (r: Reservation) => r.customerName === 'Memleket Testi',
+    )!;
+    expect(kayit.customerHometown).toBe('Sivas');
+    expect(kayit.secondPersonHometown).toBe('Konya');
+  });
+
+  it('memleket boş bırakılabilir', async () => {
+    /*
+      Eski kayıtların hepsinde boş; o bilgi hiç sorulmamıştı. Zorunlu
+      yapılsaydı mevcut bir kaydı düzenlemek isteyen kullanıcı,
+      bilmediği bir alanı doldurmadan kaydedemezdi.
+    */
+    const user = userEvent.setup();
+    seedIfEmpty();
+    const before = (await getReservations(BIZ)).length;
+    renderPanel('/panel/rezervasyonlar/yeni');
+
+    await user.type(await screen.findByLabelText(/Damat Adı Soyadı/), 'Memleketsiz Kayıt');
+    await user.type(screen.getByLabelText(/^Damat Telefonu/), '5321234588');
+    await user.type(screen.getByLabelText(/Davetli Sayısı/), '100');
+    await user.type(screen.getByLabelText(/Toplam Tutar/), '50000');
+    await user.click(screen.getByRole('button', { name: /Kaydet/ }));
+
+    await waitFor(
+      async () => expect(await getReservations(BIZ)).toHaveLength(before + 1),
+      { timeout: 4000 },
+    );
+    const kayit = (await getReservations(BIZ)).find(
+      (r: Reservation) => r.customerName === 'Memleketsiz Kayıt',
+    )!;
+    expect(kayit.customerHometown).toBeUndefined();
   });
 });

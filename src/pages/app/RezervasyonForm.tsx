@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Seo from '../../components/Seo';
+import { tarafEtiketleri } from '../../lib/taraflar';
 import Alert from '../../components/Alert';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
@@ -26,6 +27,8 @@ interface FormState {
   customerEmail: string;
   secondPersonName: string;
   secondPhone: string;
+  customerHometown: string;
+  secondPersonHometown: string;
   identityNo: string;
   hallId: string;
   menuId: string;
@@ -55,6 +58,8 @@ const EMPTY: FormState = {
   customerEmail: '',
   secondPersonName: '',
   secondPhone: '',
+  customerHometown: '',
+  secondPersonHometown: '',
   identityNo: '',
   hallId: '',
   menuId: '',
@@ -101,6 +106,13 @@ export default function RezervasyonForm() {
   const saveMutation = useSaveReservation();
   const sendSmsMutation = useSendSms();
   const [form, setForm] = useState<FormState>(EMPTY);
+
+  /*
+    Taraf etiketleri organizasyon türüne bağlı. Tür değiştiğinde alan
+    başlıkları da değişiyor -- kullanıcı "Toplantı"yı seçtiği anda
+    formun ondan damat ismi istemesi anlamsız olurdu.
+  */
+  const etiket = tarafEtiketleri(form.organizationType);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [conflictWarning, setConflictWarning] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -142,6 +154,8 @@ export default function RezervasyonForm() {
       customerEmail: existing.customerEmail ?? '',
       secondPersonName: existing.secondPersonName ?? '',
       secondPhone: existing.secondPhone ?? '',
+      customerHometown: existing.customerHometown ?? '',
+      secondPersonHometown: existing.secondPersonHometown ?? '',
       identityNo: existing.identityNo ?? '',
       hallId: existing.hallId,
       menuId: existing.menuId ?? '',
@@ -270,6 +284,8 @@ export default function RezervasyonForm() {
       customerEmail: form.customerEmail.trim() || undefined,
       secondPersonName: form.secondPersonName.trim() || undefined,
       secondPhone: form.secondPhone.replace(/\D/g, '') || undefined,
+      customerHometown: form.customerHometown.trim() || undefined,
+      secondPersonHometown: form.secondPersonHometown.trim() || undefined,
       identityNo: form.identityNo.replace(/\D/g, '') || undefined,
       date: form.date,
       startTime: form.startTime || undefined,
@@ -379,17 +395,40 @@ export default function RezervasyonForm() {
         <fieldset className="mb-8">
           <legend className="mb-4 font-heading text-lg font-bold text-brand">Müşteri Bilgileri</legend>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field id="customerName" label="Müşteri Adı Soyadı" required error={errors.customerName}>
+            {/*
+              TARAF ETİKETLERİ TÜRE GÖRE. Düğün, nişan, kına ve nikâhta
+              alanlar "Damat" ve "Gelin" diye soruluyor; konferans ya da
+              toplantıda "Müşteri" ve "İkinci Kişi" olarak kalıyor.
+
+              Etiket sabit "Damat" olsaydı bir şirket toplantısını giren
+              kişi kendi müşterisini damat diye kaydetmek zorunda
+              kalırdı. Değişen yalnızca soru; veri aynı alanda duruyor,
+              bu yüzden eski kayıtlar ve sözleşme etkilenmiyor.
+            */}
+            <Field id="customerName" label={`${etiket.birinci} Adı Soyadı`} required error={errors.customerName}>
               <input id="customerName" className="field-input" value={form.customerName} onChange={(e) => update('customerName', e.target.value)} aria-invalid={Boolean(errors.customerName)} />
             </Field>
-            <Field id="secondPersonName" label="İkinci Kişi (varsa)">
+            <Field id="secondPersonName" label={`${etiket.ikinci} Adı Soyadı (varsa)`}>
               <input id="secondPersonName" className="field-input" value={form.secondPersonName} onChange={(e) => update('secondPersonName', e.target.value)} />
             </Field>
-            <Field id="customerPhone" label="Telefon" required error={errors.customerPhone}>
+            <Field id="customerPhone" label={`${etiket.birinci} Telefonu`} required error={errors.customerPhone}>
               <input id="customerPhone" type="tel" className="field-input" placeholder="532xxxyyzz" value={form.customerPhone} onChange={(e) => update('customerPhone', e.target.value)} aria-invalid={Boolean(errors.customerPhone)} />
             </Field>
-            <Field id="secondPhone" label="İkinci Kişi Telefonu (varsa)" error={errors.secondPhone}>
+            <Field id="secondPhone" label={`${etiket.ikinci} Telefonu (varsa)`} error={errors.secondPhone}>
               <input id="secondPhone" type="tel" className="field-input" placeholder="533xxxyyzz" value={form.secondPhone} onChange={(e) => update('secondPhone', e.target.value)} aria-invalid={Boolean(errors.secondPhone)} />
+            </Field>
+            {/*
+              MEMLEKET, İL/İLÇEDEN AYRI. Aşağıdaki "İl" müşterinin ŞU AN
+              yaşadığı yer ve il bazlı rapor oradan besleniyor. Memleket
+              nereli olduğu: İstanbul'da oturan bir Sivaslı için ikisi
+              farklı. Aynı alanda tutulsalardı rapor, salonun bulunduğu
+              ili değil gelinin doğduğu ili sayardı.
+            */}
+            <Field id="customerHometown" label={`${etiket.birinci} Memleketi`}>
+              <input id="customerHometown" className="field-input" placeholder="Sivas" value={form.customerHometown} onChange={(e) => update('customerHometown', e.target.value)} />
+            </Field>
+            <Field id="secondPersonHometown" label={`${etiket.ikinci} Memleketi`}>
+              <input id="secondPersonHometown" className="field-input" placeholder="Konya" value={form.secondPersonHometown} onChange={(e) => update('secondPersonHometown', e.target.value)} />
             </Field>
             <Field id="customerEmail" label="E-Posta" error={errors.customerEmail}>
               <input id="customerEmail" type="email" className="field-input" value={form.customerEmail} onChange={(e) => update('customerEmail', e.target.value)} aria-invalid={Boolean(errors.customerEmail)} />

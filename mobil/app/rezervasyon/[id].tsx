@@ -9,7 +9,7 @@ import {
 } from '../../src/bicim';
 import { aralik, renk, yazi, yuvarlak } from '../../src/tema';
 import {
-  isDurumu, isEmri, rezervasyon, tahsilatEkle, tahsilatlar,
+  isDurumu, isEmri, rezervasyon, tahsilatEkle, tahsilatlar, tarafEtiketleri,
   type IsSatiri, type Rezervasyon, type Tahsilat,
 } from '../../src/veri';
 import HatirlatmaGonder from '../../src/bilesenler/HatirlatmaGonder';
@@ -101,6 +101,8 @@ export default function Ayrinti() {
     );
   }
 
+  // Taraf etiketleri organizasyon türüne göre; panel ve yeni kayıt formuyla aynı kural.
+  const etiket = tarafEtiketleri(kayit.tur);
   const kalan = kayit.toplam - kayit.tahsilat;
   const oran = kayit.toplam > 0 ? Math.min(1, kayit.tahsilat / kayit.toplam) : 0;
 
@@ -180,6 +182,35 @@ export default function Ayrinti() {
             </Pressable>
           ) : null}
         </View>
+        {/*
+          İKİNCİ TARAF VE MEMLEKET. Girilmemişse satır hiç çizilmiyor:
+          "Gelin: -" gibi bir satır, bilginin sorulup boş bırakıldığı
+          izlenimi verirdi; oysa eski kayıtlarda hiç sorulmamıştı.
+        */}
+        {kayit.ikinciKisi ? (
+          <View style={[s.satir, { marginTop: aralik.m }]}>
+            <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.ikinci}</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.ikinciKisi}</Yazi>
+          </View>
+        ) : null}
+        {kayit.ikinciTelefon ? (
+          <View style={[s.satir, { marginTop: aralik.s }]}>
+            <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.ikinci} telefonu</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{telefon(kayit.ikinciTelefon)}</Yazi>
+          </View>
+        ) : null}
+        {kayit.memleket ? (
+          <View style={[s.satir, { marginTop: aralik.s }]}>
+            <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.birinci} memleketi</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.memleket}</Yazi>
+          </View>
+        ) : null}
+        {kayit.ikinciMemleket ? (
+          <View style={[s.satir, { marginTop: aralik.s }]}>
+            <Yazi tur="kucuk" renkli={renk.metinSolgun}>{etiket.ikinci} memleketi</Yazi>
+            <Yazi tur="kucuk" renkli={renk.metin}>{kayit.ikinciMemleket}</Yazi>
+          </View>
+        ) : null}
         <View style={[s.satir, { marginTop: aralik.m }]}>
           <Yazi tur="kucuk" renkli={renk.metinSolgun}>Salon</Yazi>
           <Yazi tur="kucuk" renkli={renk.metin}>{kayit.salon}</Yazi>

@@ -165,6 +165,12 @@ export interface Rezervasyon {
   tahsilat: number;
   kapora: number;
   durum: string;
+  /** İkinci taraf (düğünde gelin). Girilmemişse boş. */
+  ikinciKisi: string;
+  ikinciTelefon: string;
+  /** Tarafların memleketi; yaşadığı ilden ayrı bilgi. */
+  memleket: string;
+  ikinciMemleket: string;
 }
 
 export interface Tahsilat {
@@ -197,28 +203,36 @@ const TUR_RENK: Record<string, string> = {
 const ORNEK: Rezervasyon[] = [
   { id: '1', kod: '2026-1', musteri: 'Zeynep & Can Arslan', telefon: '5321234567',
     tarih: gunEkle(0), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
-    davetli: 320, toplam: 21_000_000, tahsilat: 6_000_000, kapora: 4_000_000, durum: 'Kesin Rezervasyon' },
+    davetli: 320, toplam: 21_000_000, tahsilat: 6_000_000, kapora: 4_000_000, durum: 'Kesin Rezervasyon',
+    ikinciKisi: 'Zeynep Arslan', ikinciTelefon: '5321234568', memleket: 'Sivas', ikinciMemleket: 'Konya' },
   { id: '2', kod: '2026-2', musteri: 'Deniz & Kaan Şen', telefon: '5309876543',
     tarih: gunEkle(0), seans: 'Gündüz', saat: '13:00-17:00', tur: 'Nikâh', renk: TUR_RENK['Nikâh']!, salon: 'Zümrüt Salon',
-    davetli: 150, toplam: 9_500_000, tahsilat: 9_500_000, kapora: 6_333_334, durum: 'Tamamlandı' },
+    davetli: 150, toplam: 9_500_000, tahsilat: 9_500_000, kapora: 6_333_334, durum: 'Tamamlandı',
+    ikinciKisi: 'Deniz Şen', ikinciTelefon: '5309876544', memleket: 'Ankara', ikinciMemleket: 'Ankara' },
   { id: '3', kod: '2026-3', musteri: 'Melis Ailesi', telefon: '5551112233',
     tarih: gunEkle(2), seans: 'Gece', saat: '19:00-23:00', tur: 'Kına', renk: TUR_RENK['Kına']!, salon: 'Kristal Salon',
-    davetli: 200, toplam: 12_000_000, tahsilat: 3_000_000, kapora: 2_000_000, durum: 'Kesin Rezervasyon' },
+    davetli: 200, toplam: 12_000_000, tahsilat: 3_000_000, kapora: 2_000_000, durum: 'Kesin Rezervasyon',
+    ikinciKisi: '', ikinciTelefon: '', memleket: 'Kayseri', ikinciMemleket: '' },
   { id: '4', kod: '2026-4', musteri: 'Ayşe & Mert Yıldız', telefon: '5323334455',
     tarih: gunEkle(5), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
-    davetli: 280, toplam: 18_000_000, tahsilat: 8_000_000, kapora: 5_333_334, durum: 'Kesin Rezervasyon' },
+    davetli: 280, toplam: 18_000_000, tahsilat: 8_000_000, kapora: 5_333_334, durum: 'Kesin Rezervasyon',
+    ikinciKisi: 'Ayşe Yıldız', ikinciTelefon: '5323334456', memleket: 'Trabzon', ikinciMemleket: 'Rize' },
   { id: '5', kod: '2026-5', musteri: 'Ece & Kerem Aydın', telefon: '5445556677',
     tarih: gunEkle(9), seans: 'Gündüz', saat: '13:00-17:00', tur: 'Nişan', renk: TUR_RENK['Nişan']!, salon: 'Zümrüt Salon',
-    davetli: 80, toplam: 5_500_000, tahsilat: 1_500_000, kapora: 1_000_000, durum: 'Ön Rezervasyon' },
+    davetli: 80, toplam: 5_500_000, tahsilat: 1_500_000, kapora: 1_000_000, durum: 'Ön Rezervasyon',
+    ikinciKisi: 'Ece Aydın', ikinciTelefon: '', memleket: '', ikinciMemleket: 'Erzurum' },
   { id: '6', kod: '2026-6', musteri: 'Gül & Emre Doğan', telefon: '5337778899',
     tarih: gunEkle(14), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
-    davetli: 400, toplam: 26_000_000, tahsilat: 0, kapora: 0, durum: 'Ön Rezervasyon' },
+    davetli: 400, toplam: 26_000_000, tahsilat: 0, kapora: 0, durum: 'Ön Rezervasyon',
+    ikinciKisi: 'Gül Doğan', ikinciTelefon: '5337778890', memleket: 'Malatya', ikinciMemleket: 'Elazığ' },
   { id: '7', kod: '2026-7', musteri: 'Sude & Barış Kaya', telefon: '5362223344',
     tarih: gunEkle(21), seans: 'Gece', saat: '19:00-23:00', tur: 'Sünnet', renk: TUR_RENK['Sünnet']!, salon: 'Zümrüt Salon',
-    davetli: 180, toplam: 9_000_000, tahsilat: 2_500_000, kapora: 1_666_667, durum: 'Kesin Rezervasyon' },
+    davetli: 180, toplam: 9_000_000, tahsilat: 2_500_000, kapora: 1_666_667, durum: 'Kesin Rezervasyon',
+    ikinciKisi: '', ikinciTelefon: '', memleket: '', ikinciMemleket: '' },
   { id: '8', kod: '2026-8', musteri: 'Nur & Onur Çetin', telefon: '5354445566',
     tarih: gunEkle(-12), seans: 'Gece', saat: '19:00-23:00', tur: 'Düğün', renk: TUR_RENK['Düğün']!, salon: 'Kristal Salon',
-    davetli: 260, toplam: 16_500_000, tahsilat: 16_500_000, kapora: 11_000_000, durum: 'Tamamlandı' },
+    davetli: 260, toplam: 16_500_000, tahsilat: 16_500_000, kapora: 11_000_000, durum: 'Tamamlandı',
+    ikinciKisi: 'Nur Çetin', ikinciTelefon: '5354445567', memleket: 'Samsun', ikinciMemleket: 'Ordu' },
 ];
 
 /**
@@ -246,10 +260,14 @@ const ORNEK_IS: IsSatiri[] = [
 ];
 
 const REZ_ALAN =
-  'id, code, customer_name, customer_phone, date, start_time, end_time, slot, organization_type, guest_count, total_amount, deposit, status, halls(name)';
+  'id, code, customer_name, customer_phone, second_person_name, second_phone, '
+  + 'customer_hometown, second_person_hometown, date, start_time, end_time, slot, '
+  + 'organization_type, guest_count, total_amount, deposit, status, halls(name)';
 
 interface SatirDb {
   id: string; code: string; customer_name: string; customer_phone: string;
+  second_person_name?: string | null; second_phone?: string | null;
+  customer_hometown?: string | null; second_person_hometown?: string | null;
   date: string; start_time?: string | null; end_time?: string | null;
   slot: Seans; organization_type: string; guest_count: number;
   total_amount: number; deposit: number; status: string;
@@ -283,6 +301,8 @@ function esle(r: SatirDb, tahsilat: number): Rezervasyon {
     salon: r.halls?.name ?? '-', davetli: r.guest_count ?? 0,
     toplam: kurusa(r.total_amount), kapora: kurusa(r.deposit),
     tahsilat: kurusa(r.deposit) + tahsilat, durum: r.status,
+    ikinciKisi: r.second_person_name ?? '', ikinciTelefon: r.second_phone ?? '',
+    memleket: r.customer_hometown ?? '', ikinciMemleket: r.second_person_hometown ?? '',
   };
 }
 
@@ -391,12 +411,34 @@ export const ULASIM_KANALLARI: UlasimKanali[] = [
   'Instagram', 'Düğün.com', 'Google', 'Referans', 'Diğer',
 ];
 
+/**
+ * Organizasyon türüne göre tarafların adı. Panelle AYNI kural.
+ *
+ * Etiket sabit "Damat" olsaydı bir toplantı kaydı girerken kullanıcı
+ * kendi müşterisini damat diye kaydetmek zorunda kalırdı.
+ */
+const CIFT_TURLERI = ['Düğün', 'Nişan', 'Kına', 'Nikâh'];
+
+export function tarafEtiketleri(tur: string): { birinci: string; ikinci: string } {
+  if (CIFT_TURLERI.includes(tur)) return { birinci: 'Damat', ikinci: 'Gelin' };
+  return { birinci: 'Müşteri', ikinci: 'İkinci kişi' };
+}
+
 export interface YeniRezervasyon {
   musteri: string; telefon: string; tarih: string; seans: string; tur: string;
   salon: string; davetli: number; toplam: number; kapora: number; durum: string;
   /** Boş bırakılabilir; kanal raporunda "Belirtilmemiş" olarak sayılır. */
   kanal?: UlasimKanali | '';
   kanalDetay?: string;
+  /** İkinci taraf (düğünde gelin). Panelle aynı alanlar. */
+  ikinciKisi?: string;
+  ikinciTelefon?: string;
+  /**
+   * Tarafların memleketi. Yaşadığı yerden (il/ilçe) AYRI:
+   * İstanbul'da oturan bir Sivaslı için ikisi farklıdır.
+   */
+  memleket?: string;
+  ikinciMemleket?: string;
 }
 
 /**
@@ -432,6 +474,10 @@ export async function rezervasyonEkle(girdi: YeniRezervasyon): Promise<string | 
     status: girdi.durum,
     source_channel: girdi.kanal || null,
     source_detail: girdi.kanalDetay?.trim() || null,
+    second_person_name: girdi.ikinciKisi?.trim() || null,
+    second_phone: girdi.ikinciTelefon?.replace(/\D/g, '') || null,
+    customer_hometown: girdi.memleket?.trim() || null,
+    second_person_hometown: girdi.ikinciMemleket?.trim() || null,
   }).select('id').single();
 
   if (error) throw new Error(error.message);
