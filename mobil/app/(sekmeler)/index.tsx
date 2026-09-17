@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GeriDugmesi } from '../../src/bilesenler/duzen';
 import RezervasyonSatiri from '../../src/bilesenler/RezervasyonSatiri';
 import { BolumBasligi, BosDurum, Yazi } from '../../src/bilesenler/temel';
 import { bugunIso, gunAdi, tarihKisa, tarihUzun, tutarKisa } from '../../src/bicim';
@@ -52,6 +53,7 @@ export default function Bugun() {
     <View style={{ flex: 1, backgroundColor: renk.zemin }}>
       {/* Koyu başlık bandı: içerikten net ayrılsın, altındaki liste beyaz kalsın. */}
       <View style={[s.band, { paddingTop: kenar.top + aralik.l }]}>
+        <GeriDugmesi />
         <Text style={[yazi.minik as object, { color: renk.vurguAcik }]}>
           {gunAdi(bugun).toLocaleUpperCase('tr-TR')} · {tarihUzun(bugun).toLocaleUpperCase('tr-TR')}
         </Text>

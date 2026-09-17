@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GeriDugmesi } from '../../src/bilesenler/duzen';
 import RezervasyonSatiri from '../../src/bilesenler/RezervasyonSatiri';
 import { BosDurum, Yazi } from '../../src/bilesenler/temel';
 import { ayAdi, bugunIso, gunAdi, tarihUzun, yerelIso } from '../../src/bicim';
@@ -60,6 +61,7 @@ export default function Takvim() {
   return (
     <View style={{ flex: 1, backgroundColor: renk.zemin }}>
       <View style={[s.band, { paddingTop: kenar.top + aralik.l }]}>
+        <GeriDugmesi />
         <View style={s.ayBasligi}>
           <Pressable
             onPress={() => ayDegistir(-1)}
