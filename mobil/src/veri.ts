@@ -356,9 +356,13 @@ async function tahsilatToplamlari(kimlikler: string[]): Promise<Record<string, n
 async function salonAdlari(kimlikler: string[]): Promise<Record<string, string>> {
   const tekil = [...new Set(kimlikler.filter(Boolean))];
   if (tanitim || tekil.length === 0) return {};
-  const { data } = await db().from('halls').select('id, name').in('id', tekil);
+  const { data, error } = await db().from('halls').select('id, name').in('id', tekil);
+  // Hata yutulursa ad haritası boş kalıyor ve salon, sunucu erişilemezken
+  // gerçekte "tanımsız"mış gibi "-" görünüyordu. Bu dosyadaki bütün
+  // okumalar hatayı `denetle` ile yukarı fırlatıyor; burası da öyle.
+  const satirlar = denetle(data, error, 'Salon adları okunamadı.');
   const ad: Record<string, string> = {};
-  for (const s of data ?? []) {
+  for (const s of satirlar) {
     const satir = s as unknown as { id: string; name: string | null };
     if (satir.name) ad[satir.id] = satir.name;
   }

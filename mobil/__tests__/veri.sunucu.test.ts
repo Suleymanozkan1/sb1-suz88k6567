@@ -281,6 +281,19 @@ describe('rezervasyon eşlemesi', () => {
     expect(r?.salon).toBe('Kristal Salon');
     expect(cagri('halls')).toBeTruthy();
   });
+
+  it('salon okuma hatasini YUTMAZ', async () => {
+    /*
+      Hata yutulduğunda ad haritası boş kalıyor ve ekran, sunucuya
+      ulaşılamadığı hâlde salonu gerçekten tanımsızmış gibi "-"
+      gösteriyordu. Bu dosyadaki bütün okumalar hatayı yukarı fırlatıyor.
+    */
+    durum.satirlar.reservations = [REZ_SATIRI];
+    durum.hatalar.halls = { message: 'permission denied' };
+
+    await expect(veri.tumKayitlar()).rejects.toThrow('Salon adları okunamadı.');
+    await expect(veri.rezervasyon('r1')).rejects.toThrow('Salon adları okunamadı.');
+  });
 });
 
 describe('tahsilat', () => {
