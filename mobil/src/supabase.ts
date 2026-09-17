@@ -202,15 +202,71 @@ export async function cikisYap(): Promise<void> {
   }
 }
 
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/**
+ * base64url -> metin.
+ *
+ * `Buffer` KULLANILMIYOR. `Buffer` bir Node.js API'si; Hermes'te (yani
+ * yayınlanan uygulamada) tanımlı değil ve ona dokunmak `ReferenceError`
+ * fırlatıyor. Bu hata `kullaniciId` içindeki `catch` tarafından
+ * yutulduğu için fonksiyon sessizce `null` dönüyordu: giriş başarılı
+ * oluyor, ardından profil hiç okunmadan "Hesabınıza ait profil
+ * bulunamadı." hatası veriliyordu. Uygulamaya hiç girilemiyordu.
+ *
+ * Node'da (testte, geliştirmede) `Buffer` VAR olduğu için bu hata
+ * yalnızca gerçek cihazda görünüyordu -- en zor fark edilen tür.
+ *
+ * `atob` da tercih edilmedi: Hermes sürümlerine göre var/yok değişiyor
+ * ve UTF-8'i kendi başına çözmüyor. Aşağısı saf JavaScript, her yerde
+ * aynı çalışıyor.
+ */
+function base64UrlCoz(girdi: string): string {
+  /*
+    BOZUK GİRDİ ONARILMIYOR, REDDEDİLİYOR. Önce alfabe dışı karakterler
+    siliniyordu; bu, gövdesine çöp eklenmiş bir jetonu sessizce geçerli
+    saymak demekti (sonuna "!" konmuş jeton aynı `sub`'ı döndürüyordu).
+    Jeton gövdesi RFC 4648 base64url alfabesinde ve 4'e bölümünden kalanı
+    1 olmayan uzunlukta olmak zorunda. `kullaniciId` bu hatayı yakalayıp
+    `null` dönüyor.
+  */
+  if (!/^[A-Za-z0-9_-]*$/.test(girdi) || girdi.length % 4 === 1) {
+    throw new Error('Geçersiz base64url');
+  }
+  const temiz = girdi.replace(/-/g, '+').replace(/_/g, '/');
+  const baytlar: number[] = [];
+  for (let i = 0; i < temiz.length; i += 4) {
+    const d = [0, 1, 2, 3].map((k) => B64.indexOf(temiz[i + k] ?? 'A'));
+    const parca = (d[0] << 18) | (d[1] << 12) | (d[2] << 6) | d[3];
+    baytlar.push((parca >> 16) & 0xff);
+    if (temiz[i + 2] !== undefined) baytlar.push((parca >> 8) & 0xff);
+    if (temiz[i + 3] !== undefined) baytlar.push(parca & 0xff);
+  }
+
+  // Baytlar UTF-8; jetonda Türkçe harf geçebilir (ad, e-posta).
+  let cikti = '';
+  for (let i = 0; i < baytlar.length;) {
+    const b = baytlar[i];
+    let kod: number;
+    let uzunluk: number;
+    if (b < 0x80) { kod = b; uzunluk = 1; }
+    else if ((b & 0xe0) === 0xc0) { kod = b & 0x1f; uzunluk = 2; }
+    else if ((b & 0xf0) === 0xe0) { kod = b & 0x0f; uzunluk = 3; }
+    else { kod = b & 0x07; uzunluk = 4; }
+    for (let k = 1; k < uzunluk; k += 1) kod = (kod << 6) | (baytlar[i + k] & 0x3f);
+    cikti += String.fromCodePoint(kod);
+    i += uzunluk;
+  }
+  return cikti;
+}
+
 /** Oturumdaki kullanıcının kimliği; jeton gövdesinden okunur. */
 export function kullaniciId(jeton: string | null): string | null {
   if (!jeton) return null;
   const parcalar = jeton.split('.');
   if (parcalar.length !== 3) return null;
   try {
-    const govde = JSON.parse(
-      Buffer.from(parcalar[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'),
-    ) as { sub?: string };
+    const govde = JSON.parse(base64UrlCoz(parcalar[1])) as { sub?: string };
     return govde.sub ?? null;
   } catch {
     return null;

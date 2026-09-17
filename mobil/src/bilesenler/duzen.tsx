@@ -4,6 +4,7 @@ import {
   Text, TextInput, View, type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { DOKUNMA_EN_AZ, aralik, renk, yazi, yuvarlak } from '../tema';
 import { Yazi } from './temel';
 
@@ -14,19 +15,51 @@ import { Yazi } from './temel';
    yeniden yazıldığında ufak farklar birikip ekranlar birbirine benzemez
    hâle geliyordu; iskelet buraya alındı. */
 
+/**
+ * Bandın sol üstündeki geri düğmesi.
+ *
+ * NEDEN VAR. Sekme ekranlarının kendi başlık bandı olduğu için yığın
+ * başlığı kapalı; dolayısıyla ekranda geri dönecek hiçbir düğme yoktu
+ * ve kullanıcı Android'in jest çubuğuna mahkûm kalıyordu -- tam da
+ * dokunması en zor olan yere.
+ *
+ * Gidilecek yer yoksa hiç çizilmiyor: hiçbir işe yaramayan bir okun
+ * durması, dokunup da bir şey olmamasından daha kötü.
+ */
+export function GeriDugmesi({ acikRenk = true }: { acikRenk?: boolean }) {
+  const yonlendir = useRouter();
+  if (!yonlendir.canGoBack()) return null;
+  return (
+    <Pressable
+      onPress={() => yonlendir.back()}
+      accessibilityRole="button"
+      accessibilityLabel="Geri"
+      // Dokunma alanı görünen kutudan geniş: ok küçük, parmak değil.
+      hitSlop={12}
+      style={({ pressed }) => [s.geri, pressed && { opacity: 0.6 }]}
+    >
+      <Text style={[s.geriOk, { color: acikRenk ? renk.beyaz : renk.lacivert }]}>‹</Text>
+      <Text style={[s.geriYazi, { color: acikRenk ? renk.beyaz : renk.lacivert }]}>Geri</Text>
+    </Pressable>
+  );
+}
+
 /** Koyu başlık bandı: üstlük, başlık ve isteğe bağlı özet kutusu. */
 export function Band({
-  ustluk, baslik, children, sekmede = true,
+  ustluk, baslik, children, sekmede = true, geri = true,
 }: {
   ustluk: string;
   baslik: string;
   children?: React.ReactNode;
   /** Sekme ekranlarında üst çentik boşluğu bandın içine alınır. */
   sekmede?: boolean;
+  /** Sol üstte geri düğmesi. Yığın başlığı olan ekranlarda gerekmez. */
+  geri?: boolean;
 }) {
   const kenar = useSafeAreaInsets();
   return (
     <View style={[s.band, { paddingTop: (sekmede ? kenar.top : 0) + aralik.l }]}>
+      {geri && <GeriDugmesi />}
       <Text style={[yazi.minik as object, { color: renk.vurguAcik }]}>
         {ustluk.toLocaleUpperCase('tr-TR')}
       </Text>
@@ -270,6 +303,16 @@ export function Secim({
 }
 
 const s = StyleSheet.create({
+  geri: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: aralik.s,
+    paddingVertical: 4,
+    paddingRight: aralik.s,
+  },
+  geriOk: { fontSize: 26, lineHeight: 26, marginRight: 2, fontWeight: '600' },
+  geriYazi: { fontSize: 15, fontWeight: '600' },
   band: {
     backgroundColor: renk.lacivert,
     paddingHorizontal: aralik.l,

@@ -107,7 +107,7 @@ const REZ_SATIRI = {
   groom_hometown: 'Sivas', bride_hometown: 'Konya',
   start_time: '19:00:00', end_time: '23:00:00', slot: 'Gece',
   organization_type: 'Düğün', guest_count: 300, total_amount: 250_000,
-  deposit: 60_000, status: 'Kesin Rezervasyon', halls: { name: 'Kristal Salon' },
+  deposit: 60_000, status: 'Kesin Rezervasyon', hall_id: 'h1',
 };
 
 describe('sunucu kipi', () => {
@@ -117,8 +117,31 @@ describe('sunucu kipi', () => {
 });
 
 describe('rezervasyon eşlemesi', () => {
+  it('select GÖMÜLÜ İLİŞKİ istemez, salon adını AYRI sorguyla alır', async () => {
+    /*
+      Burada `halls(name)` yazıyordu. Sunucunun `/veri` katmanı gömülü
+      ilişkiyi desteklemiyor: isteğe 400 ile "Tanımsız ilişki:
+      reservations.halls" dönüyor ve rezervasyona dayanan BÜTÜN ekranlar
+      (Yaklaşanlar, Kayıtlar, Takvim, Müşteriler, ciro, tür dağılımı)
+      boş kalıyordu. Taklit istemci hatayı taklit etmediği için eski
+      testler bunu göremiyordu; bu yüzden SELECT METNİ sınanıyor.
+    */
+    durum.satirlar.reservations = [REZ_SATIRI];
+    durum.satirlar.halls = [{ id: 'h1', name: 'Kristal Salon' }];
+
+    await veri.tumKayitlar();
+
+    const secim = String(islem(cagri('reservations'), 'select')?.arg[0] ?? '');
+    expect(secim).toContain('hall_id');
+    expect(secim).not.toMatch(/halls\s*\(/);
+
+    // Salon adı ayrı bir istekle geliyor.
+    expect(cagri('halls')).toBeTruthy();
+  });
+
   it('satırı ekranın beklediği alanlara çevirir', async () => {
     durum.satirlar.reservations = [REZ_SATIRI];
+    durum.satirlar.halls = [{ id: 'h1', name: 'Kristal Salon' }];
 
     const [r] = await veri.tumKayitlar();
 
@@ -242,6 +265,21 @@ describe('rezervasyon eşlemesi', () => {
   it('tek kayıt bulunamazsa null döner', async () => {
     durum.satirlar.reservations = [];
     await expect(veri.rezervasyon('yok')).resolves.toBeNull();
+  });
+
+  it('TEK kayıtta da salon adını getirir', async () => {
+    /*
+      Liste yolu salon adını ayrı sorguyla alıyordu ama tek kayıt yolu
+      `esle`'ye üçüncü değişkeni hiç vermiyordu: rezervasyon detay
+      ekranında salon, gerçekte tanımlıyken "-" görünüyordu.
+    */
+    durum.satirlar.reservations = [REZ_SATIRI];
+    durum.satirlar.halls = [{ id: 'h1', name: 'Kristal Salon' }];
+
+    const r = await veri.rezervasyon('r1');
+
+    expect(r?.salon).toBe('Kristal Salon');
+    expect(cagri('halls')).toBeTruthy();
   });
 });
 

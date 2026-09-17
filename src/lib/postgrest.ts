@@ -1,6 +1,13 @@
 /**
  * PostgREST istemcisi.
  *
+ * DİKKAT: Bu dosya `src/lib/postgrest.ts` ile BİREBİR AYNI olmalıdır.
+ * Mobil paketi kendi başına paketleniyor ve üst dizinden içe aktarım
+ * yapamıyor, bu yüzden kopya tutuluyor. `__tests__/postgrest-kopya.test.ts`
+ * ikisinin ayrışmasını engelliyor: birinde düzeltilen bir hata ötekinde
+ * açık kalırsa, mobil ile web farklı davranır ve fark ancak biri
+ * bozulduğunda anlaşılır.
+ *
  * `@supabase/supabase-js` yerine geçiyor. Supabase'in istemcisi zaten
  * PostgREST'in önüne geçen bir sarmalayıcıydı; burada yalnızca gerçekten
  * kullanılan 13 işlem var. Sözleşme (`{ data, error }`) aynı tutuldu:
@@ -33,7 +40,14 @@ export type Satir = Record<string, unknown>;
 type Tekil<T> = T extends (infer U)[] ? U : T;
 
 /** Erişim jetonunu isteyen geri çağırma; oturum yenilenince değişir. */
-export type JetonSaglayici = () => string | null;
+/*
+  EŞZAMANSIZ OLABİLİR. Sağlayıcı önceden yalnızca `string | null`
+  döndürüyordu; jetonu tazelemek eşzamansız olduğu için tazeleme
+  çağıranlara bırakılmıştı ve UNUTULUYORDU -- ilk girişte jeton boş
+  gidiyor, istek 401 dönüyordu. Sağlayıcı beklenebilir olunca tazeleme
+  isteğin kendi içinde, tek yerde yapılıyor.
+*/
+export type JetonSaglayici = () => string | null | Promise<string | null>;
 
 /**
  * Zincirlenebilir sorgu.
@@ -195,9 +209,9 @@ class Sorgu<T> implements PromiseLike<Sonuc<T>> {
     return `${this.taban}/${this.tablo}?${parcalar.join('&')}`;
   }
 
-  private basliklar(): Record<string, string> {
+  private async basliklar(): Promise<Record<string, string>> {
     const cikti: Record<string, string> = {};
-    const jeton = this.jeton();
+    const jeton = await this.jeton();
     if (jeton) cikti.authorization = `Bearer ${jeton}`;
     if (this.govde !== undefined) cikti['content-type'] = 'application/json';
 
@@ -221,7 +235,7 @@ class Sorgu<T> implements PromiseLike<Sonuc<T>> {
     try {
       yanit = await fetch(this.adres(), {
         method: this.yontem,
-        headers: this.basliklar(),
+        headers: await this.basliklar(),
         body: this.govde === undefined ? undefined : JSON.stringify(this.govde),
       });
     } catch {
@@ -299,7 +313,7 @@ export function postgrestIstemci(taban: string, jeton: JetonSaglayici): Postgres
 
     async rpc<T = unknown>(fn: string, args: Record<string, unknown> = {}): Promise<Sonuc<T>> {
       const basliklar: Record<string, string> = { 'content-type': 'application/json' };
-      const j = jeton();
+      const j = await jeton();
       if (j) basliklar.authorization = `Bearer ${j}`;
 
       let yanit: Response;

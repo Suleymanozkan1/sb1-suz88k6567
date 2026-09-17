@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GeriDugmesi } from '../src/bilesenler/duzen';
 import { OturumSaglayici, useOturum } from '../src/oturum';
 import { renk } from '../src/tema';
 
@@ -57,6 +58,13 @@ function Kok() {
         headerTintColor: renk.lacivert,
         headerStyle: { backgroundColor: renk.kart },
         headerTitleStyle: { color: renk.lacivert, fontWeight: '700' },
+        /*
+          GERİ DÜĞMESİ YAZILI VE GENİŞ. Yerleşik ok tek başına küçük bir
+          işaret; telefonun jest çubuğu da ekranın en altında zor
+          dokunulan bir yerde olduğu için geri dönmek angarya oluyordu.
+          Ok + "Geri" yazısı, üstüne de geniş bir dokunma payı.
+        */
+        headerLeft: () => <GeriDugmesi acikRenk={false} />,
       }}
     >
       <Stack.Protected guard={kullanici !== null}>
