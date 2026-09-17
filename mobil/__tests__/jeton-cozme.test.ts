@@ -83,4 +83,39 @@ describe('kullaniciId, Buffer olmadan', () => {
     // Sağlam jeton hâlâ çözülüyor.
     expect(kullaniciId(jeton)).toBe(KIMLIK);
   });
+
+  it('bozuk UTF-8 dizisini geçerli harfe ÇEVİRMEZ', () => {
+    /*
+      Çözücü devam baytlarını denetlemiyor, eksikleri sıfır sayıyordu:
+      E2 28 A1 gibi bozuk bir dizi hata vermek yerine düzgün görünen bir
+      harfe dönüşüyor, gövde `JSON.parse`'ı geçiyor ve bozuk jeton için
+      kimlik dönülüyordu.
+    */
+    const b64url = (baytlar: number[]) => {
+      const B = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+      let c = '';
+      for (let i = 0; i < baytlar.length; i += 3) {
+        const p = (baytlar[i] << 16) | ((baytlar[i + 1] ?? 0) << 8) | (baytlar[i + 2] ?? 0);
+        c += B[(p >> 18) & 63] + B[(p >> 12) & 63];
+        if (baytlar[i + 1] !== undefined) c += B[(p >> 6) & 63];
+        if (baytlar[i + 2] !== undefined) c += B[p & 63];
+      }
+      return c;
+    };
+    const govdeli = (baytlar: number[]) => `eyJhbGciOiJIUzI1NiJ9.${b64url(baytlar)}.imza`;
+    const metin = (m: string) => [...m].map((k) => k.charCodeAt(0));
+
+    // {"sub":"x"} + bozuk dizi; eskiden çözülüp kimlik dönüyordu.
+    const saglam = metin('{"sub":"x');
+    expect(kullaniciId(govdeli([...saglam, 0xe2, 0x28, 0xa1, ...metin('"}')]))).toBeNull();
+    // Yarım kalmış dizi.
+    expect(kullaniciId(govdeli([...saglam, 0xe2, 0x82]))).toBeNull();
+    // Gereğinden uzun kodlama: "/" karakterinin iki baytlısı.
+    expect(kullaniciId(govdeli([...saglam, 0xc0, 0xaf, ...metin('"}')]))).toBeNull();
+    // Vekil kod noktası U+D800.
+    expect(kullaniciId(govdeli([...saglam, 0xed, 0xa0, 0x80, ...metin('"}')]))).toBeNull();
+
+    // Aynı üreteçle yazılan SAĞLAM gövde çözülüyor: test kendini de sınıyor.
+    expect(kullaniciId(govdeli(metin('{"sub":"x"}')))).toBe('x');
+  });
 });

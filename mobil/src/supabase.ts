@@ -243,17 +243,41 @@ function base64UrlCoz(girdi: string): string {
     if (temiz[i + 3] !== undefined) baytlar.push(parca & 0xff);
   }
 
-  // Baytlar UTF-8; jetonda Türkçe harf geçebilir (ad, e-posta).
+  /*
+    Baytlar UTF-8; jetonda Türkçe harf geçebilir (ad, e-posta).
+
+    ÇÖZÜCÜ KATI. Önce devam baytları hiç denetlenmiyor, eksik baytlar
+    sıfır sayılıyordu: E2 28 A1 gibi bozuk bir dizi hata vermek yerine
+    düzgün görünen bir harfe dönüşüyordu. Böyle bir gövde `JSON.parse`'ı
+    da geçebiliyor ve `kullaniciId` bozuk jeton için kimlik döndürüyor,
+    `oturum.tsx` de o kimlikle profil okumaya gidiyordu. Aşağısı
+    WHATWG'nin UTF-8 kurallarını uyguluyor: eksik/fazla devam baytı,
+    gereğinden uzun kodlama, vekil (surrogate) kod noktası ve
+    U+10FFFF üstü değer -- hepsi hata.
+  */
   let cikti = '';
   for (let i = 0; i < baytlar.length;) {
     const b = baytlar[i];
     let kod: number;
     let uzunluk: number;
-    if (b < 0x80) { kod = b; uzunluk = 1; }
-    else if ((b & 0xe0) === 0xc0) { kod = b & 0x1f; uzunluk = 2; }
-    else if ((b & 0xf0) === 0xe0) { kod = b & 0x0f; uzunluk = 3; }
-    else { kod = b & 0x07; uzunluk = 4; }
-    for (let k = 1; k < uzunluk; k += 1) kod = (kod << 6) | (baytlar[i + k] & 0x3f);
+    let enAz: number;
+    if (b < 0x80) { kod = b; uzunluk = 1; enAz = 0x00; }
+    else if ((b & 0xe0) === 0xc0) { kod = b & 0x1f; uzunluk = 2; enAz = 0x80; }
+    else if ((b & 0xf0) === 0xe0) { kod = b & 0x0f; uzunluk = 3; enAz = 0x800; }
+    else if ((b & 0xf8) === 0xf0) { kod = b & 0x07; uzunluk = 4; enAz = 0x10000; }
+    else throw new Error('Geçersiz UTF-8 baş baytı');
+
+    if (i + uzunluk > baytlar.length) throw new Error('UTF-8 dizisi yarım');
+    for (let k = 1; k < uzunluk; k += 1) {
+      const devam = baytlar[i + k];
+      if ((devam & 0xc0) !== 0x80) throw new Error('Geçersiz UTF-8 devam baytı');
+      kod = (kod << 6) | (devam & 0x3f);
+    }
+    // Gereğinden uzun kodlama: aynı harfin daha kısa yazımı varken uzunu.
+    if (kod < enAz) throw new Error('Gereğinden uzun UTF-8 kodlaması');
+    if (kod >= 0xd800 && kod <= 0xdfff) throw new Error('Vekil kod noktası');
+    if (kod > 0x10ffff) throw new Error('Unicode aralığı dışında');
+
     cikti += String.fromCodePoint(kod);
     i += uzunluk;
   }
