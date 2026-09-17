@@ -407,8 +407,14 @@ export async function rezervasyon(id: string): Promise<Rezervasyon | null> {
   const { data, error } = await db().from('reservations').select(REZ_ALAN).eq('id', id).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
-  const t = await tahsilatToplamlari([id]);
-  return esle(data as unknown as SatirDb, t[id] ?? 0);
+  const satir = data as unknown as SatirDb;
+  // Salon adı burada da ayrı sorgulanmalı: `esle`'ye verilmezse tekil
+  // rezervasyon ekranında salon "-" görünüyordu.
+  const [toplamlar, adlar] = await Promise.all([
+    tahsilatToplamlari([id]),
+    salonAdlari([satir.hall_id ?? '']),
+  ]);
+  return esle(satir, toplamlar[id] ?? 0, adlar[satir.hall_id ?? ''] ?? '-');
 }
 
 export function tahsilatlar(rezervasyonId: string): Promise<Tahsilat[]> {

@@ -222,7 +222,18 @@ const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
  * aynı çalışıyor.
  */
 function base64UrlCoz(girdi: string): string {
-  const temiz = girdi.replace(/-/g, '+').replace(/_/g, '/').replace(/[^A-Za-z0-9+/]/g, '');
+  /*
+    BOZUK GİRDİ ONARILMIYOR, REDDEDİLİYOR. Önce alfabe dışı karakterler
+    siliniyordu; bu, gövdesine çöp eklenmiş bir jetonu sessizce geçerli
+    saymak demekti (sonuna "!" konmuş jeton aynı `sub`'ı döndürüyordu).
+    Jeton gövdesi RFC 4648 base64url alfabesinde ve 4'e bölümünden kalanı
+    1 olmayan uzunlukta olmak zorunda. `kullaniciId` bu hatayı yakalayıp
+    `null` dönüyor.
+  */
+  if (!/^[A-Za-z0-9_-]*$/.test(girdi) || girdi.length % 4 === 1) {
+    throw new Error('Geçersiz base64url');
+  }
+  const temiz = girdi.replace(/-/g, '+').replace(/_/g, '/');
   const baytlar: number[] = [];
   for (let i = 0; i < temiz.length; i += 4) {
     const d = [0, 1, 2, 3].map((k) => B64.indexOf(temiz[i + k] ?? 'A'));

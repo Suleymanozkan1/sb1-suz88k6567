@@ -266,6 +266,21 @@ describe('rezervasyon eşlemesi', () => {
     durum.satirlar.reservations = [];
     await expect(veri.rezervasyon('yok')).resolves.toBeNull();
   });
+
+  it('TEK kayıtta da salon adını getirir', async () => {
+    /*
+      Liste yolu salon adını ayrı sorguyla alıyordu ama tek kayıt yolu
+      `esle`'ye üçüncü değişkeni hiç vermiyordu: rezervasyon detay
+      ekranında salon, gerçekte tanımlıyken "-" görünüyordu.
+    */
+    durum.satirlar.reservations = [REZ_SATIRI];
+    durum.satirlar.halls = [{ id: 'h1', name: 'Kristal Salon' }];
+
+    const r = await veri.rezervasyon('r1');
+
+    expect(r?.salon).toBe('Kristal Salon');
+    expect(cagri('halls')).toBeTruthy();
+  });
 });
 
 describe('tahsilat', () => {

@@ -68,4 +68,19 @@ describe('kullaniciId, Buffer olmadan', () => {
   it('sub alanı yoksa null döner', () => {
     expect(kullaniciId(subsuzJeton)).toBeNull();
   });
+
+  it('gövdeye çöp eklenmiş jetonu ONARMAZ, null döner', () => {
+    /*
+      Alfabe dışı karakterler eskiden siliniyordu: sonuna "!" konmuş bir
+      jeton hiçbir şey olmamış gibi aynı kimliği döndürüyordu. Bozuk
+      girdi onarılacak değil reddedilecek bir şey.
+    */
+    const [ust, govde, imza] = jeton.split('.');
+    expect(kullaniciId(`${ust}.${govde}!.${imza}`)).toBeNull();
+    expect(kullaniciId(`${ust}.${govde} .${imza}`)).toBeNull();
+    // 4'e bölümünden kalanı 1 olan uzunluk base64'te imkânsız.
+    expect(kullaniciId(`${ust}.${govde}A.${imza}`)).toBeNull();
+    // Sağlam jeton hâlâ çözülüyor.
+    expect(kullaniciId(jeton)).toBe(KIMLIK);
+  });
 });
