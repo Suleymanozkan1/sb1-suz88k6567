@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../lib/authHelpers';
 import { kurusToLira, menuTotalKurus } from '../../lib/menuFiyat';
 import {
+  useBusinesses,
   useHalls, useMenus, useReservation, useReservations, useSaveReservation, useSendSms,
   useStaff, useVendors,
   useLead, useLeadStatuses, useSaveLead,
@@ -122,7 +123,16 @@ export default function RezervasyonForm() {
   const businessId = user?.activeBusinessId ?? '';
   const existingQuery = useReservation(id);
   const existing = existingQuery.data ?? undefined;
+  /*
+    EKRANDAKİ İŞLETME, KAYDA YAZILANLA AYNI OLMALI. Kaydetme
+    `existing?.businessId ?? businessId` kullanıyor: eski bir kayıt
+    açıldığında o kaydın işletmesi korunuyor. Gösterimde etkin işletme
+    yazsaydı, başka bir işletmeye geçmiş kullanıcı kaydı açtığında
+    ekranda bir işletme görür, kayıtta başkası dururdu.
+  */
+  const kayitIsletmesi = existing?.businessId ?? businessId;
   const { data: allReservations = [] } = useReservations();
+  const { data: businesses = [] } = useBusinesses();
   const { data: halls = [] } = useHalls();
   const { data: menus = [] } = useMenus();
   /*
@@ -573,9 +583,59 @@ export default function RezervasyonForm() {
       )}
 
       <form onSubmit={(e) => { void onSubmit(e); }} noValidate className="card p-6">
+
+        {/*
+          SIRA EKRAN GÖRÜNTÜSÜNDEKİ FORMA GÖRE.
+
+          Alanlar müşterinin kullandığı formun sırasıyla diziliydi
+          değil: sözleşme, müşteri, taraflar, organizasyon, para diye
+          kendi mantığımıza göre gruplanmıştı. Aynı kaydı iki sistemde
+          açan kişi her seferinde alanı gözüyle aramak zorunda
+          kalıyordu. Artık sıra o formun sırası.
+
+          KENDİ ALANLARIMIZ SİLİNMEDİ. Salon, başlangıç/bitiş saati,
+          il/ilçe, ulaşım kanalı, kapora ve kalan alacak o formda yok
+          ama bu sistemde daha önce istendi ve çalışıyor; en yakın
+          komşularının yanına yerleştirildi.
+        */}
         <fieldset className="mb-8">
-          <legend className="mb-4 font-heading text-lg font-bold text-brand">Sözleşme</legend>
-          <div className="grid gap-4 md:grid-cols-2">
+          <legend className="mb-4 font-heading text-lg font-bold text-brand">Sözleşme ve Rezervasyon
+          </legend>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/*
+              İŞLETME SALT OKUNUR. Etkin işletme İşletmeler ekranından
+              seçiliyor ve bütün panel ona göre süzülüyor; burada
+              değiştirilebilseydi form, ekranın geri kalanından farklı
+              bir işletmeye kayıt açabilirdi.
+            */}
+            <Field id="businessName" label="İşletme" hint="Değiştirmek için İşletmeler ekranını kullanın.">
+              <select id="businessName" className="field-input bg-surface" value={kayitIsletmesi} disabled>
+                {businesses.filter((b) => b.id === kayitIsletmesi).map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field id="hallId" label="Salon" required error={errors.hallId}>
+              <select id="hallId" className="field-input" value={form.hallId}
+                onChange={(e) => update('hallId', e.target.value)} aria-invalid={Boolean(errors.hallId)}>
+                <option value="">Salon seçiniz</option>
+                {halls.filter((h) => h.isActive || h.id === form.hallId).map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name}{h.capacity > 0 ? ` (${h.capacity} kişi)` : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {/*
+              YETKİLİ: sözleşmeyi yapan personel. Kimin sattığı
+              kayıtta durmazsa prim de sorumluluk da konuşulamıyor.
+            */}
+            <Field id="staffId" label="Yetkili (isteğe bağlı)">
+              <select id="staffId" className="field-input" value={form.staffId} onChange={(e) => update('staffId', e.target.value)}>
+                <option value="">Seçiniz</option>
+                {personeller.map((p) => <option key={p.id} value={p.id}>{p.fullName || p.email}</option>)}
+              </select>
+            </Field>
             {/*
               SÖZLEŞME TARİHİ, REZERVASYON TARİHİNDEN AYRI. Sözleşme
               bugün imzalanıp düğün iki yıl sonra olabiliyor; ikisi tek
@@ -588,24 +648,32 @@ export default function RezervasyonForm() {
             <Field id="contractNo" label="Sözleşme No" hint={existing ? undefined : 'Kayıt açılınca sıradaki numara otomatik verilir.'}>
               <input id="contractNo" className="field-input" value={existing?.code ?? ''} readOnly disabled />
             </Field>
-            {/*
-              YETKİLİ: sözleşmeyi yapan personel. Kimin sattığı
-              kayıtta durmazsa prim de sorumluluk da konuşulamıyor.
-            */}
-            <Field id="staffId" label="Yetkili (isteğe bağlı)">
-              <select id="staffId" className="field-input" value={form.staffId} onChange={(e) => update('staffId', e.target.value)}>
-                <option value="">Seçiniz</option>
-                {personeller.map((p) => <option key={p.id} value={p.id}>{p.fullName || p.email}</option>)}
+            <Field id="date" label="Tarih" required error={errors.date}>
+              <input id="date" type="date" className="field-input" value={form.date} onChange={(e) => update('date', e.target.value)} aria-invalid={Boolean(errors.date)} />
+            </Field>
+            <Field id="slot" label="Seans" required>
+              <select id="slot" className="field-input" value={form.slot} onChange={(e) => update('slot', e.target.value as SessionSlot)}>
+                <option value="Gündüz">Gündüz</option>
+                <option value="Gece">Gece</option>
               </select>
             </Field>
-            <Field id="staffEmail" label="Yetkili E-Posta" error={errors.staffEmail}>
-              <input id="staffEmail" type="email" className="field-input" value={form.staffEmail} onChange={(e) => update('staffEmail', e.target.value)} />
+            <Field id="startTime" label="Başlangıç Saati" error={errors.startTime}>
+              <input id="startTime" type="time" className="field-input" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} aria-invalid={Boolean(errors.startTime)} />
+            </Field>
+            <Field id="endTime" label="Bitiş Saati">
+              <input id="endTime" type="time" className="field-input" value={form.endTime} onChange={(e) => update('endTime', e.target.value)} />
+            </Field>
+            <Field id="organizationType" label="Organizasyon Türü" required>
+              <select id="organizationType" className="field-input" value={form.organizationType} onChange={(e) => update('organizationType', e.target.value as OrganizationType)}>
+                {ORGANIZATION_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
             </Field>
           </div>
         </fieldset>
 
         <fieldset className="mb-8">
-          <legend className="mb-4 font-heading text-lg font-bold text-brand">Müşteri Bilgileri</legend>
+          <legend className="mb-4 font-heading text-lg font-bold text-brand">Müşteri (sözleşmeyi imzalayan)
+          </legend>
           <div className="grid gap-4 md:grid-cols-2">
             {/*
               ÜÇ AYRI KİŞİ VAR, İKİ DEĞİL.
@@ -640,67 +708,6 @@ export default function RezervasyonForm() {
             </Field>
             <Field id="customerEmail" label="E-Posta" error={errors.customerEmail}>
               <input id="customerEmail" type="email" className="field-input" value={form.customerEmail} onChange={(e) => update('customerEmail', e.target.value)} aria-invalid={Boolean(errors.customerEmail)} />
-            </Field>
-            {/*
-              İl ve ilçe serbest metin adresten AYRI: "il bazlı rapor"
-              adresi ayrıştırarak üretilseydi "Merkez/Konya" ile "Konya
-              Merkez" ayrı il sayılırdı.
-            */}
-            <Field id="city" label="İl">
-              <input id="city" className="field-input" value={form.city} onChange={(e) => update('city', e.target.value)} />
-            </Field>
-            <Field id="district" label="İlçe">
-              <input id="district" className="field-input" value={form.district} onChange={(e) => update('district', e.target.value)} />
-            </Field>
-            <Field id="address" label="Adres" className="md:col-span-2">
-              <input id="address" className="field-input" value={form.address} onChange={(e) => update('address', e.target.value)} />
-            </Field>
-            {/*
-              Ulaşım kanalı: yıl sonunda "100 düğünün kaçı Instagram'dan
-              geldi" sorusunun cevabı buradan çıkıyor. Kayıt açılırken
-              sorulması gerekiyor; sonradan kimse hatırlamıyor.
-            */}
-            <Field id="sourceChannel" label="Bize nereden ulaştı?">
-              <select
-                id="sourceChannel"
-                className="field-input"
-                value={form.sourceChannel}
-                onChange={(e) => update('sourceChannel', e.target.value as LeadChannel | '')}
-              >
-                <option value="">Seçilmedi</option>
-                {LEAD_CHANNELS.map((k) => <option key={k} value={k}>{k}</option>)}
-                {/*
-                  Kaydın kanalı artık listede değilse (eski "Referans",
-                  "Düğün.com") yalnızca o kayıt için ekleniyor: yoksa
-                  kaydı açan kullanıcı, hiç dokunmadığı alanın
-                  kendiliğinden boşaldığını görürdü.
-                */}
-                {form.sourceChannel && !LEAD_CHANNELS.includes(form.sourceChannel) && (
-                  <option value={form.sourceChannel}>{form.sourceChannel} (eski)</option>
-                )}
-              </select>
-            </Field>
-            <Field
-              id="sourceDetail"
-              label={form.sourceChannel === 'Tavsiye' || form.sourceChannel === 'Referans'
-                ? 'Tavsiye eden (varsa)' : 'Kanal açıklaması'}
-              error={errors.sourceDetail}
-              hint={form.sourceChannel === 'Diğer' ? 'Diğer seçildiğinde bu alan zorunludur.' : undefined}
-            >
-              <input
-                id="sourceDetail"
-                className="field-input"
-                value={form.sourceDetail}
-                // "Referans" madde 8 ile "Tavsiye" oldu; eski kayıtlarda
-                // hâlâ geçtiği için ikisi de açık bırakılıyor.
-                disabled={form.sourceChannel !== 'Tavsiye'
-                  && form.sourceChannel !== 'Referans'
-                  && form.sourceChannel !== 'Diğer'}
-                placeholder={form.sourceChannel === 'Referans' ? 'Ayşe Yılmaz' : 'Tabela, fuar, tanıdık esnaf...'}
-                onChange={(e) => update('sourceDetail', e.target.value)}
-                aria-describedby={form.sourceChannel === 'Diğer' ? 'sourceDetail-hint' : undefined}
-                aria-invalid={Boolean(errors.sourceDetail)}
-              />
             </Field>
           </div>
         </fieldset>
@@ -769,56 +776,85 @@ export default function RezervasyonForm() {
         </fieldset>
 
         <fieldset className="mb-8">
-          <legend className="mb-4 font-heading text-lg font-bold text-brand">Organizasyon Bilgileri</legend>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Field id="hallId" label="Salon" required error={errors.hallId}>
-              <select id="hallId" className="field-input" value={form.hallId}
-                onChange={(e) => update('hallId', e.target.value)} aria-invalid={Boolean(errors.hallId)}>
-                <option value="">Salon seçiniz</option>
-                {halls.filter((h) => h.isActive || h.id === form.hallId).map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name}{h.capacity > 0 ? ` (${h.capacity} kişi)` : ''}
-                  </option>
-                ))}
+          <legend className="mb-4 font-heading text-lg font-bold text-brand">Adres ve Ulaşım
+          </legend>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field id="address" label="Adres" className="md:col-span-2">
+              <input id="address" className="field-input" value={form.address} onChange={(e) => update('address', e.target.value)} />
+            </Field>
+            {/*
+              İl ve ilçe serbest metin adresten AYRI: "il bazlı rapor"
+              adresi ayrıştırarak üretilseydi "Merkez/Konya" ile "Konya
+              Merkez" ayrı il sayılırdı.
+            */}
+            <Field id="city" label="İl">
+              <input id="city" className="field-input" value={form.city} onChange={(e) => update('city', e.target.value)} />
+            </Field>
+            <Field id="district" label="İlçe">
+              <input id="district" className="field-input" value={form.district} onChange={(e) => update('district', e.target.value)} />
+            </Field>
+            <Field id="staffEmail" label="Yetkili E-Posta" error={errors.staffEmail}>
+              <input id="staffEmail" type="email" className="field-input" value={form.staffEmail} onChange={(e) => update('staffEmail', e.target.value)} />
+            </Field>
+            {/*
+              Ulaşım kanalı: yıl sonunda "100 düğünün kaçı Instagram'dan
+              geldi" sorusunun cevabı buradan çıkıyor. Kayıt açılırken
+              sorulması gerekiyor; sonradan kimse hatırlamıyor.
+            */}
+            <Field id="sourceChannel" label="Bize nereden ulaştı?">
+              <select
+                id="sourceChannel"
+                className="field-input"
+                value={form.sourceChannel}
+                onChange={(e) => update('sourceChannel', e.target.value as LeadChannel | '')}
+              >
+                <option value="">Seçilmedi</option>
+                {LEAD_CHANNELS.map((k) => <option key={k} value={k}>{k}</option>)}
+                {/*
+                  Kaydın kanalı artık listede değilse (eski "Referans",
+                  "Düğün.com") yalnızca o kayıt için ekleniyor: yoksa
+                  kaydı açan kullanıcı, hiç dokunmadığı alanın
+                  kendiliğinden boşaldığını görürdü.
+                */}
+                {form.sourceChannel && !LEAD_CHANNELS.includes(form.sourceChannel) && (
+                  <option value={form.sourceChannel}>{form.sourceChannel} (eski)</option>
+                )}
               </select>
             </Field>
-            <Field id="date" label="Tarih" required error={errors.date}>
-              <input id="date" type="date" className="field-input" value={form.date} onChange={(e) => update('date', e.target.value)} aria-invalid={Boolean(errors.date)} />
-            </Field>
-            <Field id="startTime" label="Başlangıç Saati" error={errors.startTime}>
-              <input id="startTime" type="time" className="field-input" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} aria-invalid={Boolean(errors.startTime)} />
-            </Field>
-            <Field id="endTime" label="Bitiş Saati">
-              <input id="endTime" type="time" className="field-input" value={form.endTime} onChange={(e) => update('endTime', e.target.value)} />
-            </Field>
-            <Field id="slot" label="Seans" required>
-              <select id="slot" className="field-input" value={form.slot} onChange={(e) => update('slot', e.target.value as SessionSlot)}>
-                <option value="Gündüz">Gündüz</option>
-                <option value="Gece">Gece</option>
-              </select>
-            </Field>
-            <Field id="organizationType" label="Organizasyon Türü" required>
-              <select id="organizationType" className="field-input" value={form.organizationType} onChange={(e) => update('organizationType', e.target.value as OrganizationType)}>
-                {ORGANIZATION_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </Field>
-            <Field id="guestCount" label="Davetli Sayısı" required error={errors.guestCount}>
-              <input id="guestCount" inputMode="numeric" className="field-input" value={form.guestCount} onChange={(e) => update('guestCount', e.target.value)} aria-invalid={Boolean(errors.guestCount)} />
+            <Field
+              id="sourceDetail"
+              label={form.sourceChannel === 'Tavsiye' || form.sourceChannel === 'Referans'
+                ? 'Tavsiye eden (varsa)' : 'Kanal açıklaması'}
+              error={errors.sourceDetail}
+              hint={form.sourceChannel === 'Diğer' ? 'Diğer seçildiğinde bu alan zorunludur.' : undefined}
+            >
+              <input
+                id="sourceDetail"
+                className="field-input"
+                value={form.sourceDetail}
+                // "Referans" madde 8 ile "Tavsiye" oldu; eski kayıtlarda
+                // hâlâ geçtiği için ikisi de açık bırakılıyor.
+                disabled={form.sourceChannel !== 'Tavsiye'
+                  && form.sourceChannel !== 'Referans'
+                  && form.sourceChannel !== 'Diğer'}
+                placeholder={form.sourceChannel === 'Referans' ? 'Ayşe Yılmaz' : 'Tabela, fuar, tanıdık esnaf...'}
+                onChange={(e) => update('sourceDetail', e.target.value)}
+                aria-describedby={form.sourceChannel === 'Diğer' ? 'sourceDetail-hint' : undefined}
+                aria-invalid={Boolean(errors.sourceDetail)}
+              />
             </Field>
           </div>
-
-          {/*
-            EXTRALAR BURADA DEĞİL. Sabit hizmet kutucukları (madde 8)
-            kaldırıldı; yerine formun altındaki "Pakete dahil hizmetler"
-            bölümü geldi ve seçenekler Ürün ve Hizmet listesinden,
-            fiyatlarıyla birlikte geliyor. Sabit liste her salona
-            uymuyordu ve seçilen kutucuk hiçbir tutara dönüşmüyordu.
-          */}
         </fieldset>
 
         <fieldset className="mb-8">
-          <legend className="mb-4 font-heading text-lg font-bold text-brand">Ödeme Bilgileri</legend>
+          <legend className="mb-4 font-heading text-lg font-bold text-brand">Durum ve Menü
+          </legend>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Field id="status" label="Durum">
+              <select id="status" className="field-input" value={form.status} onChange={(e) => update('status', e.target.value as ReservationStatus)}>
+                {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </Field>
             {/*
               ÇOKLU SEÇİM. Sözleşmeye çoğu zaman tek menü girmiyor:
               kına için ayrı, düğün için ayrı paket anlaşılıyor. Tek
@@ -864,6 +900,21 @@ export default function RezervasyonForm() {
               </div>
             </fieldset>
             {/*
+              Paket dışında ne konuşulduğu. `menuIds` tanımlı paketleri ve
+              fiyatı besliyor; bu not beslemiyor -- ikisi ayrı olmalı,
+              yoksa serbest yazılan bir satır fiyatı değiştirir sanılır.
+            */}
+            <Field id="menuNote" label="Yemek Menüsü (varsa)" className="md:col-span-2 lg:col-span-4">
+              <textarea id="menuNote" rows={2} className="field-input" value={form.menuNote} onChange={(e) => update('menuNote', e.target.value)} />
+            </Field>
+          </div>
+        </fieldset>
+
+        <fieldset className="mb-8">
+          <legend className="mb-4 font-heading text-lg font-bold text-brand">Fiyat
+          </legend>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/*
               FİYAT GİRDİLERİ VE HESAPLANANLAR.
 
               Kişi başı fiyat, iskonto ve KDV oranı SAKLANIYOR; bunlardan
@@ -876,25 +927,9 @@ export default function RezervasyonForm() {
             <Field id="pricePerPerson" label="Fiyat Kişibaşı" error={errors.pricePerPerson}>
               <input id="pricePerPerson" inputMode="decimal" className="field-input" value={form.pricePerPerson} onChange={(e) => update('pricePerPerson', e.target.value)} />
             </Field>
-            <Field id="discount" label="İskonto" error={errors.discount}>
-              <input id="discount" inputMode="decimal" className="field-input" value={form.discount} onChange={(e) => update('discount', e.target.value)} />
+            <Field id="guestCount" label="Davetli Sayısı" required error={errors.guestCount}>
+              <input id="guestCount" inputMode="numeric" className="field-input" value={form.guestCount} onChange={(e) => update('guestCount', e.target.value)} aria-invalid={Boolean(errors.guestCount)} />
             </Field>
-            <div className="flex items-end pb-2">
-              <label className="flex items-center gap-2 text-sm text-brand">
-                <input
-                  type="checkbox"
-                  checked={form.discountIsPercent}
-                  onChange={(e) => update('discountIsPercent', e.target.checked)}
-                />
-                Yüzde olarak hesapla
-              </label>
-            </div>
-            <Field id="vatRate" label="KDV Oranı">
-              <select id="vatRate" className="field-input" value={form.vatRate} onChange={(e) => update('vatRate', e.target.value)}>
-                {KDV_ORANLARI.map((o) => <option key={o} value={String(o)}>%{o}</option>)}
-              </select>
-            </Field>
-
             {/*
               Hesap ÖNERİ olarak duruyor, dayatılmıyor: pazarlık sonucu
               tutar neredeyse her zaman hesaptan farklı oluyor. "Toplam
@@ -906,6 +941,20 @@ export default function RezervasyonForm() {
                 <div className="flex justify-between gap-2">
                   <dt className="text-brand-muted">Kişibaşı Toplam</dt>
                   <dd className="text-brand">{formatMoney(fiyat.kisiBasiToplam, currency)}</dd>
+                </div>
+                {/*
+                  SÖZLEŞME FİYATI VE EXTRALAR AYRI SATIR. Önce yalnızca
+                  genel toplam görünüyordu; elle girilen sözleşme tutarı
+                  ile seçilen hizmetlerin toplamı tek sayıya karışınca
+                  "bu rakam nereden çıktı" sorusu cevapsız kalıyordu.
+                */}
+                <div className="flex justify-between gap-2">
+                  <dt className="text-brand-muted">Sözleşme Fiyatı</dt>
+                  <dd className="text-brand">{formatMoney(Number(form.totalAmount) || 0, currency)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-brand-muted">Extralar</dt>
+                  <dd className="text-brand">{formatMoney(eklerToplami, currency)}</dd>
                 </div>
                 <div className="flex justify-between gap-2">
                   <dt className="text-brand-muted">İskonto</dt>
@@ -921,16 +970,19 @@ export default function RezervasyonForm() {
                 </div>
               </dl>
             </div>
-
-            {/*
-              Paket dışında ne konuşulduğu. `menuIds` tanımlı paketleri ve
-              fiyatı besliyor; bu not beslemiyor -- ikisi ayrı olmalı,
-              yoksa serbest yazılan bir satır fiyatı değiştirir sanılır.
-            */}
-            <Field id="menuNote" label="Yemek Menüsü (varsa)" className="md:col-span-2 lg:col-span-4">
-              <textarea id="menuNote" rows={2} className="field-input" value={form.menuNote} onChange={(e) => update('menuNote', e.target.value)} />
+            <Field id="discount" label="İskonto" error={errors.discount}>
+              <input id="discount" inputMode="decimal" className="field-input" value={form.discount} onChange={(e) => update('discount', e.target.value)} />
             </Field>
-
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 text-sm text-brand">
+                <input
+                  type="checkbox"
+                  checked={form.discountIsPercent}
+                  onChange={(e) => update('discountIsPercent', e.target.checked)}
+                />
+                Yüzde olarak hesapla
+              </label>
+            </div>
             <Field id="totalAmount" label="Toplam Tutar" required error={errors.totalAmount}>
               <input id="totalAmount" inputMode="decimal" className="field-input" value={form.totalAmount} onChange={(e) => update('totalAmount', e.target.value)} aria-invalid={Boolean(errors.totalAmount)} />
             </Field>
@@ -947,6 +999,11 @@ export default function RezervasyonForm() {
                 <span className="ml-2 text-xs text-brand-muted">{oneriAciklamasi}</span>
               </div>
             )}
+            <Field id="vatRate" label="KDV Oranı">
+              <select id="vatRate" className="field-input" value={form.vatRate} onChange={(e) => update('vatRate', e.target.value)}>
+                {KDV_ORANLARI.map((o) => <option key={o} value={String(o)}>%{o}</option>)}
+              </select>
+            </Field>
             <Field id="deposit" label="Kapora" error={errors.deposit}>
               <input id="deposit" inputMode="decimal" className="field-input" value={form.deposit} onChange={(e) => update('deposit', e.target.value)} aria-invalid={Boolean(errors.deposit)} />
             </Field>
@@ -971,11 +1028,6 @@ export default function RezervasyonForm() {
             </Field>
             <Field id="balance" label="Kalan Alacak">
               <input id="balance" className="field-input bg-surface" value={balance.toLocaleString('tr-TR')} readOnly tabIndex={-1} />
-            </Field>
-            <Field id="status" label="Durum">
-              <select id="status" className="field-input" value={form.status} onChange={(e) => update('status', e.target.value as ReservationStatus)}>
-                {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
             </Field>
           </div>
         </fieldset>
