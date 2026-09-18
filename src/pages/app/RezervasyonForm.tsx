@@ -123,6 +123,14 @@ export default function RezervasyonForm() {
   const businessId = user?.activeBusinessId ?? '';
   const existingQuery = useReservation(id);
   const existing = existingQuery.data ?? undefined;
+  /*
+    EKRANDAKİ İŞLETME, KAYDA YAZILANLA AYNI OLMALI. Kaydetme
+    `existing?.businessId ?? businessId` kullanıyor: eski bir kayıt
+    açıldığında o kaydın işletmesi korunuyor. Gösterimde etkin işletme
+    yazsaydı, başka bir işletmeye geçmiş kullanıcı kaydı açtığında
+    ekranda bir işletme görür, kayıtta başkası dururdu.
+  */
+  const kayitIsletmesi = existing?.businessId ?? businessId;
   const { data: allReservations = [] } = useReservations();
   const { data: businesses = [] } = useBusinesses();
   const { data: halls = [] } = useHalls();
@@ -601,8 +609,8 @@ export default function RezervasyonForm() {
               bir işletmeye kayıt açabilirdi.
             */}
             <Field id="businessName" label="İşletme" hint="Değiştirmek için İşletmeler ekranını kullanın.">
-              <select id="businessName" className="field-input bg-surface" value={businessId} disabled>
-                {businesses.filter((b) => b.id === businessId).map((b) => (
+              <select id="businessName" className="field-input bg-surface" value={kayitIsletmesi} disabled>
+                {businesses.filter((b) => b.id === kayitIsletmesi).map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
