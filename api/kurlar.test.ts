@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { altinKodu, collectApiCevir, tcmbCevir, tcmbTarihi } from './kurlar';
 
 /**
@@ -141,5 +141,51 @@ describe('collectApiCevir', () => {
     expect(collectApiCevir(null, an, false)).toEqual([]);
     expect(collectApiCevir({}, an, false)).toEqual([]);
     expect(collectApiCevir({ result: 'hata' }, an, false)).toEqual([]);
+  });
+});
+
+/*
+  Uç noktanın YAZDIĞI satır.
+
+  Çözümleyici `quotedAt` üretiyor, tablodaki sütun ise `quoted_at`.
+  Satır çevrilmeden gönderildiğinde PostgREST tamamını reddediyordu
+  (PGRST204) ve kur tablosu boş kalıyordu; site canlıya alındığında
+  döviz şeridi hiç görünmedi. Test sütun adlarını tablonun 0034'teki
+  tanımıyla karşılaştırıyor.
+*/
+describe('handler: yazılan satırın sütun adları', () => {
+  it('tablodaki sütun adlarıyla yazar', async () => {
+    const yazilan: unknown[] = [];
+    // Dosyanın başındaki statik import önbellekte duruyor; mock'un
+    // görülmesi için modül kaydı önce temizleniyor.
+    vi.resetModules();
+    vi.doMock('./_db.js', () => ({
+      isAuthorizedCron: () => true,
+      isDbConfigured: () => true,
+      upsertRows: (_tablo: string, satirlar: unknown[]) => {
+        yazilan.push(...satirlar);
+        return Promise.resolve();
+      },
+    }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(TCMB_XML, { status: 200 }),
+    ));
+
+    const { default: handler } = await import('./kurlar');
+    const yanit = await handler(new Request('https://gorev.local/api/kurlar', { method: 'POST' }));
+
+    expect(yanit.status).toBe(200);
+    expect(yazilan).toEqual([
+      { code: 'USD', buy: 41.2345, sell: 41.3087, quoted_at: '2026-09-12T00:00:00Z' },
+      { code: 'EUR', buy: 48.1020, sell: 48.1887, quoted_at: '2026-09-12T00:00:00Z' },
+    ]);
+    // `quotedAt` gönderilirse PostgREST satırı reddeder.
+    for (const satir of yazilan) {
+      expect(Object.keys(satir as object)).not.toContain('quotedAt');
+    }
+
+    vi.doUnmock('./_db.js');
+    vi.unstubAllGlobals();
+    vi.resetModules();
   });
 });

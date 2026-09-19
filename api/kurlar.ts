@@ -221,8 +221,20 @@ export default async function handler(request: Request): Promise<Response> {
     return json({ provider: saglayici, written: 0, detail: 'Sağlayıcıdan kur gelmedi.' });
   }
 
+  /*
+    Alan adları veritabanı sütunlarına ÇEVRİLİYOR: tabloda sütun
+    `quoted_at`, çözümleyicinin ürettiği alan ise `quotedAt`. Satır
+    olduğu gibi gönderildiğinde PostgREST tamamını reddediyor
+    (PGRST204 "Could not find the 'quotedAt' column") ve kur tablosu
+    boş kalıyor -- ekranda döviz şeridi hiç görünmüyordu. Aynı çeviri
+    okuma tarafında da var (src/lib/repo/supabase.ts).
+  */
+  const kayitlar = satirlar.map((satir) => ({
+    code: satir.code, buy: satir.buy, sell: satir.sell, quoted_at: satir.quotedAt,
+  }));
+
   try {
-    await upsertRows('exchange_rates', satirlar, 'code');
+    await upsertRows('exchange_rates', kayitlar, 'code');
   } catch (error) {
     return json({ error: 'Kurlar yazılamadı.', detail: String(error) }, 502);
   }
